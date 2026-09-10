@@ -84,7 +84,7 @@ func (lr *ledgerResources) VerifyBlockSignature(sd []*protoutil.SignedData, enve
 	policyMgr := lr.PolicyManager()
 	// If the envelope passed isn't nil, we should use a different policy manager.
 	if envelope != nil {
-		bundle, err := channelconfig.NewBundle(lr.ChannelID(), envelope.Config, lr.bccsp)
+		bundle, err := channelconfig.NewBundle(lr.ChannelID(), envelope.GetConfig(), lr.bccsp)
 		if err != nil {
 			return err
 		}

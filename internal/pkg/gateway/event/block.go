@@ -75,7 +75,7 @@ func (b *Block) payloads() ([]*common.Payload, error) {
 		}
 
 		payload := &common.Payload{}
-		if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
+		if err := proto.Unmarshal(envelope.GetPayload(), payload); err != nil {
 			return nil, err
 		}
 

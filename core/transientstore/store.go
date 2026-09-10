@@ -157,7 +157,7 @@ func (provider *storeProvider) markStorageForDelete(ledgerID string) error {
 	}
 
 	// don't update if the storage is already marked for deletion.
-	if slices.Contains(marked.List, ledgerID) {
+	if slices.Contains(marked.GetList(), ledgerID) {
 		logger.Infow("Transient storage was already marked for delete", "ledgerID", ledgerID)
 		return nil
 	}
@@ -223,7 +223,7 @@ func (provider *storeProvider) clearStorageDeletionStatus(ledgerID string) error
 	newDeletes := &PendingDeleteStorageList{}
 
 	// retain all entries other than the one to be cleared.
-	for _, l := range dl.List {
+	for _, l := range dl.GetList() {
 		if ledgerID == l {
 			continue
 		}
@@ -231,7 +231,7 @@ func (provider *storeProvider) clearStorageDeletionStatus(ledgerID string) error
 	}
 
 	// Nothing to do: ledgerID was not in the current delete list
-	if len(dl.List) == len(newDeletes.List) {
+	if len(dl.GetList()) == len(newDeletes.GetList()) {
 		return nil
 	}
 
@@ -250,7 +250,7 @@ func (provider *storeProvider) processPendingStorageDeletions() error {
 		return errors.WithMessage(err, "processing pending deletion list")
 	}
 
-	for _, l := range dl.List {
+	for _, l := range dl.GetList() {
 		err = provider.deleteStore(l)
 		if err != nil {
 			return errors.WithMessagef(err, "processing delete for storage [%s]", l)
@@ -528,7 +528,7 @@ func (scanner *RwsetScanner) Next() (*EndorserPvtSimulationResults, error) {
 		// trim the tx rwset based on the current collection filter,
 		// nil will be returned to filteredTxPvtRWSet if the transient store txid entry does not contain the data for the collection
 		filteredTxPvtRWSet = trimPvtWSet(txPvtRWSetWithConfig.GetPvtRwset(), scanner.filter)
-		configs, err := trimPvtCollectionConfigs(txPvtRWSetWithConfig.CollectionConfigs, scanner.filter)
+		configs, err := trimPvtCollectionConfigs(txPvtRWSetWithConfig.GetCollectionConfigs(), scanner.filter)
 		if err != nil {
 			return nil, err
 		}

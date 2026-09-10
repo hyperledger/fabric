@@ -72,9 +72,9 @@ var _ = Describe("Encoder", func() {
 		It("adds the block validation policy to the group", func() {
 			err := encoder.AddOrdererPolicies(cg, policies, "Admins")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(cg.Policies)).To(Equal(4))
+			Expect(len(cg.GetPolicies())).To(Equal(4))
 
-			Expect(cg.Policies["BlockValidation"].Policy).To(Equal(&cb.Policy{
+			Expect(cg.GetPolicies()["BlockValidation"].GetPolicy()).To(Equal(&cb.Policy{
 				Type: int32(cb.Policy_IMPLICIT_META),
 				Value: protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
 					SubPolicy: "Admins",
@@ -120,9 +120,9 @@ var _ = Describe("Encoder", func() {
 		It("adds the standard policies to the group", func() {
 			err := encoder.AddPolicies(cg, policies, "Admins")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(cg.Policies)).To(Equal(3))
+			Expect(len(cg.GetPolicies())).To(Equal(3))
 
-			Expect(cg.Policies["Admins"].Policy).To(Equal(&cb.Policy{
+			Expect(cg.GetPolicies()["Admins"].GetPolicy()).To(Equal(&cb.Policy{
 				Type: int32(cb.Policy_IMPLICIT_META),
 				Value: protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
 					SubPolicy: "Admins",
@@ -130,7 +130,7 @@ var _ = Describe("Encoder", func() {
 				}),
 			}))
 
-			Expect(cg.Policies["Readers"].Policy).To(Equal(&cb.Policy{
+			Expect(cg.GetPolicies()["Readers"].GetPolicy()).To(Equal(&cb.Policy{
 				Type: int32(cb.Policy_IMPLICIT_META),
 				Value: protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
 					SubPolicy: "Readers",
@@ -138,7 +138,7 @@ var _ = Describe("Encoder", func() {
 				}),
 			}))
 
-			Expect(cg.Policies["Writers"].Policy).To(Equal(&cb.Policy{
+			Expect(cg.GetPolicies()["Writers"].GetPolicy()).To(Equal(&cb.Policy{
 				Type: int32(cb.Policy_IMPLICIT_META),
 				Value: protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
 					SubPolicy: "Writers",
@@ -254,12 +254,12 @@ var _ = Describe("Encoder", func() {
 		It("translates the config into a config group", func() {
 			cg, err := encoder.NewChannelGroup(conf)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(cg.Values)).To(Equal(5))
-			Expect(cg.Values["BlockDataHashingStructure"]).NotTo(BeNil())
-			Expect(cg.Values["Consortium"]).NotTo(BeNil())
-			Expect(cg.Values["Capabilities"]).NotTo(BeNil())
-			Expect(cg.Values["HashingAlgorithm"]).NotTo(BeNil())
-			Expect(cg.Values["OrdererAddresses"]).NotTo(BeNil())
+			Expect(len(cg.GetValues())).To(Equal(5))
+			Expect(cg.GetValues()["BlockDataHashingStructure"]).NotTo(BeNil())
+			Expect(cg.GetValues()["Consortium"]).NotTo(BeNil())
+			Expect(cg.GetValues()["Capabilities"]).NotTo(BeNil())
+			Expect(cg.GetValues()["HashingAlgorithm"]).NotTo(BeNil())
+			Expect(cg.GetValues()["OrdererAddresses"]).NotTo(BeNil())
 		})
 
 		Context("when the policy definition is bad", func() {
@@ -281,7 +281,7 @@ var _ = Describe("Encoder", func() {
 			It("does not create the config value", func() {
 				cg, err := encoder.NewChannelGroup(conf)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(cg.Values["OrdererAddresses"]).To(BeNil())
+				Expect(cg.GetValues()["OrdererAddresses"]).To(BeNil())
 			})
 		})
 
@@ -365,18 +365,18 @@ var _ = Describe("Encoder", func() {
 		It("translates the config into a config group", func() {
 			cg, err := encoder.NewOrdererGroup(conf)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(cg.Policies)).To(Equal(4)) // BlockValidation automatically added
-			Expect(cg.Policies["Admins"]).NotTo(BeNil())
-			Expect(cg.Policies["Readers"]).NotTo(BeNil())
-			Expect(cg.Policies["Writers"]).NotTo(BeNil())
-			Expect(cg.Policies["BlockValidation"]).NotTo(BeNil())
-			Expect(len(cg.Groups)).To(Equal(1))
-			Expect(cg.Groups["SampleOrg"]).NotTo(BeNil())
-			Expect(len(cg.Values)).To(Equal(5))
-			Expect(cg.Values["BatchSize"]).NotTo(BeNil())
-			Expect(cg.Values["BatchTimeout"]).NotTo(BeNil())
-			Expect(cg.Values["ChannelRestrictions"]).NotTo(BeNil())
-			Expect(cg.Values["Capabilities"]).NotTo(BeNil())
+			Expect(len(cg.GetPolicies())).To(Equal(4)) // BlockValidation automatically added
+			Expect(cg.GetPolicies()["Admins"]).NotTo(BeNil())
+			Expect(cg.GetPolicies()["Readers"]).NotTo(BeNil())
+			Expect(cg.GetPolicies()["Writers"]).NotTo(BeNil())
+			Expect(cg.GetPolicies()["BlockValidation"]).NotTo(BeNil())
+			Expect(len(cg.GetGroups())).To(Equal(1))
+			Expect(cg.GetGroups()["SampleOrg"]).NotTo(BeNil())
+			Expect(len(cg.GetValues())).To(Equal(5))
+			Expect(cg.GetValues()["BatchSize"]).NotTo(BeNil())
+			Expect(cg.GetValues()["BatchTimeout"]).NotTo(BeNil())
+			Expect(cg.GetValues()["ChannelRestrictions"]).NotTo(BeNil())
+			Expect(cg.GetValues()["Capabilities"]).NotTo(BeNil())
 		})
 
 		Context("when the policy definition is bad", func() {
@@ -398,8 +398,8 @@ var _ = Describe("Encoder", func() {
 			It("adds the kafka brokers key", func() {
 				cg, err := encoder.NewOrdererGroup(conf)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Values)).To(Equal(6))
-				Expect(cg.Values["KafkaBrokers"]).NotTo(BeNil())
+				Expect(len(cg.GetValues())).To(Equal(6))
+				Expect(cg.GetValues()["KafkaBrokers"]).NotTo(BeNil())
 			})
 		})
 
@@ -416,15 +416,15 @@ var _ = Describe("Encoder", func() {
 			It("adds the raft metadata", func() {
 				cg, err := encoder.NewOrdererGroup(conf)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Values)).To(Equal(5))
+				Expect(len(cg.GetValues())).To(Equal(5))
 				consensusType := &ab.ConsensusType{}
-				err = proto.Unmarshal(cg.Values["ConsensusType"].Value, consensusType)
+				err = proto.Unmarshal(cg.GetValues()["ConsensusType"].GetValue(), consensusType)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(consensusType.Type).To(Equal("etcdraft"))
+				Expect(consensusType.GetType()).To(Equal("etcdraft"))
 				metadata := &etcdraft.ConfigMetadata{}
-				err = proto.Unmarshal(consensusType.Metadata, metadata)
+				err = proto.Unmarshal(consensusType.GetMetadata(), metadata)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(metadata.Options.TickInterval).To(Equal("500ms"))
+				Expect(metadata.GetOptions().GetTickInterval()).To(Equal("500ms"))
 			})
 
 			Context("when the raft configuration is bad", func() {
@@ -493,15 +493,15 @@ var _ = Describe("Encoder", func() {
 		It("translates the config into a config group", func() {
 			cg, err := encoder.NewApplicationGroup(conf)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(cg.Policies)).To(Equal(3))
-			Expect(cg.Policies["Admins"]).NotTo(BeNil())
-			Expect(cg.Policies["Readers"]).NotTo(BeNil())
-			Expect(cg.Policies["Writers"]).NotTo(BeNil())
-			Expect(len(cg.Groups)).To(Equal(1))
-			Expect(cg.Groups["SampleOrg"]).NotTo(BeNil())
-			Expect(len(cg.Values)).To(Equal(2))
-			Expect(cg.Values["ACLs"]).NotTo(BeNil())
-			Expect(cg.Values["Capabilities"]).NotTo(BeNil())
+			Expect(len(cg.GetPolicies())).To(Equal(3))
+			Expect(cg.GetPolicies()["Admins"]).NotTo(BeNil())
+			Expect(cg.GetPolicies()["Readers"]).NotTo(BeNil())
+			Expect(cg.GetPolicies()["Writers"]).NotTo(BeNil())
+			Expect(len(cg.GetGroups())).To(Equal(1))
+			Expect(cg.GetGroups()["SampleOrg"]).NotTo(BeNil())
+			Expect(len(cg.GetValues())).To(Equal(2))
+			Expect(cg.GetValues()["ACLs"]).NotTo(BeNil())
+			Expect(cg.GetValues()["Capabilities"]).NotTo(BeNil())
 		})
 
 		Context("when the policy definition is bad", func() {
@@ -543,12 +543,12 @@ var _ = Describe("Encoder", func() {
 		It("translates the config into a config group", func() {
 			cg, err := encoder.NewConsortiumOrgGroup(conf)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(cg.Values)).To(Equal(1))
-			Expect(cg.Values["MSP"]).NotTo(BeNil())
-			Expect(len(cg.Policies)).To(Equal(3))
-			Expect(cg.Policies["Admins"]).NotTo(BeNil())
-			Expect(cg.Policies["Readers"]).NotTo(BeNil())
-			Expect(cg.Policies["Writers"]).NotTo(BeNil())
+			Expect(len(cg.GetValues())).To(Equal(1))
+			Expect(cg.GetValues()["MSP"]).NotTo(BeNil())
+			Expect(len(cg.GetPolicies())).To(Equal(3))
+			Expect(cg.GetPolicies()["Admins"]).NotTo(BeNil())
+			Expect(cg.GetPolicies()["Readers"]).NotTo(BeNil())
+			Expect(cg.GetPolicies()["Writers"]).NotTo(BeNil())
 		})
 
 		Context("when the org is marked to be skipped as foreign", func() {
@@ -559,8 +559,8 @@ var _ = Describe("Encoder", func() {
 			It("returns an empty org group with mod policy set", func() {
 				cg, err := encoder.NewConsortiumOrgGroup(conf)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Values)).To(Equal(0))
-				Expect(len(cg.Policies)).To(Equal(0))
+				Expect(len(cg.GetValues())).To(Equal(0))
+				Expect(len(cg.GetPolicies())).To(Equal(0))
 			})
 
 			Context("even when the MSP dir is invalid/corrupt", func() {
@@ -618,13 +618,13 @@ var _ = Describe("Encoder", func() {
 		It("translates the config into a config group", func() {
 			cg, err := encoder.NewOrdererOrgGroup(conf)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(cg.Values)).To(Equal(2))
-			Expect(cg.Values["MSP"]).NotTo(BeNil())
-			Expect(len(cg.Policies)).To(Equal(3))
-			Expect(cg.Values["Endpoints"]).NotTo(BeNil())
-			Expect(cg.Policies["Admins"]).NotTo(BeNil())
-			Expect(cg.Policies["Readers"]).NotTo(BeNil())
-			Expect(cg.Policies["Writers"]).NotTo(BeNil())
+			Expect(len(cg.GetValues())).To(Equal(2))
+			Expect(cg.GetValues()["MSP"]).NotTo(BeNil())
+			Expect(len(cg.GetPolicies())).To(Equal(3))
+			Expect(cg.GetValues()["Endpoints"]).NotTo(BeNil())
+			Expect(cg.GetPolicies()["Admins"]).NotTo(BeNil())
+			Expect(cg.GetPolicies()["Readers"]).NotTo(BeNil())
+			Expect(cg.GetPolicies()["Writers"]).NotTo(BeNil())
 		})
 
 		Context("when the org is marked to be skipped as foreign", func() {
@@ -635,8 +635,8 @@ var _ = Describe("Encoder", func() {
 			It("returns an empty org group with mod policy set", func() {
 				cg, err := encoder.NewOrdererOrgGroup(conf)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Values)).To(Equal(0))
-				Expect(len(cg.Policies)).To(Equal(0))
+				Expect(len(cg.GetValues())).To(Equal(0))
+				Expect(len(cg.GetPolicies())).To(Equal(0))
 			})
 
 			Context("even when the MSP dir is invalid/corrupt", func() {
@@ -659,7 +659,7 @@ var _ = Describe("Encoder", func() {
 			It("does not include the endpoints in the config group", func() {
 				cg, err := encoder.NewOrdererOrgGroup(conf)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(cg.Values["Endpoints"]).To(BeNil())
+				Expect(cg.GetValues()["Endpoints"]).To(BeNil())
 			})
 		})
 
@@ -708,16 +708,16 @@ var _ = Describe("Encoder", func() {
 		It("translates the config into a config group", func() {
 			cg, err := encoder.NewApplicationOrgGroup(conf)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(cg.Values)).To(Equal(2))
-			Expect(cg.Values["MSP"]).NotTo(BeNil())
-			Expect(cg.Values["AnchorPeers"]).NotTo(BeNil())
-			Expect(len(cg.Policies)).To(Equal(3))
-			Expect(cg.Policies["Admins"]).NotTo(BeNil())
-			Expect(cg.Policies["Readers"]).NotTo(BeNil())
-			Expect(cg.Policies["Writers"]).NotTo(BeNil())
-			Expect(len(cg.Values)).To(Equal(2))
-			Expect(cg.Values["MSP"]).NotTo(BeNil())
-			Expect(cg.Values["AnchorPeers"]).NotTo(BeNil())
+			Expect(len(cg.GetValues())).To(Equal(2))
+			Expect(cg.GetValues()["MSP"]).NotTo(BeNil())
+			Expect(cg.GetValues()["AnchorPeers"]).NotTo(BeNil())
+			Expect(len(cg.GetPolicies())).To(Equal(3))
+			Expect(cg.GetPolicies()["Admins"]).NotTo(BeNil())
+			Expect(cg.GetPolicies()["Readers"]).NotTo(BeNil())
+			Expect(cg.GetPolicies()["Writers"]).NotTo(BeNil())
+			Expect(len(cg.GetValues())).To(Equal(2))
+			Expect(cg.GetValues()["MSP"]).NotTo(BeNil())
+			Expect(cg.GetValues()["AnchorPeers"]).NotTo(BeNil())
 		})
 
 		Context("when the org is marked to be skipped as foreign", func() {
@@ -728,8 +728,8 @@ var _ = Describe("Encoder", func() {
 			It("returns an empty org group with mod policy set", func() {
 				cg, err := encoder.NewApplicationOrgGroup(conf)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Values)).To(Equal(0))
-				Expect(len(cg.Policies)).To(Equal(0))
+				Expect(len(cg.GetValues())).To(Equal(0))
+				Expect(len(cg.GetPolicies())).To(Equal(0))
 			})
 
 			Context("even when the MSP dir is invalid/corrupt", func() {
@@ -774,8 +774,8 @@ var _ = Describe("Encoder", func() {
 			It("does not encode the anchor peers", func() {
 				cg, err := encoder.NewApplicationOrgGroup(conf)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Values)).To(Equal(1))
-				Expect(cg.Values["AnchorPeers"]).To(BeNil())
+				Expect(len(cg.GetValues())).To(Equal(1))
+				Expect(cg.GetValues()["AnchorPeers"]).To(BeNil())
 			})
 		})
 	})
@@ -920,7 +920,7 @@ var _ = Describe("Encoder", func() {
 				It("reflects the additional modifications designated by the channel creation profile", func() {
 					cg, err := encoder.NewChannelCreateConfigUpdate("channel-id", conf, template)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(cg.WriteSet.Groups["Application"].Groups["SampleOrg"].Values["AnchorPeers"].Version).To(Equal(uint64(1)))
+					Expect(cg.GetWriteSet().GetGroups()["Application"].GetGroups()["SampleOrg"].GetValues()["AnchorPeers"].GetVersion()).To(Equal(uint64(1)))
 				})
 			})
 
@@ -977,15 +977,15 @@ var _ = Describe("Encoder", func() {
 				env, err := encoder.MakeChannelCreationTransaction("channel-id", fakeSigner, conf)
 				Expect(err).NotTo(HaveOccurred())
 				payload := &cb.Payload{}
-				err = proto.Unmarshal(env.Payload, payload)
+				err = proto.Unmarshal(env.GetPayload(), payload)
 				Expect(err).NotTo(HaveOccurred())
 				configUpdateEnv := &cb.ConfigUpdateEnvelope{}
-				err = proto.Unmarshal(payload.Data, configUpdateEnv)
+				err = proto.Unmarshal(payload.GetData(), configUpdateEnv)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(len(configUpdateEnv.Signatures)).To(Equal(1))
+				Expect(len(configUpdateEnv.GetSignatures())).To(Equal(1))
 				Expect(fakeSigner.SerializeCallCount()).To(Equal(2))
 				Expect(fakeSigner.SignCallCount()).To(Equal(2))
-				Expect(fakeSigner.SignArgsForCall(0)).To(Equal(util.ConcatenateBytes(configUpdateEnv.Signatures[0].SignatureHeader, configUpdateEnv.ConfigUpdate)))
+				Expect(fakeSigner.SignArgsForCall(0)).To(Equal(util.ConcatenateBytes(configUpdateEnv.GetSignatures()[0].GetSignatureHeader(), configUpdateEnv.GetConfigUpdate())))
 			})
 
 			Context("when a default config cannot be generated", func() {
@@ -1114,20 +1114,20 @@ var _ = Describe("Encoder", func() {
 				env, err := encoder.MakeChannelCreationTransactionWithSystemChannelContext("channel-id", nil, applicationConf, sysChannelConf)
 				Expect(err).NotTo(HaveOccurred())
 				payload := &cb.Payload{}
-				err = proto.Unmarshal(env.Payload, payload)
+				err = proto.Unmarshal(env.GetPayload(), payload)
 				Expect(err).NotTo(HaveOccurred())
 				configUpdateEnv := &cb.ConfigUpdateEnvelope{}
-				err = proto.Unmarshal(payload.Data, configUpdateEnv)
+				err = proto.Unmarshal(payload.GetData(), configUpdateEnv)
 				Expect(err).NotTo(HaveOccurred())
 				configUpdate := &cb.ConfigUpdate{}
-				err = proto.Unmarshal(configUpdateEnv.ConfigUpdate, configUpdate)
+				err = proto.Unmarshal(configUpdateEnv.GetConfigUpdate(), configUpdate)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(configUpdate.WriteSet.Version).To(Equal(uint64(0)))
-				Expect(configUpdate.WriteSet.Groups["Application"].Policies["Admins"].Version).To(Equal(uint64(1)))
-				Expect(configUpdate.WriteSet.Groups["Application"].Groups["Org1"].Version).To(Equal(uint64(1)))
-				Expect(configUpdate.WriteSet.Groups["Application"].Groups["Org1"].Values["AnchorPeers"]).NotTo(BeNil())
-				Expect(configUpdate.WriteSet.Groups["Application"].Groups["Org2"].Version).To(Equal(uint64(0)))
-				Expect(configUpdate.WriteSet.Groups["Orderer"].Values["ConsensusType"].Version).To(Equal(uint64(1)))
+				Expect(configUpdate.GetWriteSet().GetVersion()).To(Equal(uint64(0)))
+				Expect(configUpdate.GetWriteSet().GetGroups()["Application"].GetPolicies()["Admins"].GetVersion()).To(Equal(uint64(1)))
+				Expect(configUpdate.GetWriteSet().GetGroups()["Application"].GetGroups()["Org1"].GetVersion()).To(Equal(uint64(1)))
+				Expect(configUpdate.GetWriteSet().GetGroups()["Application"].GetGroups()["Org1"].GetValues()["AnchorPeers"]).NotTo(BeNil())
+				Expect(configUpdate.GetWriteSet().GetGroups()["Application"].GetGroups()["Org2"].GetVersion()).To(Equal(uint64(0)))
+				Expect(configUpdate.GetWriteSet().GetGroups()["Orderer"].GetValues()["ConsensusType"].GetVersion()).To(Equal(uint64(1)))
 			})
 
 			Context("when the system channel config is bad", func() {
@@ -1182,12 +1182,12 @@ var _ = Describe("Encoder", func() {
 			It("returns the default config template", func() {
 				cg, err := encoder.DefaultConfigTemplate(conf)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Groups)).To(Equal(2))
-				Expect(cg.Groups["Orderer"]).NotTo(BeNil())
-				Expect(cg.Groups["Application"]).NotTo(BeNil())
-				Expect(cg.Groups["Application"].Policies).To(BeEmpty())
-				Expect(cg.Groups["Application"].Values).To(BeEmpty())
-				Expect(len(cg.Groups["Application"].Groups)).To(Equal(2))
+				Expect(len(cg.GetGroups())).To(Equal(2))
+				Expect(cg.GetGroups()["Orderer"]).NotTo(BeNil())
+				Expect(cg.GetGroups()["Application"]).NotTo(BeNil())
+				Expect(cg.GetGroups()["Application"].GetPolicies()).To(BeEmpty())
+				Expect(cg.GetGroups()["Application"].GetValues()).To(BeEmpty())
+				Expect(len(cg.GetGroups()["Application"].GetGroups())).To(Equal(2))
 			})
 
 			Context("when the config cannot be turned into a channel group", func() {
@@ -1269,14 +1269,14 @@ var _ = Describe("Encoder", func() {
 			It("returns a config template", func() {
 				cg, err := encoder.ConfigTemplateFromGroup(applicationConf, sysChannelGroup)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Groups)).To(Equal(2))
-				Expect(cg.Groups["Orderer"]).NotTo(BeNil())
-				Expect(proto.Equal(cg.Groups["Orderer"], sysChannelGroup.Groups["Orderer"])).To(BeTrue())
-				Expect(cg.Groups["Application"]).NotTo(BeNil())
-				Expect(len(cg.Groups["Application"].Policies)).To(Equal(1))
-				Expect(cg.Groups["Application"].Policies["Admins"]).NotTo(BeNil())
-				Expect(cg.Groups["Application"].Values).To(BeEmpty())
-				Expect(len(cg.Groups["Application"].Groups)).To(Equal(2))
+				Expect(len(cg.GetGroups())).To(Equal(2))
+				Expect(cg.GetGroups()["Orderer"]).NotTo(BeNil())
+				Expect(proto.Equal(cg.GetGroups()["Orderer"], sysChannelGroup.GetGroups()["Orderer"])).To(BeTrue())
+				Expect(cg.GetGroups()["Application"]).NotTo(BeNil())
+				Expect(len(cg.GetGroups()["Application"].GetPolicies())).To(Equal(1))
+				Expect(cg.GetGroups()["Application"].GetPolicies()["Admins"]).NotTo(BeNil())
+				Expect(cg.GetGroups()["Application"].GetValues()).To(BeEmpty())
+				Expect(len(cg.GetGroups()["Application"].GetGroups())).To(Equal(2))
 			})
 
 			Context("when the orderer system channel group has no sub-groups", func() {
@@ -1292,7 +1292,7 @@ var _ = Describe("Encoder", func() {
 
 			Context("when the orderer system channel group has no consortiums group", func() {
 				BeforeEach(func() {
-					delete(sysChannelGroup.Groups, "Consortiums")
+					delete(sysChannelGroup.GetGroups(), "Consortiums")
 				})
 
 				It("returns an error", func() {
@@ -1336,7 +1336,7 @@ var _ = Describe("Encoder", func() {
 
 			Context("when the orderer system channel group does not have all the channel creation orgs", func() {
 				BeforeEach(func() {
-					delete(sysChannelGroup.Groups["Consortiums"].Groups["SampleConsortium"].Groups, "Org1")
+					delete(sysChannelGroup.GetGroups()["Consortiums"].GetGroups()["SampleConsortium"].GetGroups(), "Org1")
 				})
 
 				It("returns an error", func() {

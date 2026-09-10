@@ -106,8 +106,8 @@ func executeJoin(cf *ChannelCmdFactory, spec *pb.ChaincodeSpec) (err error) {
 		return ProposalFailedErr("nil proposal response")
 	}
 
-	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != 200 {
-		return ProposalFailedErr(fmt.Sprintf("bad proposal response %d: %s", proposalResp.Response.Status, proposalResp.Response.Message))
+	if proposalResp.GetResponse().GetStatus() != 0 && proposalResp.GetResponse().GetStatus() != 200 {
+		return ProposalFailedErr(fmt.Sprintf("bad proposal response %d: %s", proposalResp.GetResponse().GetStatus(), proposalResp.GetResponse().GetMessage()))
 	}
 	logger.Info("Successfully submitted proposal to join channel")
 	return nil

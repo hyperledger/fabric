@@ -16,5 +16,5 @@ import (
 // Returns an error in case the operation fails.
 func SignedRequestToRequest(sr *discovery.SignedRequest) (*discovery.Request, error) {
 	req := &discovery.Request{}
-	return req, proto.Unmarshal(sr.Payload, req)
+	return req, proto.Unmarshal(sr.GetPayload(), req)
 }

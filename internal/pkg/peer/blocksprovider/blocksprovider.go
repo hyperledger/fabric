@@ -218,7 +218,7 @@ func (d *Deliverer) DeliverBlocks() {
 }
 
 func (d *Deliverer) processMsg(msg *orderer.DeliverResponse) error {
-	switch t := msg.Type.(type) {
+	switch t := msg.GetType().(type) {
 	case *orderer.DeliverResponse_Status:
 		if t.Status == common.Status_SUCCESS {
 			return errors.Errorf("received success for a seek that should never complete")
@@ -226,7 +226,7 @@ func (d *Deliverer) processMsg(msg *orderer.DeliverResponse) error {
 
 		return errors.Errorf("received bad status %v from orderer", t.Status)
 	case *orderer.DeliverResponse_Block:
-		blockNum := t.Block.Header.Number
+		blockNum := t.Block.GetHeader().GetNumber()
 		if err := d.BlockVerifier.VerifyBlock(gossipcommon.ChannelID(d.ChannelID), blockNum, t.Block); err != nil {
 			return errors.WithMessage(err, "block from orderer could not be verified")
 		}
@@ -269,7 +269,7 @@ func (d *Deliverer) processMsg(msg *orderer.DeliverResponse) error {
 		return nil
 	default:
 		d.Logger.Warningf("Received unknown: %v", t)
-		return errors.Errorf("unknown message type '%T'", msg.Type)
+		return errors.Errorf("unknown message type '%T'", msg.GetType())
 	}
 }
 

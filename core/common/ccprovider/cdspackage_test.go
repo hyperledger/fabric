@@ -139,7 +139,7 @@ func TestCDSGetCCPackage(t *testing.T) {
 		return
 	}
 
-	if cds2.ChaincodeSpec.ChaincodeId.Name != cds.ChaincodeSpec.ChaincodeId.Name || cds2.ChaincodeSpec.ChaincodeId.Version != cds.ChaincodeSpec.ChaincodeId.Version {
+	if cds2.GetChaincodeSpec().GetChaincodeId().GetName() != cds.GetChaincodeSpec().GetChaincodeId().GetName() || cds2.GetChaincodeSpec().GetChaincodeId().GetVersion() != cds.GetChaincodeSpec().GetChaincodeId().GetVersion() {
 		t.Fatalf("dep spec in CDS CCPackage does not match %v != %v", cds, cds2)
 		return
 	}

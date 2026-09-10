@@ -216,7 +216,7 @@ func TestVerifyConfigMetadata(t *testing.T) {
 			description: "ElectionTick is 0",
 			metadata: &etcdraftproto.ConfigMetadata{
 				Options: &etcdraftproto.Options{
-					HeartbeatTick: validOptions.HeartbeatTick,
+					HeartbeatTick: validOptions.GetHeartbeatTick(),
 					ElectionTick:  0,
 				},
 			},
@@ -227,8 +227,8 @@ func TestVerifyConfigMetadata(t *testing.T) {
 			description: "MaxInflightBlocks is 0",
 			metadata: &etcdraftproto.ConfigMetadata{
 				Options: &etcdraftproto.Options{
-					HeartbeatTick:     validOptions.HeartbeatTick,
-					ElectionTick:      validOptions.ElectionTick,
+					HeartbeatTick:     validOptions.GetHeartbeatTick(),
+					ElectionTick:      validOptions.GetElectionTick(),
 					MaxInflightBlocks: 0,
 				},
 			},
@@ -241,7 +241,7 @@ func TestVerifyConfigMetadata(t *testing.T) {
 				Options: &etcdraftproto.Options{
 					HeartbeatTick:     10,
 					ElectionTick:      1,
-					MaxInflightBlocks: validOptions.MaxInflightBlocks,
+					MaxInflightBlocks: validOptions.GetMaxInflightBlocks(),
 				},
 			},
 			verifyOpts: goodVerifyingOpts,
@@ -251,9 +251,9 @@ func TestVerifyConfigMetadata(t *testing.T) {
 			description: "TickInterval is not parsable",
 			metadata: &etcdraftproto.ConfigMetadata{
 				Options: &etcdraftproto.Options{
-					HeartbeatTick:     validOptions.HeartbeatTick,
-					ElectionTick:      validOptions.ElectionTick,
-					MaxInflightBlocks: validOptions.MaxInflightBlocks,
+					HeartbeatTick:     validOptions.GetHeartbeatTick(),
+					ElectionTick:      validOptions.GetElectionTick(),
+					MaxInflightBlocks: validOptions.GetMaxInflightBlocks(),
 					TickInterval:      "abcd",
 				},
 			},
@@ -264,9 +264,9 @@ func TestVerifyConfigMetadata(t *testing.T) {
 			description: "TickInterval is 0",
 			metadata: &etcdraftproto.ConfigMetadata{
 				Options: &etcdraftproto.Options{
-					HeartbeatTick:     validOptions.HeartbeatTick,
-					ElectionTick:      validOptions.ElectionTick,
-					MaxInflightBlocks: validOptions.MaxInflightBlocks,
+					HeartbeatTick:     validOptions.GetHeartbeatTick(),
+					ElectionTick:      validOptions.GetElectionTick(),
+					MaxInflightBlocks: validOptions.GetMaxInflightBlocks(),
 					TickInterval:      "0s",
 				},
 			},

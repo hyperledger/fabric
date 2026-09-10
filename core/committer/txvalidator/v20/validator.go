@@ -182,16 +182,16 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	var errPos int
 
 	startValidation := time.Now() // timer to log Validate block duration
-	logger.Debugf("[%s] START Block Validation for block [%d]", v.ChannelID, block.Header.Number)
+	logger.Debugf("[%s] START Block Validation for block [%d]", v.ChannelID, block.GetHeader().GetNumber())
 
 	// Initialize trans as valid here, then set invalidation reason code upon invalidation below
-	txsfltr := txflags.New(len(block.Data.Data))
+	txsfltr := txflags.New(len(block.GetData().GetData()))
 	// array of txids
-	txidArray := make([]string, len(block.Data.Data))
+	txidArray := make([]string, len(block.GetData().GetData()))
 
 	results := make(chan *blockValidationResult)
 	go func() {
-		for tIdx, d := range block.Data.Data {
+		for tIdx, d := range block.GetData().GetData() {
 			// ensure that we don't have too many concurrent validation workers
 			v.Semaphore.Acquire(context.Background())
 
@@ -207,10 +207,10 @@ func (v *TxValidator) Validate(block *common.Block) error {
 		}
 	}()
 
-	logger.Debugf("expecting %d block validation responses", len(block.Data.Data))
+	logger.Debugf("expecting %d block validation responses", len(block.GetData().GetData()))
 
 	// now we read responses in the order in which they come back
-	for i := 0; i < len(block.Data.Data); i++ {
+	for i := 0; i < len(block.GetData().GetData()); i++ {
 		res := <-results
 
 		if res.err != nil {
@@ -259,7 +259,7 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsfltr
 
 	elapsedValidation := time.Since(startValidation) / time.Millisecond // duration in ms
-	logger.Infof("[%s] Validated block [%d] in %dms", v.ChannelID, block.Header.Number, elapsedValidation)
+	logger.Infof("[%s] Validated block [%d] in %dms", v.ChannelID, block.GetHeader().GetNumber(), elapsedValidation)
 
 	return nil
 }
@@ -269,7 +269,7 @@ func (v *TxValidator) Validate(block *common.Block) error {
 func (v *TxValidator) allValidated(txsfltr txflags.ValidationFlags, block *common.Block) error {
 	for id, f := range txsfltr {
 		if peer.TxValidationCode(f) == peer.TxValidationCode_NOT_VALIDATED {
-			return errors.Errorf("transaction %d in block %d has skipped validation", id, block.Header.Number)
+			return errors.Errorf("transaction %d in block %d has skipped validation", id, block.GetHeader().GetNumber())
 		}
 	}
 
@@ -335,7 +335,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 			return
 		}
 
-		chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 		if err != nil {
 			logger.Warningf("Could not unmarshal channel header, err %s, skipping", err)
 			results <- &blockValidationResult{
@@ -345,7 +345,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 			return
 		}
 
-		channel := chdr.ChannelId
+		channel := chdr.GetChannelId()
 		logger.Debugf("Transaction is for channel %s", channel)
 
 		if !v.chainExists(channel) {
@@ -357,9 +357,9 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 			return
 		}
 
-		if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+		if common.HeaderType(chdr.GetType()) == common.HeaderType_ENDORSER_TRANSACTION {
 
-			txID = chdr.TxId
+			txID = chdr.GetTxId()
 
 			// Check duplicate transactions
 			erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.LedgerResources)
@@ -394,8 +394,8 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 					return
 				}
 			}
-		} else if common.HeaderType(chdr.Type) == common.HeaderType_CONFIG {
-			configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+		} else if common.HeaderType(chdr.GetType()) == common.HeaderType_CONFIG {
+			configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 			if err != nil {
 				err = errors.WithMessage(err, "error unmarshalling config which passed initial validity checks")
 				logger.Criticalf("%+v", err)
@@ -419,7 +419,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 			logger.Infow("Config transaction validated and applied to channel resources", "channel", channel)
 		} else {
 			logger.Warningf("Unknown transaction type [%s] in block number [%d] transaction index [%d]",
-				common.HeaderType(chdr.Type), block.Header.Number, tIdx)
+				common.HeaderType(chdr.GetType()), block.GetHeader().GetNumber(), tIdx)
 			results <- &blockValidationResult{
 				tIdx:           tIdx,
 				validationCode: peer.TxValidationCode_UNKNOWN_TX_TYPE,
@@ -459,7 +459,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 // that its consumer can proceed with the transaction processing
 func (v *TxValidator) checkTxIdDupsLedger(tIdx int, chdr *common.ChannelHeader, ldgr LedgerResources) *blockValidationResult {
 	// Retrieve the transaction identifier of the input header
-	txID := chdr.TxId
+	txID := chdr.GetTxId()
 
 	// Look for a transaction with the same identifier inside the ledger
 	exists, err := ldgr.TxIDExists(txID)

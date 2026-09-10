@@ -147,12 +147,12 @@ func (i *Installer) submitInstallProposal(signedProposal *pb.SignedProposal) err
 		return errors.New("error during install: received nil proposal response")
 	}
 
-	if proposalResponse.Response == nil {
+	if proposalResponse.GetResponse() == nil {
 		return errors.New("error during install: received proposal response with nil response")
 	}
 
-	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("install failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+	if proposalResponse.GetResponse().GetStatus() != int32(cb.Status_SUCCESS) {
+		return errors.Errorf("install failed with status: %d - %s", proposalResponse.GetResponse().GetStatus(), proposalResponse.GetResponse().GetMessage())
 	}
 	logger.Infof("Installed remotely: %v", proposalResponse)
 
@@ -182,8 +182,8 @@ func (i *Installer) getChaincodePackageMessage() (proto.Message, error) {
 	}
 
 	// get the chaincode details from cds
-	cName := cds.ChaincodeSpec.ChaincodeId.Name
-	cVersion := cds.ChaincodeSpec.ChaincodeId.Version
+	cName := cds.GetChaincodeSpec().GetChaincodeId().GetName()
+	cVersion := cds.GetChaincodeSpec().GetChaincodeId().GetVersion()
 
 	// if user provided chaincodeName, use it for validation
 	if i.Input.Name != "" && i.Input.Name != cName {
@@ -263,12 +263,12 @@ func getPackageFromFile(ccPkgFile string, cryptoProvider bccsp.BCCSP) (proto.Mes
 		}
 
 		// ...and get the CDS at last
-		cds, err = protoutil.UnmarshalChaincodeDeploymentSpec(sCDS.ChaincodeDeploymentSpec)
+		cds, err = protoutil.UnmarshalChaincodeDeploymentSpec(sCDS.GetChaincodeDeploymentSpec())
 		if err != nil {
 			return nil, nil, errors.WithMessage(err, "error extracting chaincode deployment spec")
 		}
 
-		err = platformRegistry.ValidateDeploymentSpec(cds.ChaincodeSpec.Type.String(), cds.CodePackage)
+		err = platformRegistry.ValidateDeploymentSpec(cds.GetChaincodeSpec().GetType().String(), cds.GetCodePackage())
 		if err != nil {
 			return nil, nil, errors.WithMessage(err, "chaincode deployment spec validation failed")
 		}

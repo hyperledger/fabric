@@ -249,7 +249,7 @@ func (r *Reconciler) getMostRecentCollectionConfig(chaincodeName string, collect
 		return nil, errors.New(fmt.Sprintf("no collection config was found for collection %s for chaincode %s", collectionName, chaincodeName))
 	}
 
-	staticCollectionConfig, wasCastingSuccessful := collectionConfig.Payload.(*peer.CollectionConfig_StaticCollectionConfig)
+	staticCollectionConfig, wasCastingSuccessful := collectionConfig.GetPayload().(*peer.CollectionConfig_StaticCollectionConfig)
 	if !wasCastingSuccessful {
 		return nil, errors.New(fmt.Sprintf("expected collection config of type CollectionConfig_StaticCollectionConfig for collection %s for chaincode %s, while got different config type...", collectionName, chaincodeName))
 	}
@@ -269,7 +269,7 @@ func (r *Reconciler) preparePvtDataToCommit(elements []*protosgossip.PvtDataElem
 		}
 		for seqInBlock, nsRWS := range rwSetKeys.bySeqsInBlock() {
 			rwsets := nsRWS.toRWSet()
-			r.logger.Debugf("Preparing to commit [%d] private write set, missed from transaction index [%d] of block number [%d]", len(rwsets.NsPvtRwset), seqInBlock, blockNum)
+			r.logger.Debugf("Preparing to commit [%d] private write set, missed from transaction index [%d] of block number [%d]", len(rwsets.GetNsPvtRwset()), seqInBlock, blockNum)
 			blockPvtData.WriteSets[seqInBlock] = &ledger.TxPvtData{
 				SeqInBlock: seqInBlock,
 				WriteSet:   rwsets,
@@ -295,18 +295,18 @@ func (r *Reconciler) groupRwsetByBlock(elements []*protosgossip.PvtDataElement) 
 
 	// Iterate over data fetched from peers
 	for _, element := range elements {
-		dig := element.Digest
-		if _, exists := rwSetByBlockByKeys[dig.BlockSeq]; !exists {
-			rwSetByBlockByKeys[dig.BlockSeq] = make(map[rwSetKey][]byte)
+		dig := element.GetDigest()
+		if _, exists := rwSetByBlockByKeys[dig.GetBlockSeq()]; !exists {
+			rwSetByBlockByKeys[dig.GetBlockSeq()] = make(map[rwSetKey][]byte)
 		}
-		for _, rws := range element.Payload {
+		for _, rws := range element.GetPayload() {
 			key := rwSetKey{
-				txID:       dig.TxId,
-				namespace:  dig.Namespace,
-				collection: dig.Collection,
-				seqInBlock: dig.SeqInBlock,
+				txID:       dig.GetTxId(),
+				namespace:  dig.GetNamespace(),
+				collection: dig.GetCollection(),
+				seqInBlock: dig.GetSeqInBlock(),
 			}
-			rwSetByBlockByKeys[dig.BlockSeq][key] = rws
+			rwSetByBlockByKeys[dig.GetBlockSeq()][key] = rws
 		}
 	}
 	return rwSetByBlockByKeys
@@ -316,11 +316,11 @@ func constructUnreconciledMissingData(requestedMissingData privdatacommon.Dig2Co
 	fetchedDataKeys := make(map[privdatacommon.DigKey]struct{})
 	for _, pvtData := range fetchedData {
 		key := privdatacommon.DigKey{
-			TxId:       pvtData.Digest.TxId,
-			Namespace:  pvtData.Digest.Namespace,
-			Collection: pvtData.Digest.Collection,
-			BlockSeq:   pvtData.Digest.BlockSeq,
-			SeqInBlock: pvtData.Digest.SeqInBlock,
+			TxId:       pvtData.GetDigest().GetTxId(),
+			Namespace:  pvtData.GetDigest().GetNamespace(),
+			Collection: pvtData.GetDigest().GetCollection(),
+			BlockSeq:   pvtData.GetDigest().GetBlockSeq(),
+			SeqInBlock: pvtData.GetDigest().GetSeqInBlock(),
 		}
 		fetchedDataKeys[key] = struct{}{}
 	}

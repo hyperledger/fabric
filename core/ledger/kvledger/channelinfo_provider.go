@@ -33,7 +33,7 @@ func (p *channelInfoProvider) NamespacesAndCollections(vdb statedb.VersionedDB) 
 	}
 	implicitCollNames := make([]string, len(mspIDs))
 	for i, mspID := range mspIDs {
-		implicitCollNames[i] = p.GenerateImplicitCollectionForOrg(mspID).Name
+		implicitCollNames[i] = p.GenerateImplicitCollectionForOrg(mspID).GetName()
 	}
 	chaincodesInfo, err := p.AllChaincodesInfo(p.channelName, &simpleQueryExecutor{vdb})
 	if err != nil {
@@ -49,10 +49,10 @@ func (p *channelInfoProvider) NamespacesAndCollections(vdb statedb.VersionedDB) 
 		if ccInfo.ExplicitCollectionConfigPkg == nil {
 			continue
 		}
-		for _, config := range ccInfo.ExplicitCollectionConfigPkg.Config {
+		for _, config := range ccInfo.ExplicitCollectionConfigPkg.GetConfig() {
 			collConfig := config.GetStaticCollectionConfig()
 			if collConfig != nil {
-				retNamespaces[ccName] = append(retNamespaces[ccName], collConfig.Name)
+				retNamespaces[ccName] = append(retNamespaces[ccName], collConfig.GetName())
 			}
 		}
 	}
@@ -78,13 +78,13 @@ func (p *channelInfoProvider) getAllMSPIDs() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if blockchainInfo.Height == 0 {
+	if blockchainInfo.GetHeight() == 0 {
 		return nil, nil
 	}
 
 	// Iterate over the config blocks to get all the channel configs, extract MSPIDs and add to mspidsMap
 	mspidsMap := map[string]struct{}{}
-	blockNum := blockchainInfo.Height - 1
+	blockNum := blockchainInfo.GetHeight() - 1
 	for {
 		configBlock, err := p.mostRecentConfigBlockAsOf(blockNum)
 		if err != nil {
@@ -101,10 +101,10 @@ func (p *channelInfoProvider) getAllMSPIDs() ([]string, error) {
 			}
 		}
 
-		if configBlock.Header.Number == 0 {
+		if configBlock.GetHeader().GetNumber() == 0 {
 			break
 		}
-		blockNum = configBlock.Header.Number - 1
+		blockNum = configBlock.GetHeader().GetNumber() - 1
 	}
 
 	mspids := make([]string, 0, len(mspidsMap))

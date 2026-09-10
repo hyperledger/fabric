@@ -251,36 +251,36 @@ var errNotAConfig = errors.New("not a config block")
 // ConfigFromBlock returns a ConfigEnvelope if exists, or a *NotAConfigBlock error.
 // It may also return some other error in case parsing failed.
 func ConfigFromBlock(block *common.Block) (*common.ConfigEnvelope, error) {
-	if block == nil || block.Data == nil || len(block.Data.Data) == 0 {
+	if block == nil || block.GetData() == nil || len(block.GetData().GetData()) == 0 {
 		return nil, errors.New("empty block")
 	}
-	txn := block.Data.Data[0]
+	txn := block.GetData().GetData()[0]
 	env, err := protoutil.GetEnvelopeFromBlock(txn)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	if block.Header.Number == 0 {
-		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	if block.GetHeader().GetNumber() == 0 {
+		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 		if err != nil {
 			return nil, errors.Wrap(err, "invalid config envelope")
 		}
 		return configEnvelope, nil
 	}
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return nil, errors.New("nil header in payload")
 	}
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	if common.HeaderType(chdr.Type) != common.HeaderType_CONFIG {
+	if common.HeaderType(chdr.GetType()) != common.HeaderType_CONFIG {
 		return nil, errNotAConfig
 	}
-	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid config envelope")
 	}
@@ -294,37 +294,37 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 		return errors.Errorf("index %d out of bounds (total %d blocks)", indexInBuffer, len(blockBuff))
 	}
 	block := blockBuff[indexInBuffer]
-	if block.Header == nil {
+	if block.GetHeader() == nil {
 		return errors.New("missing block header")
 	}
-	seq := block.Header.Number
+	seq := block.GetHeader().GetNumber()
 
-	if err := protoutil.VerifyTransactionsAreWellFormed(block); err != nil && block.Header.Number > 0 {
+	if err := protoutil.VerifyTransactionsAreWellFormed(block); err != nil && block.GetHeader().GetNumber() > 0 {
 		return fmt.Errorf("block has malformed transactions: %v", err)
 	}
 
-	dataHash := protoutil.BlockDataHash(block.Data)
+	dataHash := protoutil.BlockDataHash(block.GetData())
 	// Verify data hash matches the hash in the header
-	if !bytes.Equal(dataHash, block.Header.DataHash) {
+	if !bytes.Equal(dataHash, block.GetHeader().GetDataHash()) {
 		computedHash := hex.EncodeToString(dataHash)
-		claimedHash := hex.EncodeToString(block.Header.DataHash)
+		claimedHash := hex.EncodeToString(block.GetHeader().GetDataHash())
 		return errors.Errorf("computed hash of block (%d) (%s) doesn't match claimed hash (%s)",
 			seq, computedHash, claimedHash)
 	}
 	// We have a previous block in the buffer, ensure current block's previous hash matches the previous one.
 	if indexInBuffer > 0 {
 		prevBlock := blockBuff[indexInBuffer-1]
-		currSeq := block.Header.Number
-		if prevBlock.Header == nil {
+		currSeq := block.GetHeader().GetNumber()
+		if prevBlock.GetHeader() == nil {
 			return errors.New("previous block header is nil")
 		}
-		prevSeq := prevBlock.Header.Number
+		prevSeq := prevBlock.GetHeader().GetNumber()
 		if prevSeq+1 != currSeq {
 			return errors.Errorf("sequences %d and %d were received consecutively", prevSeq, currSeq)
 		}
-		if !bytes.Equal(block.Header.PreviousHash, protoutil.BlockHeaderHash(prevBlock.Header)) {
-			claimedPrevHash := hex.EncodeToString(block.Header.PreviousHash)
-			actualPrevHash := hex.EncodeToString(protoutil.BlockHeaderHash(prevBlock.Header))
+		if !bytes.Equal(block.GetHeader().GetPreviousHash(), protoutil.BlockHeaderHash(prevBlock.GetHeader())) {
+			claimedPrevHash := hex.EncodeToString(block.GetHeader().GetPreviousHash())
+			actualPrevHash := hex.EncodeToString(protoutil.BlockHeaderHash(prevBlock.GetHeader()))
 			return errors.Errorf("block [%d]'s hash (%s) mismatches block [%d]'s prev block hash (%s)",
 				prevSeq, actualPrevHash, currSeq, claimedPrevHash)
 		}
@@ -334,7 +334,7 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 
 // SignatureSetFromBlock creates a signature set out of a block.
 func SignatureSetFromBlock(block *common.Block) ([]*protoutil.SignedData, error) {
-	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_SIGNATURES) {
+	if block.GetMetadata() == nil || len(block.GetMetadata().GetMetadata()) <= int(common.BlockMetadataIndex_SIGNATURES) {
 		return nil, errors.New("no metadata in block")
 	}
 	metadata, err := protoutil.GetMetadataFromBlock(block, common.BlockMetadataIndex_SIGNATURES)
@@ -343,18 +343,18 @@ func SignatureSetFromBlock(block *common.Block) ([]*protoutil.SignedData, error)
 	}
 
 	var signatureSet []*protoutil.SignedData
-	for _, metadataSignature := range metadata.Signatures {
-		sigHdr, err := protoutil.UnmarshalSignatureHeader(metadataSignature.SignatureHeader)
+	for _, metadataSignature := range metadata.GetSignatures() {
+		sigHdr, err := protoutil.UnmarshalSignatureHeader(metadataSignature.GetSignatureHeader())
 		if err != nil {
 			return nil, errors.Errorf("failed unmarshalling signature header for block with id %d: %v",
-				block.Header.Number, err)
+				block.GetHeader().GetNumber(), err)
 		}
 		signatureSet = append(signatureSet,
 			&protoutil.SignedData{
-				Identity: sigHdr.Creator,
-				Data: util.ConcatenateBytes(metadata.Value,
-					metadataSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header)),
-				Signature: metadataSignature.Signature,
+				Identity: sigHdr.GetCreator(),
+				Data: util.ConcatenateBytes(metadata.GetValue(),
+					metadataSignature.GetSignatureHeader(), protoutil.BlockHeaderBytes(block.GetHeader())),
+				Signature: metadataSignature.GetSignature(),
 			},
 		)
 	}
@@ -543,7 +543,7 @@ func (vr *VerificationRegistry) BlockCommitted(block *common.Block, channel stri
 	// The block doesn't contain a config block, but is a valid block
 	if err == errNotAConfig {
 		vr.Logger.Debugf("Committed block [%d] for channel %s that is not a config block",
-			block.Header.Number, channel)
+			block.GetHeader().GetNumber(), channel)
 		return
 	}
 	// The block isn't a valid block
@@ -563,7 +563,7 @@ func (vr *VerificationRegistry) BlockCommitted(block *common.Block, channel stri
 
 	vr.VerifiersByChannel[channel] = verifier
 
-	vr.Logger.Debugf("Committed config block [%d] for channel %s", block.Header.Number, channel)
+	vr.Logger.Debugf("Committed config block [%d] for channel %s", block.GetHeader().GetNumber(), channel)
 }
 
 // BlockToString returns a string representation of this block.
@@ -597,7 +597,7 @@ type BlockVerifierAssembler struct {
 
 // VerifierFromConfig creates a BlockVerifier from the given configuration.
 func (bva *BlockVerifierAssembler) VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (BlockVerifier, error) {
-	bundle, err := channelconfig.NewBundle(channel, configuration.Config, bva.BCCSP)
+	bundle, err := channelconfig.NewBundle(channel, configuration.GetConfig(), bva.BCCSP)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed extracting bundle from envelope")
 	}
@@ -624,10 +624,10 @@ func (bv *BlockValidationPolicyVerifier) VerifyBlockSignature(sd []*protoutil.Si
 	policyMgr := bv.PolicyMgr
 	// If the envelope passed isn't nil, we should use a different policy manager.
 	if envelope != nil {
-		bundle, err := channelconfig.NewBundle(bv.Channel, envelope.Config, bv.BCCSP)
+		bundle, err := channelconfig.NewBundle(bv.Channel, envelope.GetConfig(), bv.BCCSP)
 		if err != nil {
 			buff := &bytes.Buffer{}
-			protolator.DeepMarshalJSON(buff, envelope.Config)
+			protolator.DeepMarshalJSON(buff, envelope.GetConfig())
 			bv.Logger.Errorf("Failed creating a new bundle for channel %s, Config content is: %s", bv.Channel, buff.String())
 			return err
 		}

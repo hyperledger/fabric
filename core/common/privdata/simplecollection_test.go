@@ -44,7 +44,7 @@ func (id *mockIdentity) ExpiresAt() time.Time {
 }
 
 func (id *mockIdentity) SatisfiesPrincipal(p *mb.MSPPrincipal) error {
-	if bytes.Equal(id.idBytes, p.Principal) {
+	if bytes.Equal(id.idBytes, p.GetPrincipal()) {
 		return nil
 	}
 	return errors.New("Principals do not match")

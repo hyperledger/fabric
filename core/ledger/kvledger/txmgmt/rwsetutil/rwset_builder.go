@@ -95,7 +95,7 @@ func (b *RWSetBuilder) AddToMetadataWriteSet(ns, key string, metadata map[string
 // AddToRangeQuerySet adds a range query info for performing phantom read validation
 func (b *RWSetBuilder) AddToRangeQuerySet(ns string, rqi *kvrwset.RangeQueryInfo) {
 	nsPubRwBuilder := b.getOrCreateNsPubRwBuilder(ns)
-	key := rangeQueryKey{rqi.StartKey, rqi.EndKey, rqi.ItrExhausted}
+	key := rangeQueryKey{rqi.GetStartKey(), rqi.GetEndKey(), rqi.GetItrExhausted()}
 	_, ok := nsPubRwBuilder.rangeQueriesMap[key]
 	if !ok {
 		nsPubRwBuilder.rangeQueriesMap[key] = rqi
@@ -149,9 +149,9 @@ func (b *RWSetBuilder) GetTxSimulationResults() (*ledger.TxSimulationResults, er
 		if pvtDataProto, err = pvtData.ToProtoMsg(); err != nil {
 			return nil, err
 		}
-		for _, ns := range pvtDataProto.NsPvtRwset {
-			for _, coll := range ns.CollectionPvtRwset {
-				b.setPvtCollectionHash(ns.Namespace, coll.CollectionName, coll.Rwset)
+		for _, ns := range pvtDataProto.GetNsPvtRwset() {
+			for _, coll := range ns.GetCollectionPvtRwset() {
+				b.setPvtCollectionHash(ns.GetNamespace(), coll.GetCollectionName(), coll.GetRwset())
 			}
 		}
 	}

@@ -643,14 +643,14 @@ func (stream *Stream) operateWithTimeout(invoke StreamOperation, report func(err
 func requestAsString(request *orderer.StepRequest) string {
 	switch t := request.GetPayload().(type) {
 	case *orderer.StepRequest_SubmitRequest:
-		if t.SubmitRequest == nil || t.SubmitRequest.Payload == nil {
+		if t.SubmitRequest == nil || t.SubmitRequest.GetPayload() == nil {
 			return fmt.Sprintf("Empty SubmitRequest: %v", t.SubmitRequest)
 		}
 		return fmt.Sprintf("SubmitRequest for channel %s with payload of size %d",
-			t.SubmitRequest.Channel, len(t.SubmitRequest.Payload.Payload))
+			t.SubmitRequest.GetChannel(), len(t.SubmitRequest.GetPayload().GetPayload()))
 	case *orderer.StepRequest_ConsensusRequest:
 		return fmt.Sprintf("ConsensusRequest for channel %s with payload of size %d",
-			t.ConsensusRequest.Channel, len(t.ConsensusRequest.Payload))
+			t.ConsensusRequest.GetChannel(), len(t.ConsensusRequest.GetPayload()))
 	default:
 		return fmt.Sprintf("unknown type: %v", request)
 	}

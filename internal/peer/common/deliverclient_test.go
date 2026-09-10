@@ -109,8 +109,8 @@ func TestSeekHelper(t *testing.T) {
 		seekInfo := &ab.SeekInfo{}
 		_, err := protoutil.UnmarshalEnvelopeOfType(env, cb.HeaderType_DELIVER_SEEK_INFO, seekInfo)
 		require.NoError(t, err)
-		require.Equal(t, seekInfo.Behavior, ab.SeekInfo_BLOCK_UNTIL_READY)
-		require.Equal(t, seekInfo.ErrorResponse, ab.SeekInfo_STRICT)
+		require.Equal(t, seekInfo.GetBehavior(), ab.SeekInfo_BLOCK_UNTIL_READY)
+		require.Equal(t, seekInfo.GetErrorResponse(), ab.SeekInfo_STRICT)
 	})
 
 	t.Run("BestEffort", func(t *testing.T) {
@@ -119,7 +119,7 @@ func TestSeekHelper(t *testing.T) {
 		seekInfo := &ab.SeekInfo{}
 		_, err := protoutil.UnmarshalEnvelopeOfType(env, cb.HeaderType_DELIVER_SEEK_INFO, seekInfo)
 		require.NoError(t, err)
-		require.Equal(t, seekInfo.ErrorResponse, ab.SeekInfo_BEST_EFFORT)
+		require.Equal(t, seekInfo.GetErrorResponse(), ab.SeekInfo_BEST_EFFORT)
 	})
 }
 

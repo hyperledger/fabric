@@ -64,7 +64,7 @@ type Context struct {
 
 // String returns a text representation of this context
 func (c Context) String() string {
-	return fmt.Sprintf("{plugin: %s, channel: %s, tx: %s, chaincode: %s}", c.PluginName, c.Channel, c.TxID, c.ChaincodeID.Name)
+	return fmt.Sprintf("{plugin: %s, channel: %s, tx: %s, chaincode: %s}", c.PluginName, c.Channel, c.TxID, c.ChaincodeID.GetName())
 }
 
 // PluginSupport aggregates the support interfaces

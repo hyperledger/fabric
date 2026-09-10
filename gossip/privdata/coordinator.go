@@ -151,16 +151,16 @@ func NewCoordinator(mspID string, support Support, store *transientstore.Store, 
 
 // StoreBlock stores block with private data into the ledger
 func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDataCollections) error {
-	if block.Data == nil {
+	if block.GetData() == nil {
 		return errors.New("Block data is empty")
 	}
-	if block.Header == nil {
+	if block.GetHeader() == nil {
 		return errors.New("Block header is nil")
 	}
 
-	c.logger.Infof("Received block [%d] from buffer", block.Header.Number)
+	c.logger.Infof("Received block [%d] from buffer", block.GetHeader().GetNumber())
 
-	c.logger.Debugf("Validating block [%d]", block.Header.Number)
+	c.logger.Debugf("Validating block [%d]", block.GetHeader().GetNumber())
 
 	validationStart := time.Now()
 	err := c.Validator.Validate(block)
@@ -176,7 +176,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 		MissingPvtData: make(ledger.TxMissingPvtData),
 	}
 
-	exist, err := c.DoesPvtDataInfoExistInLedger(block.Header.Number)
+	exist, err := c.DoesPvtDataInfoExistInLedger(block.GetHeader().GetNumber())
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 		prefetchedPvtdata:                       privateDataSets,
 		transientBlockRetention:                 c.transientBlockRetention,
 		channelID:                               c.ChainID,
-		blockNum:                                block.Header.Number,
+		blockNum:                                block.GetHeader().GetNumber(),
 		storePvtdataOfInvalidTx:                 c.Support.CapabilityProvider.Capabilities().StorePvtDataOfInvalidTx(),
 		skipPullingInvalidTransactions:          c.skipPullingInvalidTransactions,
 		fetcher:                                 c.Fetcher,
@@ -254,19 +254,19 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protou
 	}
 
 	seqs2Namespaces := aggregatedCollections{}
-	for seqInBlock := range blockAndPvtData.Block.Data.Data {
+	for seqInBlock := range blockAndPvtData.Block.GetData().GetData() {
 		txPvtDataItem, exists := blockAndPvtData.PvtData[uint64(seqInBlock)]
 		if !exists {
 			continue
 		}
 
 		// Iterate through the private write sets and include them in response if requesting peer is eligible for it
-		for _, ns := range txPvtDataItem.WriteSet.NsPvtRwset {
-			for _, col := range ns.CollectionPvtRwset {
+		for _, ns := range txPvtDataItem.WriteSet.GetNsPvtRwset() {
+			for _, col := range ns.GetCollectionPvtRwset() {
 				cc := privdata.CollectionCriteria{
 					Channel:    c.ChainID,
-					Namespace:  ns.Namespace,
-					Collection: col.CollectionName,
+					Namespace:  ns.GetNamespace(),
+					Collection: col.GetCollectionName(),
 				}
 				sp, err := c.CollectionStore.RetrieveCollectionAccessPolicy(cc)
 				if err != nil {
@@ -282,7 +282,7 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protou
 					c.logger.Debugf("Skipping collection criteria [%#v] because peer isn't authorized", cc)
 					continue
 				}
-				seqs2Namespaces.addCollection(uint64(seqInBlock), txPvtDataItem.WriteSet.DataModel, ns.Namespace, col)
+				seqs2Namespaces.addCollection(uint64(seqInBlock), txPvtDataItem.WriteSet.GetDataModel(), ns.GetNamespace(), col)
 			}
 		}
 	}
@@ -295,13 +295,13 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protou
 func (c *coordinator) getTxPvtdataInfoFromBlock(block *common.Block) ([]*ledger.TxPvtdataInfo, error) {
 	txPvtdataItemsFromBlock := []*ledger.TxPvtdataInfo{}
 
-	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_TRANSACTIONS_FILTER) {
+	if block.GetMetadata() == nil || len(block.GetMetadata().GetMetadata()) <= int(common.BlockMetadataIndex_TRANSACTIONS_FILTER) {
 		return nil, errors.New("Block.Metadata is nil or Block.Metadata lacks a Tx filter bitmap")
 	}
-	txsFilter := txValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-	data := block.Data.Data
-	if len(txsFilter) != len(block.Data.Data) {
-		return nil, errors.Errorf("block data size(%d) is different from Tx filter size(%d)", len(block.Data.Data), len(txsFilter))
+	txsFilter := txValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	data := block.GetData().GetData()
+	if len(txsFilter) != len(block.GetData().GetData()) {
+		return nil, errors.Errorf("block data size(%d) is different from Tx filter size(%d)", len(block.GetData().GetData()), len(txsFilter))
 	}
 
 	for seqInBlock, txEnvBytes := range data {
@@ -416,26 +416,26 @@ func getTxInfoFromTransactionBytes(envBytes []byte) (*txInfo, error) {
 		return nil, err
 	}
 
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	if err != nil {
 		logger.Warningf("Invalid payload: %s", err)
 		return nil, err
 	}
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		err := errors.New("payload header is nil")
 		logger.Warningf("Invalid tx: %s", err)
 		return nil, err
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		logger.Warningf("Invalid channel header: %s", err)
 		return nil, err
 	}
-	txInfo.channelID = chdr.ChannelId
-	txInfo.txID = chdr.TxId
+	txInfo.channelID = chdr.GetChannelId()
+	txInfo.txID = chdr.GetTxId()
 
-	if chdr.Type != int32(common.HeaderType_ENDORSER_TRANSACTION) {
+	if chdr.GetType() != int32(common.HeaderType_ENDORSER_TRANSACTION) {
 		err := errors.New("header type is not an endorser transaction")
 		logger.Debugf("Invalid transaction type: %s", err)
 		return nil, err
@@ -447,26 +447,26 @@ func getTxInfoFromTransactionBytes(envBytes []byte) (*txInfo, error) {
 		return nil, err
 	}
 
-	tx, err := protoutil.UnmarshalTransaction(payload.Data)
+	tx, err := protoutil.UnmarshalTransaction(payload.GetData())
 	if err != nil {
-		logger.Warningf("Invalid transaction in payload data for tx [%s]: %s", chdr.TxId, err)
+		logger.Warningf("Invalid transaction in payload data for tx [%s]: %s", chdr.GetTxId(), err)
 		return nil, err
 	}
 
-	ccActionPayload, err := protoutil.UnmarshalChaincodeActionPayload(tx.Actions[0].Payload)
+	ccActionPayload, err := protoutil.UnmarshalChaincodeActionPayload(tx.GetActions()[0].GetPayload())
 	if err != nil {
-		logger.Warningf("Invalid chaincode action in payload for tx [%s]: %s", chdr.TxId, err)
+		logger.Warningf("Invalid chaincode action in payload for tx [%s]: %s", chdr.GetTxId(), err)
 		return nil, err
 	}
 
-	if ccActionPayload.Action == nil {
-		logger.Warningf("Action in ChaincodeActionPayload for tx [%s] is nil", chdr.TxId)
+	if ccActionPayload.GetAction() == nil {
+		logger.Warningf("Action in ChaincodeActionPayload for tx [%s] is nil", chdr.GetTxId())
 		return nil, err
 	}
-	txInfo.endorsements = ccActionPayload.Action.Endorsements
+	txInfo.endorsements = ccActionPayload.GetAction().GetEndorsements()
 
 	txRWSet := &rwsetutil.TxRwSet{}
-	if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
+	if err = txRWSet.FromProtoBytes(respPayload.GetResults()); err != nil {
 		logger.Warningf("Failed obtaining TxRwSet from ChaincodeAction's results: %s", err)
 		return nil, err
 	}
@@ -481,7 +481,7 @@ func containsWrites(txID string, namespace string, colHashedRWSet *rwsetutil.Col
 		logger.Warningf("HashedRWSet of tx [%s], namespace [%s], collection [%s] is nil", txID, namespace, colHashedRWSet.CollectionName)
 		return false
 	}
-	if len(colHashedRWSet.HashedRwSet.HashedWrites) == 0 && len(colHashedRWSet.HashedRwSet.MetadataWrites) == 0 {
+	if len(colHashedRWSet.HashedRwSet.GetHashedWrites()) == 0 && len(colHashedRWSet.HashedRwSet.GetMetadataWrites()) == 0 {
 		logger.Debugf("HashedRWSet of tx [%s], namespace [%s], collection [%s] doesn't contain writes", txID, namespace, colHashedRWSet.CollectionName)
 		return false
 	}

@@ -17,49 +17,49 @@ import (
 
 // MemberToString prints Endpoint and PKI-id
 func MemberToString(m *gossip.Member) string {
-	return fmt.Sprint("Membership: Endpoint:", m.Endpoint, " PKI-id:", hex.EncodeToString(m.PkiId))
+	return fmt.Sprint("Membership: Endpoint:", m.GetEndpoint(), " PKI-id:", hex.EncodeToString(m.GetPkiId()))
 }
 
 // MembershipResponseToString of MembershipResponse prints number of Alive and number of Dead
 func MembershipResponseToString(mr *gossip.MembershipResponse) string {
-	return fmt.Sprintf("MembershipResponse with Alive: %d, Dead: %d", len(mr.Alive), len(mr.Dead))
+	return fmt.Sprintf("MembershipResponse with Alive: %d, Dead: %d", len(mr.GetAlive()), len(mr.GetDead()))
 }
 
 // AliveMessageToString of AliveMessage prints Alive Message, Identity and Timestamp
 func AliveMessageToString(am *gossip.AliveMessage) string {
-	if am.Membership == nil {
+	if am.GetMembership() == nil {
 		return "nil Membership"
 	}
 	var sI string
 	serializeIdentity := &msp.SerializedIdentity{}
-	if err := proto.Unmarshal(am.Identity, serializeIdentity); err == nil {
-		sI = serializeIdentity.Mspid + string(serializeIdentity.IdBytes)
+	if err := proto.Unmarshal(am.GetIdentity(), serializeIdentity); err == nil {
+		sI = serializeIdentity.GetMspid() + string(serializeIdentity.GetIdBytes())
 	}
-	return fmt.Sprint("Alive Message:", MemberToString(am.Membership), "Identity:", sI, "Timestamp:", am.Timestamp)
+	return fmt.Sprint("Alive Message:", MemberToString(am.GetMembership()), "Identity:", sI, "Timestamp:", am.GetTimestamp())
 }
 
 // PayloadToString prints Block message: Data and seq
 func PayloadToString(p *gossip.Payload) string {
-	return fmt.Sprintf("Block message: {Data: %d bytes, seq: %d}", len(p.Data), p.SeqNum)
+	return fmt.Sprintf("Block message: {Data: %d bytes, seq: %d}", len(p.GetData()), p.GetSeqNum())
 }
 
 // DataUpdateToString prints Type, items and nonce
 func DataUpdateToString(du *gossip.DataUpdate) string {
-	mType := gossip.PullMsgType_name[int32(du.MsgType)]
-	return fmt.Sprintf("Type: %s, items: %d, nonce: %d", mType, len(du.Data), du.Nonce)
+	mType := gossip.PullMsgType_name[int32(du.GetMsgType())]
+	return fmt.Sprintf("Type: %s, items: %d, nonce: %d", mType, len(du.GetData()), du.GetNonce())
 }
 
 // StateInfoSnapshotToString prints items
 func StateInfoSnapshotToString(sis *gossip.StateInfoSnapshot) string {
-	return fmt.Sprintf("StateInfoSnapshot with %d items", len(sis.Elements))
+	return fmt.Sprintf("StateInfoSnapshot with %d items", len(sis.GetElements()))
 }
 
 // MembershipRequestToString prints self information
 func MembershipRequestToString(mr *gossip.MembershipRequest) string {
-	if mr.SelfInformation == nil {
+	if mr.GetSelfInformation() == nil {
 		return ""
 	}
-	signGM, err := EnvelopeToGossipMessage(mr.SelfInformation)
+	signGM, err := EnvelopeToGossipMessage(mr.GetSelfInformation())
 	if err != nil {
 		return ""
 	}
@@ -68,13 +68,13 @@ func MembershipRequestToString(mr *gossip.MembershipRequest) string {
 
 // StateInfoPullRequestToString prints Channel MAC
 func StateInfoPullRequestToString(sipr *gossip.StateInfoPullRequest) string {
-	return fmt.Sprint("state_info_pull_req: Channel MAC:", hex.EncodeToString(sipr.Channel_MAC))
+	return fmt.Sprint("state_info_pull_req: Channel MAC:", hex.EncodeToString(sipr.GetChannel_MAC()))
 }
 
 // StateInfoToString prints Timestamp and PKI-id
 func StateInfoToString(si *gossip.StateInfo) string {
-	return fmt.Sprint("state_info_message: Timestamp:", si.Timestamp, "PKI-id:", hex.EncodeToString(si.PkiId),
-		" channel MAC:", hex.EncodeToString(si.Channel_MAC), " properties:", si.Properties)
+	return fmt.Sprint("state_info_message: Timestamp:", si.GetTimestamp(), "PKI-id:", hex.EncodeToString(si.GetPkiId()),
+		" channel MAC:", hex.EncodeToString(si.GetChannel_MAC()), " properties:", si.GetProperties())
 }
 
 // formatDigests formats digest byte arrays into strings depending on the message type
@@ -96,27 +96,27 @@ func formatDigests(msgType gossip.PullMsgType, givenDigests [][]byte) []string {
 
 // DataDigestToString prints nonce, msg_type and digests
 func DataDigestToString(dig *gossip.DataDigest) string {
-	digests := formatDigests(dig.MsgType, dig.Digests)
-	return fmt.Sprintf("data_dig: nonce: %d , Msg_type: %s, digests: %v", dig.Nonce, dig.MsgType, digests)
+	digests := formatDigests(dig.GetMsgType(), dig.GetDigests())
+	return fmt.Sprintf("data_dig: nonce: %d , Msg_type: %s, digests: %v", dig.GetNonce(), dig.GetMsgType(), digests)
 }
 
 // DataRequestToString prints nonce, msg_type and digests
 func DataRequestToString(dataReq *gossip.DataRequest) string {
-	digests := formatDigests(dataReq.MsgType, dataReq.Digests)
-	return fmt.Sprintf("data request: nonce: %d , Msg_type: %s, digests: %v", dataReq.Nonce, dataReq.MsgType, digests)
+	digests := formatDigests(dataReq.GetMsgType(), dataReq.GetDigests())
+	return fmt.Sprintf("data request: nonce: %d , Msg_type: %s, digests: %v", dataReq.GetNonce(), dataReq.GetMsgType(), digests)
 }
 
 // LeadershipMessageToString prints PKI-id, Timestamp and Is Declaration
 func LeadershipMessageToString(lm *gossip.LeadershipMessage) string {
-	return fmt.Sprint("Leadership Message: PKI-id:", hex.EncodeToString(lm.PkiId), " Timestamp:", lm.Timestamp,
-		"Is Declaration ", lm.IsDeclaration)
+	return fmt.Sprint("Leadership Message: PKI-id:", hex.EncodeToString(lm.GetPkiId()), " Timestamp:", lm.GetTimestamp(),
+		"Is Declaration ", lm.GetIsDeclaration())
 }
 
 // RemovePvtDataResponseToString returns a string representation of this RemotePvtDataResponse
 func RemovePvtDataResponseToString(res *gossip.RemotePvtDataResponse) string {
-	a := make([]string, len(res.Elements))
-	for i, el := range res.Elements {
-		a[i] = fmt.Sprintf("%s with %d elements", el.Digest.String(), len(el.Payload))
+	a := make([]string, len(res.GetElements()))
+	for i, el := range res.GetElements() {
+		a[i] = fmt.Sprintf("%s with %d elements", el.GetDigest().String(), len(el.GetPayload()))
 	}
 	return fmt.Sprintf("%v", a)
 }

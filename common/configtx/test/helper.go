@@ -35,7 +35,7 @@ func MakeGenesisBlock(channelID string) (*cb.Block, error) {
 		return gb, nil
 	}
 
-	txsFilter := txflags.NewWithValues(len(gb.Data.Data), pb.TxValidationCode_VALID)
+	txsFilter := txflags.NewWithValues(len(gb.GetData().GetData()), pb.TxValidationCode_VALID)
 	gb.Metadata.Metadata[cb.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
 	return gb, nil

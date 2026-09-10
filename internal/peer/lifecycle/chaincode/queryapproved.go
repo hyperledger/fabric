@@ -129,12 +129,12 @@ func (a *ApprovedQuerier) Query() error {
 		return errors.New("received nil proposal response")
 	}
 
-	if proposalResponse.Response == nil {
+	if proposalResponse.GetResponse() == nil {
 		return errors.New("received proposal response with nil response")
 	}
 
-	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("query failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+	if proposalResponse.GetResponse().GetStatus() != int32(cb.Status_SUCCESS) {
+		return errors.Errorf("query failed with status: %d - %s", proposalResponse.GetResponse().GetStatus(), proposalResponse.GetResponse().GetMessage())
 	}
 
 	if strings.ToLower(a.Input.OutputFormat) == "json" {
@@ -147,22 +147,22 @@ func (a *ApprovedQuerier) Query() error {
 // from the server as human readable plain-text.
 func (a *ApprovedQuerier) printResponse(proposalResponse *pb.ProposalResponse) error {
 	result := &lb.QueryApprovedChaincodeDefinitionResult{}
-	err := proto.Unmarshal(proposalResponse.Response.Payload, result)
+	err := proto.Unmarshal(proposalResponse.GetResponse().GetPayload(), result)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
 	fmt.Fprintf(a.Writer, "Approved chaincode definition for chaincode '%s' on channel '%s':\n", a.Input.Name, a.Input.ChannelID)
 
 	var packageID string
-	if result.Source != nil {
-		switch source := result.Source.Type.(type) {
+	if result.GetSource() != nil {
+		switch source := result.GetSource().GetType().(type) {
 		case *lb.ChaincodeSource_LocalPackage:
-			packageID = source.LocalPackage.PackageId
+			packageID = source.LocalPackage.GetPackageId()
 		case *lb.ChaincodeSource_Unavailable_:
 		}
 	}
 	fmt.Fprintf(a.Writer, "sequence: %d, version: %s, init-required: %t, package-id: %s, endorsement plugin: %s, validation plugin: %s\n",
-		result.Sequence, result.Version, result.InitRequired, packageID, result.EndorsementPlugin, result.ValidationPlugin)
+		result.GetSequence(), result.GetVersion(), result.GetInitRequired(), packageID, result.GetEndorsementPlugin(), result.GetValidationPlugin())
 	return nil
 }
 

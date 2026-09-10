@@ -47,7 +47,7 @@ func TestACL(t *testing.T) {
 
 	t.Run("MissingCapability", func(t *testing.T) {
 		cg := proto.Clone(cgt).(*cb.ConfigGroup)
-		delete(cg.Values, CapabilitiesKey)
+		delete(cg.GetValues(), CapabilitiesKey)
 		_, err := NewApplicationConfig(cg, nil)
 		g.Expect(err).To(MatchError("ACLs may not be specified without the required capability"))
 	})

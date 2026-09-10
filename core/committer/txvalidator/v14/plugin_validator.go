@@ -67,7 +67,7 @@ type Context struct {
 
 // String returns a string representation of this Context
 func (c Context) String() string {
-	return fmt.Sprintf("Tx %s, seq %d out of %d in block %d for channel %s with validation plugin %s", c.TxID, c.Seq, len(c.Block.Data.Data), c.Block.Header.Number, c.Channel, c.VSCCName)
+	return fmt.Sprintf("Tx %s, seq %d out of %d in block %d for channel %s with validation plugin %s", c.TxID, c.Seq, len(c.Block.GetData().GetData()), c.Block.GetHeader().GetNumber(), c.Channel, c.VSCCName)
 }
 
 // PluginValidator values transactions with validation plugins

@@ -20,7 +20,7 @@ func TestChainFilters(t *testing.T) {
 	filters := createNFilters(iterations)
 	endorser := &mockEndorserServer{}
 	initialProposal := &peer.SignedProposal{ProposalBytes: make([]byte, 4)}
-	binary.BigEndian.PutUint32(initialProposal.ProposalBytes, 0)
+	binary.BigEndian.PutUint32(initialProposal.GetProposalBytes(), 0)
 
 	firstFilter := ChainFilters(endorser, filters...)
 	firstFilter.ProcessProposal(context.Background(), initialProposal)
@@ -33,7 +33,7 @@ func TestChainFilters(t *testing.T) {
 		"Expected endorser to be invoked after filters")
 
 	// Test with no filters
-	binary.BigEndian.PutUint32(initialProposal.ProposalBytes, 0)
+	binary.BigEndian.PutUint32(initialProposal.GetProposalBytes(), 0)
 	firstFilter = ChainFilters(endorser)
 	firstFilter.ProcessProposal(context.Background(), initialProposal)
 	require.Equal(t, uint32(0), endorser.sequence,
@@ -53,8 +53,8 @@ type mockEndorserServer struct {
 }
 
 func (es *mockEndorserServer) ProcessProposal(ctx context.Context, prop *peer.SignedProposal) (*peer.ProposalResponse, error) {
-	es.sequence = binary.BigEndian.Uint32(prop.ProposalBytes)
-	binary.BigEndian.PutUint32(prop.ProposalBytes, es.sequence+1)
+	es.sequence = binary.BigEndian.Uint32(prop.GetProposalBytes())
+	binary.BigEndian.PutUint32(prop.GetProposalBytes(), es.sequence+1)
 	return nil, nil
 }
 
@@ -64,8 +64,8 @@ type mockAuthFilter struct {
 }
 
 func (f *mockAuthFilter) ProcessProposal(ctx context.Context, prop *peer.SignedProposal) (*peer.ProposalResponse, error) {
-	f.sequence = binary.BigEndian.Uint32(prop.ProposalBytes)
-	binary.BigEndian.PutUint32(prop.ProposalBytes, f.sequence+1)
+	f.sequence = binary.BigEndian.Uint32(prop.GetProposalBytes())
+	binary.BigEndian.PutUint32(prop.GetProposalBytes(), f.sequence+1)
 	return f.next.ProcessProposal(ctx, prop)
 }
 

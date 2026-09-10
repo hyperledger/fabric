@@ -376,27 +376,27 @@ func checkCollectionMemberPolicy(collectionConfig *pb.CollectionConfig, mspmgr m
 	if coll == nil {
 		return fmt.Errorf("collection configuration is empty")
 	}
-	if coll.MemberOrgsPolicy == nil {
+	if coll.GetMemberOrgsPolicy() == nil {
 		return fmt.Errorf("collection member policy is not set")
 	}
-	if coll.MemberOrgsPolicy.GetSignaturePolicy() == nil {
+	if coll.GetMemberOrgsPolicy().GetSignaturePolicy() == nil {
 		return fmt.Errorf("collection member org policy is empty")
 	}
 	// make sure that the orgs listed are actually part of the channel
 	// check all principals in the signature policy
-	for _, principal := range coll.MemberOrgsPolicy.GetSignaturePolicy().Identities {
+	for _, principal := range coll.GetMemberOrgsPolicy().GetSignaturePolicy().GetIdentities() {
 		found := false
 		var orgID string
 		// the member org policy only supports certain principal types
-		switch principal.PrincipalClassification {
+		switch principal.GetPrincipalClassification() {
 
 		case mb.MSPPrincipal_ROLE:
 			msprole := &mb.MSPRole{}
-			err := proto.Unmarshal(principal.Principal, msprole)
+			err := proto.Unmarshal(principal.GetPrincipal(), msprole)
 			if err != nil {
 				return errors.Wrapf(err, "collection-name: %s -- cannot unmarshal identities", coll.GetName())
 			}
-			orgID = msprole.MspIdentifier
+			orgID = msprole.GetMspIdentifier()
 			// the msp map is indexed using msp IDs - this behavior is implementation specific, making the following check a bit of a hack
 			for mspid := range msps {
 				if mspid == orgID {
@@ -407,11 +407,11 @@ func checkCollectionMemberPolicy(collectionConfig *pb.CollectionConfig, mspmgr m
 
 		case mb.MSPPrincipal_ORGANIZATION_UNIT:
 			mspou := &mb.OrganizationUnit{}
-			err := proto.Unmarshal(principal.Principal, mspou)
+			err := proto.Unmarshal(principal.GetPrincipal(), mspou)
 			if err != nil {
 				return errors.Wrapf(err, "collection-name: %s -- cannot unmarshal identities", coll.GetName())
 			}
-			orgID = mspou.MspIdentifier
+			orgID = mspou.GetMspIdentifier()
 			// the msp map is indexed using msp IDs - this behavior is implementation specific, making the following check a bit of a hack
 			for mspid := range msps {
 				if mspid == orgID {
@@ -423,14 +423,14 @@ func checkCollectionMemberPolicy(collectionConfig *pb.CollectionConfig, mspmgr m
 		case mb.MSPPrincipal_IDENTITY:
 			orgID = "identity principal"
 			for _, msp := range msps {
-				_, err := msp.DeserializeIdentity(principal.Principal)
+				_, err := msp.DeserializeIdentity(principal.GetPrincipal())
 				if err == nil {
 					found = true
 					break
 				}
 			}
 		default:
-			return fmt.Errorf("collection-name: %s -- principal type %v is not supported", coll.GetName(), principal.PrincipalClassification)
+			return fmt.Errorf("collection-name: %s -- principal type %v is not supported", coll.GetName(), principal.GetPrincipalClassification())
 		}
 		if !found {
 			logger.Warningf("collection-name: %s collection member %s is not part of the channel", coll.GetName(), orgID)
@@ -440,9 +440,9 @@ func checkCollectionMemberPolicy(collectionConfig *pb.CollectionConfig, mspmgr m
 	// Call the constructor for SignaturePolicyEnvelope evaluators to perform extra semantic validation.
 	// Among other things, this validation catches any out-of-range references to the identities array.
 	policyProvider := &cauthdsl.EnvelopeBasedPolicyProvider{Deserializer: mspmgr}
-	if _, err := policyProvider.NewPolicy(coll.MemberOrgsPolicy.GetSignaturePolicy()); err != nil {
-		logger.Errorf("Invalid member org policy for collection '%s', error: %s", coll.Name, err)
-		return errors.WithMessage(err, fmt.Sprintf("invalid member org policy for collection '%s'", coll.Name))
+	if _, err := policyProvider.NewPolicy(coll.GetMemberOrgsPolicy().GetSignaturePolicy()); err != nil {
+		logger.Errorf("Invalid member org policy for collection '%s', error: %s", coll.GetName(), err)
+		return errors.WithMessage(err, fmt.Sprintf("invalid member org policy for collection '%s'", coll.GetName()))
 	}
 
 	return nil
@@ -469,7 +469,7 @@ func (lscc *SCC) putChaincodeCollectionData(stub shim.ChaincodeStubInterface, cd
 	if mspmgr == nil {
 		return fmt.Errorf("could not get MSP manager for channel %s", stub.GetChannelID())
 	}
-	for _, collectionConfig := range collections.Config {
+	for _, collectionConfig := range collections.GetConfig() {
 		err = checkCollectionMemberPolicy(collectionConfig, mspmgr)
 		if err != nil {
 			return errors.Wrapf(err, "collection member policy check failed")
@@ -573,12 +573,12 @@ func (lscc *SCC) getChaincodes(stub shim.ChaincodeStubInterface) pb.Response {
 		}
 
 		// CollectionConfig isn't ChaincodeData
-		if privdata.IsCollectionConfigKey(response.Key) {
+		if privdata.IsCollectionConfigKey(response.GetKey()) {
 			continue
 		}
 
 		ccdata := &ccprovider.ChaincodeData{}
-		if err = proto.Unmarshal(response.Value, ccdata); err != nil {
+		if err = proto.Unmarshal(response.GetValue(), ccdata); err != nil {
 			return shim.Error(err.Error())
 		}
 
@@ -589,8 +589,8 @@ func (lscc *SCC) getChaincodes(stub shim.ChaincodeStubInterface) pb.Response {
 		// data beyond name and version
 		ccpack, err := lscc.Support.GetChaincodeFromLocalStorage(ccdata.ChaincodeID())
 		if err == nil {
-			path = ccpack.GetDepSpec().GetChaincodeSpec().ChaincodeId.Path
-			input = ccpack.GetDepSpec().GetChaincodeSpec().Input.String()
+			path = ccpack.GetDepSpec().GetChaincodeSpec().GetChaincodeId().GetPath()
+			input = ccpack.GetDepSpec().GetChaincodeSpec().GetInput().String()
 		}
 
 		// add this specific chaincode's metadata to the array of all chaincodes
@@ -689,16 +689,16 @@ func (lscc *SCC) executeInstall(stub shim.ChaincodeStubInterface, ccbytes []byte
 		return fmt.Errorf("nil deployment spec from the CC package")
 	}
 
-	if err = lscc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name); err != nil {
+	if err = lscc.isValidChaincodeName(cds.GetChaincodeSpec().GetChaincodeId().GetName()); err != nil {
 		return err
 	}
 
-	if err = lscc.isValidChaincodeVersion(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version); err != nil {
+	if err = lscc.isValidChaincodeVersion(cds.GetChaincodeSpec().GetChaincodeId().GetName(), cds.GetChaincodeSpec().GetChaincodeId().GetVersion()); err != nil {
 		return err
 	}
 
-	if lscc.BuiltinSCCs.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
-		return errors.Errorf("cannot install: %s is the name of a system chaincode", cds.ChaincodeSpec.ChaincodeId.Name)
+	if lscc.BuiltinSCCs.IsSysCC(cds.GetChaincodeSpec().GetChaincodeId().GetName()) {
+		return errors.Errorf("cannot install: %s is the name of a system chaincode", cds.GetChaincodeSpec().GetChaincodeId().GetName())
 	}
 
 	// We must put the chaincode package on the filesystem prior to building it.
@@ -769,8 +769,8 @@ func (lscc *SCC) executeDeployOrUpgrade(
 	policy, escc, vscc, collectionConfigBytes []byte,
 	function string,
 ) (*ccprovider.ChaincodeData, error) {
-	chaincodeName := cds.ChaincodeSpec.ChaincodeId.Name
-	chaincodeVersion := cds.ChaincodeSpec.ChaincodeId.Version
+	chaincodeName := cds.GetChaincodeSpec().GetChaincodeId().GetName()
+	chaincodeVersion := cds.GetChaincodeSpec().GetChaincodeId().GetVersion()
 
 	if err := lscc.isValidChaincodeName(chaincodeName); err != nil {
 		return nil, err
@@ -814,7 +814,7 @@ func (lscc *SCC) executeDeploy(
 	collectionConfigBytes []byte,
 ) (*ccprovider.ChaincodeData, error) {
 	// just test for existence of the chaincode in the LSCC
-	chaincodeName := cds.ChaincodeSpec.ChaincodeId.Name
+	chaincodeName := cds.GetChaincodeSpec().GetChaincodeId().GetName()
 	_, err := lscc.getCCInstance(stub, chaincodeName)
 	if err == nil {
 		return nil, ExistsErr(chaincodeName)
@@ -855,7 +855,7 @@ func (lscc *SCC) executeDeploy(
 
 // executeUpgrade implements the "upgrade" Invoke transaction.
 func (lscc *SCC) executeUpgrade(stub shim.ChaincodeStubInterface, chainName string, cds *pb.ChaincodeDeploymentSpec, policy []byte, escc []byte, vscc []byte, cdfs *ccprovider.ChaincodeData, ccpackfs ccprovider.CCPackage, collectionConfigBytes []byte) (*ccprovider.ChaincodeData, error) {
-	chaincodeName := cds.ChaincodeSpec.ChaincodeId.Name
+	chaincodeName := cds.GetChaincodeSpec().GetChaincodeId().GetName()
 
 	// check for existence of chaincode instance only (it has to exist on the channel)
 	// we dont care about the old chaincode on the FS. In particular, user may even
@@ -872,7 +872,7 @@ func (lscc *SCC) executeUpgrade(stub shim.ChaincodeStubInterface, chainName stri
 	}
 
 	// do not upgrade if same version
-	if cdLedger.Version == cds.ChaincodeSpec.ChaincodeId.Version {
+	if cdLedger.Version == cds.GetChaincodeSpec().GetChaincodeId().GetVersion() {
 		return nil, IdenticalVersionErr(chaincodeName)
 	}
 

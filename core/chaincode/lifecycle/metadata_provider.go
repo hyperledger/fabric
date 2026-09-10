@@ -79,7 +79,7 @@ func (mp *MetadataProvider) toSignaturePolicyEnvelope(channelID string, policyBy
 		return nil, errors.Wrap(err, "failed to unmarshal ApplicationPolicy bytes")
 	}
 
-	switch policy := p.Type.(type) {
+	switch policy := p.GetType().(type) {
 	case *peer.ApplicationPolicy_SignaturePolicy:
 		return protoutil.MarshalOrPanic(policy.SignaturePolicy), nil
 	case *peer.ApplicationPolicy_ChannelConfigPolicyReference:
@@ -114,7 +114,7 @@ func (mp *MetadataProvider) Metadata(channel string, ccName string, collections 
 		return mp.LegacyMetadataProvider.Metadata(channel, ccName, collections...)
 	}
 
-	spe, err := mp.toSignaturePolicyEnvelope(channel, ccInfo.Definition.ValidationInfo.ValidationParameter)
+	spe, err := mp.toSignaturePolicyEnvelope(channel, ccInfo.Definition.ValidationInfo.GetValidationParameter())
 	if err != nil {
 		logger.Errorf("could not convert policy for chaincode '%s' on channel '%s', err '%s'", ccName, channel, err)
 		return nil
@@ -167,14 +167,14 @@ func (mp *MetadataProvider) Metadata(channel string, ccName string, collections 
 
 	// process any existing collection endorsement policies
 	for _, collectionName := range collections {
-		for _, conf := range ccInfo.Definition.Collections.Config {
+		for _, conf := range ccInfo.Definition.Collections.GetConfig() {
 			staticCollConfig := conf.GetStaticCollectionConfig()
 			if staticCollConfig == nil {
 				continue
 			}
-			if staticCollConfig.Name == collectionName {
-				if staticCollConfig.EndorsementPolicy != nil {
-					ep := protoutil.MarshalOrPanic(staticCollConfig.EndorsementPolicy)
+			if staticCollConfig.GetName() == collectionName {
+				if staticCollConfig.GetEndorsementPolicy() != nil {
+					ep := protoutil.MarshalOrPanic(staticCollConfig.GetEndorsementPolicy())
 					cspe, err := mp.toSignaturePolicyEnvelope(channel, ep)
 					if err != nil {
 						logger.Errorf("could not convert collection policy for chaincode '%s' collection '%s' on channel '%s', err '%s'", ccName, collectionName, channel, err)

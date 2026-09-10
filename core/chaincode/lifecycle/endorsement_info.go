@@ -92,7 +92,7 @@ func (cei *ChaincodeEndorsementInfoSource) CachedChaincodeInfo(channelID, chainc
 	if chaincodeInfo.InstallInfo == nil {
 		if cei.UserRunsCC {
 			chaincodeInfo.InstallInfo = &ChaincodeInstallInfo{
-				PackageID: chaincodeName + ":" + chaincodeInfo.Definition.EndorsementInfo.Version,
+				PackageID: chaincodeName + ":" + chaincodeInfo.Definition.EndorsementInfo.GetVersion(),
 			}
 			return chaincodeInfo, true, nil
 		}
@@ -140,9 +140,9 @@ func (cei *ChaincodeEndorsementInfoSource) ChaincodeEndorsementInfo(channelID, c
 	}
 
 	return &ChaincodeEndorsementInfo{
-		Version:           chaincodeInfo.Definition.EndorsementInfo.Version,
-		EnforceInit:       chaincodeInfo.Definition.EndorsementInfo.InitRequired,
-		EndorsementPlugin: chaincodeInfo.Definition.EndorsementInfo.EndorsementPlugin,
+		Version:           chaincodeInfo.Definition.EndorsementInfo.GetVersion(),
+		EnforceInit:       chaincodeInfo.Definition.EndorsementInfo.GetInitRequired(),
+		EndorsementPlugin: chaincodeInfo.Definition.EndorsementInfo.GetEndorsementPlugin(),
 		ChaincodeID:       chaincodeInfo.InstallInfo.PackageID, // Local packages use package ID for ccid
 	}, nil
 }

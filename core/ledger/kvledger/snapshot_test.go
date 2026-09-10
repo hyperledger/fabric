@@ -67,8 +67,8 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 			snapshotRootDir:   snapshotRootDir,
 			ledgerID:          kvlgr.ledgerID,
 			lastBlockNumber:   0,
-			lastBlockHash:     protoutil.BlockHeaderHash(genesisBlk.Header),
-			previousBlockHash: genesisBlk.Header.PreviousHash,
+			lastBlockHash:     protoutil.BlockHeaderHash(genesisBlk.GetHeader()),
+			previousBlockHash: genesisBlk.GetHeader().GetPreviousHash(),
 			lastCommitHash:    kvlgr.commitHash,
 			stateDBType:       simpleKeyValueDB,
 			expectedBinaryFiles: []string{
@@ -93,8 +93,8 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 			snapshotRootDir:   snapshotRootDir,
 			ledgerID:          kvlgr.ledgerID,
 			lastBlockNumber:   1,
-			lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata1.Block.Header),
-			previousBlockHash: blockAndPvtdata1.Block.Header.PreviousHash,
+			lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata1.Block.GetHeader()),
+			previousBlockHash: blockAndPvtdata1.Block.GetHeader().GetPreviousHash(),
 			lastCommitHash:    kvlgr.commitHash,
 			stateDBType:       simpleKeyValueDB,
 			expectedBinaryFiles: []string{
@@ -127,8 +127,8 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 			snapshotRootDir:   snapshotRootDir,
 			ledgerID:          kvlgr.ledgerID,
 			lastBlockNumber:   2,
-			lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata2.Block.Header),
-			previousBlockHash: blockAndPvtdata2.Block.Header.PreviousHash,
+			lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata2.Block.GetHeader()),
+			previousBlockHash: blockAndPvtdata2.Block.GetHeader().GetPreviousHash(),
 			lastCommitHash:    kvlgr.commitHash,
 			stateDBType:       simpleKeyValueDB,
 			expectedBinaryFiles: []string{
@@ -155,8 +155,8 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 			snapshotRootDir:   snapshotRootDir,
 			ledgerID:          kvlgr.ledgerID,
 			lastBlockNumber:   3,
-			lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
-			previousBlockHash: blockAndPvtdata3.Block.Header.PreviousHash,
+			lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata3.Block.GetHeader()),
+			previousBlockHash: blockAndPvtdata3.Block.GetHeader().GetPreviousHash(),
 			lastCommitHash:    kvlgr.commitHash,
 			stateDBType:       simpleKeyValueDB,
 			expectedBinaryFiles: []string{
@@ -177,8 +177,8 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 			createdLedger,
 			&expectedLegderState{
 				lastBlockNumber:   3,
-				lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
-				previousBlockHash: blockAndPvtdata3.Block.Header.PreviousHash,
+				lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata3.Block.GetHeader()),
+				previousBlockHash: blockAndPvtdata3.Block.GetHeader().GetPreviousHash(),
 				lastCommitHash:    kvlgr.commitHash,
 				namespace:         "ns",
 				publicState: map[string]string{
@@ -229,7 +229,7 @@ func TestSnapshotDBTypeCouchDB(t *testing.T) {
 			snapshotRootDir: conf.SnapshotsConfig.RootDir,
 			ledgerID:        kvlgr.ledgerID,
 			stateDBType:     ledger.CouchDB,
-			lastBlockHash:   protoutil.BlockHeaderHash(genesisBlk.Header),
+			lastBlockHash:   protoutil.BlockHeaderHash(genesisBlk.GetHeader()),
 			expectedBinaryFiles: []string{
 				"txids.data", "txids.metadata",
 			},

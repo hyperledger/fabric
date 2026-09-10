@@ -345,7 +345,7 @@ var _ = Describe("Deliver", func() {
 
 			Expect(fakeBlockReader.IteratorCallCount()).To(Equal(1))
 			startPosition := fakeBlockReader.IteratorArgsForCall(0)
-			Expect(proto.Equal(startPosition, seekInfo.Start)).To(BeTrue())
+			Expect(proto.Equal(startPosition, seekInfo.GetStart())).To(BeTrue())
 		})
 
 		Context("when multiple blocks are requested", func() {

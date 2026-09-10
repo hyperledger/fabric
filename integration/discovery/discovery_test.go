@@ -200,25 +200,25 @@ var _ = Describe("DiscoveryService", func() {
 		Expect(proto.Equal(discoveredConfig, discoveredConfig2)).To(BeTrue())
 
 		By("validating the membership data")
-		Expect(discoveredConfig.Msps).To(HaveLen(len(network.Organizations)))
+		Expect(discoveredConfig.GetMsps()).To(HaveLen(len(network.Organizations)))
 		for _, o := range network.Orderers {
 			org := network.Organization(o.Organization)
 			mspConfig, err := msp.GetVerifyingMspConfig(network.OrdererOrgMSPDir(org), org.MSPID, "bccsp")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(discoveredConfig.Msps[org.MSPID]).To(Equal(unmarshalFabricMSPConfig(mspConfig)))
+			Expect(discoveredConfig.GetMsps()[org.MSPID]).To(Equal(unmarshalFabricMSPConfig(mspConfig)))
 		}
 		for _, p := range network.Peers {
 			org := network.Organization(p.Organization)
 			mspConfig, err := msp.GetVerifyingMspConfig(network.PeerOrgMSPDir(org), org.MSPID, "bccsp")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(discoveredConfig.Msps[org.MSPID]).To(Equal(unmarshalFabricMSPConfig(mspConfig)))
+			Expect(discoveredConfig.GetMsps()[org.MSPID]).To(Equal(unmarshalFabricMSPConfig(mspConfig)))
 		}
 
 		By("validating the orderers")
-		Expect(discoveredConfig.Orderers).To(HaveLen(len(network.Orderers)))
+		Expect(discoveredConfig.GetOrderers()).To(HaveLen(len(network.Orderers)))
 		for _, orderer := range network.Orderers {
 			ordererMSPID := network.Organization(orderer.Organization).MSPID
-			Expect(discoveredConfig.Orderers[ordererMSPID].Endpoint).To(ConsistOf(
+			Expect(discoveredConfig.GetOrderers()[ordererMSPID].GetEndpoint()).To(ConsistOf(
 				&discovery.Endpoint{Host: "127.0.0.1", Port: uint32(network.OrdererPort(orderer, nwo.ListenPort))},
 			))
 		}
@@ -291,7 +291,7 @@ var _ = Describe("DiscoveryService", func() {
 		discovered := de()
 		Expect(discovered).To(HaveLen(1))
 		Expect(discovered[0].Layouts).To(HaveLen(1))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[0].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
 
 		By("installing chaincode to all orgs")
 		nwo.InstallChaincodeLegacy(network, chaincode, org3Peer0)
@@ -315,9 +315,9 @@ var _ = Describe("DiscoveryService", func() {
 		discovered = de()
 		Expect(discovered).To(HaveLen(1))
 		Expect(discovered[0].Layouts).To(HaveLen(3))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
-		Expect(discovered[0].Layouts[1].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
-		Expect(discovered[0].Layouts[2].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[0].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[1].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[2].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
 
 		By("upgrading chaincode and adding a collections config")
 		chaincode.Name = "mycc"
@@ -335,7 +335,7 @@ var _ = Describe("DiscoveryService", func() {
 		discovered = de()
 		Expect(discovered).To(HaveLen(1))
 		Expect(discovered[0].Layouts).To(HaveLen(1))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[0].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
 
 		endorsers.Collection = "mycc:collectionMarbles"
 		endorsers.NoPrivateReads = []string{"mycc"}
@@ -456,9 +456,9 @@ var _ = Describe("DiscoveryService", func() {
 		discovered = de()
 		Expect(discovered).To(HaveLen(1))
 		Expect(discovered[0].Layouts).To(HaveLen(3))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
-		Expect(discovered[0].Layouts[1].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
-		Expect(discovered[0].Layouts[2].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[0].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[1].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[2].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
 
 		By("discovering endorsers when missing chaincode")
 		endorsers = commands.Endorsers{
@@ -513,7 +513,7 @@ var _ = Describe("DiscoveryService", func() {
 		discovered = de()
 		Expect(discovered).To(HaveLen(1))
 		Expect(discovered[0].Layouts).To(HaveLen(1))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[0].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
 
 		By("installing chaincode to all orgs")
 		nwo.InstallChaincode(network, chaincode, org3Peer0)
@@ -594,7 +594,7 @@ var _ = Describe("DiscoveryService", func() {
 		discovered = de()
 		Expect(discovered).To(HaveLen(1))
 		Expect(discovered[0].Layouts).To(HaveLen(1))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[0].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
 
 		By("upgrading a legacy chaincode for all peers")
 		nwo.DeployChaincode(network, "testchannel", orderer, nwo.Chaincode{
@@ -621,7 +621,7 @@ var _ = Describe("DiscoveryService", func() {
 		discovered = de()
 		Expect(discovered).To(HaveLen(1))
 		Expect(discovered[0].Layouts).To(HaveLen(1))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[0].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1), uint32(1)))
 
 		By("discovering endorsers for a collection without collection EP, using chaincode EP")
 		endorsers.Collection = "mycc:collectionMarbles"
@@ -642,7 +642,7 @@ var _ = Describe("DiscoveryService", func() {
 		discovered = de()
 		Expect(discovered).To(HaveLen(1))
 		Expect(discovered[0].Layouts).To(HaveLen(1))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[0].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
 
 		By("discovering endorsers for Org1 implicit collection")
 		endorsers.Collection = "mycc:_implicit_org_Org1MSP"
@@ -653,7 +653,7 @@ var _ = Describe("DiscoveryService", func() {
 		discovered = de()
 		Expect(discovered).To(HaveLen(1))
 		Expect(discovered[0].Layouts).To(HaveLen(1))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1)))
+		Expect(discovered[0].Layouts[0].GetQuantitiesByGroup()).To(ConsistOf(uint32(1)))
 
 		By("trying to discover endorsers as an org3 admin")
 		endorsers = commands.Endorsers{
@@ -735,7 +735,7 @@ func peersWithChaincode(discover func() []nwo.DiscoveredPeer, ccName string) fun
 
 func unmarshalFabricMSPConfig(c *pm.MSPConfig) *pm.FabricMSPConfig {
 	fabricConfig := &pm.FabricMSPConfig{}
-	err := proto.Unmarshal(c.Config, fabricConfig)
+	err := proto.Unmarshal(c.GetConfig(), fabricConfig)
 	Expect(err).NotTo(HaveOccurred())
 	return fabricConfig
 }

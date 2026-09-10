@@ -40,8 +40,8 @@ func TestMspDeserializersManager_Deserialize(t *testing.T) {
 	i2, err := m.Deserialize(raw)
 	require.NoError(t, err)
 	require.NotNil(t, i2)
-	require.NotNil(t, i2.IdBytes)
-	require.Equal(t, m.GetLocalMSPIdentifier(), i2.Mspid)
+	require.NotNil(t, i2.GetIdBytes())
+	require.Equal(t, m.GetLocalMSPIdentifier(), i2.GetMspid())
 }
 
 func TestMspDeserializersManager_GetChannelDeserializers(t *testing.T) {

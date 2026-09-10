@@ -95,9 +95,9 @@ func TestEndorserCmd(t *testing.T) {
 			// Ensure the stub got the request that corresponds to what the CLI passed in
 			req := arg.Get(2).(*Request)
 			// Ensure chaincode names in the invocation chain match
-			require.Equal(t, "mycc", req.Queries[0].GetCcQuery().Interests[0].Chaincodes[0].Name)
+			require.Equal(t, "mycc", req.Queries[0].GetCcQuery().GetInterests()[0].GetChaincodes()[0].GetName())
 			// Ensure collection names in the invocation chain match
-			require.Equal(t, []string{"col1", "col2"}, req.Queries[0].GetCcQuery().Interests[0].Chaincodes[0].CollectionNames)
+			require.Equal(t, []string{"col1", "col2"}, req.Queries[0].GetCcQuery().GetInterests()[0].GetChaincodes()[0].GetCollectionNames())
 		})
 
 		err := cmd.Execute(common.Config{})

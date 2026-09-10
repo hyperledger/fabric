@@ -106,16 +106,16 @@ func (n *collElgNotifier) elgEnabledCollNames(ledgerID string,
 	postCommitConfs := retrieveCollConfs(postCommitPkg)
 	existingConfMap := map[string]*peer.StaticCollectionConfig{}
 	for _, existingConf := range exisingConfs {
-		existingConfMap[existingConf.Name] = existingConf
+		existingConfMap[existingConf.GetName()] = existingConf
 	}
 
 	for _, postCommitConf := range postCommitConfs {
-		collName := postCommitConf.Name
+		collName := postCommitConf.GetName()
 		existingConf, ok := existingConfMap[collName]
 		if !ok { // brand new collection
 			continue
 		}
-		membershipEnabled, err := n.elgEnabled(ledgerID, existingConf.MemberOrgsPolicy, postCommitConf.MemberOrgsPolicy)
+		membershipEnabled, err := n.elgEnabled(ledgerID, existingConf.GetMemberOrgsPolicy(), postCommitConf.GetMemberOrgsPolicy())
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +159,7 @@ func retrieveCollConfs(collConfPkg *peer.CollectionConfigPackage) []*peer.Static
 		return nil
 	}
 	var staticCollConfs []*peer.StaticCollectionConfig
-	protoConfArray := collConfPkg.Config
+	protoConfArray := collConfPkg.GetConfig()
 	for _, protoConf := range protoConfArray {
 		staticCollConfs = append(staticCollConfs, protoConf.GetStaticCollectionConfig())
 	}

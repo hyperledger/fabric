@@ -942,14 +942,14 @@ var _ = Describe("Kafka2RaftMigration", func() {
 })
 
 func validateConsensusTypeValue(value *protosorderer.ConsensusType, cType string, state protosorderer.ConsensusType_State) {
-	Expect(value.Type).To(Equal(cType))
-	Expect(value.State).To(Equal(state))
+	Expect(value.GetType()).To(Equal(cType))
+	Expect(value.GetState()).To(Equal(state))
 }
 
 func extractOrdererConsensusType(config *common.Config) *protosorderer.ConsensusType {
 	var consensusTypeValue protosorderer.ConsensusType
-	consensusTypeConfigValue := config.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
-	err := proto.Unmarshal(consensusTypeConfigValue.Value, &consensusTypeValue)
+	consensusTypeConfigValue := config.GetChannelGroup().GetGroups()["Orderer"].GetValues()["ConsensusType"]
+	err := proto.Unmarshal(consensusTypeConfigValue.GetValue(), &consensusTypeValue)
 	Expect(err).NotTo(HaveOccurred())
 	return &consensusTypeValue
 }
@@ -971,15 +971,15 @@ func updateConfigWithConsensusType(
 }
 
 func updateConfigWithBatchTimeout(updatedConfig *common.Config) {
-	batchTimeoutConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchTimeout"]
+	batchTimeoutConfigValue := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetValues()["BatchTimeout"]
 	batchTimeoutValue := new(protosorderer.BatchTimeout)
-	err := proto.Unmarshal(batchTimeoutConfigValue.Value, batchTimeoutValue)
+	err := proto.Unmarshal(batchTimeoutConfigValue.GetValue(), batchTimeoutValue)
 	Expect(err).NotTo(HaveOccurred())
-	toDur, err := time.ParseDuration(batchTimeoutValue.Timeout)
+	toDur, err := time.ParseDuration(batchTimeoutValue.GetTimeout())
 	Expect(err).NotTo(HaveOccurred())
 	toDur = toDur + time.Duration(100000000)
 	batchTimeoutValue.Timeout = toDur.String()
-	By(fmt.Sprintf("Increasing BatchTimeout to %s", batchTimeoutValue.Timeout))
+	By(fmt.Sprintf("Increasing BatchTimeout to %s", batchTimeoutValue.GetTimeout()))
 	updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchTimeout"] = &common.ConfigValue{
 		ModPolicy: "Admins",
 		Value:     protoutil.MarshalOrPanic(batchTimeoutValue),
@@ -1149,7 +1149,7 @@ func assertBlockCreation(network *nwo.Network, orderer *nwo.Orderer, peer *nwo.P
 	env := createBroadcastEnvelope(network, signer, channelID, []byte("hola"))
 	resp, err := ordererclient.Broadcast(network, orderer, env)
 	Expect(err).NotTo(HaveOccurred())
-	Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+	Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 	denv := createDeliverEnvelope(network, signer, blkNum, channelID)
 	blk, err := ordererclient.Deliver(network, orderer, denv)
@@ -1162,8 +1162,8 @@ func assertTxFailed(network *nwo.Network, orderer *nwo.Orderer, channelID string
 	env := createBroadcastEnvelope(network, signer, channelID, []byte("hola"))
 	resp, err := ordererclient.Broadcast(network, orderer, env)
 	Expect(err).NotTo(HaveOccurred())
-	Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))
-	Expect(resp.Info).To(Equal("normal transactions are rejected: maintenance mode"))
+	Expect(resp.GetStatus()).To(Equal(common.Status_SERVICE_UNAVAILABLE))
+	Expect(resp.GetInfo()).To(Equal("normal transactions are rejected: maintenance mode"))
 }
 
 // assertBlockReception asserts that the given orderers have the expected

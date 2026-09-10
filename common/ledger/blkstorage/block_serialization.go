@@ -29,15 +29,15 @@ func serializeBlock(block *common.Block) ([]byte, *serializedBlockInfo, error) {
 	buf := proto.NewBuffer(nil)
 	var err error
 	info := &serializedBlockInfo{}
-	info.blockHeader = block.Header
-	info.metadata = block.Metadata
-	if err = addHeaderBytes(block.Header, buf); err != nil {
+	info.blockHeader = block.GetHeader()
+	info.metadata = block.GetMetadata()
+	if err = addHeaderBytes(block.GetHeader(), buf); err != nil {
 		return nil, nil, err
 	}
-	if info.txOffsets, err = addDataBytesAndConstructTxIndexInfo(block.Data, buf); err != nil {
+	if info.txOffsets, err = addDataBytesAndConstructTxIndexInfo(block.GetData(), buf); err != nil {
 		return nil, nil, err
 	}
-	if err = addMetadataBytes(block.Metadata, buf); err != nil {
+	if err = addMetadataBytes(block.GetMetadata(), buf); err != nil {
 		return nil, nil, err
 	}
 	return buf.Bytes(), info, nil
@@ -80,14 +80,14 @@ func extractSerializedBlockInfo(serializedBlockBytes []byte) (*serializedBlockIn
 }
 
 func addHeaderBytes(blockHeader *common.BlockHeader, buf *proto.Buffer) error {
-	if err := buf.EncodeVarint(blockHeader.Number); err != nil {
-		return errors.Wrapf(err, "error encoding the block number [%d]", blockHeader.Number)
+	if err := buf.EncodeVarint(blockHeader.GetNumber()); err != nil {
+		return errors.Wrapf(err, "error encoding the block number [%d]", blockHeader.GetNumber())
 	}
-	if err := buf.EncodeRawBytes(blockHeader.DataHash); err != nil {
-		return errors.Wrapf(err, "error encoding the data hash [%v]", blockHeader.DataHash)
+	if err := buf.EncodeRawBytes(blockHeader.GetDataHash()); err != nil {
+		return errors.Wrapf(err, "error encoding the data hash [%v]", blockHeader.GetDataHash())
 	}
-	if err := buf.EncodeRawBytes(blockHeader.PreviousHash); err != nil {
-		return errors.Wrapf(err, "error encoding the previous hash [%v]", blockHeader.PreviousHash)
+	if err := buf.EncodeRawBytes(blockHeader.GetPreviousHash()); err != nil {
+		return errors.Wrapf(err, "error encoding the previous hash [%v]", blockHeader.GetPreviousHash())
 	}
 	return nil
 }
@@ -95,10 +95,10 @@ func addHeaderBytes(blockHeader *common.BlockHeader, buf *proto.Buffer) error {
 func addDataBytesAndConstructTxIndexInfo(blockData *common.BlockData, buf *proto.Buffer) ([]*txindexInfo, error) {
 	var txOffsets []*txindexInfo
 
-	if err := buf.EncodeVarint(uint64(len(blockData.Data))); err != nil {
+	if err := buf.EncodeVarint(uint64(len(blockData.GetData()))); err != nil {
 		return nil, errors.Wrap(err, "error encoding the length of block data")
 	}
-	for _, txEnvelopeBytes := range blockData.Data {
+	for _, txEnvelopeBytes := range blockData.GetData() {
 		offset := len(buf.Bytes())
 		txid, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnvelopeBytes)
 		if err != nil {
@@ -117,12 +117,12 @@ func addDataBytesAndConstructTxIndexInfo(blockData *common.BlockData, buf *proto
 func addMetadataBytes(blockMetadata *common.BlockMetadata, buf *proto.Buffer) error {
 	numItems := uint64(0)
 	if blockMetadata != nil {
-		numItems = uint64(len(blockMetadata.Metadata))
+		numItems = uint64(len(blockMetadata.GetMetadata()))
 	}
 	if err := buf.EncodeVarint(numItems); err != nil {
 		return errors.Wrap(err, "error encoding the length of metadata")
 	}
-	for _, b := range blockMetadata.Metadata {
+	for _, b := range blockMetadata.GetMetadata() {
 		if err := buf.EncodeRawBytes(b); err != nil {
 			return errors.Wrap(err, "error encoding the block metadata")
 		}
@@ -142,7 +142,7 @@ func extractHeader(buf *buffer) (*common.BlockHeader, error) {
 	if header.PreviousHash, err = buf.DecodeRawBytes(false); err != nil {
 		return nil, errors.Wrap(err, "error decoding the previous hash")
 	}
-	if len(header.PreviousHash) == 0 {
+	if len(header.GetPreviousHash()) == 0 {
 		header.PreviousHash = nil
 	}
 	return header, nil

@@ -42,7 +42,7 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 	var theMsp msp.MSP
 	var err error
 
-	switch mspConfig.Type {
+	switch mspConfig.GetType() {
 	case int32(msp.FABRIC):
 		// create the bccsp msp instance
 		mspInst, err := msp.New(
@@ -68,7 +68,7 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 			return nil, errors.WithMessage(err, "creating the MSP manager failed")
 		}
 	default:
-		return nil, errors.New(fmt.Sprintf("Setup error: unsupported msp type %d", mspConfig.Type))
+		return nil, errors.New(fmt.Sprintf("Setup error: unsupported msp type %d", mspConfig.GetType()))
 	}
 
 	// set it up

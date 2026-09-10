@@ -66,7 +66,7 @@ func newIdentity(cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) (Identity,
 	// Compute identity identifier
 
 	// Use the hash of the identity's certificate as id in the IdentityIdentifier
-	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.IdentityIdentifierHashFunction)
+	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.GetIdentityIdentifierHashFunction())
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed getting hash function options")
 	}
@@ -171,7 +171,7 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 	// mspIdentityLogger.Infof("Verifying signature")
 
 	// Compute Hash
-	hashOpt, err := id.getHashOpt(id.msp.cryptoConfig.SignatureHashFamily)
+	hashOpt, err := id.getHashOpt(id.msp.cryptoConfig.GetSignatureHashFamily())
 	if err != nil {
 		return errors.WithMessage(err, "failed getting hash function options")
 	}
@@ -256,7 +256,7 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 	// mspIdentityLogger.Infof("Signing message")
 
 	// Compute Hash
-	hashOpt, err := id.getHashOpt(id.msp.cryptoConfig.SignatureHashFamily)
+	hashOpt, err := id.getHashOpt(id.msp.cryptoConfig.GetSignatureHashFamily())
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed getting hash function options")
 	}

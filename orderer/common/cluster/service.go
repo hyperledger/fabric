@@ -130,11 +130,11 @@ func expiresAt(stream orderer.Cluster_StepServer) time.Time {
 
 func extractChannel(msg *orderer.StepRequest) string {
 	if consReq := msg.GetConsensusRequest(); consReq != nil {
-		return consReq.Channel
+		return consReq.GetChannel()
 	}
 
 	if submitReq := msg.GetSubmitRequest(); submitReq != nil {
-		return submitReq.Channel
+		return submitReq.GetChannel()
 	}
 
 	return ""

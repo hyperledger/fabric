@@ -150,7 +150,7 @@ func (gs *Server) processProposal(ctx context.Context, plan *plan, endorser *end
 			return false
 		}
 		response = resp.response
-		logger.Debugw("Endorse call to endorser returned success", "MSPID", endorser.mspid, "endpoint", endorser.address, "status", response.Response.Status, "message", response.Response.Message)
+		logger.Debugw("Endorse call to endorser returned success", "MSPID", endorser.mspid, "endpoint", endorser.address, "status", response.GetResponse().GetStatus(), "message", response.GetResponse().GetMessage())
 
 		responseMessage := response.GetResponse()
 		if responseMessage != nil {
@@ -230,7 +230,7 @@ func (gs *Server) planFromFirstEndorser(ctx context.Context, channel string, cha
 
 	// 3. Extract ChaincodeInterest and SBE policies
 	// The chaincode interest could be nil for legacy peers and for chaincode functions that don't produce a read-write set
-	interest := firstResponse.Interest
+	interest := firstResponse.GetInterest()
 	if len(interest.GetChaincodes()) == 0 {
 		interest = defaultInterest
 	}
@@ -243,9 +243,9 @@ func (gs *Server) planFromFirstEndorser(ctx context.Context, channel string, cha
 		for _, call := range interest.GetChaincodes() {
 			ccc := *call // shallow copy
 			originalInterest.Chaincodes = append(originalInterest.Chaincodes, &ccc)
-			if call.NoPrivateReads {
+			if call.GetNoPrivateReads() {
 				call.NoPrivateReads = false
-				protectedCollections = append(protectedCollections, call.CollectionNames...)
+				protectedCollections = append(protectedCollections, call.GetCollectionNames()...)
 			}
 		}
 	}

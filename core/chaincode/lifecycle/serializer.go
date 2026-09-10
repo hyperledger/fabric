@@ -121,7 +121,7 @@ func (s *Serializer) Serialize(namespace, name string, structure any, state Read
 	}
 
 	existingKeys := map[string][]byte{}
-	for _, existingField := range metadata.Fields {
+	for _, existingField := range metadata.GetFields() {
 		fqKey := FieldKey(namespace, name, existingField)
 		value, err := state.GetState(fqKey)
 		if err != nil {
@@ -171,7 +171,7 @@ func (s *Serializer) Serialize(namespace, name string, structure any, state Read
 	}
 
 	typeName := value.Type().Name()
-	if len(existingKeys) > 0 || typeName != metadata.Datatype || len(metadata.Fields) != value.NumField() {
+	if len(existingKeys) > 0 || typeName != metadata.GetDatatype() || len(metadata.GetFields()) != value.NumField() {
 		metadata.Datatype = typeName
 		metadata.Fields = allFields
 		newMetadataBin, err := s.Marshaler.Marshal(metadata)
@@ -306,8 +306,8 @@ func (s *Serializer) Deserialize(namespace, name string, metadata *lb.StateMetad
 	}
 
 	typeName := value.Type().Name()
-	if typeName != metadata.Datatype {
-		return errors.Errorf("type name mismatch '%s' != '%s'", typeName, metadata.Datatype)
+	if typeName != metadata.GetDatatype() {
+		return errors.Errorf("type name mismatch '%s' != '%s'", typeName, metadata.GetDatatype())
 	}
 
 	for i := 0; i < value.NumField(); i++ {
@@ -399,9 +399,9 @@ func (s *Serializer) DeserializeFieldAsString(namespace, name, field string, sta
 	if value.Type == nil {
 		return "", nil
 	}
-	oneOf, ok := value.Type.(*lb.StateData_String_)
+	oneOf, ok := value.GetType().(*lb.StateData_String_)
 	if !ok {
-		return "", errors.Errorf("expected key %s/fields/%s/%s to encode a value of type String, but was %T", namespace, name, field, value.Type)
+		return "", errors.Errorf("expected key %s/fields/%s/%s to encode a value of type String, but was %T", namespace, name, field, value.GetType())
 	}
 	return oneOf.String_, nil
 }
@@ -414,9 +414,9 @@ func (s *Serializer) DeserializeFieldAsBytes(namespace, name, field string, stat
 	if value.Type == nil {
 		return nil, nil
 	}
-	oneOf, ok := value.Type.(*lb.StateData_Bytes)
+	oneOf, ok := value.GetType().(*lb.StateData_Bytes)
 	if !ok {
-		return nil, errors.Errorf("expected key %s to encode a value of type []byte, but was %T", FieldKey(namespace, name, field), value.Type)
+		return nil, errors.Errorf("expected key %s to encode a value of type []byte, but was %T", FieldKey(namespace, name, field), value.GetType())
 	}
 	return oneOf.Bytes, nil
 }
@@ -441,9 +441,9 @@ func (s *Serializer) DeserializeFieldAsInt64(namespace, name, field string, stat
 	if value.Type == nil {
 		return 0, nil
 	}
-	oneOf, ok := value.Type.(*lb.StateData_Int64)
+	oneOf, ok := value.GetType().(*lb.StateData_Int64)
 	if !ok {
-		return 0, errors.Errorf("expected key %s to encode a value of type Int64, but was %T", FieldKey(namespace, name, field), value.Type)
+		return 0, errors.Errorf("expected key %s to encode a value of type Int64, but was %T", FieldKey(namespace, name, field), value.GetType())
 	}
 	return oneOf.Int64, nil
 }

@@ -186,13 +186,13 @@ func (i *eligibilityAndBTLCache) loadDataFor(namespace string) error {
 
 		for _, collection := range collections {
 			staticCollection := collection.GetStaticCollectionConfig()
-			eligible, err := i.membershipProvider.AmMemberOf(i.ledgerID, staticCollection.MemberOrgsPolicy)
+			eligible, err := i.membershipProvider.AmMemberOf(i.ledgerID, staticCollection.GetMemberOrgsPolicy())
 			if err != nil {
 				return err
 			}
 			key := nsColl{
 				ns:   namespace,
-				coll: staticCollection.Name,
+				coll: staticCollection.GetName(),
 			}
 			i.eligibilityHistory[key] = append(i.eligibilityHistory[key],
 				&eligibility{
@@ -200,8 +200,8 @@ func (i *eligibilityAndBTLCache) loadDataFor(namespace string) error {
 					isEligible:     eligible,
 				},
 			)
-			if staticCollection.BlockToLive > 0 {
-				i.btl[key] = staticCollection.BlockToLive
+			if staticCollection.GetBlockToLive() > 0 {
+				i.btl[key] = staticCollection.GetBlockToLive()
 			}
 		}
 		queryBlkNum = committingBlkNum

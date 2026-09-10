@@ -64,7 +64,7 @@ func testRangeQuery(t *testing.T, testcase string, stateData *statedb.UpdateBatc
 			require.NoError(t, db.ApplyUpdates(stateData, savepoint))
 		}
 
-		itr, err := db.GetStateRangeScanIterator(ns, rqi.StartKey, rqi.EndKey)
+		itr, err := db.GetStateRangeScanIterator(ns, rqi.GetStartKey(), rqi.GetEndKey())
 		require.NoError(t, err)
 		qv := &rangeQueryResultsValidator{}
 		require.NoError(t, qv.init(rqi, itr))

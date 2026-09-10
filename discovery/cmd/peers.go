@@ -140,19 +140,19 @@ func (scr *simpleChannelResponse) Peers() ([]*discovery.Peer, error) {
 func rawPeerToChannelPeer(p *discovery.Peer) channelPeer {
 	var ledgerHeight uint64
 	var ccs []string
-	if p.StateInfoMessage != nil && p.StateInfoMessage.GetStateInfo() != nil && p.StateInfoMessage.GetStateInfo().Properties != nil {
-		properties := p.StateInfoMessage.GetStateInfo().Properties
-		ledgerHeight = properties.LedgerHeight
-		for _, cc := range properties.Chaincodes {
+	if p.StateInfoMessage != nil && p.StateInfoMessage.GetStateInfo() != nil && p.StateInfoMessage.GetStateInfo().GetProperties() != nil {
+		properties := p.StateInfoMessage.GetStateInfo().GetProperties()
+		ledgerHeight = properties.GetLedgerHeight()
+		for _, cc := range properties.GetChaincodes() {
 			if cc == nil {
 				continue
 			}
-			ccs = append(ccs, cc.Name)
+			ccs = append(ccs, cc.GetName())
 		}
 	}
 	var endpoint string
-	if p.AliveMessage != nil && p.AliveMessage.GetAliveMsg() != nil && p.AliveMessage.GetAliveMsg().Membership != nil {
-		endpoint = p.AliveMessage.GetAliveMsg().Membership.Endpoint
+	if p.AliveMessage != nil && p.AliveMessage.GetAliveMsg() != nil && p.AliveMessage.GetAliveMsg().GetMembership() != nil {
+		endpoint = p.AliveMessage.GetAliveMsg().GetMembership().GetEndpoint()
 	}
 	sID := &msp.SerializedIdentity{}
 	proto.Unmarshal(p.Identity, sID)
@@ -160,21 +160,21 @@ func rawPeerToChannelPeer(p *discovery.Peer) channelPeer {
 		MSPID:        p.MSPID,
 		Endpoint:     endpoint,
 		LedgerHeight: ledgerHeight,
-		Identity:     string(sID.IdBytes),
+		Identity:     string(sID.GetIdBytes()),
 		Chaincodes:   ccs,
 	}
 }
 
 func rawPeerToLocalPeer(p *discovery.Peer) localPeer {
 	var endpoint string
-	if p.AliveMessage != nil && p.AliveMessage.GetAliveMsg() != nil && p.AliveMessage.GetAliveMsg().Membership != nil {
-		endpoint = p.AliveMessage.GetAliveMsg().Membership.Endpoint
+	if p.AliveMessage != nil && p.AliveMessage.GetAliveMsg() != nil && p.AliveMessage.GetAliveMsg().GetMembership() != nil {
+		endpoint = p.AliveMessage.GetAliveMsg().GetMembership().GetEndpoint()
 	}
 	sID := &msp.SerializedIdentity{}
 	proto.Unmarshal(p.Identity, sID)
 	return localPeer{
 		MSPID:    p.MSPID,
 		Endpoint: endpoint,
-		Identity: string(sID.IdBytes),
+		Identity: string(sID.GetIdBytes()),
 	}
 }

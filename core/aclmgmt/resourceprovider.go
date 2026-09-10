@@ -102,25 +102,25 @@ func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo any) error 
 	switch idinfo := idinfo.(type) {
 	case *pb.SignedProposal:
 		signedProp := idinfo
-		proposal, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
+		proposal, err := protoutil.UnmarshalProposal(signedProp.GetProposalBytes())
 		if err != nil {
 			return fmt.Errorf("Failing extracting proposal during check policy with policy [%s]: [%s]", polName, err)
 		}
 
-		header, err := protoutil.UnmarshalHeader(proposal.Header)
+		header, err := protoutil.UnmarshalHeader(proposal.GetHeader())
 		if err != nil {
 			return fmt.Errorf("Failing extracting header during check policy [%s]: [%s]", polName, err)
 		}
 
-		shdr, err := protoutil.UnmarshalSignatureHeader(header.SignatureHeader)
+		shdr, err := protoutil.UnmarshalSignatureHeader(header.GetSignatureHeader())
 		if err != nil {
 			return fmt.Errorf("Invalid Proposal's SignatureHeader during check policy [%s]: [%s]", polName, err)
 		}
 
 		sd = []*protoutil.SignedData{{
-			Data:      signedProp.ProposalBytes,
-			Identity:  shdr.Creator,
-			Signature: signedProp.Signature,
+			Data:      signedProp.GetProposalBytes(),
+			Identity:  shdr.GetCreator(),
+			Signature: signedProp.GetSignature(),
 		}}
 
 	case *common.Envelope:

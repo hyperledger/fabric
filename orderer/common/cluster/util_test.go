@@ -388,7 +388,7 @@ func TestVerifyBlocks(t *testing.T) {
 				blockSequence[len(blockSequence)/2].Data = &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{})},
 				}
-				blockSequence[len(blockSequence)/2].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)/2].Data)
+				blockSequence[len(blockSequence)/2].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)/2].GetData())
 				assignHashes(blockSequence)
 				return blockSequence
 			},
@@ -402,13 +402,13 @@ func TestVerifyBlocks(t *testing.T) {
 				blockSequence[len(blockSequence)/4].Data = &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope1))},
 				}
-				blockSequence[len(blockSequence)/4].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)/4].Data)
+				blockSequence[len(blockSequence)/4].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)/4].GetData())
 
 				// Put a config transaction in block n / 2
 				blockSequence[len(blockSequence)/2].Data = &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope2))},
 				}
-				blockSequence[len(blockSequence)/2].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)/2].Data)
+				blockSequence[len(blockSequence)/2].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)/2].GetData())
 
 				assignHashes(blockSequence)
 
@@ -439,7 +439,7 @@ func TestVerifyBlocks(t *testing.T) {
 				blockSequence[len(blockSequence)/4].Data = &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope1))},
 				}
-				blockSequence[len(blockSequence)/4].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)/4].Data)
+				blockSequence[len(blockSequence)/4].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)/4].GetData())
 
 				assignHashes(blockSequence)
 
@@ -470,12 +470,12 @@ func TestVerifyBlocks(t *testing.T) {
 				blockSequence[len(blockSequence)-2].Data = &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope1))},
 				}
-				blockSequence[len(blockSequence)-2].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)-2].Data)
+				blockSequence[len(blockSequence)-2].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)-2].GetData())
 
 				blockSequence[len(blockSequence)-1].Data = &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope2))},
 				}
-				blockSequence[len(blockSequence)-1].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)-1].Data)
+				blockSequence[len(blockSequence)-1].Header.DataHash = protoutil.BlockDataHash(blockSequence[len(blockSequence)-1].GetData())
 
 				assignHashes(blockSequence)
 
@@ -521,7 +521,7 @@ func TestVerifyBlocks(t *testing.T) {
 
 func assignHashes(blockchain []*common.Block) {
 	for i := 1; i < len(blockchain); i++ {
-		blockchain[i].Header.PreviousHash = protoutil.BlockHeaderHash(blockchain[i-1].Header)
+		blockchain[i].Header.PreviousHash = protoutil.BlockHeaderHash(blockchain[i-1].GetHeader())
 	}
 }
 
@@ -554,7 +554,7 @@ func createBlockChain(start, end uint64) []*common.Block {
 	var blockchain []*common.Block
 	for seq := start; seq <= end; seq++ {
 		block := newBlock(seq)
-		block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+		block.Header.DataHash = protoutil.BlockDataHash(block.GetData())
 		blockchain = append(blockchain, block)
 	}
 	assignHashes(blockchain)
@@ -1103,11 +1103,11 @@ func injectAdditionalTLSCAEndpointPair(t *testing.T, block *common.Block, endpoi
 	// Unwrap the layers until we reach the orderer addresses
 	env, err := protoutil.ExtractEnvelope(block, 0)
 	require.NoError(t, err)
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	require.NoError(t, err)
-	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	require.NoError(t, err)
-	ordererGrp := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
+	ordererGrp := confEnv.GetConfig().GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetGroups()
 	// Get the first orderer org config
 	var firstOrdererConfig *common.ConfigGroup
 	for _, grp := range ordererGrp {
@@ -1119,11 +1119,11 @@ func injectAdditionalTLSCAEndpointPair(t *testing.T, block *common.Block, endpoi
 	ordererGrp[orgName] = secondOrdererConfig
 	// Reach the FabricMSPConfig buried in it.
 	mspConfig := &msp.MSPConfig{}
-	err = proto.Unmarshal(secondOrdererConfig.Values[channelconfig.MSPKey].Value, mspConfig)
+	err = proto.Unmarshal(secondOrdererConfig.GetValues()[channelconfig.MSPKey].GetValue(), mspConfig)
 	require.NoError(t, err)
 
 	fabricConfig := &msp.FabricMSPConfig{}
-	err = proto.Unmarshal(mspConfig.Config, fabricConfig)
+	err = proto.Unmarshal(mspConfig.GetConfig(), fabricConfig)
 	require.NoError(t, err)
 
 	// Plant the given TLS CA in it.
@@ -1136,7 +1136,7 @@ func injectAdditionalTLSCAEndpointPair(t *testing.T, block *common.Block, endpoi
 	// Pack the MSP config back into the config
 	secondOrdererConfig.Values[channelconfig.MSPKey].Value = protoutil.MarshalOrPanic(&msp.MSPConfig{
 		Config: protoutil.MarshalOrPanic(fabricConfig),
-		Type:   mspConfig.Type,
+		Type:   mspConfig.GetType(),
 	})
 
 	// Inject the endpoint

@@ -117,7 +117,7 @@ func (r *Replicator) IsReplicationNeeded() (bool, error) {
 		lastBlockSeq = height - 1
 	}
 
-	if r.BootBlock.Header.Number > lastBlockSeq {
+	if r.BootBlock.GetHeader().GetNumber() > lastBlockSeq {
 		return true, nil
 	}
 	return false, nil
@@ -203,9 +203,9 @@ func (r *Replicator) PullChannel(channel string) error {
 	// Ensure that if we pull the system channel, the latestHeight is bigger or equal to the
 	// bootstrap block of the system channel.
 	// Otherwise, we'd be left with a block gap.
-	if channel == r.SystemChannel && latestHeight-1 < r.BootBlock.Header.Number {
+	if channel == r.SystemChannel && latestHeight-1 < r.BootBlock.GetHeader().GetNumber() {
 		return errors.Errorf("latest height found among system channel(%s) orderers is %d, but the boot block's "+
-			"sequence is %d", r.SystemChannel, latestHeight, r.BootBlock.Header.Number)
+			"sequence is %d", r.SystemChannel, latestHeight, r.BootBlock.GetHeader().GetNumber())
 	}
 	return r.pullChannelBlocks(channel, puller, latestHeight, ledger)
 }
@@ -222,20 +222,20 @@ func (r *Replicator) pullChannelBlocks(channel string, puller *BlockPuller, late
 		return ErrRetryCountExhausted
 	}
 	r.appendBlock(nextBlock, ledger, channel)
-	actualPrevHash := protoutil.BlockHeaderHash(nextBlock.Header)
+	actualPrevHash := protoutil.BlockHeaderHash(nextBlock.GetHeader())
 
 	for seq := uint64(nextBlockToPull + 1); seq < latestHeight; seq++ {
 		block := puller.PullBlock(seq)
 		if block == nil {
 			return ErrRetryCountExhausted
 		}
-		reportedPrevHash := block.Header.PreviousHash
+		reportedPrevHash := block.GetHeader().GetPreviousHash()
 		if !bytes.Equal(reportedPrevHash, actualPrevHash) {
 			return errors.Errorf("block header mismatch on sequence %d, expected %x, got %x",
-				block.Header.Number, actualPrevHash, reportedPrevHash)
+				block.GetHeader().GetNumber(), actualPrevHash, reportedPrevHash)
 		}
-		actualPrevHash = protoutil.BlockHeaderHash(block.Header)
-		if channel == r.SystemChannel && block.Header.Number == r.BootBlock.Header.Number {
+		actualPrevHash = protoutil.BlockHeaderHash(block.GetHeader())
+		if channel == r.SystemChannel && block.GetHeader().GetNumber() == r.BootBlock.GetHeader().GetNumber() {
 			r.compareBootBlockWithSystemChannelLastConfigBlock(block)
 			r.appendBlock(block, ledger, channel)
 			// No need to pull further blocks from the system channel
@@ -248,22 +248,22 @@ func (r *Replicator) pullChannelBlocks(channel string, puller *BlockPuller, late
 
 func (r *Replicator) appendBlock(block *common.Block, ledger LedgerWriter, channel string) {
 	height := ledger.Height()
-	if height > block.Header.Number {
-		r.Logger.Infof("Skipping commit of block [%d] for channel %s because height is at %d", block.Header.Number, channel, height)
+	if height > block.GetHeader().GetNumber() {
+		r.Logger.Infof("Skipping commit of block [%d] for channel %s because height is at %d", block.GetHeader().GetNumber(), channel, height)
 		return
 	}
 	if err := ledger.Append(block); err != nil {
-		r.Logger.Panicf("Failed to write block [%d]: %v", block.Header.Number, err)
+		r.Logger.Panicf("Failed to write block [%d]: %v", block.GetHeader().GetNumber(), err)
 	}
-	r.Logger.Infof("Committed block [%d] for channel %s", block.Header.Number, channel)
+	r.Logger.Infof("Committed block [%d] for channel %s", block.GetHeader().GetNumber(), channel)
 }
 
 func (r *Replicator) compareBootBlockWithSystemChannelLastConfigBlock(block *common.Block) {
 	// Overwrite the received block's data hash
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.BlockDataHash(block.GetData())
 
-	bootBlockHash := protoutil.BlockHeaderHash(r.BootBlock.Header)
-	retrievedBlockHash := protoutil.BlockHeaderHash(block.Header)
+	bootBlockHash := protoutil.BlockHeaderHash(r.BootBlock.GetHeader())
+	retrievedBlockHash := protoutil.BlockHeaderHash(block.GetHeader())
 	if bytes.Equal(bootBlockHash, retrievedBlockHash) {
 		return
 	}
@@ -541,7 +541,7 @@ func (gbs GenesisBlocks) Names() []string {
 // the genesis block of the channel.
 func (ci *ChainInspector) Channels() []ChannelGenesisBlock {
 	channels := make(map[string]ChannelGenesisBlock)
-	lastConfigBlockNum := ci.LastConfigBlock.Header.Number
+	lastConfigBlockNum := ci.LastConfigBlock.GetHeader().GetNumber()
 	var block *common.Block
 	var prevHash []byte
 	for seq := range lastConfigBlockNum {
@@ -551,7 +551,7 @@ func (ci *ChainInspector) Channels() []ChannelGenesisBlock {
 		}
 		ci.validateHashPointer(block, prevHash)
 		// Set the previous hash for the next iteration
-		prevHash = protoutil.BlockHeaderHash(block.Header)
+		prevHash = protoutil.BlockHeaderHash(block.GetHeader())
 
 		channel, gb, err := ExtractGenesisBlock(ci.Logger, block)
 		if err != nil {
@@ -593,11 +593,11 @@ func (ci *ChainInspector) validateHashPointer(block *common.Block, prevHash []by
 	if prevHash == nil {
 		return
 	}
-	if bytes.Equal(block.Header.PreviousHash, prevHash) {
+	if bytes.Equal(block.GetHeader().GetPreviousHash(), prevHash) {
 		return
 	}
 	ci.Logger.Panicf("Claimed previous hash of block [%d] is %x but actual previous hash is %x",
-		block.Header.Number, block.Header.PreviousHash, prevHash)
+		block.GetHeader().GetNumber(), block.GetHeader().GetPreviousHash(), prevHash)
 }
 
 func flattenChannelMap(m map[string]ChannelGenesisBlock) []ChannelGenesisBlock {
@@ -618,44 +618,44 @@ func ExtractGenesisBlock(logger *flogging.FabricLogger, block *common.Block) (st
 	if err != nil {
 		return "", nil, err
 	}
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	if err != nil {
 		return "", nil, err
 	}
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return "", nil, errors.New("nil header in payload")
 	}
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return "", nil, err
 	}
 	// The transaction is not orderer transaction
-	if common.HeaderType(chdr.Type) != common.HeaderType_ORDERER_TRANSACTION {
+	if common.HeaderType(chdr.GetType()) != common.HeaderType_ORDERER_TRANSACTION {
 		return "", nil, nil
 	}
-	systemChannelName := chdr.ChannelId
-	innerEnvelope, err := protoutil.UnmarshalEnvelope(payload.Data)
+	systemChannelName := chdr.GetChannelId()
+	innerEnvelope, err := protoutil.UnmarshalEnvelope(payload.GetData())
 	if err != nil {
 		return "", nil, err
 	}
-	innerPayload, err := protoutil.UnmarshalPayload(innerEnvelope.Payload)
+	innerPayload, err := protoutil.UnmarshalPayload(innerEnvelope.GetPayload())
 	if err != nil {
 		return "", nil, err
 	}
-	if innerPayload.Header == nil {
+	if innerPayload.GetHeader() == nil {
 		return "", nil, errors.New("inner payload's header is nil")
 	}
-	chdr, err = protoutil.UnmarshalChannelHeader(innerPayload.Header.ChannelHeader)
+	chdr, err = protoutil.UnmarshalChannelHeader(innerPayload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return "", nil, err
 	}
 	// The inner payload's header should be a config transaction
-	if common.HeaderType(chdr.Type) != common.HeaderType_CONFIG {
-		logger.Warnf("Expecting %s envelope in block, got %s", common.HeaderType_CONFIG, common.HeaderType(chdr.Type))
+	if common.HeaderType(chdr.GetType()) != common.HeaderType_CONFIG {
+		logger.Warnf("Expecting %s envelope in block, got %s", common.HeaderType_CONFIG, common.HeaderType(chdr.GetType()))
 		return "", nil, nil
 	}
 	// In any case, exclude all system channel transactions
-	if chdr.ChannelId == systemChannelName {
+	if chdr.GetChannelId() == systemChannelName {
 		logger.Warnf("Expecting config envelope in %s block to target a different "+
 			"channel other than system channel '%s'", common.HeaderType_ORDERER_TRANSACTION, systemChannelName)
 		return "", nil, nil
@@ -675,11 +675,11 @@ func ExtractGenesisBlock(logger *flogging.FabricLogger, block *common.Block) (st
 		// trust from an earlier block, hence there are no signatures here.
 	})
 
-	blockdata := &common.BlockData{Data: [][]byte{payload.Data}}
+	blockdata := &common.BlockData{Data: [][]byte{payload.GetData()}}
 	b := &common.Block{
 		Header:   &common.BlockHeader{DataHash: protoutil.BlockDataHash(blockdata)},
 		Data:     blockdata,
 		Metadata: metadata,
 	}
-	return chdr.ChannelId, b, nil
+	return chdr.GetChannelId(), b, nil
 }

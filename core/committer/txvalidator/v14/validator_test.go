@@ -179,7 +179,7 @@ func getEnvWithType(ccID string, event []byte, res []byte, pType common.HeaderTy
 	response := &peer.Response{Status: 200}
 
 	// endorse it to get a proposal response
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.GetHeader(), prop.GetPayload(), response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, signer)
 	require.NoError(t, err)
 
 	// assemble a transaction from that proposal and endorsement
@@ -212,7 +212,7 @@ func getEnvWithSigner(ccID string, event []byte, res []byte, sig msp.SigningIden
 	response := &peer.Response{Status: 200}
 
 	// endorse it to get a proposal response
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, sig)
+	presp, err := protoutil.CreateProposalResponse(prop.GetHeader(), prop.GetPayload(), response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, sig)
 	require.NoError(t, err)
 
 	// assemble a transaction from that proposal and endorsement
@@ -244,7 +244,7 @@ func putCCInfoWithVSCCAndVer(theLedger ledger.PeerLedger, ccname, vscc, ver stri
 	require.NoError(t, err)
 	bcInfo, err := theLedger.GetBlockchainInfo()
 	require.NoError(t, err)
-	block0 := testutil.ConstructBlock(t, 1, bcInfo.CurrentBlockHash, [][]byte{pubSimulationBytes}, true)
+	block0 := testutil.ConstructBlock(t, 1, bcInfo.GetCurrentBlockHash(), [][]byte{pubSimulationBytes}, true)
 	err = theLedger.CommitLegacy(&ledger.BlockAndPvtData{Block: block0}, &ledger.CommitOptions{})
 	require.NoError(t, err)
 }
@@ -264,7 +264,7 @@ func putSBEP(theLedger ledger.PeerLedger, cc, key string, policy []byte, t *test
 	require.NoError(t, err)
 	bcInfo, err := theLedger.GetBlockchainInfo()
 	require.NoError(t, err)
-	block0 := testutil.ConstructBlock(t, 2, bcInfo.CurrentBlockHash, [][]byte{pubSimulationBytes}, true)
+	block0 := testutil.ConstructBlock(t, 2, bcInfo.GetCurrentBlockHash(), [][]byte{pubSimulationBytes}, true)
 	err = theLedger.CommitLegacy(&ledger.BlockAndPvtData{Block: block0}, &ledger.CommitOptions{})
 	require.NoError(t, err)
 }
@@ -274,13 +274,13 @@ func putCCInfo(theLedger ledger.PeerLedger, ccname string, policy []byte, t *tes
 }
 
 func assertInvalid(block *common.Block, t *testing.T, code peer.TxValidationCode) {
-	txsFilter := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	require.True(t, txsFilter.IsInvalid(0))
 	require.True(t, txsFilter.IsSetTo(0, code))
 }
 
 func assertValid(block *common.Block, t *testing.T) {
-	txsFilter := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	require.False(t, txsFilter.IsInvalid(0))
 }
 
@@ -728,7 +728,7 @@ func TestParallelValidation(t *testing.T) {
 	require.NoError(t, err)
 
 	// Block metadata array position to store serialized bit array filter of invalid transactions
-	txsFilter := txflags.ValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := txflags.ValidationFlags(b.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	// tx validity
 	for txNum := 0; txNum < txCnt; txNum += 1 {
 		switch uint(txNum / 10) {
@@ -1049,7 +1049,7 @@ func testInvokeOKSCC(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator)
 	require.NoError(t, err)
 	rwsetBytes, err := rwset.GetPubSimulationBytes()
 	require.NoError(t, err)
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, rwsetBytes, nil, &peer.ChaincodeID{Name: "lscc", Version: ccVersion}, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.GetHeader(), prop.GetPayload(), &peer.Response{Status: 200}, rwsetBytes, nil, &peer.ChaincodeID{Name: "lscc", Version: ccVersion}, signer)
 	require.NoError(t, err)
 	tx, err := protoutil.CreateSignedTx(prop, signer, presp)
 	require.NoError(t, err)
@@ -1794,7 +1794,7 @@ func TestDuplicateTxId(t *testing.T) {
 	assertion.NoError(err)
 
 	// We expect the tx to be invalid because of a duplicate txid
-	txsfltr := txflags.ValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(b.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assertion.True(txsfltr.IsInvalid(0))
 	assertion.True(txsfltr.Flag(0) == peer.TxValidationCode_DUPLICATE_TXID)
 }

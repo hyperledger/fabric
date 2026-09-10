@@ -78,19 +78,19 @@ func TestAddSignature(t *testing.T) {
 	}
 
 	p := &common.Payload{}
-	if err = proto.Unmarshal(env.Payload, p); err != nil {
+	if err = proto.Unmarshal(env.GetPayload(), p); err != nil {
 		t.Fatalf("fatal error unmarshal payload")
 		return
 	}
 
 	sigdepspec := &peer.SignedChaincodeDeploymentSpec{}
-	if err = proto.Unmarshal(p.Data, sigdepspec); err != nil || sigdepspec == nil {
+	if err = proto.Unmarshal(p.GetData(), sigdepspec); err != nil || sigdepspec == nil {
 		t.Fatalf("fatal error unmarshal sigdepspec")
 		return
 	}
 
-	if len(sigdepspec.OwnerEndorsements) != 3 {
-		t.Fatalf("invalid number of endorsements %d", len(sigdepspec.OwnerEndorsements))
+	if len(sigdepspec.GetOwnerEndorsements()) != 3 {
+		t.Fatalf("invalid number of endorsements %d", len(sigdepspec.GetOwnerEndorsements()))
 		return
 	}
 }
@@ -126,25 +126,25 @@ func TestCreateSignedCCDepSpecForInstall(t *testing.T) {
 	}
 
 	p := &common.Payload{}
-	if err = proto.Unmarshal(env.Payload, p); err != nil {
+	if err = proto.Unmarshal(env.GetPayload(), p); err != nil {
 		t.Fatalf("fatal error unmarshal payload")
 		return
 	}
 
 	cip2 := &peer.SignedChaincodeDeploymentSpec{}
-	if err = proto.Unmarshal(p.Data, cip2); err != nil {
+	if err = proto.Unmarshal(p.GetData(), cip2); err != nil {
 		t.Fatalf("fatal error unmarshal cip")
 		return
 	}
 
 	p = &common.Payload{}
-	if err = proto.Unmarshal(env1.Payload, p); err != nil {
+	if err = proto.Unmarshal(env1.GetPayload(), p); err != nil {
 		t.Fatalf("fatal error unmarshal payload")
 		return
 	}
 
 	cip1 := &peer.SignedChaincodeDeploymentSpec{}
-	if err = proto.Unmarshal(p.Data, cip1); err != nil {
+	if err = proto.Unmarshal(p.GetData(), cip1); err != nil {
 		t.Fatalf("fatal error unmarshal cip")
 		return
 	}
@@ -178,36 +178,36 @@ func TestCreateSignedCCDepSpecForInstallWithEndorsements(t *testing.T) {
 	}
 
 	p := &common.Payload{}
-	if err = proto.Unmarshal(env.Payload, p); err != nil {
+	if err = proto.Unmarshal(env.GetPayload(), p); err != nil {
 		t.Fatalf("fatal error unmarshal payload")
 		return
 	}
 
 	cip2 := &peer.SignedChaincodeDeploymentSpec{}
-	if err = proto.Unmarshal(p.Data, cip2); err != nil {
+	if err = proto.Unmarshal(p.GetData(), cip2); err != nil {
 		t.Fatalf("fatal error unmarshal cip")
 		return
 	}
 
-	if len(cip2.OwnerEndorsements) != 2 {
-		t.Fatalf("invalid number of endorsements %d", len(cip2.OwnerEndorsements))
+	if len(cip2.GetOwnerEndorsements()) != 2 {
+		t.Fatalf("invalid number of endorsements %d", len(cip2.GetOwnerEndorsements()))
 		return
 	}
 
 	p = &common.Payload{}
-	if err = proto.Unmarshal(env1.Payload, p); err != nil {
+	if err = proto.Unmarshal(env1.GetPayload(), p); err != nil {
 		t.Fatalf("fatal error unmarshal payload")
 		return
 	}
 
 	cip1 := &peer.SignedChaincodeDeploymentSpec{}
-	if err = proto.Unmarshal(p.Data, cip1); err != nil {
+	if err = proto.Unmarshal(p.GetData(), cip1); err != nil {
 		t.Fatalf("fatal error unmarshal cip")
 		return
 	}
 
-	if len(cip1.OwnerEndorsements) != 1 {
-		t.Fatalf("invalid number of endorsements %d", len(cip1.OwnerEndorsements))
+	if len(cip1.GetOwnerEndorsements()) != 1 {
+		t.Fatalf("invalid number of endorsements %d", len(cip1.GetOwnerEndorsements()))
 		return
 	}
 }

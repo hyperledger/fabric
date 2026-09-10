@@ -129,8 +129,8 @@ func Main() {
 			logger.Panicf("Failed validating bootstrap block: %v", err)
 		}
 
-		if bootstrapBlock.Header.Number > 0 {
-			logger.Infof("Not bootstrapping the system channel because the bootstrap block number is %d (>0), replication is needed", bootstrapBlock.Header.Number)
+		if bootstrapBlock.GetHeader().GetNumber() > 0 {
+			logger.Infof("Not bootstrapping the system channel because the bootstrap block number is %d (>0), replication is needed", bootstrapBlock.GetHeader().GetNumber())
 			break
 		}
 
@@ -346,11 +346,11 @@ func initSystemChannelWithJoinBlock(
 		return nil
 	}
 
-	if bootstrapBlock.Header.Number == 0 {
+	if bootstrapBlock.GetHeader().GetNumber() == 0 {
 		initializeBootstrapChannel(bootstrapBlock, lf)
 	}
 
-	logger.Infof("Join-block was found for the system channel: %s, number: %d", systemChannelID, bootstrapBlock.Header.Number)
+	logger.Infof("Join-block was found for the system channel: %s, number: %d", systemChannelID, bootstrapBlock.GetHeader().GetNumber())
 	return bootstrapBlock
 }
 
@@ -412,7 +412,7 @@ func extractSystemChannel(lf blockledger.Factory, bccsp bccsp.BCCSP) *cb.Block {
 
 		err = onboarding.ValidateBootstrapBlock(channelConfigBlock, bccsp)
 		if err == nil {
-			logger.Infof("Found system channel config block, number: %d", channelConfigBlock.Header.Number)
+			logger.Infof("Found system channel config block, number: %d", channelConfigBlock.GetHeader().GetNumber())
 			return channelConfigBlock
 		}
 	}
@@ -431,14 +431,14 @@ func selectClusterBootBlock(bootstrapBlock, sysChanLastConfig *cb.Block) *cb.Blo
 		return sysChanLastConfig
 	}
 
-	if sysChanLastConfig.Header.Number > bootstrapBlock.Header.Number {
+	if sysChanLastConfig.GetHeader().GetNumber() > bootstrapBlock.GetHeader().GetNumber() {
 		logger.Infof("Cluster boot block is system channel last config block; Blocks Header.Number system-channel=%d, bootstrap=%d",
-			sysChanLastConfig.Header.Number, bootstrapBlock.Header.Number)
+			sysChanLastConfig.GetHeader().GetNumber(), bootstrapBlock.GetHeader().GetNumber())
 		return sysChanLastConfig
 	}
 
 	logger.Infof("Cluster boot block is bootstrap (genesis) block; Blocks Header.Number system-channel=%d, bootstrap=%d",
-		sysChanLastConfig.Header.Number, bootstrapBlock.Header.Number)
+		sysChanLastConfig.GetHeader().GetNumber(), bootstrapBlock.GetHeader().GetNumber())
 	return bootstrapBlock
 }
 
@@ -721,11 +721,11 @@ func isClusterType(genesisBlock *cb.Block, bccsp bccsp.BCCSP) bool {
 }
 
 func consensusType(genesisBlock *cb.Block, bccsp bccsp.BCCSP) string {
-	if genesisBlock == nil || genesisBlock.Data == nil || len(genesisBlock.Data.Data) == 0 {
+	if genesisBlock == nil || genesisBlock.GetData() == nil || len(genesisBlock.GetData().GetData()) == 0 {
 		logger.Fatalf("Empty genesis block")
 	}
 	env := &cb.Envelope{}
-	if err := proto.Unmarshal(genesisBlock.Data.Data[0], env); err != nil {
+	if err := proto.Unmarshal(genesisBlock.GetData().GetData()[0], env); err != nil {
 		logger.Fatalf("Failed to unmarshal the genesis block's envelope: %v", err)
 	}
 	bundle, err := channelconfig.NewBundleFromEnvelope(env, bccsp)

@@ -36,7 +36,7 @@ func newVerifier(lgr ledger.PeerLedger, t *testing.T) *verifier {
 func (v *verifier) verifyLedgerHeight(expectedHt uint64) {
 	info, err := v.lgr.GetBlockchainInfo()
 	v.assert.NoError(err)
-	v.assert.Equal(expectedHt, info.Height)
+	v.assert.Equal(expectedHt, info.GetHeight())
 }
 
 func (v *verifier) verifyBlockchainInfo(expectedBCInfo *common.BlockchainInfo) {
@@ -140,15 +140,15 @@ func (v *verifier) verifyMissingPvtDataSameAs(recentNBlocks int, expectedMissing
 func (v *verifier) verifyGetTransactionByID(txid string, expectedOut *protopeer.ProcessedTransaction) {
 	tran, err := v.lgr.GetTransactionByID(txid)
 	v.assert.NoError(err)
-	envelopEqual := proto.Equal(expectedOut.TransactionEnvelope, tran.TransactionEnvelope)
+	envelopEqual := proto.Equal(expectedOut.GetTransactionEnvelope(), tran.GetTransactionEnvelope())
 	v.assert.True(envelopEqual)
-	v.assert.Equal(expectedOut.ValidationCode, tran.ValidationCode)
+	v.assert.Equal(expectedOut.GetValidationCode(), tran.GetValidationCode())
 }
 
 func (v *verifier) verifyTxValidationCode(txid string, expectedCode protopeer.TxValidationCode) {
 	tran, err := v.lgr.GetTransactionByID(txid)
 	v.assert.NoError(err)
-	v.assert.Equal(int32(expectedCode), tran.ValidationCode)
+	v.assert.Equal(int32(expectedCode), tran.GetValidationCode())
 }
 
 func (v *verifier) verifyHistory(ns, key string, expectedVals []string) {
@@ -171,7 +171,7 @@ func (v *verifier) verifyHistory(ns, key string, expectedVals []string) {
 func (v *verifier) verifyCommitHashExists() {
 	bcInfo, err := v.lgr.GetBlockchainInfo()
 	v.assert.NoError(err)
-	b, err := v.lgr.GetPvtDataAndBlockByNum(bcInfo.Height-1, nil)
+	b, err := v.lgr.GetPvtDataAndBlockByNum(bcInfo.GetHeight()-1, nil)
 	v.assert.NoError(err)
 	r := &retrievedBlockAndPvtdata{BlockAndPvtData: b, assert: v.assert}
 	r.containsCommitHash()
@@ -180,7 +180,7 @@ func (v *verifier) verifyCommitHashExists() {
 func (v *verifier) verifyCommitHashNotExists() {
 	bcInfo, err := v.lgr.GetBlockchainInfo()
 	v.assert.NoError(err)
-	b, err := v.lgr.GetPvtDataAndBlockByNum(bcInfo.Height-1, nil)
+	b, err := v.lgr.GetPvtDataAndBlockByNum(bcInfo.GetHeight()-1, nil)
 	v.assert.NoError(err)
 	r := &retrievedBlockAndPvtdata{BlockAndPvtData: b, assert: v.assert}
 	r.notContainCommitHash()
@@ -204,7 +204,7 @@ func (r *retrievedBlockAndPvtdata) sameAs(expectedBlockAndPvtdata *ledger.BlockA
 }
 
 func (r *retrievedBlockAndPvtdata) hasNumTx(numTx int) {
-	r.assert.Len(r.Block.Data.Data, numTx)
+	r.assert.Len(r.Block.GetData().GetData(), numTx)
 }
 
 func (r *retrievedBlockAndPvtdata) hasNoPvtdata() {
@@ -213,15 +213,15 @@ func (r *retrievedBlockAndPvtdata) hasNoPvtdata() {
 
 func (r *retrievedBlockAndPvtdata) pvtdataShouldContain(txSeq int, ns, coll, key, value string) {
 	txPvtData := r.BlockAndPvtData.PvtData[uint64(txSeq)]
-	for _, nsdata := range txPvtData.WriteSet.NsPvtRwset {
-		if nsdata.Namespace == ns {
-			for _, colldata := range nsdata.CollectionPvtRwset {
-				if colldata.CollectionName == coll {
+	for _, nsdata := range txPvtData.WriteSet.GetNsPvtRwset() {
+		if nsdata.GetNamespace() == ns {
+			for _, colldata := range nsdata.GetCollectionPvtRwset() {
+				if colldata.GetCollectionName() == coll {
 					rwset := &kvrwset.KVRWSet{}
-					r.assert.NoError(proto.Unmarshal(colldata.Rwset, rwset))
-					for _, w := range rwset.Writes {
-						if w.Key == key {
-							r.assert.Equal([]byte(value), w.Value)
+					r.assert.NoError(proto.Unmarshal(colldata.GetRwset(), rwset))
+					for _, w := range rwset.GetWrites() {
+						if w.GetKey() == key {
+							r.assert.Equal([]byte(value), w.GetValue())
 							return
 						}
 					}
@@ -235,14 +235,14 @@ func (r *retrievedBlockAndPvtdata) pvtdataShouldContain(txSeq int, ns, coll, key
 func (r *retrievedBlockAndPvtdata) pvtdataShouldNotContainKey(ns, coll, key string) {
 	allTxPvtData := r.BlockAndPvtData.PvtData
 	for _, txPvtData := range allTxPvtData {
-		for _, nsdata := range txPvtData.WriteSet.NsPvtRwset {
-			if nsdata.Namespace == ns {
-				for _, colldata := range nsdata.CollectionPvtRwset {
-					if colldata.CollectionName == coll {
+		for _, nsdata := range txPvtData.WriteSet.GetNsPvtRwset() {
+			if nsdata.GetNamespace() == ns {
+				for _, colldata := range nsdata.GetCollectionPvtRwset() {
+					if colldata.GetCollectionName() == coll {
 						rwset := &kvrwset.KVRWSet{}
-						r.assert.NoError(proto.Unmarshal(colldata.Rwset, rwset))
-						for _, w := range rwset.Writes {
-							r.assert.NotEqual(w.Key, key)
+						r.assert.NoError(proto.Unmarshal(colldata.GetRwset(), rwset))
+						for _, w := range rwset.GetWrites() {
+							r.assert.NotEqual(w.GetKey(), key)
 						}
 					}
 				}
@@ -259,15 +259,15 @@ func (r *retrievedBlockAndPvtdata) pvtdataShouldNotContain(ns, coll string) {
 }
 
 func (r *retrievedBlockAndPvtdata) sameBlockHeaderAndData(expectedBlock *common.Block) {
-	r.assert.True(proto.Equal(expectedBlock.Data, r.BlockAndPvtData.Block.Data))
-	r.assert.True(proto.Equal(expectedBlock.Header, r.BlockAndPvtData.Block.Header))
+	r.assert.True(proto.Equal(expectedBlock.GetData(), r.BlockAndPvtData.Block.GetData()))
+	r.assert.True(proto.Equal(expectedBlock.GetHeader(), r.BlockAndPvtData.Block.GetHeader()))
 }
 
 func (r *retrievedBlockAndPvtdata) sameMetadata(expectedBlock *common.Block) {
 	// marshalling/unmarshalling treats a nil byte and empty byte interchangeably (based on which scheme is chosen proto vs gob)
 	// so explicitly comparing each metadata
-	retrievedMetadata := r.Block.Metadata.Metadata
-	expectedMetadata := expectedBlock.Metadata.Metadata
+	retrievedMetadata := r.Block.GetMetadata().GetMetadata()
+	expectedMetadata := expectedBlock.GetMetadata().GetMetadata()
 	r.assert.Equal(len(expectedMetadata), len(retrievedMetadata))
 	for i := range expectedMetadata {
 		if i == int(common.BlockMetadataIndex_COMMIT_HASH) {
@@ -282,7 +282,7 @@ func (r *retrievedBlockAndPvtdata) sameMetadata(expectedBlock *common.Block) {
 }
 
 func (r *retrievedBlockAndPvtdata) containsValidationCode(txSeq int, validationCode protopeer.TxValidationCode) {
-	txFilter := txflags.ValidationFlags(r.BlockAndPvtData.Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txFilter := txflags.ValidationFlags(r.BlockAndPvtData.Block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	r.assert.Equal(validationCode, txFilter.Flag(txSeq))
 }
 
@@ -297,17 +297,17 @@ func (r *retrievedBlockAndPvtdata) samePvtdata(expectedPvtdata map[uint64]*ledge
 
 func (r *retrievedBlockAndPvtdata) containsCommitHash() {
 	commitHash := &common.Metadata{}
-	spew.Dump(r.Block.Metadata)
+	spew.Dump(r.Block.GetMetadata())
 	err := proto.Unmarshal(
-		r.Block.Metadata.Metadata[common.BlockMetadataIndex_COMMIT_HASH],
+		r.Block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_COMMIT_HASH],
 		commitHash,
 	)
 	r.assert.NoError(err)
-	r.assert.Equal(len(commitHash.Value), 32)
+	r.assert.Equal(len(commitHash.GetValue()), 32)
 }
 
 func (r *retrievedBlockAndPvtdata) notContainCommitHash() {
-	exists := len(r.Block.Metadata.Metadata) >= int(common.BlockMetadataIndex_COMMIT_HASH)+1 &&
-		len(r.Block.Metadata.Metadata[common.BlockMetadataIndex_COMMIT_HASH]) > 0
+	exists := len(r.Block.GetMetadata().GetMetadata()) >= int(common.BlockMetadataIndex_COMMIT_HASH)+1 &&
+		len(r.Block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_COMMIT_HASH]) > 0
 	r.assert.False(exists)
 }
