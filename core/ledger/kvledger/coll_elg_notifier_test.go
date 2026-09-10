@@ -117,5 +117,5 @@ func testutilPrepapreMockCollectionConfigPkg(collEligibilityMap map[string]bool)
 }
 
 func testutilIsEligibleForMockPolicy(p *peer.CollectionPolicyConfig) bool {
-	return p.GetSignaturePolicy().Version == 1
+	return p.GetSignaturePolicy().GetVersion() == 1
 }

@@ -238,7 +238,7 @@ func TestGetVersionFromCache(t *testing.T) {
 
 	ver, err = db.GetVersion("ns", "key1")
 	require.NoError(t, err)
-	expectedVer, _, err := version.NewHeightFromBytes(cacheValue.Version)
+	expectedVer, _, err := version.NewHeightFromBytes(cacheValue.GetVersion())
 	require.NoError(t, err)
 	require.Equal(t, expectedVer, ver)
 
@@ -378,11 +378,11 @@ func TestCacheUpdatesAfterCommit(t *testing.T) {
 
 	v, err := vdbEnv.cache.getState(chainID, "ns1", "key1")
 	require.NoError(t, err)
-	ns1key1rev := string(v.AdditionalInfo)
+	ns1key1rev := string(v.GetAdditionalInfo())
 
 	v, err = vdbEnv.cache.getState(chainID, "ns1", "key2")
 	require.NoError(t, err)
-	ns1key2rev := string(v.AdditionalInfo)
+	ns1key2rev := string(v.GetAdditionalInfo())
 
 	// update key1 and key2 in ns1. delete key1 and key2 in ns2. add a new key3 in ns2.
 	batch = statedb.NewUpdateBatch()
@@ -406,14 +406,14 @@ func TestCacheUpdatesAfterCommit(t *testing.T) {
 	vv, err := constructVersionedValue(cacheValue)
 	require.NoError(t, err)
 	require.Equal(t, vv1Update, vv)
-	require.NotEqual(t, ns1key1rev, string(cacheValue.AdditionalInfo))
+	require.NotEqual(t, ns1key1rev, string(cacheValue.GetAdditionalInfo()))
 
 	cacheValue, err = vdbEnv.cache.getState(chainID, "ns1", "key2")
 	require.NoError(t, err)
 	vv, err = constructVersionedValue(cacheValue)
 	require.NoError(t, err)
 	require.Equal(t, vv2Update, vv)
-	require.NotEqual(t, ns1key2rev, string(cacheValue.AdditionalInfo))
+	require.NotEqual(t, ns1key2rev, string(cacheValue.GetAdditionalInfo()))
 
 	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns2", "key1")
 	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns2", "key2")
@@ -1181,7 +1181,7 @@ func testExistInCache(t *testing.T, db *couchDatabase, cache *cache, chainID, ns
 	require.Equal(t, expectedVV, vv)
 	metadata, err := retrieveNsMetadata(db, []string{key})
 	require.NoError(t, err)
-	require.Equal(t, metadata[0].Rev, string(cacheValue.AdditionalInfo))
+	require.Equal(t, metadata[0].Rev, string(cacheValue.GetAdditionalInfo()))
 }
 
 func TestLoadCommittedVersion(t *testing.T) {

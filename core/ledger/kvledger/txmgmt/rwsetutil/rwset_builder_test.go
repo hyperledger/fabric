@@ -79,7 +79,7 @@ func TestTxSimulationResultWithOnlyPubData(t *testing.T) {
 	expectedTxRWSet := &rwset.TxReadWriteSet{NsRwset: []*rwset.NsReadWriteSet{ns1RWSet, ns2RWSet}}
 	require.Equal(t, expectedTxRWSet, txSimulationResults.PubSimulationResults)
 	require.Nil(t, txSimulationResults.PvtSimulationResults)
-	require.Nil(t, txSimulationResults.PubSimulationResults.NsRwset[0].CollectionHashedRwset)
+	require.Nil(t, txSimulationResults.PubSimulationResults.GetNsRwset()[0].GetCollectionHashedRwset())
 }
 
 func TestTxSimulationResultWithPvtData(t *testing.T) {
@@ -227,7 +227,7 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 			},
 		},
 	}
-	require.Equal(t, combinedNs1, actualSimRes.PubSimulationResults.NsRwset[0])
+	require.Equal(t, combinedNs1, actualSimRes.PubSimulationResults.GetNsRwset()[0])
 
 	combinedNs2 := &rwset.NsReadWriteSet{
 		Namespace: "ns2",
@@ -244,7 +244,7 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 			},
 		},
 	}
-	require.Equal(t, combinedNs2, actualSimRes.PubSimulationResults.NsRwset[1])
+	require.Equal(t, combinedNs2, actualSimRes.PubSimulationResults.GetNsRwset()[1])
 
 	combinedNs3 := &rwset.NsReadWriteSet{
 		Namespace: "ns3",
@@ -257,7 +257,7 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 			},
 		},
 	}
-	require.Equal(t, combinedNs3, actualSimRes.PubSimulationResults.NsRwset[2])
+	require.Equal(t, combinedNs3, actualSimRes.PubSimulationResults.GetNsRwset()[2])
 
 	expectedPubRWSet := &rwset.TxReadWriteSet{
 		DataModel: rwset.TxReadWriteSet_KV,
@@ -381,7 +381,7 @@ func TestTxSimulationResultWithMetadata(t *testing.T) {
 			},
 		},
 	}
-	require.Equal(t, pubAndHashCombinedNs1, actualSimRes.PubSimulationResults.NsRwset[0])
+	require.Equal(t, pubAndHashCombinedNs1, actualSimRes.PubSimulationResults.GetNsRwset()[0])
 	pubAndHashCombinedNs2 := &rwset.NsReadWriteSet{
 		Namespace:             "ns2",
 		Rwset:                 serializeTestProtoMsg(t, pubNs2),
@@ -421,7 +421,7 @@ func TestNilOrZeroLengthByteArrayValueConvertedToDelete(t *testing.T) {
 		pubRWSet := &kvrwset.KVRWSet{}
 		require.NoError(
 			t,
-			proto.Unmarshal(simulationResults.PubSimulationResults.NsRwset[0].Rwset, pubRWSet),
+			proto.Unmarshal(simulationResults.PubSimulationResults.GetNsRwset()[0].GetRwset(), pubRWSet),
 		)
 		require.True(t, proto.Equal(
 			&kvrwset.KVRWSet{
@@ -446,7 +446,7 @@ func TestNilOrZeroLengthByteArrayValueConvertedToDelete(t *testing.T) {
 			hashedRWSet := &kvrwset.HashedRWSet{}
 			require.NoError(
 				t,
-				proto.Unmarshal(simulationResults.PubSimulationResults.NsRwset[0].CollectionHashedRwset[0].HashedRwset, hashedRWSet),
+				proto.Unmarshal(simulationResults.PubSimulationResults.GetNsRwset()[0].GetCollectionHashedRwset()[0].GetHashedRwset(), hashedRWSet),
 			)
 			require.True(t, proto.Equal(
 				&kvrwset.HashedRWSet{
@@ -463,7 +463,7 @@ func TestNilOrZeroLengthByteArrayValueConvertedToDelete(t *testing.T) {
 			pvtWSet := &kvrwset.KVRWSet{}
 			require.NoError(
 				t,
-				proto.Unmarshal(simulationResults.PvtSimulationResults.NsPvtRwset[0].CollectionPvtRwset[0].Rwset, pvtWSet),
+				proto.Unmarshal(simulationResults.PvtSimulationResults.GetNsPvtRwset()[0].GetCollectionPvtRwset()[0].GetRwset(), pvtWSet),
 			)
 			require.True(t, proto.Equal(
 				&kvrwset.KVRWSet{

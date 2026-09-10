@@ -53,11 +53,11 @@ func prepareStoreEntries(blockNum uint64,
 func prepareDataEntries(blockNum uint64, pvtData []*ledger.TxPvtData) []*dataEntry {
 	var dataEntries []*dataEntry
 	for _, txPvtdata := range pvtData {
-		for _, nsPvtdata := range txPvtdata.WriteSet.NsPvtRwset {
-			for _, collPvtdata := range nsPvtdata.CollectionPvtRwset {
+		for _, nsPvtdata := range txPvtdata.WriteSet.GetNsPvtRwset() {
+			for _, collPvtdata := range nsPvtdata.GetCollectionPvtRwset() {
 				txnum := txPvtdata.SeqInBlock
-				ns := nsPvtdata.Namespace
-				coll := collPvtdata.CollectionName
+				ns := nsPvtdata.GetNamespace()
+				coll := collPvtdata.GetCollectionName()
 				dataKey := &dataKey{nsCollBlk{ns, coll, blockNum}, txnum}
 				dataEntries = append(dataEntries, &dataEntry{key: dataKey, value: collPvtdata})
 			}
@@ -174,7 +174,7 @@ func prepareHashedIndexEntries(dataEntires []*dataEntry) ([]*hashedIndexEntry, e
 		if err != nil {
 			return nil, err
 		}
-		for _, w := range collPvtWS.KvRwSet.Writes {
+		for _, w := range collPvtWS.KvRwSet.GetWrites() {
 			hashedIndexEntries = append(hashedIndexEntries,
 				&hashedIndexEntry{
 					key: &hashedIndexKey{
@@ -182,9 +182,9 @@ func prepareHashedIndexEntries(dataEntires []*dataEntry) ([]*hashedIndexEntry, e
 						coll:       d.key.coll,
 						blkNum:     d.key.blkNum,
 						txNum:      d.key.txNum,
-						pvtkeyHash: util.ComputeStringHash(w.Key),
+						pvtkeyHash: util.ComputeStringHash(w.GetKey()),
 					},
-					value: w.Key,
+					value: w.GetKey(),
 				})
 		}
 	}
@@ -251,9 +251,9 @@ func deriveKeys(expiryEntry *expiryEntry) ([]*dataKey, []*missingDataKey, []*boo
 	var missingDataKeys []*missingDataKey
 	var bootKVHashesKeys []*bootKVHashesKey
 
-	for ns, colls := range expiryEntry.value.Map {
-		for coll, txNums := range colls.PresentData {
-			for _, txNum := range txNums.List {
+	for ns, colls := range expiryEntry.value.GetMap() {
+		for coll, txNums := range colls.GetPresentData() {
+			for _, txNum := range txNums.GetList() {
 				dataKeys = append(dataKeys,
 					&dataKey{
 						nsCollBlk: nsCollBlk{
@@ -266,7 +266,7 @@ func deriveKeys(expiryEntry *expiryEntry) ([]*dataKey, []*missingDataKey, []*boo
 			}
 		}
 
-		for coll := range colls.MissingData {
+		for coll := range colls.GetMissingData() {
 			missingDataKeys = append(missingDataKeys,
 				&missingDataKey{
 					nsCollBlk: nsCollBlk{
@@ -277,8 +277,8 @@ func deriveKeys(expiryEntry *expiryEntry) ([]*dataKey, []*missingDataKey, []*boo
 				})
 		}
 
-		for coll, txNums := range colls.BootKVHashes {
-			for _, txNum := range txNums.List {
+		for coll, txNums := range colls.GetBootKVHashes() {
+			for _, txNum := range txNums.GetList() {
 				bootKVHashesKeys = append(
 					bootKVHashesKeys,
 					&bootKVHashesKey{
@@ -331,7 +331,7 @@ func (a *txPvtdataAssembler) add(ns string, collPvtWset *rwset.CollectionPvtRead
 	}
 
 	// if a new ns started, add the existing NsWset to TxWset and start a new one
-	if a.currentNsWSet.Namespace != ns {
+	if a.currentNsWSet.GetNamespace() != ns {
 		a.txWset.NsPvtRwset = append(a.txWset.NsPvtRwset, a.currentNsWSet)
 		a.currentNsWSet = &rwset.NsPvtReadWriteSet{Namespace: ns}
 	}

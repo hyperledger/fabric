@@ -69,17 +69,17 @@ func (cc *endorserClient) getChannels() ([]*pb.ChannelInfo, error) {
 		return nil, fmt.Errorf("Failed sending proposal, got %s", err)
 	}
 
-	if proposalResp.Response == nil || proposalResp.Response.Status != http.StatusOK {
-		return nil, fmt.Errorf("Received bad response, status %d: %s", proposalResp.Response.Status, proposalResp.Response.Message)
+	if proposalResp.GetResponse() == nil || proposalResp.GetResponse().GetStatus() != http.StatusOK {
+		return nil, fmt.Errorf("Received bad response, status %d: %s", proposalResp.GetResponse().GetStatus(), proposalResp.GetResponse().GetMessage())
 	}
 
 	var channelQueryResponse pb.ChannelQueryResponse
-	err = proto.Unmarshal(proposalResp.Response.Payload, &channelQueryResponse)
+	err = proto.Unmarshal(proposalResp.GetResponse().GetPayload(), &channelQueryResponse)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot read channels list response, %s", err)
 	}
 
-	return channelQueryResponse.Channels, nil
+	return channelQueryResponse.GetChannels(), nil
 }
 
 func list(cf *ChannelCmdFactory) error {
@@ -99,7 +99,7 @@ func list(cf *ChannelCmdFactory) error {
 		fmt.Println("Channels peers has joined: ")
 
 		for _, channel := range channels {
-			fmt.Printf("%s\n", channel.ChannelId)
+			fmt.Printf("%s\n", channel.GetChannelId())
 		}
 	}
 

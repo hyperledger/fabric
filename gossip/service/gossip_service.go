@@ -463,11 +463,11 @@ func (g *GossipService) updateAnchors(configUpdate ConfigUpdate) {
 		jcm.members2AnchorPeers[appOrg.MSPID()] = []api.AnchorPeer{}
 		for _, ap := range appOrg.AnchorPeers() {
 			anchorPeer := api.AnchorPeer{
-				Host: ap.Host,
-				Port: int(ap.Port),
+				Host: ap.GetHost(),
+				Port: int(ap.GetPort()),
 			}
 			jcm.members2AnchorPeers[appOrg.MSPID()] = append(jcm.members2AnchorPeers[appOrg.MSPID()], anchorPeer)
-			anchorPeerEndpoints[fmt.Sprintf("%s:%d", ap.Host, ap.Port)] = struct{}{}
+			anchorPeerEndpoints[fmt.Sprintf("%s:%d", ap.GetHost(), ap.GetPort())] = struct{}{}
 		}
 	}
 	g.anchorPeerTracker.update(configUpdate.ChannelID, anchorPeerEndpoints)

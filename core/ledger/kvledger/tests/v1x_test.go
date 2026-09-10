@@ -197,11 +197,11 @@ func testV11CommitHashes(t *testing.T,
 	for i := int(h.currentHeight()); i < len(blocksAndPvtData); i++ {
 		d := blocksAndPvtData[i]
 		// add metadata slot for commit hash, as this would have be missing in the blocks from 1.1 prior to this feature
-		for len(d.Block.Metadata.Metadata) < int(common.BlockMetadataIndex_COMMIT_HASH)+1 {
+		for len(d.Block.GetMetadata().GetMetadata()) < int(common.BlockMetadataIndex_COMMIT_HASH)+1 {
 			d.Block.Metadata.Metadata = append(d.Block.Metadata.Metadata, []byte{})
 		}
 		// set previous block hash, as this is not present in the test blocks from 1.1
-		d.Block.Header.PreviousHash = protoutil.BlockHeaderHash(blocksAndPvtData[i-1].Block.Header)
+		d.Block.Header.PreviousHash = protoutil.BlockHeaderHash(blocksAndPvtData[i-1].Block.GetHeader())
 		require.NoError(t, h.lgr.CommitLegacy(d, &ledger.CommitOptions{FetchPvtDataFromLedger: true}))
 	}
 
@@ -217,8 +217,8 @@ func testV11CommitHashes(t *testing.T,
 
 	bcInfo, err := h.lgr.GetBlockchainInfo()
 	require.NoError(t, err)
-	h.committer.blkgen.lastNum = bcInfo.Height - 1
-	h.committer.blkgen.lastHash = bcInfo.CurrentBlockHash
+	h.committer.blkgen.lastNum = bcInfo.GetHeight() - 1
+	h.committer.blkgen.lastHash = bcInfo.GetCurrentBlockHash()
 
 	h.simulateDataTx("txid1_with_new_binary", func(s *simulator) {
 		s.setState("cc1", "new_key", "new_value")

@@ -75,7 +75,7 @@ func testValidationWithNTXes(t *testing.T, nBlocks int) {
 
 	tValidator.Validate(block)
 
-	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 	for i := range nBlocks {
 		require.True(t, txsfltr.IsSetTo(i, peer.TxValidationCode_VALID))
@@ -145,7 +145,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 
 	tValidator.Validate(block)
 
-	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 	require.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
 	require.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_DUPLICATE_TXID))
@@ -231,7 +231,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 		},
 	}
 
-	hash := protoutil.ComputeBlockDataHash(block.Data)
+	hash := protoutil.ComputeBlockDataHash(block.GetData())
 	block.Header = &common.BlockHeader{
 		Number:   0,
 		DataHash: hash,
@@ -239,14 +239,14 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 
 	// Initialize metadata
 	protoutil.InitBlockMetadata(block)
-	txsFilter := txflags.NewWithValues(len(block.Data.Data), peer.TxValidationCode_VALID)
+	txsFilter := txflags.NewWithValues(len(block.GetData().GetData()), peer.TxValidationCode_VALID)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
 	// Validation should invalidate transaction,
 	// because it's already committed
 	tValidator.Validate(block)
 
-	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	require.True(t, txsfltr.IsInvalid(0))
 
 	// We expect the tx to be invalid because of a bad txid

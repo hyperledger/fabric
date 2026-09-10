@@ -51,7 +51,7 @@ func TestPurgeMgrBuilder(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	require.Nil(t, expiry.pvtdataKeys.Map)
+	require.Nil(t, expiry.pvtdataKeys.GetMap())
 
 	// add data that expires at block-7
 	require.NoError(

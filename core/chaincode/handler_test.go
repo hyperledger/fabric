@@ -469,9 +469,9 @@ var _ = Describe("Handler", func() {
 
 						Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 						msg := fakeChatStream.SendArgsForCall(0)
-						Expect(msg.Type).To(Equal(pb.ChaincodeMessage_ERROR))
-						Expect(msg.Txid).To(Equal("tx-id"))
-						Expect(string(msg.Payload)).To(HavePrefix("INVOKE_CHAINCODE failed: transaction ID: tx-id"))
+						Expect(msg.GetType()).To(Equal(pb.ChaincodeMessage_ERROR))
+						Expect(msg.GetTxid()).To(Equal("tx-id"))
+						Expect(string(msg.GetPayload())).To(HavePrefix("INVOKE_CHAINCODE failed: transaction ID: tx-id"))
 					})
 				})
 			})
@@ -513,10 +513,10 @@ var _ = Describe("Handler", func() {
 
 				Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 				msg := fakeChatStream.SendArgsForCall(0)
-				Expect(msg.Type).To(Equal(pb.ChaincodeMessage_ERROR))
-				Expect(msg.Txid).To(Equal("tx-id"))
-				Expect(msg.ChannelId).To(Equal("channel-id"))
-				Expect(string(msg.Payload)).To(ContainSubstring("panic during execution"))
+				Expect(msg.GetType()).To(Equal(pb.ChaincodeMessage_ERROR))
+				Expect(msg.GetTxid()).To(Equal("tx-id"))
+				Expect(msg.GetChannelId()).To(Equal("channel-id"))
+				Expect(string(msg.GetPayload())).To(ContainSubstring("panic during execution"))
 			})
 
 			It("deregisters the transaction ID", func() {
@@ -2949,7 +2949,7 @@ var _ = Describe("Handler", func() {
 			Consistently(fakeChatStream.SendCallCount).Should(Equal(1))
 			msg := fakeChatStream.SendArgsForCall(0)
 			Expect(msg).To(ProtoEqual(expectedMessage))
-			Expect(msg.Proposal).To(ProtoEqual(expectedSignedProp))
+			Expect(msg.GetProposal()).To(ProtoEqual(expectedSignedProp))
 		})
 
 		It("waits for the chaincode to respond", func() {
@@ -3021,7 +3021,7 @@ var _ = Describe("Handler", func() {
 				Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 				msg := fakeChatStream.SendArgsForCall(0)
 				Expect(msg).NotTo(BeNil())
-				Expect(msg.Proposal).To(BeNil())
+				Expect(msg.GetProposal()).To(BeNil())
 			})
 		})
 
@@ -3230,7 +3230,7 @@ var _ = Describe("Handler", func() {
 				Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 				Consistently(fakeChatStream.SendCallCount).Should(Equal(1))
 				msg := fakeChatStream.SendArgsForCall(0)
-				Expect(msg.Type).To(Equal(pb.ChaincodeMessage_REGISTERED))
+				Expect(msg.GetType()).To(Equal(pb.ChaincodeMessage_REGISTERED))
 			})
 
 			It("remains in created state", func() {
@@ -3341,7 +3341,7 @@ var _ = Describe("Handler", func() {
 
 				for i := range 5 {
 					m := fakeChatStream.SendArgsForCall(i)
-					Expect(m.Type).To(Equal(pb.ChaincodeMessage_KEEPALIVE))
+					Expect(m.GetType()).To(Equal(pb.ChaincodeMessage_KEEPALIVE))
 				}
 			})
 

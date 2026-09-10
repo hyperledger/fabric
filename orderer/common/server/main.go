@@ -262,7 +262,7 @@ func verifyNoSystemChannelJoinBlock(config *localconfig.TopLevel, cryptoProvider
 			logger.Panicf("Failed unmarshalling join-block for channel '%s', error: %v", channelName, err)
 		}
 		if err = validateBootstrapBlock(block, cryptoProvider); err == nil {
-			logger.Panicf("Error: found a system channel join-block, channel: %s, block number: %d, file: %s. This version does not support the system channel. Remove it before upgrading.", channelName, block.Header.Number, fileName)
+			logger.Panicf("Error: found a system channel join-block, channel: %s, block number: %d, file: %s. This version does not support the system channel. Remove it before upgrading.", channelName, block.GetHeader().GetNumber(), fileName)
 		}
 	}
 }
@@ -305,7 +305,7 @@ func verifyNoSystemChannel(lf blockledger.Factory, bccsp bccsp.BCCSP) {
 
 		err = validateBootstrapBlock(channelConfigBlock, bccsp)
 		if err == nil {
-			logger.Panicf("Error: found system channel config block in the ledger, channel: %s, block number: %d. This version does not support the system channel. Remove it before upgrading.", cID, channelConfigBlock.Header.Number)
+			logger.Panicf("Error: found system channel config block in the ledger, channel: %s, block number: %d. This version does not support the system channel. Remove it before upgrading.", cID, channelConfigBlock.GetHeader().GetNumber())
 		}
 	}
 }

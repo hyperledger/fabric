@@ -444,10 +444,10 @@ func (pvtdata *TxPvtData) Has(ns string, coll string) bool {
 	if pvtdata.WriteSet == nil {
 		return false
 	}
-	for _, nsdata := range pvtdata.WriteSet.NsPvtRwset {
-		if nsdata.Namespace == ns {
-			for _, colldata := range nsdata.CollectionPvtRwset {
-				if colldata.CollectionName == coll {
+	for _, nsdata := range pvtdata.WriteSet.GetNsPvtRwset() {
+		if nsdata.GetNamespace() == ns {
+			for _, colldata := range nsdata.GetCollectionPvtRwset() {
+				if colldata.GetCollectionName() == coll {
 					return true
 				}
 			}

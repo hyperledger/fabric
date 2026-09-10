@@ -56,7 +56,7 @@ func TestMain(m *testing.M) {
 func TestValidatePath(t *testing.T) {
 	platform := java.Platform{}
 
-	err := platform.ValidatePath(spec.ChaincodeId.Path)
+	err := platform.ValidatePath(spec.GetChaincodeId().GetPath())
 	require.NoError(t, err)
 }
 
@@ -140,7 +140,7 @@ func TestGenerateDockerfile(t *testing.T) {
 	platform := java.Platform{}
 
 	spec.ChaincodeId.Path = chaincodePathFolderGradle
-	_, err := platform.GetDeploymentPayload(spec.ChaincodeId.Path)
+	_, err := platform.GetDeploymentPayload(spec.GetChaincodeId().GetPath())
 	if err != nil {
 		t.Fatalf("failed to get Java CC payload: %s", err)
 	}

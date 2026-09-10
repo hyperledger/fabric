@@ -69,12 +69,12 @@ func (d *DeliverClient) readBlock() (*cb.Block, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error receiving")
 	}
-	switch t := msg.Type.(type) {
+	switch t := msg.GetType().(type) {
 	case *ab.DeliverResponse_Status:
 		logger.Infof("Expect block, but got status: %v", t)
 		return nil, errors.Errorf("can't read the block: %v", t)
 	case *ab.DeliverResponse_Block:
-		logger.Infof("Received block: %v", t.Block.Header.Number)
+		logger.Infof("Received block: %v", t.Block.GetHeader().GetNumber())
 		if resp, err := d.Service.Recv(); err != nil { // Flush the success message
 			logger.Errorf("Failed to flush success message: %s", err)
 		} else if status := resp.GetStatus(); status != cb.Status_SUCCESS {
@@ -228,7 +228,7 @@ func (p *peerDeliverService) Recv() (*ab.DeliverResponse, error) {
 
 	abResp := &ab.DeliverResponse{}
 
-	switch t := pbResp.Type.(type) {
+	switch t := pbResp.GetType().(type) {
 	case *pb.DeliverResponse_Status:
 		abResp.Type = &ab.DeliverResponse_Status{Status: t.Status}
 	case *pb.DeliverResponse_Block:

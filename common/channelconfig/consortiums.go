@@ -26,7 +26,7 @@ func NewConsortiumsConfig(consortiumsGroup *cb.ConfigGroup, mspConfig *MSPConfig
 		consortiums: make(map[string]Consortium),
 	}
 
-	for consortiumName, consortiumGroup := range consortiumsGroup.Groups {
+	for consortiumName, consortiumGroup := range consortiumsGroup.GetGroups() {
 		var err error
 		if cc.consortiums[consortiumName], err = NewConsortiumConfig(consortiumGroup, mspConfig); err != nil {
 			return nil, err

@@ -111,7 +111,7 @@ func createConfigBlock(channelID string, appMSPConf, ordererMSPConf *mspproto.MS
 		return block, err
 	}
 
-	txsFilter := txflags.NewWithValues(len(block.Data.Data), pb.TxValidationCode_VALID)
+	txsFilter := txflags.NewWithValues(len(block.GetData().GetData()), pb.TxValidationCode_VALID)
 	block.Metadata.Metadata[cb.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
 	return block, nil

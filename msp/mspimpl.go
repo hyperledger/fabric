@@ -221,7 +221,7 @@ func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *m.SigningIdentityInfo) 
 	}
 
 	// Extract the public part of the identity
-	idPub, pubKey, err := msp.getIdentityFromConf(sidInfo.PublicSigner)
+	idPub, pubKey, err := msp.getIdentityFromConf(sidInfo.GetPublicSigner())
 	if err != nil {
 		return nil, err
 	}
@@ -231,13 +231,13 @@ func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *m.SigningIdentityInfo) 
 	// Less Secure: Attempt to import Private Key from KeyInfo, if BCCSP was not able to find the key
 	if err != nil {
 		mspLogger.Debugf("Could not find SKI [%s], trying KeyMaterial field: %+v\n", hex.EncodeToString(pubKey.SKI()), err)
-		if sidInfo.PrivateSigner == nil || sidInfo.PrivateSigner.KeyMaterial == nil {
+		if sidInfo.GetPrivateSigner() == nil || sidInfo.PrivateSigner.KeyMaterial == nil {
 			return nil, errors.New("KeyMaterial not found in SigningIdentityInfo")
 		}
 
-		pemKey, _ := pem.Decode(sidInfo.PrivateSigner.KeyMaterial)
+		pemKey, _ := pem.Decode(sidInfo.GetPrivateSigner().GetKeyMaterial())
 		if pemKey == nil {
-			return nil, errors.Errorf("%s: wrong PEM encoding", sidInfo.PrivateSigner.KeyIdentifier)
+			return nil, errors.Errorf("%s: wrong PEM encoding", sidInfo.GetPrivateSigner().GetKeyIdentifier())
 		}
 		privKey, err = msp.bccsp.KeyImport(pemKey.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: true})
 		if err != nil {
@@ -264,13 +264,13 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 
 	// given that it's an msp of type fabric, extract the MSPConfig instance
 	conf := &m.FabricMSPConfig{}
-	err := proto.Unmarshal(conf1.Config, conf)
+	err := proto.Unmarshal(conf1.GetConfig(), conf)
 	if err != nil {
 		return errors.Wrap(err, "failed unmarshalling fabric msp config")
 	}
 
 	// set the name for this msp
-	msp.name = conf.Name
+	msp.name = conf.GetName()
 	mspLogger.Debugf("Setting up MSP instance %s", msp.name)
 
 	// setup
@@ -396,11 +396,11 @@ func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) 
 		return nil, errors.Wrap(err, "could not deserialize a SerializedIdentity")
 	}
 
-	if sId.Mspid != msp.name {
-		return nil, errors.Errorf("expected MSP ID %s, received %s", msp.name, sId.Mspid)
+	if sId.GetMspid() != msp.name {
+		return nil, errors.Errorf("expected MSP ID %s, received %s", msp.name, sId.GetMspid())
 	}
 
-	return msp.deserializeIdentityInternal(sId.IdBytes)
+	return msp.deserializeIdentityInternal(sId.GetIdBytes())
 }
 
 // deserializeIdentityInternal returns an identity given its byte-level representation
@@ -447,26 +447,26 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) 
 
 // collectPrincipals collects principals from combined principals into a single MSPPrincipal slice.
 func collectPrincipals(principal *m.MSPPrincipal, mspVersion MSPVersion) ([]*m.MSPPrincipal, error) {
-	switch principal.PrincipalClassification {
+	switch principal.GetPrincipalClassification() {
 	case m.MSPPrincipal_COMBINED:
 		// Combined principals are not supported in MSP v1.0 or v1.1
 		if mspVersion <= MSPv1_1 {
-			return nil, errors.Errorf("invalid principal type %d", int32(principal.PrincipalClassification))
+			return nil, errors.Errorf("invalid principal type %d", int32(principal.GetPrincipalClassification()))
 		}
 		// Principal is a combination of multiple principals.
 		principals := &m.CombinedPrincipal{}
-		err := proto.Unmarshal(principal.Principal, principals)
+		err := proto.Unmarshal(principal.GetPrincipal(), principals)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not unmarshal CombinedPrincipal from principal")
 		}
 		// Return an error if there are no principals in the combined principal.
-		if len(principals.Principals) == 0 {
+		if len(principals.GetPrincipals()) == 0 {
 			return nil, errors.New("No principals in CombinedPrincipal")
 		}
 		// Recursively call msp.collectPrincipals for all combined principals.
 		// There is no limit for the levels of nesting for the combined principals.
 		var principalsSlice []*m.MSPPrincipal
-		for _, cp := range principals.Principals {
+		for _, cp := range principals.GetPrincipals() {
 			internalSlice, err := collectPrincipals(cp, mspVersion)
 			if err != nil {
 				return nil, err
@@ -484,25 +484,25 @@ func collectPrincipals(principal *m.MSPPrincipal, mspVersion MSPVersion) ([]*m.M
 // The function returns an error if one occurred.
 // The function implements the behavior of an MSP up to and including v1.1.
 func (msp *bccspmsp) satisfiesPrincipalInternalPreV13(id Identity, principal *m.MSPPrincipal) error {
-	switch principal.PrincipalClassification {
+	switch principal.GetPrincipalClassification() {
 	// in this case, we have to check whether the
 	// identity has a role in the msp - member or admin
 	case m.MSPPrincipal_ROLE:
 		// Principal contains the msp role
 		mspRole := &m.MSPRole{}
-		err := proto.Unmarshal(principal.Principal, mspRole)
+		err := proto.Unmarshal(principal.GetPrincipal(), mspRole)
 		if err != nil {
 			return errors.Wrap(err, "could not unmarshal MSPRole from principal")
 		}
 
 		// at first, we check whether the MSP
 		// identifier is the same as that of the identity
-		if mspRole.MspIdentifier != msp.name {
-			return errors.Errorf("the identity is a member of a different MSP (expected %s, got %s)", mspRole.MspIdentifier, id.GetMSPIdentifier())
+		if mspRole.GetMspIdentifier() != msp.name {
+			return errors.Errorf("the identity is a member of a different MSP (expected %s, got %s)", mspRole.GetMspIdentifier(), id.GetMSPIdentifier())
 		}
 
 		// now we validate the different msp roles
-		switch mspRole.Role {
+		switch mspRole.GetRole() {
 		case m.MSPRole_MEMBER:
 			// in the case of member, we simply check
 			// whether this identity is valid for the MSP
@@ -519,22 +519,22 @@ func (msp *bccspmsp) satisfiesPrincipalInternalPreV13(id Identity, principal *m.
 		case m.MSPRole_CLIENT:
 			fallthrough
 		case m.MSPRole_PEER:
-			mspLogger.Debugf("Checking if identity satisfies role [%s] for %s", m.MSPRole_MSPRoleType_name[int32(mspRole.Role)], msp.name)
+			mspLogger.Debugf("Checking if identity satisfies role [%s] for %s", m.MSPRole_MSPRoleType_name[int32(mspRole.GetRole())], msp.name)
 			if err := msp.Validate(id); err != nil {
 				return errors.Wrapf(err, "The identity is not valid under this MSP [%s]", msp.name)
 			}
 
-			if err := msp.hasOURole(id, mspRole.Role); err != nil {
-				return errors.Wrapf(err, "The identity is not a [%s] under this MSP [%s]", m.MSPRole_MSPRoleType_name[int32(mspRole.Role)], msp.name)
+			if err := msp.hasOURole(id, mspRole.GetRole()); err != nil {
+				return errors.Wrapf(err, "The identity is not a [%s] under this MSP [%s]", m.MSPRole_MSPRoleType_name[int32(mspRole.GetRole())], msp.name)
 			}
 			return nil
 		default:
-			return errors.Errorf("invalid MSP role type %d", int32(mspRole.Role))
+			return errors.Errorf("invalid MSP role type %d", int32(mspRole.GetRole()))
 		}
 	case m.MSPPrincipal_IDENTITY:
 		// in this case we have to deserialize the principal's identity
 		// and compare it byte-by-byte with our cert
-		principalId, err := msp.DeserializeIdentity(principal.Principal)
+		principalId, err := msp.DeserializeIdentity(principal.GetPrincipal())
 		if err != nil {
 			return errors.WithMessage(err, "invalid identity principal, not a certificate")
 		}
@@ -547,15 +547,15 @@ func (msp *bccspmsp) satisfiesPrincipalInternalPreV13(id Identity, principal *m.
 	case m.MSPPrincipal_ORGANIZATION_UNIT:
 		// Principal contains the OrganizationUnit
 		OU := &m.OrganizationUnit{}
-		err := proto.Unmarshal(principal.Principal, OU)
+		err := proto.Unmarshal(principal.GetPrincipal(), OU)
 		if err != nil {
 			return errors.Wrap(err, "could not unmarshal OrganizationUnit from principal")
 		}
 
 		// at first, we check whether the MSP
 		// identifier is the same as that of the identity
-		if OU.MspIdentifier != msp.name {
-			return errors.Errorf("the identity is a member of a different MSP (expected %s, got %s)", OU.MspIdentifier, id.GetMSPIdentifier())
+		if OU.GetMspIdentifier() != msp.name {
+			return errors.Errorf("the identity is a member of a different MSP (expected %s, got %s)", OU.GetMspIdentifier(), id.GetMSPIdentifier())
 		}
 
 		// we then check if the identity is valid with this MSP
@@ -567,8 +567,8 @@ func (msp *bccspmsp) satisfiesPrincipalInternalPreV13(id Identity, principal *m.
 
 		// now we check whether any of this identity's OUs match the requested one
 		for _, ou := range id.GetOrganizationalUnits() {
-			if ou.OrganizationalUnitIdentifier == OU.OrganizationalUnitIdentifier &&
-				bytes.Equal(ou.CertifiersIdentifier, OU.CertifiersIdentifier) {
+			if ou.OrganizationalUnitIdentifier == OU.GetOrganizationalUnitIdentifier() &&
+				bytes.Equal(ou.CertifiersIdentifier, OU.GetCertifiersIdentifier()) {
 				return nil
 			}
 		}
@@ -576,7 +576,7 @@ func (msp *bccspmsp) satisfiesPrincipalInternalPreV13(id Identity, principal *m.
 		// if we are here, no match was found, return an error
 		return errors.New("The identities do not match")
 	default:
-		return errors.Errorf("invalid principal type %d", int32(principal.PrincipalClassification))
+		return errors.Errorf("invalid principal type %d", int32(principal.GetPrincipalClassification()))
 	}
 }
 
@@ -585,22 +585,22 @@ func (msp *bccspmsp) satisfiesPrincipalInternalPreV13(id Identity, principal *m.
 // The function implements the additional behavior expected of an MSP starting from v1.3.
 // For pre-v1.3 functionality, the function calls the satisfiesPrincipalInternalPreV13.
 func (msp *bccspmsp) satisfiesPrincipalInternalV13(id Identity, principal *m.MSPPrincipal) error {
-	switch principal.PrincipalClassification {
+	switch principal.GetPrincipalClassification() {
 	case m.MSPPrincipal_COMBINED:
 		return errors.New("SatisfiesPrincipalInternal shall not be called with a CombinedPrincipal")
 	case m.MSPPrincipal_ANONYMITY:
 		anon := &m.MSPIdentityAnonymity{}
-		err := proto.Unmarshal(principal.Principal, anon)
+		err := proto.Unmarshal(principal.GetPrincipal(), anon)
 		if err != nil {
 			return errors.Wrap(err, "could not unmarshal MSPIdentityAnonymity from principal")
 		}
-		switch anon.AnonymityType {
+		switch anon.GetAnonymityType() {
 		case m.MSPIdentityAnonymity_ANONYMOUS:
 			return errors.New("Principal is anonymous, but X.509 MSP does not support anonymous identities")
 		case m.MSPIdentityAnonymity_NOMINAL:
 			return nil
 		default:
-			return errors.Errorf("Unknown principal anonymity type: %d", anon.AnonymityType)
+			return errors.Errorf("Unknown principal anonymity type: %d", anon.GetAnonymityType())
 		}
 
 	default:
@@ -619,7 +619,7 @@ func (msp *bccspmsp) satisfiesPrincipalInternalV142(id Identity, principal *m.MS
 		return errors.New("invalid identity type, expected *identity")
 	}
 
-	switch principal.PrincipalClassification {
+	switch principal.GetPrincipalClassification() {
 	case m.MSPPrincipal_ROLE:
 		if !msp.ouEnforcement {
 			break
@@ -627,19 +627,19 @@ func (msp *bccspmsp) satisfiesPrincipalInternalV142(id Identity, principal *m.MS
 
 		// Principal contains the msp role
 		mspRole := &m.MSPRole{}
-		err := proto.Unmarshal(principal.Principal, mspRole)
+		err := proto.Unmarshal(principal.GetPrincipal(), mspRole)
 		if err != nil {
 			return errors.Wrap(err, "could not unmarshal MSPRole from principal")
 		}
 
 		// at first, we check whether the MSP
 		// identifier is the same as that of the identity
-		if mspRole.MspIdentifier != msp.name {
-			return errors.Errorf("the identity is a member of a different MSP (expected %s, got %s)", mspRole.MspIdentifier, id.GetMSPIdentifier())
+		if mspRole.GetMspIdentifier() != msp.name {
+			return errors.Errorf("the identity is a member of a different MSP (expected %s, got %s)", mspRole.GetMspIdentifier(), id.GetMSPIdentifier())
 		}
 
 		// now we validate the admin role only, the other roles are left to the v1.3 function
-		switch mspRole.Role {
+		switch mspRole.GetRole() {
 		case m.MSPRole_ADMIN:
 			mspLogger.Debugf("Checking if identity has been named explicitly as an admin for %s", msp.name)
 			// in the case of admin, we check that the
@@ -660,13 +660,13 @@ func (msp *bccspmsp) satisfiesPrincipalInternalV142(id Identity, principal *m.MS
 
 			return nil
 		case m.MSPRole_ORDERER:
-			mspLogger.Debugf("Checking if identity satisfies role [%s] for %s", m.MSPRole_MSPRoleType_name[int32(mspRole.Role)], msp.name)
+			mspLogger.Debugf("Checking if identity satisfies role [%s] for %s", m.MSPRole_MSPRoleType_name[int32(mspRole.GetRole())], msp.name)
 			if err := msp.Validate(id); err != nil {
 				return errors.Wrapf(err, "The identity is not valid under this MSP [%s]", msp.name)
 			}
 
-			if err := msp.hasOURole(id, mspRole.Role); err != nil {
-				return errors.Wrapf(err, "The identity is not a [%s] under this MSP [%s]", m.MSPRole_MSPRoleType_name[int32(mspRole.Role)], msp.name)
+			if err := msp.hasOURole(id, mspRole.GetRole()); err != nil {
+				return errors.Wrapf(err, "The identity is not a [%s] under this MSP [%s]", m.MSPRole_MSPRoleType_name[int32(mspRole.GetRole())], msp.name)
 			}
 			return nil
 		}
@@ -880,7 +880,7 @@ func (msp *bccspmsp) getCertificationChainIdentifier(id Identity) ([]byte, error
 func (msp *bccspmsp) getCertificationChainIdentifierFromChain(chain []*x509.Certificate) ([]byte, error) {
 	// Hash the chain
 	// Use the hash of the identity's certificate as id in the IdentityIdentifier
-	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.IdentityIdentifierHashFunction)
+	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.GetIdentityIdentifierHashFunction())
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed getting hash function options")
 	}
@@ -948,12 +948,12 @@ func (msp *bccspmsp) sanitizeCert(cert *x509.Certificate) (*x509.Certificate, er
 // In this MSP implementation, well formed means that the PEM has a Type which is either
 // the string 'CERTIFICATE' or the Type is missing altogether.
 func (msp *bccspmsp) IsWellFormed(identity *m.SerializedIdentity) error {
-	bl, rest := pem.Decode(identity.IdBytes)
+	bl, rest := pem.Decode(identity.GetIdBytes())
 	if bl == nil {
 		return errors.New("PEM decoding resulted in an empty block")
 	}
 	if len(rest) > 0 {
-		return errors.Errorf("identity %s for MSP %s has trailing bytes", string(identity.IdBytes), identity.Mspid)
+		return errors.Errorf("identity %s for MSP %s has trailing bytes", string(identity.GetIdBytes()), identity.GetMspid())
 	}
 
 	// Important: This method looks very similar to getCertFromPem(idBytes []byte) (*x509.Certificate, error)
@@ -973,7 +973,7 @@ func (msp *bccspmsp) IsWellFormed(identity *m.SerializedIdentity) error {
 		return nil
 	}
 
-	return isIdentitySignedInCanonicalForm(cert.Signature, identity.Mspid, identity.IdBytes)
+	return isIdentitySignedInCanonicalForm(cert.Signature, identity.GetMspid(), identity.GetIdBytes())
 }
 
 func isIdentitySignedInCanonicalForm(sig []byte, mspID string, pemEncodedIdentity []byte) error {

@@ -124,7 +124,7 @@ func TestSnapshotRequests(t *testing.T) {
 	// create a ledger with genesis block
 	ledgerID := "testsnapshotrequests"
 	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	l, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	defer l.Close()
@@ -174,7 +174,7 @@ func TestSnapshotRequests(t *testing.T) {
 
 	// Test 4: commit blocks and submit a request with default value (blocknumber=0) to trigger snapshot generation
 	// for the latest committed block
-	lastBlock = testutilCommitBlocks(t, l, bg, 20, protoutil.BlockHeaderHash(lastBlock.Header))
+	lastBlock = testutilCommitBlocks(t, l, bg, 20, protoutil.BlockHeaderHash(lastBlock.GetHeader()))
 	require.NoError(t, l.SubmitSnapshotRequest(0))
 	// wait until snapshot is generated for blocknumber=20
 	snapshotExists = func() bool {
@@ -195,7 +195,7 @@ func TestSnapshotRequests(t *testing.T) {
 	// prepare to test recoverSnapshot when a ledger is reopened
 	// commit blocks upto block number 25 and add a request for block number 25 to the leveldb directly
 	// snapshot should not be generated and will be recovered after the ledger is reopened
-	testutilCommitBlocks(t, l, bg, 25, protoutil.BlockHeaderHash(lastBlock.Header))
+	testutilCommitBlocks(t, l, bg, 25, protoutil.BlockHeaderHash(lastBlock.GetHeader()))
 	require.NoError(t, kvledger.snapshotMgr.snapshotRequestBookkeeper.dbHandle.Put(encodeSnapshotRequestKey(25), []byte{}, true))
 	exists, err = kvledger.snapshotExists(25)
 	require.NoError(t, err)
@@ -234,7 +234,7 @@ func TestSnapshotMgmtConcurrency(t *testing.T) {
 
 	ledgerID := "testsnapshotmgmtconcurrency"
 	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	l, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	kvledger := l.(*kvLedger)
@@ -302,7 +302,7 @@ func TestSnapshotRequestsErrorPaths(t *testing.T) {
 	// create a ledger with genesis block
 	ledgerID := "testsnapshotrequestserrorpaths"
 	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	l, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	defer l.Close()
@@ -360,7 +360,7 @@ func equal(slice1 []uint64, slice2 []uint64) bool {
 func testutilCommitBlocks(t *testing.T, l ledger.PeerLedger, bg *testutil.BlockGenerator, finalBlockNum uint64, previousBlockHash []byte) *common.Block {
 	bcInfo, err := l.GetBlockchainInfo()
 	require.NoError(t, err)
-	startBlockNum := bcInfo.Height
+	startBlockNum := bcInfo.GetHeight()
 
 	var block *common.Block
 	for i := startBlockNum; i <= finalBlockNum; i++ {
@@ -379,7 +379,7 @@ func testutilCommitBlocks(t *testing.T, l ledger.PeerLedger, bg *testutil.BlockG
 
 		bcInfo, err := l.GetBlockchainInfo()
 		require.NoError(t, err)
-		blockHash := protoutil.BlockHeaderHash(block.Header)
+		blockHash := protoutil.BlockHeaderHash(block.GetHeader())
 		require.Equal(t, &common.BlockchainInfo{
 			Height: i + 1, CurrentBlockHash: blockHash, PreviousBlockHash: previousBlockHash,
 		}, bcInfo)

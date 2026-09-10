@@ -54,13 +54,13 @@ func (v *DefaultValidation) Validate(block *common.Block, namespace string, txPo
 	if !isSerializedPolicy {
 		logger.Panicf("Expected to receive a serialized policy in the first context data")
 	}
-	if block == nil || block.Data == nil {
+	if block == nil || block.GetData() == nil {
 		return errors.New("empty block")
 	}
-	if txPosition >= len(block.Data.Data) {
-		return errors.Errorf("block has only %d transactions, but requested tx at position %d", len(block.Data.Data), txPosition)
+	if txPosition >= len(block.GetData().GetData()) {
+		return errors.Errorf("block has only %d transactions, but requested tx at position %d", len(block.GetData().GetData()), txPosition)
 	}
-	if block.Header == nil {
+	if block.GetHeader() == nil {
 		return errors.Errorf("no block header")
 	}
 
@@ -79,7 +79,7 @@ func (v *DefaultValidation) Validate(block *common.Block, namespace string, txPo
 		err = v.TxValidatorV1_2.Validate(block, namespace, txPosition, actionPosition, serializedPolicy.Bytes())
 	}
 
-	logger.Debugf("block %d, namespace: %s, tx %d validation results is: %v", block.Header.Number, namespace, txPosition, err)
+	logger.Debugf("block %d, namespace: %s, tx %d validation results is: %v", block.GetHeader().GetNumber(), namespace, txPosition, err)
 	return convertErrorTypeOrPanic(err)
 }
 

@@ -57,7 +57,7 @@ func Deliver(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*common.Bloc
 		return nil, err
 	}
 
-	switch t := resp.Type.(type) {
+	switch t := resp.GetType().(type) {
 	case *orderer.DeliverResponse_Block:
 		blk := resp.GetBlock()
 		if blk == nil {
@@ -68,6 +68,6 @@ func Deliver(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*common.Bloc
 	case *orderer.DeliverResponse_Status:
 		return nil, errors.Errorf("faulty node, received status: %s", common.Status_name[int32(t.Status)])
 	default:
-		return nil, errors.Errorf("response is of type %v, but expected a block", reflect.TypeOf(resp.Type))
+		return nil, errors.Errorf("response is of type %v, but expected a block", reflect.TypeOf(resp.GetType()))
 	}
 }

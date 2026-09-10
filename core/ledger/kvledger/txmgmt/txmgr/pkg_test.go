@@ -152,9 +152,9 @@ func (h *txMgrTestHelper) validateAndCommitRWSet(txRWSet *rwset.TxReadWriteSet) 
 	block := h.bg.NextBlock([][]byte{rwSetBytes})
 	_, _, _, err := h.txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block, PvtData: nil}, true)
 	require.NoError(h.t, err)
-	txsFltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	invalidTxNum := 0
-	for i := 0; i < len(block.Data.Data); i++ {
+	for i := 0; i < len(block.GetData().GetData()); i++ {
 		if txsFltr.IsInvalid(i) {
 			invalidTxNum++
 		}
@@ -169,9 +169,9 @@ func (h *txMgrTestHelper) checkRWsetInvalid(txRWSet *rwset.TxReadWriteSet) {
 	block := h.bg.NextBlock([][]byte{rwSetBytes})
 	_, _, _, err := h.txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block, PvtData: nil}, true)
 	require.NoError(h.t, err)
-	txsFltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	invalidTxNum := 0
-	for i := 0; i < len(block.Data.Data); i++ {
+	for i := 0; i < len(block.GetData().GetData()); i++ {
 		if txsFltr.IsInvalid(i) {
 			invalidTxNum++
 		}
@@ -210,7 +210,7 @@ func testutilPopulateDB(
 ) {
 	updates := privacyenabledstate.NewUpdateBatch()
 	for _, kv := range data {
-		updates.PubUpdates.Put(ns, kv.Key, kv.Value, version)
+		updates.PubUpdates.Put(ns, kv.GetKey(), kv.GetValue(), version)
 	}
 	for _, p := range pvtdataHashes {
 		updates.HashUpdates.Put(ns, p.coll, util.ComputeStringHash(p.key), util.ComputeHash(p.value), version)

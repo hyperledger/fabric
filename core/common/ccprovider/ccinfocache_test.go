@@ -193,7 +193,7 @@ func TestCCInfoFSPeerInstance(t *testing.T) {
 	resp, err := GetInstalledChaincodes()
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	require.NotZero(t, len(resp.Chaincodes), "GetInstalledChaincodes should not have returned 0 chaincodes")
+	require.NotZero(t, len(resp.GetChaincodes()), "GetInstalledChaincodes should not have returned 0 chaincodes")
 
 	// get chaincode data
 	_, err = GetChaincodeData("bar:1.0")
@@ -215,8 +215,8 @@ func TestGetInstalledChaincodesErrorPaths(t *testing.T) {
 	require.NoError(t, err)
 	resp, err := GetInstalledChaincodes()
 	require.NoError(t, err)
-	require.Equal(t, 0, len(resp.Chaincodes),
-		"Expected 0 chaincodes but GetInstalledChaincodes returned %s chaincodes", len(resp.Chaincodes))
+	require.Equal(t, 0, len(resp.GetChaincodes()),
+		"Expected 0 chaincodes but GetInstalledChaincodes returned %s chaincodes", len(resp.GetChaincodes()))
 }
 
 func TestChaincodePackageExists(t *testing.T) {

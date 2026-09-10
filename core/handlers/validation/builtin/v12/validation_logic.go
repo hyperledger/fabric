@@ -112,38 +112,38 @@ func (vscc *Validator) Validate(
 	policyBytes []byte,
 ) commonerrors.TxValidationError {
 	// get the envelope...
-	env, err := protoutil.GetEnvelopeFromBlock(block.Data.Data[txPosition])
+	env, err := protoutil.GetEnvelopeFromBlock(block.GetData().GetData()[txPosition])
 	if err != nil {
 		logger.Errorf("VSCC error: GetEnvelope failed, err %s", err)
 		return policyErr(err)
 	}
 
 	// ...and the payload...
-	payl, err := protoutil.UnmarshalPayload(env.Payload)
+	payl, err := protoutil.UnmarshalPayload(env.GetPayload())
 	if err != nil {
 		logger.Errorf("VSCC error: GetPayload failed, err %s", err)
 		return policyErr(err)
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payl.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payl.GetHeader().GetChannelHeader())
 	if err != nil {
 		return policyErr(err)
 	}
 
 	// validate the payload type
-	if common.HeaderType(chdr.Type) != common.HeaderType_ENDORSER_TRANSACTION {
-		logger.Errorf("Only Endorser Transactions are supported, provided type %d", chdr.Type)
-		return policyErr(fmt.Errorf("Only Endorser Transactions are supported, provided type %d", chdr.Type))
+	if common.HeaderType(chdr.GetType()) != common.HeaderType_ENDORSER_TRANSACTION {
+		logger.Errorf("Only Endorser Transactions are supported, provided type %d", chdr.GetType())
+		return policyErr(fmt.Errorf("Only Endorser Transactions are supported, provided type %d", chdr.GetType()))
 	}
 
 	// ...and the transaction...
-	tx, err := protoutil.UnmarshalTransaction(payl.Data)
+	tx, err := protoutil.UnmarshalTransaction(payl.GetData())
 	if err != nil {
 		logger.Errorf("VSCC error: GetTransaction failed, err %s", err)
 		return policyErr(err)
 	}
 
-	cap, err := protoutil.UnmarshalChaincodeActionPayload(tx.Actions[actionPosition].Payload)
+	cap, err := protoutil.UnmarshalChaincodeActionPayload(tx.GetActions()[actionPosition].GetPayload())
 	if err != nil {
 		logger.Errorf("VSCC error: GetChaincodeActionPayload failed, err %s", err)
 		return policyErr(err)
@@ -158,7 +158,7 @@ func (vscc *Validator) Validate(
 	err = vscc.policyEvaluator.Evaluate(policyBytes, signatureSet)
 	if err != nil {
 		logger.Warningf("Endorsement policy failure for transaction txid=%s, err: %s", chdr.GetTxId(), err.Error())
-		if len(signatureSet) < len(cap.Action.Endorsements) {
+		if len(signatureSet) < len(cap.GetAction().GetEndorsements()) {
 			// Warning: duplicated identities exist, endorsement failure might be cause by this reason
 			return policyErr(errors.New(DUPLICATED_IDENTITY_ERROR))
 		}
@@ -168,7 +168,7 @@ func (vscc *Validator) Validate(
 	// do some extra validation that is specific to lscc
 	if namespace == "lscc" {
 		logger.Debugf("VSCC info: doing special validation for LSCC")
-		err := vscc.ValidateLSCCInvocation(chdr.ChannelId, env, cap, payl, vscc.capabilities)
+		err := vscc.ValidateLSCCInvocation(chdr.GetChannelId(), env, cap, payl, vscc.capabilities)
 		if err != nil {
 			logger.Errorf("VSCC error: ValidateLSCCInvocation failed, err %s", err)
 			return err
@@ -181,16 +181,16 @@ func (vscc *Validator) Validate(
 // checkInstantiationPolicy evaluates an instantiation policy against a signed proposal.
 func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.Envelope, instantiationPolicy []byte, payl *common.Payload) commonerrors.TxValidationError {
 	// get the signature header
-	shdr, err := protoutil.UnmarshalSignatureHeader(payl.Header.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(payl.GetHeader().GetSignatureHeader())
 	if err != nil {
 		return policyErr(err)
 	}
 
 	// construct signed data we can evaluate the instantiation policy against
 	sd := []*protoutil.SignedData{{
-		Data:      env.Payload,
-		Identity:  shdr.Creator,
-		Signature: env.Signature,
+		Data:      env.GetPayload(),
+		Identity:  shdr.GetCreator(),
+		Signature: env.GetSignature(),
 	}}
 	err = vscc.policyEvaluator.Evaluate(instantiationPolicy, sd)
 	if err != nil {
@@ -235,7 +235,7 @@ func validateNewCollectionConfigs(newCollectionConfigs []*pb.CollectionConfig) e
 		}
 
 		// make sure that the signature policy is meaningful (only consists of ORs)
-		err := validateSpOrConcat(newCollection.MemberOrgsPolicy.GetSignaturePolicy().Rule)
+		err := validateSpOrConcat(newCollection.GetMemberOrgsPolicy().GetSignaturePolicy().GetRule())
 		if err != nil {
 			return errors.WithMessagef(err, "collection-name: %s -- error in member org policy", collectionName)
 		}
@@ -249,11 +249,11 @@ func validateSpOrConcat(sp *common.SignaturePolicy) error {
 		return nil
 	}
 	// check if N == 1 (OR concatenation)
-	if sp.GetNOutOf().N != 1 {
-		return errors.New(fmt.Sprintf("signature policy is not an OR concatenation, NOutOf %d", sp.GetNOutOf().N))
+	if sp.GetNOutOf().GetN() != 1 {
+		return errors.New(fmt.Sprintf("signature policy is not an OR concatenation, NOutOf %d", sp.GetNOutOf().GetN()))
 	}
 	// recurse into all sub-rules
-	for _, rule := range sp.GetNOutOf().Rules {
+	for _, rule := range sp.GetNOutOf().GetRules() {
 		err := validateSpOrConcat(rule)
 		if err != nil {
 			return err
@@ -371,7 +371,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 	/* security check 0.a - validation of rwset */
 	/********************************************/
 	// there can only be one or two writes
-	if len(lsccrwset.Writes) > 2 {
+	if len(lsccrwset.GetWrites()) > 2 {
 		return policyErr(fmt.Errorf("LSCC can only issue one or two putState upon deploy"))
 	}
 
@@ -384,19 +384,19 @@ func (vscc *Validator) validateRWSetAndCollection(
 	}
 
 	var collectionsConfigLedger []byte
-	if len(lsccrwset.Writes) == 2 {
-		key := privdata.BuildCollectionKVSKey(cdRWSet.Name)
-		if lsccrwset.Writes[1].Key != key {
+	if len(lsccrwset.GetWrites()) == 2 {
+		key := privdata.BuildCollectionKVSKey(cdRWSet.GetName())
+		if lsccrwset.GetWrites()[1].GetKey() != key {
 			return policyErr(fmt.Errorf("invalid key for the collection of chaincode %s:%s; expected '%s', received '%s'",
-				cdRWSet.Name, cdRWSet.Version, key, lsccrwset.Writes[1].Key))
+				cdRWSet.GetName(), cdRWSet.GetVersion(), key, lsccrwset.GetWrites()[1].GetKey()))
 		}
 
-		collectionsConfigLedger = lsccrwset.Writes[1].Value
+		collectionsConfigLedger = lsccrwset.GetWrites()[1].GetValue()
 	}
 
 	if !bytes.Equal(collectionsConfigArg, collectionsConfigLedger) {
 		return policyErr(fmt.Errorf("collection configuration arguments supplied for chaincode %s:%s do not match the configuration in the lscc writeset",
-			cdRWSet.Name, cdRWSet.Version))
+			cdRWSet.GetName(), cdRWSet.GetVersion()))
 	}
 
 	channelState, err := vscc.stateFetcher.FetchState()
@@ -410,7 +410,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 	// The following condition check added in v1.1 may not be needed as it is not possible to have the chaincodeName~collection key in
 	// the lscc namespace before a chaincode deploy. To avoid forks in v1.2, the following condition is retained.
 	if lsccFunc == lscc.DEPLOY {
-		colCriteria := privdata.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.Name}
+		colCriteria := privdata.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.GetName()}
 		ccp, err := privdata.RetrieveCollectionConfigPackageFromState(colCriteria, state)
 		if err != nil {
 			// fail if we get any error other than NoSuchCollectionError
@@ -419,12 +419,12 @@ func (vscc *Validator) validateRWSetAndCollection(
 			if _, ok := err.(privdata.NoSuchCollectionError); !ok {
 				return &commonerrors.VSCCExecutionFailureError{
 					Err: fmt.Errorf("unable to check whether collection existed earlier for chaincode %s:%s",
-						cdRWSet.Name, cdRWSet.Version),
+						cdRWSet.GetName(), cdRWSet.GetVersion()),
 				}
 			}
 		}
 		if ccp != nil {
-			return policyErr(fmt.Errorf("collection data should not exist for chaincode %s:%s", cdRWSet.Name, cdRWSet.Version))
+			return policyErr(fmt.Errorf("collection data should not exist for chaincode %s:%s", cdRWSet.GetName(), cdRWSet.GetVersion()))
 		}
 	}
 
@@ -436,7 +436,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 		err := proto.Unmarshal(collectionsConfigArg, newCollectionConfigPackage)
 		if err != nil {
 			return policyErr(fmt.Errorf("invalid collection configuration supplied for chaincode %s:%s",
-				cdRWSet.Name, cdRWSet.Version))
+				cdRWSet.GetName(), cdRWSet.GetVersion()))
 		}
 	} else {
 		return nil
@@ -450,7 +450,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 
 		if lsccFunc == lscc.UPGRADE {
 
-			collectionCriteria := privdata.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.Name}
+			collectionCriteria := privdata.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.GetName()}
 			// oldCollectionConfigPackage denotes the existing collection config package in the ledger
 			oldCollectionConfigPackage, err := privdata.RetrieveCollectionConfigPackageFromState(collectionCriteria, state)
 			if err != nil {
@@ -460,7 +460,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 				if _, ok := err.(privdata.NoSuchCollectionError); !ok {
 					return &commonerrors.VSCCExecutionFailureError{
 						Err: fmt.Errorf("unable to check whether collection existed earlier for chaincode %s:%s: %v",
-							cdRWSet.Name, cdRWSet.Version, err),
+							cdRWSet.GetName(), cdRWSet.GetVersion(), err),
 					}
 				}
 			}
@@ -486,28 +486,28 @@ func (vscc *Validator) ValidateLSCCInvocation(
 	payl *common.Payload,
 	ac vc.Capabilities,
 ) commonerrors.TxValidationError {
-	cpp, err := protoutil.UnmarshalChaincodeProposalPayload(cap.ChaincodeProposalPayload)
+	cpp, err := protoutil.UnmarshalChaincodeProposalPayload(cap.GetChaincodeProposalPayload())
 	if err != nil {
 		logger.Errorf("VSCC error: GetChaincodeProposalPayload failed, err %s", err)
 		return policyErr(err)
 	}
 
 	cis := &pb.ChaincodeInvocationSpec{}
-	err = proto.Unmarshal(cpp.Input, cis)
+	err = proto.Unmarshal(cpp.GetInput(), cis)
 	if err != nil {
 		logger.Errorf("VSCC error: Unmarshal ChaincodeInvocationSpec failed, err %s", err)
 		return policyErr(err)
 	}
 
-	if cis.ChaincodeSpec == nil ||
-		cis.ChaincodeSpec.Input == nil ||
+	if cis.GetChaincodeSpec() == nil ||
+		cis.GetChaincodeSpec().GetInput() == nil ||
 		cis.ChaincodeSpec.Input.Args == nil {
 		logger.Errorf("VSCC error: committing invalid vscc invocation")
 		return policyErr(fmt.Errorf("malformed chaincode invocation spec"))
 	}
 
-	lsccFunc := string(cis.ChaincodeSpec.Input.Args[0])
-	lsccArgs := cis.ChaincodeSpec.Input.Args[1:]
+	lsccFunc := string(cis.GetChaincodeSpec().GetInput().GetArgs()[0])
+	lsccArgs := cis.GetChaincodeSpec().GetInput().GetArgs()[1:]
 
 	logger.Debugf("VSCC info: ValidateLSCCInvocation acting on %s %#v", lsccFunc, lsccArgs)
 
@@ -529,19 +529,19 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			return policyErr(fmt.Errorf("GetChaincodeDeploymentSpec error %s", err))
 		}
 
-		if cdsArgs == nil || cdsArgs.ChaincodeSpec == nil || cdsArgs.ChaincodeSpec.ChaincodeId == nil ||
-			cap.Action == nil || cap.Action.ProposalResponsePayload == nil {
+		if cdsArgs == nil || cdsArgs.GetChaincodeSpec() == nil || cdsArgs.GetChaincodeSpec().GetChaincodeId() == nil ||
+			cap.GetAction() == nil || cap.Action.ProposalResponsePayload == nil {
 			return policyErr(fmt.Errorf("VSCC error: invocation of lscc(%s) does not have appropriate arguments", lsccFunc))
 		}
 
-		switch cdsArgs.ChaincodeSpec.Type.String() {
+		switch cdsArgs.GetChaincodeSpec().GetType().String() {
 		case "GOLANG", "NODE", "JAVA", "CAR":
 		default:
-			return policyErr(fmt.Errorf("unexpected chaincode spec type: %s", cdsArgs.ChaincodeSpec.Type.String()))
+			return policyErr(fmt.Errorf("unexpected chaincode spec type: %s", cdsArgs.GetChaincodeSpec().GetType().String()))
 		}
 
 		// validate chaincode name
-		ccName := cdsArgs.ChaincodeSpec.ChaincodeId.Name
+		ccName := cdsArgs.GetChaincodeSpec().GetChaincodeId().GetName()
 		// it must comply with the lscc.ChaincodeNameRegExp
 		if !lscc.ChaincodeNameRegExp.MatchString(ccName) {
 			return policyErr(errors.Errorf("invalid chaincode name '%s'", ccName))
@@ -552,26 +552,26 @@ func (vscc *Validator) ValidateLSCCInvocation(
 		}
 
 		// validate chaincode version
-		ccVersion := cdsArgs.ChaincodeSpec.ChaincodeId.Version
+		ccVersion := cdsArgs.GetChaincodeSpec().GetChaincodeId().GetVersion()
 		// it must comply with the lscc.ChaincodeVersionRegExp
 		if !lscc.ChaincodeVersionRegExp.MatchString(ccVersion) {
 			return policyErr(errors.Errorf("invalid chaincode version '%s'", ccVersion))
 		}
 
 		// get the rwset
-		pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(cap.Action.ProposalResponsePayload)
+		pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(cap.GetAction().GetProposalResponsePayload())
 		if err != nil {
 			return policyErr(fmt.Errorf("GetProposalResponsePayload error %s", err))
 		}
 		if pRespPayload.Extension == nil {
 			return policyErr(fmt.Errorf("nil pRespPayload.Extension"))
 		}
-		respPayload, err := protoutil.UnmarshalChaincodeAction(pRespPayload.Extension)
+		respPayload, err := protoutil.UnmarshalChaincodeAction(pRespPayload.GetExtension())
 		if err != nil {
 			return policyErr(fmt.Errorf("GetChaincodeAction error %s", err))
 		}
 		txRWSet := &rwsetutil.TxRwSet{}
-		if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
+		if err = txRWSet.FromProtoBytes(respPayload.GetResults()); err != nil {
 			return policyErr(fmt.Errorf("txRWSet.FromProtoBytes error %s", err))
 		}
 
@@ -586,7 +586,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 		}
 
 		// retrieve from the ledger the entry for the chaincode at hand
-		cdLedger, ccExistsOnLedger, err := vscc.getInstantiatedCC(chid, cdsArgs.ChaincodeSpec.ChaincodeId.Name)
+		cdLedger, ccExistsOnLedger, err := vscc.getInstantiatedCC(chid, cdsArgs.GetChaincodeSpec().GetChaincodeId().GetName())
 		if err != nil {
 			return &commonerrors.VSCCExecutionFailureError{Err: err}
 		}
@@ -599,35 +599,35 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			return policyErr(fmt.Errorf("No read write set for lscc was found"))
 		}
 		// there must be at least one write
-		if len(lsccrwset.Writes) < 1 {
+		if len(lsccrwset.GetWrites()) < 1 {
 			return policyErr(fmt.Errorf("LSCC must issue at least one single putState upon deploy/upgrade"))
 		}
 		// the first key name must be the chaincode id provided in the deployment spec
-		if lsccrwset.Writes[0].Key != cdsArgs.ChaincodeSpec.ChaincodeId.Name {
-			return policyErr(fmt.Errorf("expected key %s, found %s", cdsArgs.ChaincodeSpec.ChaincodeId.Name, lsccrwset.Writes[0].Key))
+		if lsccrwset.GetWrites()[0].GetKey() != cdsArgs.GetChaincodeSpec().GetChaincodeId().GetName() {
+			return policyErr(fmt.Errorf("expected key %s, found %s", cdsArgs.GetChaincodeSpec().GetChaincodeId().GetName(), lsccrwset.GetWrites()[0].GetKey()))
 		}
 		// the value must be a ChaincodeData struct
 		cdRWSet := &ccprovider.ChaincodeData{}
-		err = proto.Unmarshal(lsccrwset.Writes[0].Value, cdRWSet)
+		err = proto.Unmarshal(lsccrwset.GetWrites()[0].GetValue(), cdRWSet)
 		if err != nil {
 			return policyErr(fmt.Errorf("unmarshalling of ChaincodeData failed, error %s", err))
 		}
 		// the chaincode name in the lsccwriteset must match the chaincode name in the deployment spec
-		if cdRWSet.Name != cdsArgs.ChaincodeSpec.ChaincodeId.Name {
-			return policyErr(fmt.Errorf("expected cc name %s, found %s", cdsArgs.ChaincodeSpec.ChaincodeId.Name, cdRWSet.Name))
+		if cdRWSet.GetName() != cdsArgs.GetChaincodeSpec().GetChaincodeId().GetName() {
+			return policyErr(fmt.Errorf("expected cc name %s, found %s", cdsArgs.GetChaincodeSpec().GetChaincodeId().GetName(), cdRWSet.GetName()))
 		}
 		// the chaincode version in the lsccwriteset must match the chaincode version in the deployment spec
-		if cdRWSet.Version != cdsArgs.ChaincodeSpec.ChaincodeId.Version {
-			return policyErr(fmt.Errorf("expected cc version %s, found %s", cdsArgs.ChaincodeSpec.ChaincodeId.Version, cdRWSet.Version))
+		if cdRWSet.GetVersion() != cdsArgs.GetChaincodeSpec().GetChaincodeId().GetVersion() {
+			return policyErr(fmt.Errorf("expected cc version %s, found %s", cdsArgs.GetChaincodeSpec().GetChaincodeId().GetVersion(), cdRWSet.GetVersion()))
 		}
 		// it must only write to 2 namespaces: LSCC's and the cc that we are deploying/upgrading
 		for _, ns := range txRWSet.NsRwSets {
-			if ns.NameSpace != "lscc" && ns.NameSpace != cdRWSet.Name && len(ns.KvRwSet.Writes) > 0 {
+			if ns.NameSpace != "lscc" && ns.NameSpace != cdRWSet.GetName() && len(ns.KvRwSet.GetWrites()) > 0 {
 				return policyErr(fmt.Errorf("LSCC invocation is attempting to write to namespace %s", ns.NameSpace))
 			}
 		}
 
-		logger.Debugf("Validating %s for cc %s version %s", lsccFunc, cdRWSet.Name, cdRWSet.Version)
+		logger.Debugf("Validating %s for cc %s version %s", lsccFunc, cdRWSet.GetName(), cdRWSet.GetVersion())
 
 		switch lsccFunc {
 		case lscc.DEPLOY:
@@ -636,7 +636,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			/* security check 1 - cc not in the LCCC table of instantiated cc */
 			/******************************************************************/
 			if ccExistsOnLedger {
-				return policyErr(fmt.Errorf("Chaincode %s is already instantiated", cdsArgs.ChaincodeSpec.ChaincodeId.Name))
+				return policyErr(fmt.Errorf("Chaincode %s is already instantiated", cdsArgs.GetChaincodeSpec().GetChaincodeId().GetName()))
 			}
 
 			/****************************************************************************/
@@ -650,7 +650,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 				}
 			} else {
 				// there can only be a single ledger write
-				if len(lsccrwset.Writes) != 1 {
+				if len(lsccrwset.GetWrites()) != 1 {
 					return policyErr(fmt.Errorf("LSCC can only issue a single putState upon deploy"))
 				}
 			}
@@ -658,7 +658,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			/*****************************************************/
 			/* security check 3 - check the instantiation policy */
 			/*****************************************************/
-			pol := cdRWSet.InstantiationPolicy
+			pol := cdRWSet.GetInstantiationPolicy()
 			if pol == nil {
 				return policyErr(fmt.Errorf("no instantiation policy was specified"))
 			}
@@ -677,14 +677,14 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			/* security check 1 - cc in the LCCC table of instantiated cc */
 			/**************************************************************/
 			if !ccExistsOnLedger {
-				return policyErr(fmt.Errorf("Upgrading non-existent chaincode %s", cdsArgs.ChaincodeSpec.ChaincodeId.Name))
+				return policyErr(fmt.Errorf("Upgrading non-existent chaincode %s", cdsArgs.GetChaincodeSpec().GetChaincodeId().GetName()))
 			}
 
 			/**********************************************************/
 			/* security check 2 - existing cc's version was different */
 			/**********************************************************/
-			if cdLedger.Version == cdsArgs.ChaincodeSpec.ChaincodeId.Version {
-				return policyErr(fmt.Errorf("Existing version of the cc on the ledger (%s) should be different from the upgraded one", cdsArgs.ChaincodeSpec.ChaincodeId.Version))
+			if cdLedger.GetVersion() == cdsArgs.GetChaincodeSpec().GetChaincodeId().GetVersion() {
+				return policyErr(fmt.Errorf("Existing version of the cc on the ledger (%s) should be different from the upgraded one", cdsArgs.GetChaincodeSpec().GetChaincodeId().GetVersion()))
 			}
 
 			/****************************************************************************/
@@ -699,7 +699,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 				}
 			} else {
 				// there can only be a single ledger write
-				if len(lsccrwset.Writes) != 1 {
+				if len(lsccrwset.GetWrites()) != 1 {
 					return policyErr(fmt.Errorf("LSCC can only issue a single putState upon upgrade"))
 				}
 			}
@@ -707,7 +707,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			/*****************************************************/
 			/* security check 4 - check the instantiation policy */
 			/*****************************************************/
-			pol := cdLedger.InstantiationPolicy
+			pol := cdLedger.GetInstantiationPolicy()
 			if pol == nil {
 				return policyErr(fmt.Errorf("No instantiation policy was specified"))
 			}
@@ -725,7 +725,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			/* security check 5 - check the instantiation policy in the rwset */
 			/******************************************************************/
 			if ac.V1_1Validation() {
-				polNew := cdRWSet.InstantiationPolicy
+				polNew := cdRWSet.GetInstantiationPolicy()
 				if polNew == nil {
 					return policyErr(fmt.Errorf("No instantiation policy was specified"))
 				}
@@ -778,40 +778,40 @@ func (vscc *Validator) getInstantiatedCC(chid, ccid string) (cd *ccprovider.Chai
 
 func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*protoutil.SignedData, error) {
 	// this is the first part of the signed message
-	prespBytes := cap.Action.ProposalResponsePayload
+	prespBytes := cap.GetAction().GetProposalResponsePayload()
 
 	// build the signature set for the evaluation
 	signatureSet := []*protoutil.SignedData{}
 	signatureMap := make(map[string]struct{})
 	// loop through each of the endorsements and build the signature set
-	for _, endorsement := range cap.Action.Endorsements {
+	for _, endorsement := range cap.GetAction().GetEndorsements() {
 		// unmarshal endorser bytes
 		serializedIdentity := &msp.SerializedIdentity{}
-		if err := proto.Unmarshal(endorsement.Endorser, serializedIdentity); err != nil {
+		if err := proto.Unmarshal(endorsement.GetEndorser(), serializedIdentity); err != nil {
 			logger.Errorf("Unmarshal endorser error: %s", err)
 			return nil, policyErr(fmt.Errorf("Unmarshal endorser error: %s", err))
 		}
-		identity := serializedIdentity.Mspid + string(serializedIdentity.IdBytes)
+		identity := serializedIdentity.GetMspid() + string(serializedIdentity.GetIdBytes())
 		if _, ok := signatureMap[identity]; ok {
 			// Endorsement with the same identity has already been added
-			logger.Warningf("Ignoring duplicated identity, Mspid: %s, pem:\n%s", serializedIdentity.Mspid, serializedIdentity.IdBytes)
+			logger.Warningf("Ignoring duplicated identity, Mspid: %s, pem:\n%s", serializedIdentity.GetMspid(), serializedIdentity.GetIdBytes())
 			continue
 		}
-		data := make([]byte, len(prespBytes)+len(endorsement.Endorser))
+		data := make([]byte, len(prespBytes)+len(endorsement.GetEndorser()))
 		copy(data, prespBytes)
-		copy(data[len(prespBytes):], endorsement.Endorser)
+		copy(data[len(prespBytes):], endorsement.GetEndorser())
 		signatureSet = append(signatureSet, &protoutil.SignedData{
 			// set the data that is signed; concatenation of proposal response bytes and endorser ID
 			Data: data,
 			// set the identity that signs the message: it's the endorser
-			Identity: endorsement.Endorser,
+			Identity: endorsement.GetEndorser(),
 			// set the signature
-			Signature: endorsement.Signature,
+			Signature: endorsement.GetSignature(),
 		})
 		signatureMap[identity] = struct{}{}
 	}
 
-	logger.Debugf("Signature set is of size %d out of %d endorsement(s)", len(signatureSet), len(cap.Action.Endorsements))
+	logger.Debugf("Signature set is of size %d out of %d endorsement(s)", len(signatureSet), len(cap.GetAction().GetEndorsements()))
 	return signatureSet, nil
 }
 

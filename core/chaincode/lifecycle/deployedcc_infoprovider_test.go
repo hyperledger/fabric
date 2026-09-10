@@ -177,7 +177,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			Expect(res.Name).To(Equal("cc-name"))
 			Expect(res.Version).To(Equal("version"))
 			Expect(res.Hash).To(Equal(util.ComputeSHA256([]byte("cc-name:version"))))
-			Expect(len(res.ExplicitCollectionConfigPkg.Config)).To(Equal(1))
+			Expect(len(res.ExplicitCollectionConfigPkg.GetConfig())).To(Equal(1))
 		})
 
 		Context("when the requested chaincode is _lifecycle", func() {
@@ -269,7 +269,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			Expect(ok).To(BeTrue())
 			Expect(ccInfo.Name).To(Equal("cc-name"))
 			Expect(ccInfo.IsLegacy).To(BeFalse())
-			Expect(ccInfo.Version).To(Equal(fakeChaincodeDef.EndorsementInfo.Version))
+			Expect(ccInfo.Version).To(Equal(fakeChaincodeDef.EndorsementInfo.GetVersion()))
 			Expect(ccInfo.ExplicitCollectionConfigPkg).To(ProtoEqual(fakeChaincodeDef.Collections))
 		})
 
@@ -341,7 +341,7 @@ var _ = Describe("ValidatorCommitter", func() {
 				Expect(ok).To(BeTrue())
 				Expect(newlifecycleCCInfo.Name).To(Equal("cc-name"))
 				Expect(newlifecycleCCInfo.IsLegacy).To(BeFalse())
-				Expect(newlifecycleCCInfo.Version).To(Equal(fakeChaincodeDef.EndorsementInfo.Version))
+				Expect(newlifecycleCCInfo.Version).To(Equal(fakeChaincodeDef.EndorsementInfo.GetVersion()))
 				Expect(newlifecycleCCInfo.ExplicitCollectionConfigPkg).To(ProtoEqual(fakeChaincodeDef.Collections))
 
 				legacyCCInfo, ok := res["another-cc-name"]
@@ -451,7 +451,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			Expect(len(res)).To(Equal(2))
 			var firstOrg, secondOrg *pb.StaticCollectionConfig
 			for _, collection := range res {
-				switch collection.Name {
+				switch collection.GetName() {
 				case "_implicit_org_first-mspid":
 					firstOrg = collection
 				case "_implicit_org_second-mspid":
@@ -460,12 +460,12 @@ var _ = Describe("ValidatorCommitter", func() {
 			}
 			// Required/MaxPeerCount should match privdataConfig when the implicit collection is for peer's own org
 			Expect(firstOrg).NotTo(BeNil())
-			Expect(firstOrg.RequiredPeerCount).To(Equal(int32(privdataConfig.ImplicitCollDisseminationPolicy.RequiredPeerCount)))
-			Expect(firstOrg.MaximumPeerCount).To(Equal(int32(privdataConfig.ImplicitCollDisseminationPolicy.MaxPeerCount)))
+			Expect(firstOrg.GetRequiredPeerCount()).To(Equal(int32(privdataConfig.ImplicitCollDisseminationPolicy.RequiredPeerCount)))
+			Expect(firstOrg.GetMaximumPeerCount()).To(Equal(int32(privdataConfig.ImplicitCollDisseminationPolicy.MaxPeerCount)))
 			// Required/MaxPeerCount should be 0 when the implicit collection is for other org
 			Expect(secondOrg).NotTo(BeNil())
-			Expect(secondOrg.RequiredPeerCount).To(Equal(int32(0)))
-			Expect(secondOrg.MaximumPeerCount).To(Equal(int32(0)))
+			Expect(secondOrg.GetRequiredPeerCount()).To(Equal(int32(0)))
+			Expect(secondOrg.GetMaximumPeerCount()).To(Equal(int32(0)))
 		})
 
 		Context("when the chaincode does not exist", func() {
@@ -515,7 +515,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			ccPkg, err := vc.AllCollectionsConfigPkg("channel-name", "cc-name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
 			collectionNames := []string{}
-			for _, config := range ccPkg.Config {
+			for _, config := range ccPkg.GetConfig() {
 				collectionNames = append(collectionNames, config.GetStaticCollectionConfig().GetName())
 			}
 			Expect(collectionNames).Should(ConsistOf("collection-name", "_implicit_org_first-mspid", "_implicit_org_second-mspid"))
@@ -540,7 +540,7 @@ var _ = Describe("ValidatorCommitter", func() {
 				ccPkg, err := vc.AllCollectionsConfigPkg("channel-name", "cc-without-explicit-collection", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
 				collectionNames := []string{}
-				for _, config := range ccPkg.Config {
+				for _, config := range ccPkg.GetConfig() {
 					collectionNames = append(collectionNames, config.GetStaticCollectionConfig().GetName())
 				}
 				Expect(collectionNames).Should(ConsistOf("_implicit_org_first-mspid", "_implicit_org_second-mspid"))

@@ -107,7 +107,7 @@ func TestPluginEndorserGreenPath(t *testing.T) {
 	// Scenario I: Call the endorsement for the first time
 	endorsement, prpBytes, err := pluginEndorser.EndorseWithPlugin("plugin", "mychannel", nil, nil)
 	require.NoError(t, err)
-	require.Equal(t, expectedSignature, endorsement.Signature)
+	require.Equal(t, expectedSignature, endorsement.GetSignature())
 	require.Equal(t, expectedProposalResponsePayload, prpBytes)
 	// Ensure both state and SigningIdentityFetcher were passed to Init()
 	plugin.AssertCalled(t, "Init", &endorser.ChannelState{QueryCreator: queryCreator, Store: &transientstore.Store{}}, sif)
@@ -118,7 +118,7 @@ func TestPluginEndorserGreenPath(t *testing.T) {
 	// Also - check that the Init() wasn't called more than once on the plugin.
 	endorsement, prpBytes, err = pluginEndorser.EndorseWithPlugin("plugin", "mychannel", nil, nil)
 	require.NoError(t, err)
-	require.Equal(t, expectedSignature, endorsement.Signature)
+	require.Equal(t, expectedSignature, endorsement.GetSignature())
 	require.Equal(t, expectedProposalResponsePayload, prpBytes)
 	pluginFactory.AssertNumberOfCalls(t, "New", 1)
 	plugin.AssertNumberOfCalls(t, "Init", 1)
@@ -130,7 +130,7 @@ func TestPluginEndorserGreenPath(t *testing.T) {
 	plugin.On("Init", mock.Anything).Return(nil).Once()
 	endorsement, prpBytes, err = pluginEndorser.EndorseWithPlugin("plugin", "", nil, nil)
 	require.NoError(t, err)
-	require.Equal(t, expectedSignature, endorsement.Signature)
+	require.Equal(t, expectedSignature, endorsement.GetSignature())
 	require.Equal(t, expectedProposalResponsePayload, prpBytes)
 	plugin.AssertCalled(t, "Init", sif)
 }

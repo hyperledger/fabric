@@ -34,22 +34,22 @@ func (f *timewindowCheckFilter) Init(next peer.EndorserServer) {
 }
 
 func validateTimewindowProposal(signedProp *peer.SignedProposal, timeWindow time.Duration) error {
-	prop, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
+	prop, err := protoutil.UnmarshalProposal(signedProp.GetProposalBytes())
 	if err != nil {
 		return errors.Wrap(err, "failed parsing proposal")
 	}
 
-	hdr, err := protoutil.UnmarshalHeader(prop.Header)
+	hdr, err := protoutil.UnmarshalHeader(prop.GetHeader())
 	if err != nil {
 		return errors.Wrap(err, "failed parsing header")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(hdr.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(hdr.GetChannelHeader())
 	if err != nil {
 		return errors.Wrap(err, "failed parsing channel header")
 	}
 
-	timeProposal := chdr.Timestamp.AsTime().UTC()
+	timeProposal := chdr.GetTimestamp().AsTime().UTC()
 	now := time.Now().UTC()
 
 	if timeProposal.Add(timeWindow).Before(now) || timeProposal.Add(-timeWindow).After(now) {

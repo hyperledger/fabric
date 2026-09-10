@@ -136,7 +136,7 @@ func ExtractChannelHeaderCertHash(msg proto.Message) []byte {
 	if !isChannelHeader || chdr == nil {
 		return nil
 	}
-	return chdr.TlsCertHash
+	return chdr.GetTlsCertHash()
 }
 
 // NewHandler creates an implementation of the Handler interface.
@@ -207,16 +207,16 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		return cb.Status_BAD_REQUEST, nil
 	}
 
-	chain := h.ChainManager.GetChain(chdr.ChannelId)
+	chain := h.ChainManager.GetChain(chdr.GetChannelId())
 	if chain == nil {
 		// Note, we log this at DEBUG because SDKs will poll waiting for channels to be created
 		// So we would expect our log to be somewhat flooded with these
-		logger.Debugf("Rejecting deliver for %s because channel %s not found", addr, chdr.ChannelId)
+		logger.Debugf("Rejecting deliver for %s because channel %s not found", addr, chdr.GetChannelId())
 		return cb.Status_NOT_FOUND, nil
 	}
 
 	labels := []string{
-		"channel", chdr.ChannelId,
+		"channel", chdr.GetChannelId(),
 		"filtered", strconv.FormatBool(isFiltered(srv)),
 		"data_type", srv.DataType(),
 	}
@@ -227,46 +227,46 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	}()
 
 	seekInfo := &ab.SeekInfo{}
-	if err = proto.Unmarshal(payload.Data, seekInfo); err != nil {
-		logger.Warningf("[channel: %s] Received a signed deliver request from %s with malformed seekInfo payload: %s", chdr.ChannelId, addr, err)
+	if err = proto.Unmarshal(payload.GetData(), seekInfo); err != nil {
+		logger.Warningf("[channel: %s] Received a signed deliver request from %s with malformed seekInfo payload: %s", chdr.GetChannelId(), addr, err)
 		return cb.Status_BAD_REQUEST, nil
 	}
 
 	erroredChan := chain.Errored()
-	if seekInfo.ErrorResponse == ab.SeekInfo_BEST_EFFORT {
+	if seekInfo.GetErrorResponse() == ab.SeekInfo_BEST_EFFORT {
 		// In a 'best effort' delivery of blocks, we should ignore consenter errors
 		// and continue to deliver blocks according to the client's request.
 		erroredChan = nil
 	}
 	select {
 	case <-erroredChan:
-		logger.Warningf("[channel: %s] Rejecting deliver request for %s because of consenter error", chdr.ChannelId, addr)
+		logger.Warningf("[channel: %s] Rejecting deliver request for %s because of consenter error", chdr.GetChannelId(), addr)
 		return cb.Status_SERVICE_UNAVAILABLE, nil
 	default:
 	}
 
-	accessControl, err := NewSessionAC(chain, envelope, srv.PolicyChecker, chdr.ChannelId, h.ExpirationCheckFunc)
+	accessControl, err := NewSessionAC(chain, envelope, srv.PolicyChecker, chdr.GetChannelId(), h.ExpirationCheckFunc)
 	if err != nil {
-		logger.Warningf("[channel: %s] failed to create access control object due to %s", chdr.ChannelId, err)
+		logger.Warningf("[channel: %s] failed to create access control object due to %s", chdr.GetChannelId(), err)
 		return cb.Status_BAD_REQUEST, nil
 	}
 
 	if err := accessControl.Evaluate(); err != nil {
-		logger.Warningf("[channel: %s] Client %s is not authorized: %s", chdr.ChannelId, addr, err)
+		logger.Warningf("[channel: %s] Client %s is not authorized: %s", chdr.GetChannelId(), addr, err)
 		return cb.Status_FORBIDDEN, nil
 	}
 
-	if seekInfo.Start == nil || seekInfo.Stop == nil {
-		logger.Warningf("[channel: %s] Received seekInfo message from %s with missing start or stop %v, %v", chdr.ChannelId, addr, seekInfo.Start, seekInfo.Stop)
+	if seekInfo.GetStart() == nil || seekInfo.GetStop() == nil {
+		logger.Warningf("[channel: %s] Received seekInfo message from %s with missing start or stop %v, %v", chdr.GetChannelId(), addr, seekInfo.GetStart(), seekInfo.GetStop())
 		return cb.Status_BAD_REQUEST, nil
 	}
 
-	logger.Debugf("[channel: %s] Received seekInfo (%p) %v from %s", chdr.ChannelId, seekInfo, seekInfo, addr)
+	logger.Debugf("[channel: %s] Received seekInfo (%p) %v from %s", chdr.GetChannelId(), seekInfo, seekInfo, addr)
 
-	cursor, number := chain.Reader().Iterator(seekInfo.Start)
+	cursor, number := chain.Reader().Iterator(seekInfo.GetStart())
 	defer cursor.Close()
 	var stopNum uint64
-	switch stop := seekInfo.Stop.Type.(type) {
+	switch stop := seekInfo.GetStop().GetType().(type) {
 	case *ab.SeekPosition_Oldest:
 		stopNum = number
 	case *ab.SeekPosition_Newest:
@@ -274,23 +274,23 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		// and stopping at newest), don't reevaluate the ledger
 		// height as this can lead to multiple blocks being
 		// sent when only one is expected
-		if proto.Equal(seekInfo.Start, seekInfo.Stop) {
+		if proto.Equal(seekInfo.GetStart(), seekInfo.GetStop()) {
 			stopNum = number
 			break
 		}
 		stopNum = chain.Reader().Height() - 1
 	case *ab.SeekPosition_Specified:
-		stopNum = stop.Specified.Number
+		stopNum = stop.Specified.GetNumber()
 		if stopNum < number {
-			logger.Warningf("[channel: %s] Received invalid seekInfo message from %s: start number %d greater than stop number %d", chdr.ChannelId, addr, number, stopNum)
+			logger.Warningf("[channel: %s] Received invalid seekInfo message from %s: start number %d greater than stop number %d", chdr.GetChannelId(), addr, number, stopNum)
 			return cb.Status_BAD_REQUEST, nil
 		}
 	}
 
 	for {
-		if seekInfo.Behavior == ab.SeekInfo_FAIL_IF_NOT_READY {
+		if seekInfo.GetBehavior() == ab.SeekInfo_FAIL_IF_NOT_READY {
 			if number > chain.Reader().Height()-1 {
-				logger.Warningf("[channel: %s] Block %d not found, block number greater than chain length bounds", chdr.ChannelId, number)
+				logger.Warningf("[channel: %s] Block %d not found, block number greater than chain length bounds", chdr.GetChannelId(), number)
 				return cb.Status_NOT_FOUND, nil
 			}
 		}
@@ -318,7 +318,7 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		}
 
 		if status != cb.Status_SUCCESS {
-			logger.Warningf("[channel: %s] Error reading from channel, cause was: %v", chdr.ChannelId, status)
+			logger.Warningf("[channel: %s] Error reading from channel, cause was: %v", chdr.GetChannelId(), status)
 			return status, nil
 		}
 
@@ -326,56 +326,56 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		number++
 
 		if err := accessControl.Evaluate(); err != nil {
-			logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.ChannelId, addr, err)
+			logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.GetChannelId(), addr, err)
 			return cb.Status_FORBIDDEN, nil
 		}
 
-		logger.Debugf("[channel: %s] Delivering block [%d] for (%p) for %s", chdr.ChannelId, block.Header.Number, seekInfo, addr)
+		logger.Debugf("[channel: %s] Delivering block [%d] for (%p) for %s", chdr.GetChannelId(), block.GetHeader().GetNumber(), seekInfo, addr)
 
 		// Data blocks carry nil data for block attestations.
 		// Never mutate the block received from the iterator as it is from a cache.
 		block2send := block
-		if seekInfo.ContentType == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
+		if seekInfo.GetContentType() == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
 			block2send = &cb.Block{
-				Header:   block.Header,
-				Metadata: block.Metadata,
+				Header:   block.GetHeader(),
+				Metadata: block.GetMetadata(),
 			}
 		}
 
-		signedData := &protoutil.SignedData{Data: envelope.Payload, Identity: shdr.Creator, Signature: envelope.Signature}
-		if err := srv.SendBlockResponse(block2send, chdr.ChannelId, chain, signedData); err != nil {
-			logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.ChannelId, addr, err)
+		signedData := &protoutil.SignedData{Data: envelope.GetPayload(), Identity: shdr.GetCreator(), Signature: envelope.GetSignature()}
+		if err := srv.SendBlockResponse(block2send, chdr.GetChannelId(), chain, signedData); err != nil {
+			logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.GetChannelId(), addr, err)
 			return cb.Status_INTERNAL_SERVER_ERROR, err
 		}
 
 		h.Metrics.BlocksSent.With(labels...).Add(1)
 
-		if stopNum == block.Header.Number {
+		if stopNum == block.GetHeader().GetNumber() {
 			break
 		}
 	}
 
-	logger.Debugf("[channel: %s] Done delivering to %s for (%p)", chdr.ChannelId, addr, seekInfo)
+	logger.Debugf("[channel: %s] Done delivering to %s for (%p)", chdr.GetChannelId(), addr, seekInfo)
 
 	return cb.Status_SUCCESS, nil
 }
 
 func (h *Handler) parseEnvelope(ctx context.Context, envelope *cb.Envelope) (*cb.Payload, *cb.ChannelHeader, *cb.SignatureHeader, error) {
-	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+	payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return nil, nil, nil, errors.New("envelope has no header")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	shdr, err := protoutil.UnmarshalSignatureHeader(payload.Header.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(payload.GetHeader().GetSignatureHeader())
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -394,7 +394,7 @@ func (h *Handler) validateChannelHeader(ctx context.Context, chdr *cb.ChannelHea
 		return err
 	}
 
-	envTime := time.Unix(chdr.GetTimestamp().Seconds, int64(chdr.GetTimestamp().Nanos)).UTC()
+	envTime := time.Unix(chdr.GetTimestamp().GetSeconds(), int64(chdr.GetTimestamp().GetNanos())).UTC()
 	serverTime := time.Now()
 
 	if math.Abs(float64(serverTime.UnixNano()-envTime.UnixNano())) > float64(h.TimeWindow.Nanoseconds()) {

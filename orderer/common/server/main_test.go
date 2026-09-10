@@ -429,7 +429,7 @@ func TestVerifyNoSystemChannel(t *testing.T) {
 	require.Panics(t, func() { verifyNoSystemChannel(rlf, cryptoProvider) })
 
 	// Make and append the next config block, detecting system channel and panicking
-	prevHash := protoutil.BlockHeaderHash(configBlock.Header)
+	prevHash := protoutil.BlockHeaderHash(configBlock.GetHeader())
 	configBlock.Header.Number = 1
 	configBlock.Header.PreviousHash = prevHash
 	configBlock.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&common.Metadata{
@@ -975,7 +975,7 @@ func produceGenesisFileEtcdRaft(t *testing.T, channelID string, tmpDir string) (
 	confRaft.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
 	confRaft.Capabilities = map[string]bool{"V3_0": true}
 
-	serverCert, err := os.ReadFile(string(confRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert))
+	serverCert, err := os.ReadFile(string(confRaft.Orderer.EtcdRaft.GetConsenters()[0].GetServerTlsCert()))
 	require.NoError(t, err)
 
 	bootstrapper, err := encoder.NewBootstrapper(confRaft)
@@ -994,7 +994,7 @@ func produceGenesisFileEtcdRaftAppChannel(t *testing.T, channelID string, tmpDir
 	confRaft.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
 	confRaft.Capabilities = map[string]bool{"V3_0": true}
 
-	serverCert, err := os.ReadFile(string(confRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert))
+	serverCert, err := os.ReadFile(string(confRaft.Orderer.EtcdRaft.GetConsenters()[0].GetServerTlsCert()))
 	require.NoError(t, err)
 
 	bootstrapper, err := encoder.NewBootstrapper(confRaft)

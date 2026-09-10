@@ -47,9 +47,9 @@ type asn1Header struct {
 
 func BlockHeaderBytes(b *cb.BlockHeader) []byte {
 	asn1Header := asn1Header{
-		PreviousHash: b.PreviousHash,
-		DataHash:     b.DataHash,
-		Number:       new(big.Int).SetUint64(b.Number),
+		PreviousHash: b.GetPreviousHash(),
+		DataHash:     b.GetDataHash(),
+		Number:       new(big.Int).SetUint64(b.GetNumber()),
 	}
 	result, err := asn1.Marshal(asn1Header)
 	if err != nil {
@@ -74,7 +74,7 @@ func BlockDataHash(b *cb.BlockData) ([]byte, error) {
 }
 
 func ComputeBlockDataHash(b *cb.BlockData) []byte {
-	sum := sha256.Sum256(bytes.Join(b.Data, nil))
+	sum := sha256.Sum256(bytes.Join(b.GetData(), nil))
 	return sum[:]
 }
 
@@ -91,11 +91,11 @@ func GetChannelIDFromBlockBytes(bytes []byte) (string, error) {
 
 // GetChannelIDFromBlock returns channel ID in the block
 func GetChannelIDFromBlock(block *cb.Block) (string, error) {
-	if block == nil || block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
+	if block == nil || block.GetData() == nil || block.Data.Data == nil || len(block.GetData().GetData()) == 0 {
 		return "", errors.New("failed to retrieve channel id - block is empty")
 	}
 	var err error
-	envelope, err := GetEnvelopeFromBlock(block.Data.Data[0])
+	envelope, err := GetEnvelopeFromBlock(block.GetData().GetData()[0])
 	if err != nil {
 		return "", err
 	}
@@ -110,7 +110,7 @@ func GetChannelIDFromEnvelope(envelope *cb.Envelope) (string, error) {
 		return "", err
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return "", errors.New("failed to retrieve channel id - payload header is empty")
 	}
 	chdr, err := UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
@@ -118,21 +118,21 @@ func GetChannelIDFromEnvelope(envelope *cb.Envelope) (string, error) {
 		return "", err
 	}
 
-	return chdr.ChannelId, nil
+	return chdr.GetChannelId(), nil
 }
 
 // GetMetadataFromBlock retrieves metadata at the specified index.
 func GetMetadataFromBlock(block *cb.Block, index cb.BlockMetadataIndex) (*cb.Metadata, error) {
-	if block.Metadata == nil {
+	if block.GetMetadata() == nil {
 		return nil, errors.New("no metadata in block")
 	}
 
-	if len(block.Metadata.Metadata) <= int(index) {
+	if len(block.GetMetadata().GetMetadata()) <= int(index) {
 		return nil, errors.Errorf("no metadata at index [%s]", index)
 	}
 
 	md := &cb.Metadata{}
-	err := proto.Unmarshal(block.Metadata.Metadata[index], md)
+	err := proto.Unmarshal(block.GetMetadata().GetMetadata()[index], md)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error unmarshalling metadata at index [%s]", index)
 	}
@@ -159,18 +159,18 @@ func GetConsenterMetadataFromBlock(block *cb.Block) (*cb.Metadata, error) {
 	}
 
 	// TODO FAB-15864 Remove this fallback when we can stop supporting upgrade from pre-1.4.1 orderer
-	if len(m.Value) == 0 {
+	if len(m.GetValue()) == 0 {
 		return GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
 	}
 
 	obm := &cb.OrdererBlockMetadata{}
-	err = proto.Unmarshal(m.Value, obm)
+	err = proto.Unmarshal(m.GetValue(), obm)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal orderer block metadata")
 	}
 
 	res := &cb.Metadata{}
-	err = proto.Unmarshal(obm.ConsenterMetadata, res)
+	err = proto.Unmarshal(obm.GetConsenterMetadata(), res)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal consenter metadata")
 	}
@@ -186,25 +186,25 @@ func GetLastConfigIndexFromBlock(block *cb.Block) (uint64, error) {
 		return 0, errors.WithMessage(err, "failed to retrieve metadata")
 	}
 	// TODO FAB-15864 Remove this fallback when we can stop supporting upgrade from pre-1.4.1 orderer
-	if len(m.Value) == 0 {
+	if len(m.GetValue()) == 0 {
 		m, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIG)
 		if err != nil {
 			return 0, errors.WithMessage(err, "failed to retrieve metadata")
 		}
 		lc := &cb.LastConfig{}
-		err = proto.Unmarshal(m.Value, lc)
+		err = proto.Unmarshal(m.GetValue(), lc)
 		if err != nil {
 			return 0, errors.Wrap(err, "error unmarshalling LastConfig")
 		}
-		return lc.Index, nil
+		return lc.GetIndex(), nil
 	}
 
 	obm := &cb.OrdererBlockMetadata{}
-	err = proto.Unmarshal(m.Value, obm)
+	err = proto.Unmarshal(m.GetValue(), obm)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to unmarshal orderer block metadata")
 	}
-	return obm.LastConfig.Index, nil
+	return obm.GetLastConfig().GetIndex(), nil
 }
 
 // GetLastConfigIndexFromBlockOrPanic retrieves the index of the last config
@@ -219,7 +219,7 @@ func GetLastConfigIndexFromBlockOrPanic(block *cb.Block) uint64 {
 
 // CopyBlockMetadata copies metadata from one block into another
 func CopyBlockMetadata(src *cb.Block, dst *cb.Block) {
-	dst.Metadata = src.Metadata
+	dst.Metadata = src.GetMetadata()
 	// Once copied initialize with rest of the
 	// required metadata positions.
 	InitBlockMetadata(dst)
@@ -227,10 +227,10 @@ func CopyBlockMetadata(src *cb.Block, dst *cb.Block) {
 
 // InitBlockMetadata initializes metadata structure
 func InitBlockMetadata(block *cb.Block) {
-	if block.Metadata == nil {
+	if block.GetMetadata() == nil {
 		block.Metadata = &cb.BlockMetadata{Metadata: [][]byte{{}, {}, {}, {}, {}}}
-	} else if len(block.Metadata.Metadata) < int(cb.BlockMetadataIndex_COMMIT_HASH+1) {
-		for i := len(block.Metadata.Metadata); i <= int(cb.BlockMetadataIndex_COMMIT_HASH); i++ {
+	} else if len(block.GetMetadata().GetMetadata()) < int(cb.BlockMetadataIndex_COMMIT_HASH+1) {
+		for i := len(block.GetMetadata().GetMetadata()); i <= int(cb.BlockMetadataIndex_COMMIT_HASH); i++ {
 			block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 		}
 	}
@@ -255,17 +255,17 @@ func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy 
 		}
 
 		md := &cb.Metadata{}
-		if err := proto.Unmarshal(metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES], md); err != nil {
+		if err := proto.Unmarshal(metadata.GetMetadata()[cb.BlockMetadataIndex_SIGNATURES], md); err != nil {
 			return errors.Wrapf(err, "error unmarshalling signatures from metadata: %v", err)
 		}
 
 		var signatureSet []*SignedData
-		for _, metadataSignature := range md.Signatures {
+		for _, metadataSignature := range md.GetSignatures() {
 			var signerIdentity []byte
 			var signedPayload []byte
 			// if the SignatureHeader is empty and the IdentifierHeader is present, then  the consenter expects us to fetch its identity by its numeric identifier
 			if bftEnabled && len(metadataSignature.GetSignatureHeader()) == 0 && len(metadataSignature.GetIdentifierHeader()) > 0 {
-				identifierHeader, err := UnmarshalIdentifierHeader(metadataSignature.IdentifierHeader)
+				identifierHeader, err := UnmarshalIdentifierHeader(metadataSignature.GetIdentifierHeader())
 				if err != nil {
 					return fmt.Errorf("failed unmarshalling identifier header for block %d: %v", header.GetNumber(), err)
 				}
@@ -275,16 +275,16 @@ func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy 
 					// The identifier is not within the consenter set
 					continue
 				}
-				signedPayload = util.ConcatenateBytes(md.Value, metadataSignature.IdentifierHeader, BlockHeaderBytes(header))
+				signedPayload = util.ConcatenateBytes(md.GetValue(), metadataSignature.GetIdentifierHeader(), BlockHeaderBytes(header))
 			} else {
 				signatureHeader, err := UnmarshalSignatureHeader(metadataSignature.GetSignatureHeader())
 				if err != nil {
 					return fmt.Errorf("failed unmarshalling signature header for block %d: %v", header.GetNumber(), err)
 				}
 
-				signedPayload = util.ConcatenateBytes(md.Value, metadataSignature.SignatureHeader, BlockHeaderBytes(header))
+				signedPayload = util.ConcatenateBytes(md.GetValue(), metadataSignature.GetSignatureHeader(), BlockHeaderBytes(header))
 
-				signerIdentity = signatureHeader.Creator
+				signerIdentity = signatureHeader.GetCreator()
 			}
 
 			signatureSet = append(
@@ -292,7 +292,7 @@ func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy 
 				&SignedData{
 					Identity:  signerIdentity,
 					Data:      signedPayload,
-					Signature: metadataSignature.Signature,
+					Signature: metadataSignature.GetSignature(),
 				},
 			)
 		}
@@ -303,10 +303,10 @@ func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy 
 
 func searchConsenterIdentityByID(consenters []*cb.Consenter, identifier uint32) []byte {
 	for _, consenter := range consenters {
-		if consenter.Id == identifier {
+		if consenter.GetId() == identifier {
 			return MarshalOrPanic(&msp.SerializedIdentity{
-				Mspid:   consenter.MspId,
-				IdBytes: consenter.Identity,
+				Mspid:   consenter.GetMspId(),
+				IdBytes: consenter.GetIdentity(),
 			})
 		}
 	}
@@ -314,7 +314,7 @@ func searchConsenterIdentityByID(consenters []*cb.Consenter, identifier uint32) 
 }
 
 func VerifyTransactionsAreWellFormed(bd *cb.BlockData) error {
-	if bd == nil || bd.Data == nil || len(bd.Data) == 0 {
+	if bd == nil || bd.Data == nil || len(bd.GetData()) == 0 {
 		return errors.New("empty block")
 	}
 
@@ -324,17 +324,17 @@ func VerifyTransactionsAreWellFormed(bd *cb.BlockData) error {
 		return nil
 	}
 
-	for i, rawTx := range bd.Data {
+	for i, rawTx := range bd.GetData() {
 		env := &cb.Envelope{}
 		if err := proto.Unmarshal(rawTx, env); err != nil {
 			return fmt.Errorf("transaction %d is invalid: %v", i, err)
 		}
 
-		if len(env.Payload) == 0 {
+		if len(env.GetPayload()) == 0 {
 			return fmt.Errorf("transaction %d has no payload", i)
 		}
 
-		if len(env.Signature) == 0 {
+		if len(env.GetSignature()) == 0 {
 			return fmt.Errorf("transaction %d has no signature", i)
 		}
 

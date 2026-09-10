@@ -61,10 +61,10 @@ func TestRevocation(t *testing.T) {
 
 		// Unmarshal the config
 		var mspConfig msp.FabricMSPConfig
-		err = proto.Unmarshal(conf.Config, &mspConfig)
+		err = proto.Unmarshal(conf.GetConfig(), &mspConfig)
 		require.NoError(t, err)
-		require.Len(t, mspConfig.RevocationList, 1)
-		crl, err := x509.ParseCRL(mspConfig.RevocationList[0])
+		require.Len(t, mspConfig.GetRevocationList(), 1)
+		crl, err := x509.ParseCRL(mspConfig.GetRevocationList()[0])
 		require.NoError(t, err)
 
 		// Decode the CRL signature

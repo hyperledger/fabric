@@ -67,7 +67,7 @@ func (i *fileLedgerIterator) Close() {
 // starting block number
 func (fl *FileLedger) Iterator(startPosition *ab.SeekPosition) (blockledger.Iterator, uint64) {
 	var startingBlockNumber uint64
-	switch start := startPosition.Type.(type) {
+	switch start := startPosition.GetType().(type) {
 	case *ab.SeekPosition_Oldest:
 		startingBlockNumber = 0
 	case *ab.SeekPosition_Newest:
@@ -75,13 +75,13 @@ func (fl *FileLedger) Iterator(startPosition *ab.SeekPosition) (blockledger.Iter
 		if err != nil {
 			logger.Panic(err)
 		}
-		newestBlockNumber := info.Height - 1
-		if info.BootstrappingSnapshotInfo != nil && newestBlockNumber == info.BootstrappingSnapshotInfo.LastBlockInSnapshot {
-			newestBlockNumber = info.Height
+		newestBlockNumber := info.GetHeight() - 1
+		if info.GetBootstrappingSnapshotInfo() != nil && newestBlockNumber == info.GetBootstrappingSnapshotInfo().GetLastBlockInSnapshot() {
+			newestBlockNumber = info.GetHeight()
 		}
 		startingBlockNumber = newestBlockNumber
 	case *ab.SeekPosition_Specified:
-		startingBlockNumber = start.Specified.Number
+		startingBlockNumber = start.Specified.GetNumber()
 		height := fl.Height()
 		if startingBlockNumber > height {
 			return &blockledger.NotFoundErrorIterator{}, 0
@@ -107,7 +107,7 @@ func (fl *FileLedger) Height() uint64 {
 	if err != nil {
 		logger.Panic(err)
 	}
-	return info.Height
+	return info.GetHeight()
 }
 
 // Append a new block to the ledger

@@ -35,7 +35,7 @@ func (id *mockIdentity) ExpiresAt() time.Time {
 }
 
 func (id *mockIdentity) SatisfiesPrincipal(p *mb.MSPPrincipal) error {
-	if !bytes.Equal(id.idBytes, p.Principal) {
+	if !bytes.Equal(id.idBytes, p.GetPrincipal()) {
 		return errors.New("Principals do not match")
 	}
 	return nil
@@ -98,7 +98,7 @@ var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
 func TestSimpleSignature(t *testing.T) {
 	policy := policydsl.Envelope(policydsl.SignedBy(0), signers)
 
-	spe, err := compile(policy.Rule, policy.Identities)
+	spe, err := compile(policy.GetRule(), policy.GetIdentities())
 	if err != nil {
 		t.Fatalf("Could not create a new SignaturePolicyEvaluator using the given policy, crypto-helper: %s", err)
 	}
@@ -114,7 +114,7 @@ func TestSimpleSignature(t *testing.T) {
 func TestMultipleSignature(t *testing.T) {
 	policy := policydsl.Envelope(policydsl.And(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 
-	spe, err := compile(policy.Rule, policy.Identities)
+	spe, err := compile(policy.GetRule(), policy.GetIdentities())
 	if err != nil {
 		t.Fatalf("Could not create a new SignaturePolicyEvaluator using the given policy, crypto-helper: %s", err)
 	}
@@ -130,7 +130,7 @@ func TestMultipleSignature(t *testing.T) {
 func TestComplexNestedSignature(t *testing.T) {
 	policy := policydsl.Envelope(policydsl.And(policydsl.Or(policydsl.And(policydsl.SignedBy(0), policydsl.SignedBy(1)), policydsl.And(policydsl.SignedBy(0), policydsl.SignedBy(0))), policydsl.SignedBy(0)), signers)
 
-	spe, err := compile(policy.Rule, policy.Identities)
+	spe, err := compile(policy.GetRule(), policy.GetIdentities())
 	if err != nil {
 		t.Fatalf("Could not create a new SignaturePolicyEvaluator using the given policy, crypto-helper: %s", err)
 	}
@@ -155,7 +155,7 @@ func TestNegatively(t *testing.T) {
 	b, _ := proto.Marshal(rpolicy)
 	policy := &cb.SignaturePolicyEnvelope{}
 	_ = proto.Unmarshal(b, policy)
-	_, err := compile(policy.Rule, policy.Identities)
+	_, err := compile(policy.GetRule(), policy.GetIdentities())
 	if err == nil {
 		t.Fatal("Should have errored compiling because the Type field was nil")
 	}
@@ -168,52 +168,52 @@ func TestNilSignaturePolicyEnvelope(t *testing.T) {
 
 func TestSignedByMspClient(t *testing.T) {
 	e := policydsl.SignedByMspClient("A")
-	require.Equal(t, 1, len(e.Identities))
+	require.Equal(t, 1, len(e.GetIdentities()))
 
 	role := &mb.MSPRole{}
-	err := proto.Unmarshal(e.Identities[0].Principal, role)
+	err := proto.Unmarshal(e.GetIdentities()[0].GetPrincipal(), role)
 	require.NoError(t, err)
 
-	require.Equal(t, role.MspIdentifier, "A")
-	require.Equal(t, role.Role, mb.MSPRole_CLIENT)
+	require.Equal(t, role.GetMspIdentifier(), "A")
+	require.Equal(t, role.GetRole(), mb.MSPRole_CLIENT)
 
 	e = policydsl.SignedByAnyClient([]string{"A"})
-	require.Equal(t, 1, len(e.Identities))
+	require.Equal(t, 1, len(e.GetIdentities()))
 
 	role = &mb.MSPRole{}
-	err = proto.Unmarshal(e.Identities[0].Principal, role)
+	err = proto.Unmarshal(e.GetIdentities()[0].GetPrincipal(), role)
 	require.NoError(t, err)
 
-	require.Equal(t, role.MspIdentifier, "A")
-	require.Equal(t, role.Role, mb.MSPRole_CLIENT)
+	require.Equal(t, role.GetMspIdentifier(), "A")
+	require.Equal(t, role.GetRole(), mb.MSPRole_CLIENT)
 }
 
 func TestSignedByMspPeer(t *testing.T) {
 	e := policydsl.SignedByMspPeer("A")
-	require.Equal(t, 1, len(e.Identities))
+	require.Equal(t, 1, len(e.GetIdentities()))
 
 	role := &mb.MSPRole{}
-	err := proto.Unmarshal(e.Identities[0].Principal, role)
+	err := proto.Unmarshal(e.GetIdentities()[0].GetPrincipal(), role)
 	require.NoError(t, err)
 
-	require.Equal(t, role.MspIdentifier, "A")
-	require.Equal(t, role.Role, mb.MSPRole_PEER)
+	require.Equal(t, role.GetMspIdentifier(), "A")
+	require.Equal(t, role.GetRole(), mb.MSPRole_PEER)
 
 	e = policydsl.SignedByAnyPeer([]string{"A"})
-	require.Equal(t, 1, len(e.Identities))
+	require.Equal(t, 1, len(e.GetIdentities()))
 
 	role = &mb.MSPRole{}
-	err = proto.Unmarshal(e.Identities[0].Principal, role)
+	err = proto.Unmarshal(e.GetIdentities()[0].GetPrincipal(), role)
 	require.NoError(t, err)
 
-	require.Equal(t, role.MspIdentifier, "A")
-	require.Equal(t, role.Role, mb.MSPRole_PEER)
+	require.Equal(t, role.GetMspIdentifier(), "A")
+	require.Equal(t, role.GetRole(), mb.MSPRole_PEER)
 }
 
 func TestReturnNil(t *testing.T) {
 	policy := policydsl.Envelope(policydsl.And(policydsl.SignedBy(-1), policydsl.SignedBy(-2)), signers)
 
-	spe, err := compile(policy.Rule, policy.Identities)
+	spe, err := compile(policy.GetRule(), policy.GetIdentities())
 	require.Nil(t, spe)
 	require.EqualError(t, err, "identity index out of range, requested -1, but identities length is 2")
 }

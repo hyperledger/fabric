@@ -134,7 +134,7 @@ func (cifs *CCInfoFSImpl) GetChaincodeCodePackage(ccNameVersion string) ([]byte,
 	if err != nil {
 		return nil, err
 	}
-	return ccpack.GetDepSpec().CodePackage, nil
+	return ccpack.GetDepSpec().GetCodePackage(), nil
 }
 
 func (cifs *CCInfoFSImpl) GetChaincodeDepSpec(ccNameVersion string) (*pb.ChaincodeDeploymentSpec, error) {
@@ -327,8 +327,8 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 
 			cdsfs := ccpack.GetDepSpec()
 
-			name := cdsfs.GetChaincodeSpec().GetChaincodeId().Name
-			version := cdsfs.GetChaincodeSpec().GetChaincodeId().Version
+			name := cdsfs.GetChaincodeSpec().GetChaincodeId().GetName()
+			version := cdsfs.GetChaincodeSpec().GetChaincodeId().GetVersion()
 			if name != ccname || version != ccversion {
 				// chaincode name/version in the chaincode file name has been modified
 				// by an external entity
@@ -336,7 +336,7 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 				continue
 			}
 
-			path := cdsfs.GetChaincodeSpec().ChaincodeId.Path
+			path := cdsfs.GetChaincodeSpec().GetChaincodeId().GetPath()
 			// since this is just an installed chaincode these should be blank
 			input, escc, vscc := "", "", ""
 
@@ -355,7 +355,7 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 
 // ChaincodeID is the name by which the chaincode will register itself.
 func (cd *ChaincodeData) ChaincodeID() string {
-	return cd.Name + ":" + cd.Version
+	return cd.GetName() + ":" + cd.GetVersion()
 }
 
 // TransactionParams are parameters which are tied to a particular transaction

@@ -47,7 +47,7 @@ func (cs *channelState) isStopping() bool {
 func (cs *channelState) lookupChannelForMsg(msg protoext.ReceivedMessage) channel.GossipChannel {
 	if protoext.IsStateInfoPullRequestMsg(msg.GetGossipMessage().GossipMessage) {
 		sipr := msg.GetGossipMessage().GetStateInfoPullReq()
-		mac := sipr.Channel_MAC
+		mac := sipr.GetChannel_MAC()
 		pkiID := msg.GetConnectionInfo().ID
 		return cs.getGossipChannelByMAC(mac, pkiID)
 	}
@@ -62,12 +62,12 @@ func (cs *channelState) lookupChannelForGossipMsg(msg *proto.GossipMessage) chan
 		// Hence, it was already sent to a peer (us) that has proved it knows the channel name, by
 		// sending StateInfo messages in the past.
 		// Therefore- we use the channel name from the message itself.
-		return cs.getGossipChannelByChainID(msg.Channel)
+		return cs.getGossipChannelByChainID(msg.GetChannel())
 	}
 
 	// Else, it's a StateInfo message.
 	stateInfMsg := msg.GetStateInfo()
-	return cs.getGossipChannelByMAC(stateInfMsg.Channel_MAC, stateInfMsg.PkiId)
+	return cs.getGossipChannelByMAC(stateInfMsg.GetChannel_MAC(), stateInfMsg.GetPkiId())
 }
 
 func (cs *channelState) getGossipChannelByMAC(receivedMAC []byte, pkiID common.PKIidType) channel.GossipChannel {

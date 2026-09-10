@@ -142,7 +142,7 @@ func (bf *blockFactory) create() *common.Block {
 	if bf.metadataSize > 0 {
 		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = make([]uint8, bf.metadataSize)
 	} else {
-		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = make([]uint8, len(block.Data.Data))
+		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = make([]uint8, len(block.GetData().GetData()))
 	}
 
 	for txSeqInBlock := range bf.invalidTxns {
@@ -229,10 +229,10 @@ func sampleCollHashedRwSet(collectionName string, hash []byte, hasWrites bool) *
 }
 
 func extractCollectionConfig(configPackage *peer.CollectionConfigPackage, collectionName string) *peer.CollectionConfig {
-	for _, config := range configPackage.Config {
-		switch cconf := config.Payload.(type) {
+	for _, config := range configPackage.GetConfig() {
+		switch cconf := config.GetPayload().(type) {
 		case *peer.CollectionConfig_StaticCollectionConfig:
-			if cconf.StaticCollectionConfig.Name == collectionName {
+			if cconf.StaticCollectionConfig.GetName() == collectionName {
 				return config
 			}
 		default:

@@ -275,7 +275,7 @@ func (dc *deployedCCInfoProviderWrapper) AllCollectionsConfigPkg(channelName, ch
 
 	var combinedColls []*peer.CollectionConfig
 	if explicitCollectionConfigPkg != nil {
-		combinedColls = append(combinedColls, explicitCollectionConfigPkg.Config...)
+		combinedColls = append(combinedColls, explicitCollectionConfigPkg.GetConfig()...)
 	}
 	for _, implicitColl := range implicitCollections {
 		c := &peer.CollectionConfig{}

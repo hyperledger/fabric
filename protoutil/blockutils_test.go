@@ -33,7 +33,7 @@ func TestNewBlock(t *testing.T) {
 		Data: [][]byte{{0, 1, 2}},
 	}
 	block = protoutil.NewBlock(uint64(0), []byte("datahash"))
-	require.Equal(t, []byte("datahash"), block.Header.PreviousHash, "Incorrect previous hash")
+	require.Equal(t, []byte("datahash"), block.GetHeader().GetPreviousHash(), "Incorrect previous hash")
 	require.NotNil(t, block.GetData())
 	require.NotNil(t, block.GetMetadata())
 	block.GetHeader().DataHash = protoutil.ComputeBlockDataHash(data)
@@ -51,8 +51,8 @@ func TestNewBlock(t *testing.T) {
 	})
 	headerHash := sha256.Sum256(asn1Bytes)
 	require.NoError(t, err)
-	require.Equal(t, asn1Bytes, protoutil.BlockHeaderBytes(block.Header), "Incorrect marshaled blockheader bytes")
-	require.Equal(t, headerHash[:], protoutil.BlockHeaderHash(block.Header), "Incorrect blockheader hash")
+	require.Equal(t, asn1Bytes, protoutil.BlockHeaderBytes(block.GetHeader()), "Incorrect marshaled blockheader bytes")
+	require.Equal(t, headerHash[:], protoutil.BlockHeaderHash(block.GetHeader()), "Incorrect blockheader hash")
 }
 
 func TestGoodBlockHeaderBytes(t *testing.T) {
@@ -180,8 +180,8 @@ func TestGetMetadataFromBlock(t *testing.T) {
 		block := protoutil.NewBlock(0, nil)
 		md, err := protoutil.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
 		require.NoError(t, err, "Unexpected error extracting metadata from new block")
-		require.Nil(t, md.Value, "Expected metadata field value to be nil")
-		require.Equal(t, 0, len(md.Value), "Expected length of metadata field value to be 0")
+		require.Nil(t, md.GetValue(), "Expected metadata field value to be nil")
+		require.Equal(t, 0, len(md.GetValue()), "Expected length of metadata field value to be 0")
 		md = protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
 		require.NotNil(t, md, "Expected to get metadata from block")
 	})
@@ -271,7 +271,7 @@ func TestGetConsenterMetadataFromBlock(t *testing.T) {
 
 		if test.pass {
 			require.NoError(t, err)
-			require.Equal(t, result.Value, test.value)
+			require.Equal(t, result.GetValue(), test.value)
 		} else {
 			require.Error(t, err)
 		}
@@ -283,7 +283,7 @@ func TestInitBlockMeta(t *testing.T) {
 	block := &cb.Block{}
 	protoutil.InitBlockMetadata(block)
 	// should have 3 entries
-	require.Equal(t, 5, len(block.Metadata.Metadata), "Expected block to have 5 metadata entries")
+	require.Equal(t, 5, len(block.GetMetadata().GetMetadata()), "Expected block to have 5 metadata entries")
 
 	// block with a single entry
 	block = &cb.Block{
@@ -292,7 +292,7 @@ func TestInitBlockMeta(t *testing.T) {
 	block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 	protoutil.InitBlockMetadata(block)
 	// should have 3 entries
-	require.Equal(t, 5, len(block.Metadata.Metadata), "Expected block to have 5 metadata entries")
+	require.Equal(t, 5, len(block.GetMetadata().GetMetadata()), "Expected block to have 5 metadata entries")
 }
 
 func TestCopyBlockMetadata(t *testing.T) {
@@ -306,9 +306,9 @@ func TestCopyBlockMetadata(t *testing.T) {
 	protoutil.CopyBlockMetadata(srcBlock, dstBlock)
 
 	// check that the copy worked
-	require.Equal(t, len(srcBlock.Metadata.Metadata), len(dstBlock.Metadata.Metadata),
+	require.Equal(t, len(srcBlock.GetMetadata().GetMetadata()), len(dstBlock.GetMetadata().GetMetadata()),
 		"Expected target block to have same number of metadata entries after copy")
-	require.Equal(t, metadata, dstBlock.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER],
+	require.Equal(t, metadata, dstBlock.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_ORDERER],
 		"Unexpected metadata from target block")
 }
 
@@ -509,9 +509,9 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 	}
 
 	forgedBlock := proto.Clone(originalBlock).(*cb.Block)
-	tmp := make([]byte, len(forgedBlock.Data.Data[0])+len(forgedBlock.Data.Data[1]))
-	copy(tmp, forgedBlock.Data.Data[0])
-	copy(tmp[len(forgedBlock.Data.Data[0]):], forgedBlock.Data.Data[1])
+	tmp := make([]byte, len(forgedBlock.GetData().GetData()[0])+len(forgedBlock.GetData().GetData()[1]))
+	copy(tmp, forgedBlock.GetData().GetData()[0])
+	copy(tmp[len(forgedBlock.GetData().GetData()[0]):], forgedBlock.GetData().GetData()[1])
 	forgedBlock.Data.Data = [][]byte{tmp} // Replace transactions {0,1} with transaction {0 || 1}
 
 	for _, tst := range []struct {
@@ -605,11 +605,11 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 		},
 	} {
 		t.Run(tst.name, func(t *testing.T) {
-			if tst.block == nil || tst.block.Data == nil {
-				err := protoutil.VerifyTransactionsAreWellFormed(tst.block.Data)
+			if tst.block == nil || tst.block.GetData() == nil {
+				err := protoutil.VerifyTransactionsAreWellFormed(tst.block.GetData())
 				require.EqualError(t, err, "empty block")
 			} else {
-				err := protoutil.VerifyTransactionsAreWellFormed(tst.block.Data)
+				err := protoutil.VerifyTransactionsAreWellFormed(tst.block.GetData())
 				if tst.expectedError == "" {
 					require.NoError(t, err)
 				} else {

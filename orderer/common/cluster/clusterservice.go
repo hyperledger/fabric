@@ -95,19 +95,19 @@ func (s *ClusterService) Step(stream orderer.ClusterNodeService_StepServer) erro
 		return status.Errorf(codes.Unauthenticated, "access denied")
 	}
 
-	streamID := atomic.AddUint64(&s.MembershipByChannel[authReq.Channel].nextStreamID, 1)
-	s.MembershipByChannel[authReq.Channel].AuthorizedStreams.Store(streamID, authReq.FromId)
+	streamID := atomic.AddUint64(&s.MembershipByChannel[authReq.GetChannel()].nextStreamID, 1)
+	s.MembershipByChannel[authReq.GetChannel()].AuthorizedStreams.Store(streamID, authReq.GetFromId())
 	s.Lock.RUnlock()
 
 	defer s.Logger.Debugf("Closing connection from %s(%s)", commonName, addr)
 	defer func() {
 		s.Lock.RLock()
-		s.MembershipByChannel[authReq.Channel].AuthorizedStreams.Delete(streamID)
+		s.MembershipByChannel[authReq.GetChannel()].AuthorizedStreams.Delete(streamID)
 		s.Lock.RUnlock()
 	}()
 
 	for {
-		err := s.handleMessage(stream, addr, exp, authReq.Channel, authReq.FromId, streamID)
+		err := s.handleMessage(stream, addr, exp, authReq.GetChannel(), authReq.GetFromId(), streamID)
 		if err == io.EOF {
 			s.Logger.Debugf("%s(%s) disconnected", commonName, addr)
 			return nil
@@ -132,35 +132,35 @@ func (s *ClusterService) VerifyAuthRequest(stream orderer.ClusterNodeService_Ste
 		return nil, errors.Wrap(err, "session binding read failed")
 	}
 
-	if !bytes.Equal(tlsBinding, authReq.SessionBinding) {
+	if !bytes.Equal(tlsBinding, authReq.GetSessionBinding()) {
 		return nil, errors.New("session binding mismatch")
 	}
 
 	msg, err := asn1.Marshal(AuthRequestSignature{
-		Version:        int64(authReq.Version),
-		Timestamp:      EncodeTimestamp(authReq.Timestamp),
-		FromId:         strconv.FormatUint(authReq.FromId, 10),
-		ToId:           strconv.FormatUint(authReq.ToId, 10),
+		Version:        int64(authReq.GetVersion()),
+		Timestamp:      EncodeTimestamp(authReq.GetTimestamp()),
+		FromId:         strconv.FormatUint(authReq.GetFromId(), 10),
+		ToId:           strconv.FormatUint(authReq.GetToId(), 10),
 		SessionBinding: tlsBinding,
-		Channel:        authReq.Channel,
+		Channel:        authReq.GetChannel(),
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "ASN encoding failed")
 	}
 
-	membership := s.MembershipByChannel[authReq.Channel]
+	membership := s.MembershipByChannel[authReq.GetChannel()]
 	if membership == nil {
-		return nil, errors.Errorf("channel %s not found in config", authReq.Channel)
+		return nil, errors.Errorf("channel %s not found in config", authReq.GetChannel())
 	}
 
-	fromIdentity := membership.MemberMapping[authReq.FromId]
+	fromIdentity := membership.MemberMapping[authReq.GetFromId()]
 	if fromIdentity == nil {
-		return nil, errors.Errorf("node %d is not member of channel %s", authReq.FromId, authReq.Channel)
+		return nil, errors.Errorf("node %d is not member of channel %s", authReq.GetFromId(), authReq.GetChannel())
 	}
 
-	toIdentity := membership.MemberMapping[authReq.ToId]
+	toIdentity := membership.MemberMapping[authReq.GetToId()]
 	if toIdentity == nil {
-		return nil, errors.Errorf("node %d is not member of channel %s", authReq.ToId, authReq.Channel)
+		return nil, errors.Errorf("node %d is not member of channel %s", authReq.GetToId(), authReq.GetChannel())
 	}
 
 	equal, err := CompareCertPublicKeys(toIdentity, s.NodeIdentity)
@@ -168,11 +168,11 @@ func (s *ClusterService) VerifyAuthRequest(stream orderer.ClusterNodeService_Ste
 		return nil, errors.Wrap(err, "failed to compare cert public keys")
 	}
 	if !equal {
-		s.Logger.Debugf("node id mismatch for node %d, toIdentity: %s, s.NodeIdentity: %s", authReq.FromId, string(toIdentity), string(s.NodeIdentity))
+		s.Logger.Debugf("node id mismatch for node %d, toIdentity: %s, s.NodeIdentity: %s", authReq.GetFromId(), string(toIdentity), string(s.NodeIdentity))
 		return nil, errors.Errorf("node id mismatch")
 	}
 
-	err = VerifySignature(fromIdentity, SHA256Digest(msg), authReq.Signature)
+	err = VerifySignature(fromIdentity, SHA256Digest(msg), authReq.GetSignature())
 	if err != nil {
 		return nil, errors.Wrap(err, "signature mismatch")
 	}
@@ -211,15 +211,15 @@ func (s *ClusterService) handleMessage(stream ClusterStepStream, addr string, ex
 	if tranReq := request.GetNodeTranrequest(); tranReq != nil {
 		submitReq := &orderer.SubmitRequest{
 			Channel:           channel,
-			LastValidationSeq: tranReq.LastValidationSeq,
-			Payload:           tranReq.Payload,
+			LastValidationSeq: tranReq.GetLastValidationSeq(),
+			Payload:           tranReq.GetPayload(),
 		}
 		return s.RequestHandler.OnSubmit(channel, sender, submitReq)
 	} else if clusterConReq := request.GetNodeConrequest(); clusterConReq != nil {
 		conReq := &orderer.ConsensusRequest{
 			Channel:  channel,
-			Payload:  clusterConReq.Payload,
-			Metadata: clusterConReq.Metadata,
+			Payload:  clusterConReq.GetPayload(),
+			Metadata: clusterConReq.GetMetadata(),
 		}
 		return s.RequestHandler.OnConsensus(channel, sender, conReq)
 	}
@@ -264,12 +264,12 @@ func (c *ClusterService) ConfigureNodeCerts(channel string, newNodes []*common.C
 	channelMembership.MemberMapping = make(map[uint64][]byte)
 
 	for _, nodeIdentity := range newNodes {
-		sanitizedID, err := crypto.SanitizeX509Cert(nodeIdentity.Identity)
+		sanitizedID, err := crypto.SanitizeX509Cert(nodeIdentity.GetIdentity())
 		if err != nil {
 			return err
 		}
 
-		channelMembership.MemberMapping[uint64(nodeIdentity.Id)] = sanitizedID
+		channelMembership.MemberMapping[uint64(nodeIdentity.GetId())] = sanitizedID
 	}
 
 	// Iterate over existing streams and prune those that should not be there anymore
@@ -289,14 +289,14 @@ func clusterRequestAsString(request *orderer.ClusterNodeServiceStepRequest) stri
 	}
 	switch t := request.GetPayload().(type) {
 	case *orderer.ClusterNodeServiceStepRequest_NodeTranrequest:
-		if t.NodeTranrequest == nil || t.NodeTranrequest.Payload == nil {
+		if t.NodeTranrequest == nil || t.NodeTranrequest.GetPayload() == nil {
 			return fmt.Sprintf("Empty SubmitRequest: %v", t.NodeTranrequest)
 		}
 		return fmt.Sprintf("SubmitRequest for channel %s with payload of size %d",
-			"", len(t.NodeTranrequest.Payload.Payload))
+			"", len(t.NodeTranrequest.GetPayload().GetPayload()))
 	case *orderer.ClusterNodeServiceStepRequest_NodeConrequest:
 		return fmt.Sprintf("ConsensusRequest for channel %s with payload of size %d",
-			"", len(t.NodeConrequest.Payload))
+			"", len(t.NodeConrequest.GetPayload()))
 	default:
 		return fmt.Sprintf("unknown type: %v", request)
 	}

@@ -317,21 +317,21 @@ func isConfigTx(envelope *cb.Envelope) bool {
 		return false
 	}
 
-	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+	payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
 	if err != nil {
 		return false
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return false
 	}
 
-	hdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	hdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return false
 	}
 
-	return cb.HeaderType(hdr.Type) == cb.HeaderType_CONFIG
+	return cb.HeaderType(hdr.GetType()) == cb.HeaderType_CONFIG
 }
 
 func (n *Node) sendMessage(sender uint64, target uint64, message *smartbftprotos.Message) error {
@@ -529,24 +529,24 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 	supportMock.EXPECT().WriteBlock(mock.Anything, mock.Anything).Run(
 		func(block *cb.Block, encodedMetadataValue []byte) {
 			node.State.AddBlock(block)
-			node.Logger.Infof("Node %d appended block number %v to ledger", node.NodeId, block.Header.Number)
+			node.Logger.Infof("Node %d appended block number %v to ledger", node.NodeId, block.GetHeader().GetNumber())
 		},
 	).Maybe()
 	supportMock.EXPECT().WriteBlockSync(mock.Anything, mock.Anything).Run(
 		func(block *cb.Block, encodedMetadataValue []byte) {
 			node.State.AddBlock(block)
-			node.Logger.Infof("Node %d appended block number %v to ledger", node.NodeId, block.Header.Number)
+			node.Logger.Infof("Node %d appended block number %v to ledger", node.NodeId, block.GetHeader().GetNumber())
 		},
 	).Maybe()
 
 	supportMock.EXPECT().WriteConfigBlock(mock.Anything, mock.Anything).Run(
 		func(block *cb.Block, encodedMetadataValue []byte) {
 			node.State.AddBlock(block)
-			node.Logger.Infof("Node %d appended config block number %v to ledger", node.NodeId, block.Header.Number)
+			node.Logger.Infof("Node %d appended config block number %v to ledger", node.NodeId, block.GetHeader().GetNumber())
 			configInfo.lock.Lock()
 			defer configInfo.lock.Unlock()
-			if !slices.Contains(configInfo.numsOfConfigBlocks, block.Header.Number) {
-				configInfo.numsOfConfigBlocks = append(configInfo.numsOfConfigBlocks, block.Header.Number)
+			if !slices.Contains(configInfo.numsOfConfigBlocks, block.GetHeader().GetNumber()) {
+				configInfo.numsOfConfigBlocks = append(configInfo.numsOfConfigBlocks, block.GetHeader().GetNumber())
 			}
 		},
 	).Maybe()
@@ -685,11 +685,11 @@ func createConfigBlock(t *testing.T, channelId string) (*cb.Block, tlsgen.CA) {
 	require.NotNil(t, channelGroup)
 
 	// update organization endpoints
-	ordererEndpoints := channelGroup.Groups[channelconfig.OrdererGroupKey].Groups["SampleOrg"].Values["Endpoints"].Value
+	ordererEndpoints := channelGroup.GetGroups()[channelconfig.OrdererGroupKey].GetGroups()["SampleOrg"].GetValues()["Endpoints"].GetValue()
 	ordererEndpointsVal := &cb.OrdererAddresses{}
 	err = proto.Unmarshal(ordererEndpoints, ordererEndpointsVal)
 	require.NoError(t, err)
-	ordererAddresses := ordererEndpointsVal.Addresses
+	ordererAddresses := ordererEndpointsVal.GetAddresses()
 	for _, consenter := range configProfile.Orderer.ConsenterMapping {
 		ordererAddresses = append(ordererAddresses, fmt.Sprintf("%s:%d", consenter.Host, consenter.Port))
 	}
@@ -755,7 +755,7 @@ func blockWithGroups(groups *cb.ConfigGroup, channelID string, blockNumber uint6
 			}),
 		},
 	}
-	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 	block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&cb.Metadata{
 		Value: protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
 			LastConfig: &cb.LastConfig{

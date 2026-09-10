@@ -30,7 +30,7 @@ func TemplateImplicitMetaPolicyWithSubPolicy(path []string, policyName string, s
 	group := root
 	for _, element := range path {
 		group.Groups[element] = protoutil.NewConfigGroup()
-		group = group.Groups[element]
+		group = group.GetGroups()[element]
 	}
 
 	group.Policies[policyName] = ImplicitMetaPolicyWithSubPolicy(subPolicyName, rule)

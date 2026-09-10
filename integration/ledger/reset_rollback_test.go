@@ -444,7 +444,7 @@ func (nh *networkHelper) getLedgerHeight(peer *nwo.Peer) int {
 	channelInfo := common.BlockchainInfo{}
 	err = json.Unmarshal([]byte(channelInfoStr), &channelInfo)
 	Expect(err).NotTo(HaveOccurred())
-	return int(channelInfo.Height)
+	return int(channelInfo.GetHeight())
 }
 
 func (nh *networkHelper) queryChaincode(peer *nwo.Peer, command commands.ChaincodeQuery, expectedMessage string, expectSuccess bool) {

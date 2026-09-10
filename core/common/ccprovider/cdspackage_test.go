@@ -134,7 +134,7 @@ func TestCDSGetCCPackage(t *testing.T) {
 		return
 	}
 
-	if cds2.ChaincodeSpec.ChaincodeId.Name != cds.ChaincodeSpec.ChaincodeId.Name || cds2.ChaincodeSpec.ChaincodeId.Version != cds.ChaincodeSpec.ChaincodeId.Version {
+	if cds2.GetChaincodeSpec().GetChaincodeId().GetName() != cds.GetChaincodeSpec().GetChaincodeId().GetName() || cds2.GetChaincodeSpec().GetChaincodeId().GetVersion() != cds.GetChaincodeSpec().GetChaincodeId().GetVersion() {
 		t.Fatalf("dep spec in CDS CCPackage does not match %v != %v", cds, cds2)
 		return
 	}
@@ -229,7 +229,7 @@ func TestValidateCCErrorPaths(t *testing.T) {
 	cpack.depSpec = &pb.ChaincodeDeploymentSpec{
 		CodePackage: []byte("code"),
 		ChaincodeSpec: &pb.ChaincodeSpec{
-			ChaincodeId: &pb.ChaincodeID{Name: ccdata.Name, Version: "0"},
+			ChaincodeId: &pb.ChaincodeID{Name: ccdata.GetName(), Version: "0"},
 		},
 	}
 	cpack.data = &CDSData{}
@@ -257,7 +257,7 @@ func TestValidateCCErrorPaths(t *testing.T) {
 	cpack.depSpec = &pb.ChaincodeDeploymentSpec{
 		CodePackage: []byte("code"),
 		ChaincodeSpec: &pb.ChaincodeSpec{
-			ChaincodeId: &pb.ChaincodeID{Name: ccdata.Name, Version: "0"},
+			ChaincodeId: &pb.ChaincodeID{Name: ccdata.GetName(), Version: "0"},
 		},
 	}
 	cpack.data = &CDSData{}

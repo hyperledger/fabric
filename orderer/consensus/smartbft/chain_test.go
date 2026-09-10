@@ -472,9 +472,9 @@ func addNodeToConfig(t *testing.T, lastConfigBlock *cb.Block, nodeId uint32, tls
 	clonedLastConfigBlock := proto.Clone(lastConfigBlock).(*cb.Block)
 
 	// fetch the ConfigEnvelope from the block
-	env := protoutil.UnmarshalEnvelopeOrPanic(clonedLastConfigBlock.Data.Data[0])
-	payload := protoutil.UnmarshalPayloadOrPanic(env.Payload)
-	configEnv, err := protoutil.UnmarshalConfigEnvelope(payload.Data)
+	env := protoutil.UnmarshalEnvelopeOrPanic(clonedLastConfigBlock.GetData().GetData()[0])
+	payload := protoutil.UnmarshalPayloadOrPanic(env.GetPayload())
+	configEnv, err := protoutil.UnmarshalConfigEnvelope(payload.GetData())
 	require.NoError(t, err)
 	originalConfigEnv := proto.Clone(configEnv).(*cb.ConfigEnvelope)
 
@@ -498,31 +498,31 @@ func addNodeToConfig(t *testing.T, lastConfigBlock *cb.Block, nodeId uint32, tls
 	}
 
 	currentOrderers := &cb.Orderers{}
-	err = proto.Unmarshal(configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.OrderersKey].Value, currentOrderers)
+	err = proto.Unmarshal(configEnv.GetConfig().GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetValues()[channelconfig.OrderersKey].GetValue(), currentOrderers)
 	require.NoError(t, err)
 	currentOrderers.ConsenterMapping = append(currentOrderers.ConsenterMapping, newOrderer)
 	configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.OrderersKey] = &cb.ConfigValue{
-		Version:   configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.OrderersKey].Version + 1,
+		Version:   configEnv.GetConfig().GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetValues()[channelconfig.OrderersKey].GetVersion() + 1,
 		Value:     protoutil.MarshalOrPanic(currentOrderers),
 		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 
 	// update organization endpoints
-	ordererEndpoints := configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups["SampleOrg"].Values["Endpoints"].Value
+	ordererEndpoints := configEnv.GetConfig().GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetGroups()["SampleOrg"].GetValues()["Endpoints"].GetValue()
 	ordererEndpointsVal := &cb.OrdererAddresses{}
 	err = proto.Unmarshal(ordererEndpoints, ordererEndpointsVal)
 	require.NoError(t, err)
-	ordererAddresses := ordererEndpointsVal.Addresses
-	ordererAddresses = append(ordererAddresses, fmt.Sprintf("%s:%d", newOrderer.Host, newOrderer.Port))
+	ordererAddresses := ordererEndpointsVal.GetAddresses()
+	ordererAddresses = append(ordererAddresses, fmt.Sprintf("%s:%d", newOrderer.GetHost(), newOrderer.GetPort()))
 	configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups["SampleOrg"].Values["Endpoints"].Value = protoutil.MarshalOrPanic(&cb.OrdererAddresses{
 		Addresses: ordererAddresses,
 	})
 
 	// increase the sequence
-	configEnv.Config.Sequence = configEnv.Config.Sequence + 1
+	configEnv.Config.Sequence = configEnv.GetConfig().GetSequence() + 1
 
 	// calculate config update tx
-	configUpdate, err := update.Compute(originalConfigEnv.Config, configEnv.Config)
+	configUpdate, err := update.Compute(originalConfigEnv.GetConfig(), configEnv.GetConfig())
 	require.NoError(t, err)
 	signerSerializer := smartBFTMocks.NewSignerSerializer(t)
 	signerSerializer.EXPECT().Serialize().RunAndReturn(
@@ -542,7 +542,7 @@ func addNodeToConfig(t *testing.T, lastConfigBlock *cb.Block, nodeId uint32, tls
 	return &cb.Envelope{
 		Payload: protoutil.MarshalOrPanic(&cb.Payload{
 			Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{
-				Config:     configEnv.Config,
+				Config:     configEnv.GetConfig(),
 				LastUpdate: configUpdateTx,
 			}),
 			Header: &cb.Header{
@@ -561,39 +561,39 @@ func removeNodeFromConfig(t *testing.T, lastConfigBlock *cb.Block, nodeId uint32
 	clonedLastConfigBlock := proto.Clone(lastConfigBlock).(*cb.Block)
 
 	// fetch the ConfigEnvelope from the block
-	env := protoutil.UnmarshalEnvelopeOrPanic(clonedLastConfigBlock.Data.Data[0])
-	payload := protoutil.UnmarshalPayloadOrPanic(env.Payload)
-	configEnv, err := protoutil.UnmarshalConfigEnvelope(payload.Data)
+	env := protoutil.UnmarshalEnvelopeOrPanic(clonedLastConfigBlock.GetData().GetData()[0])
+	payload := protoutil.UnmarshalPayloadOrPanic(env.GetPayload())
+	configEnv, err := protoutil.UnmarshalConfigEnvelope(payload.GetData())
 	require.NoError(t, err)
 	originalConfigEnv := proto.Clone(configEnv).(*cb.ConfigEnvelope)
 
 	// update the consenter mapping to exclude the new node
 	currentOrderers := &cb.Orderers{}
-	err = proto.Unmarshal(configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.OrderersKey].Value, currentOrderers)
+	err = proto.Unmarshal(configEnv.GetConfig().GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetValues()[channelconfig.OrderersKey].GetValue(), currentOrderers)
 	require.NoError(t, err)
 	var newConsenterMapping []*cb.Consenter
 	var ordererAddress string
-	for i, consenter := range currentOrderers.ConsenterMapping {
-		if consenter.Id == nodeId {
-			newConsenterMapping = append(currentOrderers.ConsenterMapping[:i], currentOrderers.ConsenterMapping[i+1:]...)
-			ordererAddress = fmt.Sprintf("%s:%d", consenter.Host, consenter.Port)
+	for i, consenter := range currentOrderers.GetConsenterMapping() {
+		if consenter.GetId() == nodeId {
+			newConsenterMapping = append(currentOrderers.ConsenterMapping[:i], currentOrderers.GetConsenterMapping()[i+1:]...)
+			ordererAddress = fmt.Sprintf("%s:%d", consenter.GetHost(), consenter.GetPort())
 			break
 		}
 	}
 
 	currentOrderers.ConsenterMapping = newConsenterMapping
 	configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.OrderersKey] = &cb.ConfigValue{
-		Version:   configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.OrderersKey].Version + 1,
+		Version:   configEnv.GetConfig().GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetValues()[channelconfig.OrderersKey].GetVersion() + 1,
 		Value:     protoutil.MarshalOrPanic(currentOrderers),
 		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 
 	// update organization endpoints to exclude the node's endpoint
-	ordererEndpoints := configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups["SampleOrg"].Values["Endpoints"].Value
+	ordererEndpoints := configEnv.GetConfig().GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetGroups()["SampleOrg"].GetValues()["Endpoints"].GetValue()
 	ordererEndpointsVal := &cb.OrdererAddresses{}
 	err = proto.Unmarshal(ordererEndpoints, ordererEndpointsVal)
 	require.NoError(t, err)
-	ordererAddresses := ordererEndpointsVal.Addresses
+	ordererAddresses := ordererEndpointsVal.GetAddresses()
 	var newOrdererAddresses []string
 	for i, address := range ordererAddresses {
 		if address == ordererAddress {
@@ -605,10 +605,10 @@ func removeNodeFromConfig(t *testing.T, lastConfigBlock *cb.Block, nodeId uint32
 	})
 
 	// increase the sequence
-	configEnv.Config.Sequence = configEnv.Config.Sequence + 1
+	configEnv.Config.Sequence = configEnv.GetConfig().GetSequence() + 1
 
 	// calculate config update tx
-	configUpdate, err := update.Compute(originalConfigEnv.Config, configEnv.Config)
+	configUpdate, err := update.Compute(originalConfigEnv.GetConfig(), configEnv.GetConfig())
 	require.NoError(t, err)
 	signerSerializer := smartBFTMocks.NewSignerSerializer(t)
 	signerSerializer.EXPECT().Serialize().RunAndReturn(
@@ -628,7 +628,7 @@ func removeNodeFromConfig(t *testing.T, lastConfigBlock *cb.Block, nodeId uint32
 	return &cb.Envelope{
 		Payload: protoutil.MarshalOrPanic(&cb.Payload{
 			Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{
-				Config:     configEnv.Config,
+				Config:     configEnv.GetConfig(),
 				LastUpdate: configUpdateTx,
 			}),
 			Header: &cb.Header{

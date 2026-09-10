@@ -78,7 +78,7 @@ func (w *testBlockfileMgrWrapper) addBlocks(blocks []*common.Block) {
 
 func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*common.Block) {
 	for i, block := range blocks {
-		hash := protoutil.BlockHeaderHash(block.Header)
+		hash := protoutil.BlockHeaderHash(block.GetHeader())
 		b, err := w.blockfileMgr.retrieveBlockByHash(hash)
 		require.NoError(w.t, err, "Error while retrieving [%d]th block from blockfileMgr", i)
 		require.Equal(w.t, block, b)
@@ -87,7 +87,7 @@ func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*common.Block) {
 
 func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block) {
 	for i := range blocks {
-		b, err := w.blockfileMgr.retrieveBlockByNumber(blocks[0].Header.Number + uint64(i))
+		b, err := w.blockfileMgr.retrieveBlockByNumber(blocks[0].GetHeader().GetNumber() + uint64(i))
 		require.NoError(w.t, err, "Error while retrieving [%d]th block from blockfileMgr", i)
 		require.Equal(w.t, blocks[i], b)
 	}
@@ -100,7 +100,7 @@ func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block) {
 
 func (w *testBlockfileMgrWrapper) testGetBlockByTxID(blocks []*common.Block) {
 	for i, block := range blocks {
-		for _, txEnv := range block.Data.Data {
+		for _, txEnv := range block.GetData().GetData() {
 			txID, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnv)
 			require.NoError(w.t, err)
 			b, err := w.blockfileMgr.retrieveBlockByTxID(txID)
@@ -112,7 +112,7 @@ func (w *testBlockfileMgrWrapper) testGetBlockByTxID(blocks []*common.Block) {
 
 func (w *testBlockfileMgrWrapper) testGetBlockByHashNotIndexed(blocks []*common.Block) {
 	for _, block := range blocks {
-		hash := protoutil.BlockHeaderHash(block.Header)
+		hash := protoutil.BlockHeaderHash(block.GetHeader())
 		_, err := w.blockfileMgr.retrieveBlockByHash(hash)
 		require.EqualError(w.t, err, fmt.Sprintf("no such block hash [%x] in index", hash))
 	}
@@ -120,7 +120,7 @@ func (w *testBlockfileMgrWrapper) testGetBlockByHashNotIndexed(blocks []*common.
 
 func (w *testBlockfileMgrWrapper) testGetBlockByTxIDNotIndexed(blocks []*common.Block) {
 	for _, block := range blocks {
-		for _, txEnv := range block.Data.Data {
+		for _, txEnv := range block.GetData().GetData() {
 			txID, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnv)
 			require.NoError(w.t, err)
 			_, err = w.blockfileMgr.retrieveBlockByTxID(txID)
@@ -156,19 +156,19 @@ func (w *testBlockfileMgrWrapper) testGetMultipleDataByTxID(
 		require.NoError(proto.Unmarshal(itr.Value(), v))
 
 		blkFLP := &fileLocPointer{}
-		require.NoError(blkFLP.unmarshal(v.BlkLocation))
+		require.NoError(blkFLP.unmarshal(v.GetBlkLocation()))
 		blk, err := w.blockfileMgr.fetchBlock(blkFLP)
 		require.NoError(err)
 
 		txFLP := &fileLocPointer{}
-		require.NoError(txFLP.unmarshal(v.TxLocation))
+		require.NoError(txFLP.unmarshal(v.GetTxLocation()))
 		txEnv, err := w.blockfileMgr.fetchTransactionEnvelope(txFLP)
 		require.NoError(err)
 
 		fetchedData = append(fetchedData, &expectedBlkTxValidationCode{
 			blk:            blk,
 			txEnv:          txEnv,
-			validationCode: peer.TxValidationCode(v.TxValidationCode),
+			validationCode: peer.TxValidationCode(v.GetTxValidationCode()),
 		})
 	}
 	require.Equal(expectedData, fetchedData)

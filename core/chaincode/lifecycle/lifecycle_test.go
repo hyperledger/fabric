@@ -171,7 +171,7 @@ var _ = Describe("Resources", func() {
 			exists, definition, err := resources.ChaincodeDefinitionIfDefined("cc-name", fakeReadableState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
-			Expect(definition.EndorsementInfo.Version).To(Equal("version"))
+			Expect(definition.EndorsementInfo.GetVersion()).To(Equal("version"))
 			Expect(fmt.Sprintf("{%s}", definition)).To(Equal("{sequence: 5, endorsement info: (version: 'version', plugin: 'my endorsement plugin', init required: false), validation info: (plugin: 'my validation plugin', policy: '736f6d6520617765736f6d6520706f6c696379'), collections: ()}"))
 		})
 
@@ -666,8 +666,8 @@ var _ = Describe("ExternalFunctions", func() {
 			committedDefinition := &lifecycle.ChaincodeParameters{}
 			err = resources.Serializer.Deserialize("namespaces", "cc-name#5", metadata, committedDefinition, fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(committedDefinition.EndorsementInfo.Version).To(Equal("version"))
-			Expect(committedDefinition.EndorsementInfo.EndorsementPlugin).To(Equal("my endorsement plugin"))
+			Expect(committedDefinition.EndorsementInfo.GetVersion()).To(Equal("version"))
+			Expect(committedDefinition.EndorsementInfo.GetEndorsementPlugin()).To(Equal("my endorsement plugin"))
 			Expect(committedDefinition.ValidationInfo).To(ProtoEqual(&lb.ChaincodeValidationInfo{
 				ValidationPlugin:    "my validation plugin",
 				ValidationParameter: []byte("some awesome policy"),
@@ -702,8 +702,8 @@ var _ = Describe("ExternalFunctions", func() {
 				committedDefinition := &lifecycle.ChaincodeParameters{}
 				err = resources.Serializer.Deserialize("namespaces", "cc-name#5", metadata, committedDefinition, fakeOrgState)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(committedDefinition.EndorsementInfo.Version).To(Equal("version"))
-				Expect(committedDefinition.EndorsementInfo.EndorsementPlugin).To(Equal("escc"))
+				Expect(committedDefinition.EndorsementInfo.GetVersion()).To(Equal("version"))
+				Expect(committedDefinition.EndorsementInfo.GetEndorsementPlugin()).To(Equal("escc"))
 				Expect(committedDefinition.ValidationInfo).To(ProtoEqual(&lb.ChaincodeValidationInfo{
 					ValidationPlugin: "vscc",
 					ValidationParameter: protoutil.MarshalOrPanic(

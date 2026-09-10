@@ -37,18 +37,18 @@ func ConfigUpdateEnvelopeAsSignedData(ce *common.ConfigUpdateEnvelope) ([]*Signe
 		return nil, errors.New("No signatures for nil SignedConfigItem")
 	}
 
-	result := make([]*SignedData, len(ce.Signatures))
-	for i, configSig := range ce.Signatures {
+	result := make([]*SignedData, len(ce.GetSignatures()))
+	for i, configSig := range ce.GetSignatures() {
 		sigHeader := &common.SignatureHeader{}
-		err := proto.Unmarshal(configSig.SignatureHeader, sigHeader)
+		err := proto.Unmarshal(configSig.GetSignatureHeader(), sigHeader)
 		if err != nil {
 			return nil, err
 		}
 
 		result[i] = &SignedData{
-			Data:      bytes.Join([][]byte{configSig.SignatureHeader, ce.ConfigUpdate}, nil),
-			Identity:  sigHeader.Creator,
-			Signature: configSig.Signature,
+			Data:      bytes.Join([][]byte{configSig.GetSignatureHeader(), ce.GetConfigUpdate()}, nil),
+			Identity:  sigHeader.GetCreator(),
+			Signature: configSig.GetSignature(),
 		}
 
 	}
@@ -64,25 +64,25 @@ func EnvelopeAsSignedData(env *common.Envelope) ([]*SignedData, error) {
 	}
 
 	payload := &common.Payload{}
-	err := proto.Unmarshal(env.Payload, payload)
+	err := proto.Unmarshal(env.GetPayload(), payload)
 	if err != nil {
 		return nil, err
 	}
 
-	if payload.Header == nil /* || payload.Header.SignatureHeader == nil */ {
+	if payload.GetHeader() == nil /* || payload.Header.SignatureHeader == nil */ {
 		return nil, errors.New("Missing Header")
 	}
 
 	shdr := &common.SignatureHeader{}
-	err = proto.Unmarshal(payload.Header.SignatureHeader, shdr)
+	err = proto.Unmarshal(payload.GetHeader().GetSignatureHeader(), shdr)
 	if err != nil {
 		return nil, fmt.Errorf("GetSignatureHeaderFromBytes failed, err %s", err)
 	}
 
 	return []*SignedData{{
-		Data:      env.Payload,
-		Identity:  shdr.Creator,
-		Signature: env.Signature,
+		Data:      env.GetPayload(),
+		Identity:  shdr.GetCreator(),
+		Signature: env.GetSignature(),
 	}}, nil
 }
 
@@ -95,7 +95,7 @@ func LogMessageForSerializedIdentity(serializedIdentity []byte) string {
 	if err != nil {
 		return fmt.Sprintf("Could not unmarshal serialized identity: %s", err)
 	}
-	pemBlock, _ := pem.Decode(id.IdBytes)
+	pemBlock, _ := pem.Decode(id.GetIdBytes())
 	if pemBlock == nil {
 		// not all identities are certificates so simply log the serialized
 		// identity bytes
@@ -105,7 +105,7 @@ func LogMessageForSerializedIdentity(serializedIdentity []byte) string {
 	if err != nil {
 		return fmt.Sprintf("Could not parse certificate: %s", err)
 	}
-	return fmt.Sprintf("(mspid=%s subject=%s issuer=%s serialnumber=%d)", id.Mspid, cert.Subject, cert.Issuer, cert.SerialNumber)
+	return fmt.Sprintf("(mspid=%s subject=%s issuer=%s serialnumber=%d)", id.GetMspid(), cert.Subject, cert.Issuer, cert.SerialNumber)
 }
 
 func LogMessageForSerializedIdentities(signedData []*SignedData) (logMsg string) {

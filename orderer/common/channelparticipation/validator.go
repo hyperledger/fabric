@@ -29,12 +29,12 @@ func ValidateJoinBlock(configBlock *cb.Block) (channelID string, err error) {
 		return "", errors.New("block is not a config block")
 	}
 
-	if configBlock.Metadata == nil || len(configBlock.Metadata.Metadata) == 0 {
+	if configBlock.GetMetadata() == nil || len(configBlock.GetMetadata().GetMetadata()) == 0 {
 		return "", errors.New("invalid block: does not have metadata")
 	}
 
-	dataHash := protoutil.ComputeBlockDataHash(configBlock.Data)
-	if !bytes.Equal(dataHash, configBlock.Header.DataHash) {
+	dataHash := protoutil.ComputeBlockDataHash(configBlock.GetData())
+	if !bytes.Equal(dataHash, configBlock.GetHeader().GetDataHash()) {
 		return "", errors.New("invalid block: Header.DataHash is different from Hash(block.Data)")
 	}
 
@@ -71,25 +71,25 @@ func ValidateJoinBlock(configBlock *cb.Block) (channelID string, err error) {
 // It verifies it is an application channel by checking that the application group exists.
 // It returns an error when it cannot be used as a update config envelope.
 func ValidateUpdateConfigEnvelope(env *cb.Envelope) (channelID string, err error) {
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	if err != nil {
 		return "", errors.New("bad payload")
 	}
 
-	if payload.Header == nil || payload.Header.ChannelHeader == nil {
+	if payload.GetHeader() == nil || payload.Header.ChannelHeader == nil {
 		return "", errors.New("bad header")
 	}
 
-	ch, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	ch, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return "", errors.New("could not unmarshall channel header")
 	}
 
-	if ch.Type != int32(cb.HeaderType_CONFIG_UPDATE) {
+	if ch.GetType() != int32(cb.HeaderType_CONFIG_UPDATE) {
 		return "", errors.New("bad type")
 	}
 
-	if ch.ChannelId == "" {
+	if ch.GetChannelId() == "" {
 		return "", errors.New("empty channel id")
 	}
 
@@ -98,12 +98,12 @@ func ValidateUpdateConfigEnvelope(env *cb.Envelope) (channelID string, err error
 		return "", err
 	}
 
-	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.GetConfigUpdate())
 	if err != nil {
 		return "", err
 	}
 
-	return configUpdate.ChannelId, nil
+	return configUpdate.GetChannelId(), nil
 }
 
 // ValidateFetchBlockID checks the block id. He can be: newest|oldest|config|(number)

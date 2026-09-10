@@ -61,13 +61,13 @@ func createIdemixIdentity(t *testing.T) []byte {
 func createSignedProposal(t *testing.T, serializedIdentity []byte, corruptSigHdr mutator, corruptHdr mutator) *peer.SignedProposal {
 	sHdr := protoutil.MakeSignatureHeader(serializedIdentity, nil)
 	hdr := protoutil.MakePayloadHeader(&common.ChannelHeader{}, sHdr)
-	hdr.SignatureHeader = corruptSigHdr(hdr.SignatureHeader)
+	hdr.SignatureHeader = corruptSigHdr(hdr.GetSignatureHeader())
 	hdrBytes, err := proto.Marshal(hdr)
 	require.NoError(t, err)
 	prop := &peer.Proposal{
 		Header: hdrBytes,
 	}
-	prop.Header = corruptHdr(prop.Header)
+	prop.Header = corruptHdr(prop.GetHeader())
 	propBytes, err := proto.Marshal(prop)
 	require.NoError(t, err)
 	return &peer.SignedProposal{

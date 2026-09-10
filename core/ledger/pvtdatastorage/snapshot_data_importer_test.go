@@ -792,7 +792,7 @@ func (e eligibilityVal) toMemberOrgPolicy() *peer.CollectionPolicyConfig {
 }
 
 func (e eligibilityVal) sameAs(p *peer.CollectionPolicyConfig) bool {
-	return e == eligibilityVal(p.GetSignaturePolicy().Identities[0].Principal[0])
+	return e == eligibilityVal(p.GetSignaturePolicy().GetIdentities()[0].GetPrincipal()[0])
 }
 
 func TestDBUpdates(t *testing.T) {

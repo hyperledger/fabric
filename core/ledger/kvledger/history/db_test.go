@@ -206,10 +206,10 @@ func TestHistory(t *testing.T) {
 		if kmod == nil {
 			break
 		}
-		txid = kmod.(*queryresult.KeyModification).TxId
-		retrievedValue := kmod.(*queryresult.KeyModification).Value
-		retrievedTimestamp := kmod.(*queryresult.KeyModification).Timestamp
-		retrievedIsDelete := kmod.(*queryresult.KeyModification).IsDelete
+		txid = kmod.(*queryresult.KeyModification).GetTxId()
+		retrievedValue := kmod.(*queryresult.KeyModification).GetValue()
+		retrievedTimestamp := kmod.(*queryresult.KeyModification).GetTimestamp()
+		retrievedIsDelete := kmod.(*queryresult.KeyModification).GetIsDelete()
 		t.Logf("Retrieved history record for key=key7 at TxId=%s with value %v and timestamp %v",
 			txid, retrievedValue, retrievedTimestamp)
 		count++
@@ -261,7 +261,7 @@ func TestHistoryForInvalidTran(t *testing.T) {
 	block1 := bg.NextBlock([][]byte{pubSimResBytes})
 
 	// for this invalid tran test, set the transaction to invalid
-	txsFilter := txflags.ValidationFlags(block1.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := txflags.ValidationFlags(block1.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	txsFilter.SetFlag(0, peer.TxValidationCode_INVALID_OTHER_REASON)
 	block1.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
@@ -553,7 +553,7 @@ func TestHistoryWithKVWriteOfNilValue(t *testing.T) {
 	require.NoError(t, err)
 	keyModification := kmod.(*queryresult.KeyModification)
 	// despite IsDelete set to "false" in the write-set, historydb results should set this to "true"
-	require.True(t, keyModification.IsDelete)
+	require.True(t, keyModification.GetIsDelete())
 
 	kmod, err = itr.Next()
 	require.NoError(t, err)
@@ -570,8 +570,8 @@ func testutilVerifyResults(t *testing.T, hqe ledger.HistoryQueryExecutor, ns, ke
 		if kmod == nil {
 			break
 		}
-		txid := kmod.(*queryresult.KeyModification).TxId
-		retrievedValue := string(kmod.(*queryresult.KeyModification).Value)
+		txid := kmod.(*queryresult.KeyModification).GetTxId()
+		retrievedValue := string(kmod.(*queryresult.KeyModification).GetValue())
 		retrievedVals = append(retrievedVals, retrievedValue)
 		t.Logf("Retrieved history record at TxId=%s with value %s", txid, retrievedValue)
 	}

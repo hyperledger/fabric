@@ -104,7 +104,7 @@ func NewValidatorImpl(channelID string, config *cb.Config, namespace string, pm 
 		return nil, errors.Errorf("nil config parameter")
 	}
 
-	if config.ChannelGroup == nil {
+	if config.GetChannelGroup() == nil {
 		return nil, errors.Errorf("nil channel group")
 	}
 
@@ -112,7 +112,7 @@ func NewValidatorImpl(channelID string, config *cb.Config, namespace string, pm 
 		return nil, errors.Errorf("bad channel ID: %s", err)
 	}
 
-	configMap, err := mapConfig(config.ChannelGroup, namespace)
+	configMap, err := mapConfig(config.GetChannelGroup(), namespace)
 	if err != nil {
 		return nil, errors.Errorf("error converting config to map: %s", err)
 	}
@@ -120,7 +120,7 @@ func NewValidatorImpl(channelID string, config *cb.Config, namespace string, pm 
 	return &ValidatorImpl{
 		namespace:   namespace,
 		pm:          pm,
-		sequence:    config.Sequence,
+		sequence:    config.GetSequence(),
 		configMap:   configMap,
 		channelID:   channelID,
 		configProto: config,
@@ -164,15 +164,15 @@ func (vi *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 		return errors.Errorf("config envelope is nil")
 	}
 
-	if configEnv.Config == nil {
+	if configEnv.GetConfig() == nil {
 		return errors.Errorf("config envelope has nil config")
 	}
 
-	if configEnv.Config.Sequence != vi.sequence+1 {
-		return errors.Errorf("config currently at sequence %d, cannot validate config at sequence %d", vi.sequence, configEnv.Config.Sequence)
+	if configEnv.GetConfig().GetSequence() != vi.sequence+1 {
+		return errors.Errorf("config currently at sequence %d, cannot validate config at sequence %d", vi.sequence, configEnv.GetConfig().GetSequence())
 	}
 
-	configUpdateEnv, err := protoutil.EnvelopeToConfigUpdate(configEnv.LastUpdate)
+	configUpdateEnv, err := protoutil.EnvelopeToConfigUpdate(configEnv.GetLastUpdate())
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func (vi *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 	}
 
 	// reflect.Equal will not work here, because it considers nil and empty maps as different
-	if !proto.Equal(channelGroup, configEnv.Config.ChannelGroup) {
+	if !proto.Equal(channelGroup, configEnv.GetConfig().GetChannelGroup()) {
 		return errors.Errorf("ConfigEnvelope LastUpdate did not produce the supplied config result")
 	}
 

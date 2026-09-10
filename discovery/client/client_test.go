@@ -772,7 +772,7 @@ func TestString(t *testing.T) {
 }
 
 func getMSP(peer *Peer) string {
-	endpoint := peer.AliveMessage.GetAliveMsg().Membership.Endpoint
+	endpoint := peer.AliveMessage.GetAliveMsg().GetMembership().GetEndpoint()
 	id, _ := strconv.ParseInt(endpoint[1:], 10, 64)
 	switch id / 2 {
 	case 0, 4:
@@ -808,11 +808,11 @@ func (pe *principalEvaluator) SatisfiesPrincipal(channel string, identity []byte
 	sID := &msp.SerializedIdentity{}
 	proto.Unmarshal(identity, sID)
 	p := &msp.MSPRole{}
-	proto.Unmarshal(principal.Principal, p)
-	if sID.Mspid == p.MspIdentifier {
+	proto.Unmarshal(principal.GetPrincipal(), p)
+	if sID.GetMspid() == p.GetMspIdentifier() {
 		return nil
 	}
-	return errors.Errorf("peer %s has MSP %s but should have MSP %s", string(sID.IdBytes), sID.Mspid, p.MspIdentifier)
+	return errors.Errorf("peer %s has MSP %s but should have MSP %s", string(sID.GetIdBytes()), sID.GetMspid(), p.GetMspIdentifier())
 }
 
 type policyFetcher struct {
@@ -1103,7 +1103,7 @@ func (f *ledgerHeightFilter) Filter(endorsers Endorsers) Endorsers {
 }
 
 func getLedgerHeight(endorser *Peer) uint64 {
-	return endorser.StateInfoMessage.GetStateInfo().GetProperties().LedgerHeight
+	return endorser.StateInfoMessage.GetStateInfo().GetProperties().GetLedgerHeight()
 }
 
 func getMaxLedgerHeight(endorsers Endorsers) uint64 {
@@ -1120,7 +1120,7 @@ func getMaxLedgerHeight(endorsers Endorsers) uint64 {
 func getNames(endorsers Endorsers) []string {
 	var names []string
 	for _, p := range endorsers {
-		names = append(names, p.AliveMessage.GetAliveMsg().Membership.Endpoint)
+		names = append(names, p.AliveMessage.GetAliveMsg().GetMembership().GetEndpoint())
 	}
 	return names
 }

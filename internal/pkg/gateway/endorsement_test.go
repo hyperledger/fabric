@@ -40,9 +40,9 @@ func TestSingleLayoutPlan(t *testing.T) {
 	require.Nil(t, plan.completedLayout)
 	success = plan.processEndorsement(peer3Mock, response3)
 	require.True(t, success)
-	require.Equal(t, plan.responsePayload, response1.Payload)
+	require.Equal(t, plan.responsePayload, response1.GetPayload())
 	require.Len(t, plan.completedLayout.endorsements, 3)
-	require.ElementsMatch(t, plan.completedLayout.endorsements, []*peer.Endorsement{response1.Endorsement, response2.Endorsement, response3.Endorsement})
+	require.ElementsMatch(t, plan.completedLayout.endorsements, []*peer.Endorsement{response1.GetEndorsement(), response2.GetEndorsement(), response3.GetEndorsement()})
 }
 
 func TestSingleLayoutRetry(t *testing.T) {
@@ -76,9 +76,9 @@ func TestSingleLayoutRetry(t *testing.T) {
 	require.Equal(t, peer4Mock, retry)
 	success = plan.processEndorsement(retry, response3)
 	require.True(t, success)
-	require.Equal(t, plan.responsePayload, response1.Payload)
+	require.Equal(t, plan.responsePayload, response1.GetPayload())
 	require.Len(t, plan.completedLayout.endorsements, 3)
-	require.ElementsMatch(t, plan.completedLayout.endorsements, []*peer.Endorsement{response1.Endorsement, response2.Endorsement, response3.Endorsement})
+	require.ElementsMatch(t, plan.completedLayout.endorsements, []*peer.Endorsement{response1.GetEndorsement(), response2.GetEndorsement(), response3.GetEndorsement()})
 }
 
 func TestMultiLayoutRetry(t *testing.T) {
@@ -123,9 +123,9 @@ func TestMultiLayoutRetry(t *testing.T) {
 
 	success = plan.processEndorsement(peer4Mock, response2)
 	require.True(t, success)
-	require.Equal(t, plan.responsePayload, response1.Payload)
+	require.Equal(t, plan.responsePayload, response1.GetPayload())
 	require.Len(t, plan.completedLayout.endorsements, 2)
-	require.ElementsMatch(t, plan.completedLayout.endorsements, []*peer.Endorsement{response1.Endorsement, response2.Endorsement})
+	require.ElementsMatch(t, plan.completedLayout.endorsements, []*peer.Endorsement{response1.GetEndorsement(), response2.GetEndorsement()})
 }
 
 func TestMultiLayoutFailures(t *testing.T) {
@@ -265,9 +265,9 @@ func TestMultiPlan(t *testing.T) {
 	// peer2 (g2) succeeds
 	success = plan2.processEndorsement(peer2Mock, response2)
 	require.True(t, success)
-	require.Equal(t, plan2.responsePayload, response1.Payload)
+	require.Equal(t, plan2.responsePayload, response1.GetPayload())
 	require.Len(t, plan2.completedLayout.endorsements, 2)
-	require.ElementsMatch(t, plan2.completedLayout.endorsements, []*peer.Endorsement{response1.Endorsement, response2.Endorsement})
+	require.ElementsMatch(t, plan2.completedLayout.endorsements, []*peer.Endorsement{response1.GetEndorsement(), response2.GetEndorsement()})
 }
 
 func TestMultiPlanNoOverlap(t *testing.T) {
@@ -313,9 +313,9 @@ func TestMultiPlanNoOverlap(t *testing.T) {
 	// peer4 (g3) succeeds
 	success = plan2.processEndorsement(peer4Mock, response3)
 	require.True(t, success)
-	require.Equal(t, plan2.responsePayload, response1.Payload)
+	require.Equal(t, plan2.responsePayload, response1.GetPayload())
 	require.Len(t, plan2.completedLayout.endorsements, 2)
-	require.ElementsMatch(t, plan2.completedLayout.endorsements, []*peer.Endorsement{response2.Endorsement, response3.Endorsement})
+	require.ElementsMatch(t, plan2.completedLayout.endorsements, []*peer.Endorsement{response2.GetEndorsement(), response3.GetEndorsement()})
 }
 
 func TestUniqueEndorsements(t *testing.T) {

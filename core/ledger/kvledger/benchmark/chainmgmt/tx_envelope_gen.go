@@ -58,7 +58,7 @@ func createTxEnv(simulationResults []byte) (*common.Envelope, error) {
 			return nil, err
 		}
 	}
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, nil, simulationResults, nil, dummyCCID, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.GetHeader(), prop.GetPayload(), nil, simulationResults, nil, dummyCCID, signer)
 	if err != nil {
 		return nil, err
 	}

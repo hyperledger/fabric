@@ -18,26 +18,26 @@ func principalsFromCollectionConfig(ccp *peer.CollectionConfigPackage) (principa
 	if ccp == nil {
 		return principalSetsByCollections, nil
 	}
-	for _, colConfig := range ccp.Config {
+	for _, colConfig := range ccp.GetConfig() {
 		staticCol := colConfig.GetStaticCollectionConfig()
 		if staticCol == nil {
 			// Right now we only support static collections, so if we got something else
 			// we should refuse to process further
 			return nil, errors.Errorf("expected a static collection but got %v instead", colConfig)
 		}
-		if staticCol.MemberOrgsPolicy == nil {
-			return nil, errors.Errorf("MemberOrgsPolicy of %s is nil", staticCol.Name)
+		if staticCol.GetMemberOrgsPolicy() == nil {
+			return nil, errors.Errorf("MemberOrgsPolicy of %s is nil", staticCol.GetName())
 		}
-		pol := staticCol.MemberOrgsPolicy.GetSignaturePolicy()
+		pol := staticCol.GetMemberOrgsPolicy().GetSignaturePolicy()
 		if pol == nil {
-			return nil, errors.Errorf("policy of %s is nil", staticCol.Name)
+			return nil, errors.Errorf("policy of %s is nil", staticCol.GetName())
 		}
 		var principals policies.PrincipalSet
 		// We now extract all principals from the policy
-		for _, principal := range pol.Identities {
+		for _, principal := range pol.GetIdentities() {
 			principals = append(principals, principal)
 		}
-		principalSetsByCollections[staticCol.Name] = principals
+		principalSetsByCollections[staticCol.GetName()] = principals
 	}
 	return principalSetsByCollections, nil
 }
@@ -48,13 +48,13 @@ type principalSetsByCollectionName map[string]policies.PrincipalSet
 // which accepts or rejects identities of peers.
 func (psbc principalSetsByCollectionName) toIdentityFilter(channel string, evaluator principalEvaluator, cc *peer.ChaincodeCall) (identityFilter, error) {
 	var principalSets policies.PrincipalSets
-	for _, col := range cc.CollectionNames {
+	for _, col := range cc.GetCollectionNames() {
 		// Each collection we're interested in should exist in the principalSetsByCollectionName mapping.
 		// Otherwise, we have no way of computing a filter because we can't locate the principals the peer identities
 		// need to satisfy.
 		principalSet, exists := psbc[col]
 		if !exists {
-			return nil, errors.Errorf("collection %s doesn't exist in collection config for chaincode %s", col, cc.Name)
+			return nil, errors.Errorf("collection %s doesn't exist in collection config for chaincode %s", col, cc.GetName())
 		}
 		principalSets = append(principalSets, principalSet)
 	}

@@ -83,8 +83,8 @@ var cases = []testCase{
 
 func mspId(principal *msp.MSPPrincipal) string {
 	role := &msp.MSPRole{}
-	proto.Unmarshal(principal.Principal, role)
-	return role.MspIdentifier
+	proto.Unmarshal(principal.GetPrincipal(), role)
+	return role.GetMspIdentifier()
 }
 
 func TestSatisfiedBy(t *testing.T) {

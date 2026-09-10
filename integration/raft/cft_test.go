@@ -103,7 +103,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			env := ordererclient.CreateBroadcastEnvelope(network, o1, "testchannel", []byte("foo"))
 			resp, err := ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 			block := FetchBlock(network, o1, 1, "testchannel")
 			Expect(block).NotTo(BeNil())
@@ -118,7 +118,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By("broadcasting envelope to running orderer")
 			resp, err = ordererclient.Broadcast(network, o2, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 			block = FetchBlock(network, o2, 2, "testchannel")
 			Expect(block).NotTo(BeNil())
@@ -132,12 +132,12 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By("broadcasting envelope to restarted orderer")
 			resp, err = ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 			blko1 := FetchBlock(network, o1, 3, "testchannel")
 			blko2 := FetchBlock(network, o2, 3, "testchannel")
 
-			Expect(blko1.Header.DataHash).To(Equal(blko2.Header.DataHash))
+			Expect(blko1.GetHeader().GetDataHash()).To(Equal(blko2.GetHeader().GetDataHash()))
 		})
 	})
 
@@ -232,7 +232,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 				// Note that MaxMessageCount is 1 be default, so every tx results in a new block
 				resp, err := ordererclient.Broadcast(network, o2, env)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+				Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 				// Assert that new snapshot file is created before broadcasting next tx,
 				// so that number of snapshots is deterministic. Otherwise, it is not
@@ -280,22 +280,22 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			env = ordererclient.CreateBroadcastEnvelope(network, o1, channelID, make([]byte, 1000))
 			resp, err := ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(resp.Status, network.EventuallyTimeout).Should(Equal(common.Status_SUCCESS))
+			Eventually(resp.GetStatus(), network.EventuallyTimeout).Should(Equal(common.Status_SUCCESS))
 
 			for i := 1; i <= 5; i++ {
 				blko1 := FetchBlock(network, o1, uint64(i), channelID)
 				blko2 := FetchBlock(network, o2, uint64(i), channelID)
 
-				Expect(blko1.Header.DataHash).To(Equal(blko2.Header.DataHash))
+				Expect(blko1.GetHeader().GetDataHash()).To(Equal(blko2.GetHeader().GetDataHash()))
 				metao1, err := protoutil.GetConsenterMetadataFromBlock(blko1)
 				Expect(err).NotTo(HaveOccurred())
 				metao2, err := protoutil.GetConsenterMetadataFromBlock(blko2)
 				Expect(err).NotTo(HaveOccurred())
 
 				bmo1 := &etcdraft.BlockMetadata{}
-				proto.Unmarshal(metao1.Value, bmo1)
+				proto.Unmarshal(metao1.GetValue(), bmo1)
 				bmo2 := &etcdraft.BlockMetadata{}
-				proto.Unmarshal(metao2.Value, bmo2)
+				proto.Unmarshal(metao2.GetValue(), bmo2)
 
 				Expect(bmo2).To(Equal(bmo1))
 			}
@@ -429,7 +429,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 				// Note that MaxMessageCount is 1 be default, so every tx results in a new block
 				resp, err := ordererclient.Broadcast(network, remainedOrderers[1], env)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+				Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 			}
 
 			assertBlockReception(map[string]int{"testchannel": 10}, []*nwo.Orderer{remainedOrderers[2]}, network)
@@ -486,16 +486,16 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			for i := 1; i <= 10; i++ {
 				blko1 := FetchBlock(network, remainedOrderers[0], uint64(i), "testchannel")
 				blko2 := FetchBlock(network, remainedOrderers[2], uint64(i), "testchannel")
-				Expect(blko1.Header.DataHash).To(Equal(blko2.Header.DataHash))
+				Expect(blko1.GetHeader().GetDataHash()).To(Equal(blko2.GetHeader().GetDataHash()))
 				metao1, err := protoutil.GetConsenterMetadataFromBlock(blko1)
 				Expect(err).NotTo(HaveOccurred())
 				metao2, err := protoutil.GetConsenterMetadataFromBlock(blko2)
 				Expect(err).NotTo(HaveOccurred())
 
 				bmo1 := &etcdraft.BlockMetadata{}
-				proto.Unmarshal(metao1.Value, bmo1)
+				proto.Unmarshal(metao1.GetValue(), bmo1)
 				bmo2 := &etcdraft.BlockMetadata{}
-				proto.Unmarshal(metao2.Value, bmo2)
+				proto.Unmarshal(metao2.GetValue(), bmo2)
 
 				Expect(bmo2).To(Equal(bmo1))
 			}
@@ -608,7 +608,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			env := ordererclient.CreateBroadcastEnvelope(network, leader, "testchannel", []byte("foo"))
 			resp, err := ordererclient.Broadcast(network, leader, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))
+			Expect(resp.GetStatus()).To(Equal(common.Status_SERVICE_UNAVAILABLE))
 		})
 	})
 
@@ -1040,8 +1040,8 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By("Updating channel config and failing")
 			p, err := ordererclient.Broadcast(network, orderer, channelCreateTxn)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(p.Status).To(Equal(common.Status_BAD_REQUEST))
-			Expect(p.Info).To(ContainSubstring("broadcast client identity expired"))
+			Expect(p.GetStatus()).To(Equal(common.Status_BAD_REQUEST))
+			Expect(p.GetInfo()).To(ContainSubstring("broadcast client identity expired"))
 
 			By("Attempting to fetch a block from orderer and failing")
 			denv := CreateDeliverEnvelope(network, orderer, 0, "testchannel")
@@ -1067,7 +1067,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By("Updating channel config and succeeding")
 			p, err = ordererclient.Broadcast(network, orderer, channelCreateTxn)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(p.Status).To(Equal(common.Status_SUCCESS))
+			Expect(p.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 			By("Fetching a block from the orderer and succeeding")
 			block = FetchBlock(network, orderer, 1, "testchannel")
@@ -1079,7 +1079,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			By("Ensure we can fetch the block using our original un-expired admin cert")
 			ccb := func() uint64 {
-				return nwo.GetConfigBlock(network, peer, orderer, "testchannel").Header.Number
+				return nwo.GetConfigBlock(network, peer, orderer, "testchannel").GetHeader().GetNumber()
 			}
 			Eventually(ccb, network.EventuallyTimeout).Should(Equal(uint64(1)))
 		})
@@ -1213,10 +1213,10 @@ func createConfigTx(txData []byte, channelName string, network *nwo.Network, ord
 	ctxEnv, err := protoutil.UnmarshalEnvelope(txData)
 	Expect(err).NotTo(HaveOccurred())
 
-	payload, err := protoutil.UnmarshalPayload(ctxEnv.Payload)
+	payload, err := protoutil.UnmarshalPayload(ctxEnv.GetPayload())
 	Expect(err).NotTo(HaveOccurred())
 
-	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(payload.Data)
+	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(payload.GetData())
 	Expect(err).NotTo(HaveOccurred())
 
 	signer := network.OrdererUserSigner(orderer, "Admin")
@@ -1236,7 +1236,7 @@ func signConfigUpdate(signer *nwo.SigningIdentity, configUpdateEnv *common.Confi
 		SignatureHeader: protoutil.MarshalOrPanic(sigHeader),
 	}
 
-	configSig.Signature, err = signer.Sign(util.ConcatenateBytes(configSig.SignatureHeader, configUpdateEnv.ConfigUpdate))
+	configSig.Signature, err = signer.Sign(util.ConcatenateBytes(configSig.GetSignatureHeader(), configUpdateEnv.GetConfigUpdate()))
 	Expect(err).NotTo(HaveOccurred())
 
 	configUpdateEnv.Signatures = append(configUpdateEnv.Signatures, configSig)
@@ -1246,13 +1246,13 @@ func signConfigUpdate(signer *nwo.SigningIdentity, configUpdateEnv *common.Confi
 func addAdminCertToConfig(originalConfig *common.Config, additionalAdmin []byte) *common.Config {
 	updatedConfig := proto.Clone(originalConfig).(*common.Config)
 
-	rawMSPConfig := updatedConfig.ChannelGroup.Groups["Orderer"].Groups["OrdererOrg"].Values["MSP"]
+	rawMSPConfig := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetGroups()["OrdererOrg"].GetValues()["MSP"]
 	mspConfig := &msp.MSPConfig{}
-	err := proto.Unmarshal(rawMSPConfig.Value, mspConfig)
+	err := proto.Unmarshal(rawMSPConfig.GetValue(), mspConfig)
 	Expect(err).NotTo(HaveOccurred())
 
 	fabricConfig := &msp.FabricMSPConfig{}
-	err = proto.Unmarshal(mspConfig.Config, fabricConfig)
+	err = proto.Unmarshal(mspConfig.GetConfig(), fabricConfig)
 	Expect(err).NotTo(HaveOccurred())
 
 	fabricConfig.Admins = append(fabricConfig.Admins, additionalAdmin)
@@ -1270,17 +1270,17 @@ func configFromBootstrapBlock(bootstrapBlock []byte) *common.Config {
 }
 
 func configFromBlock(block *common.Block) *common.Config {
-	envelope, err := protoutil.GetEnvelopeFromBlock(block.Data.Data[0])
+	envelope, err := protoutil.GetEnvelopeFromBlock(block.GetData().GetData()[0])
 	Expect(err).NotTo(HaveOccurred())
 
-	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+	payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
 	Expect(err).NotTo(HaveOccurred())
 
 	configEnv := &common.ConfigEnvelope{}
-	err = proto.Unmarshal(payload.Data, configEnv)
+	err = proto.Unmarshal(payload.GetData(), configEnv)
 	Expect(err).NotTo(HaveOccurred())
 
-	return configEnv.Config
+	return configEnv.GetConfig()
 }
 
 func fetchConfig(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, port nwo.PortName, channel string, tlsHandshakeTimeShift time.Duration) *common.Config {
@@ -1315,7 +1315,7 @@ func currentConfigBlockNumber(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Order
 	defer os.RemoveAll(tempDir)
 
 	configBlock := fetchConfigBlock(n, orderer, channel, tlsHandshakeTimeShift)
-	return configBlock.Header.Number
+	return configBlock.GetHeader().GetNumber()
 }
 
 func updateOrdererConfig(n *nwo.Network, orderer *nwo.Orderer, port nwo.PortName, channel string, tlsHandshakeTimeShift time.Duration, current, updated *common.Config, submitter *nwo.Peer, additionalSigners ...*nwo.Orderer) {

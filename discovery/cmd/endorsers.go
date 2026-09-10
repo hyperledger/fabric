@@ -123,20 +123,20 @@ type EndorserResponseParser struct {
 // ParseResponse parses the given response for the given channel
 func (parser *EndorserResponseParser) ParseResponse(channel string, res ServiceResponse) error {
 	rawResponse := res.Raw()
-	if len(rawResponse.Results) == 0 {
+	if len(rawResponse.GetResults()) == 0 {
 		return errors.New("empty results")
 	}
 
-	if e := rawResponse.Results[0].GetError(); e != nil {
-		return errors.Errorf("server returned: %s", e.Content)
+	if e := rawResponse.GetResults()[0].GetError(); e != nil {
+		return errors.Errorf("server returned: %s", e.GetContent())
 	}
 
-	ccQueryRes := rawResponse.Results[0].GetCcQueryRes()
+	ccQueryRes := rawResponse.GetResults()[0].GetCcQueryRes()
 	if ccQueryRes == nil {
 		return errors.Errorf("server returned response of unexpected type: %v", reflect.TypeFor[*discovery.QueryResult]())
 	}
 
-	jsonBytes, _ := json.MarshalIndent(parseEndorsementDescriptors(ccQueryRes.Content), "", "\t")
+	jsonBytes, _ := json.MarshalIndent(parseEndorsementDescriptors(ccQueryRes.GetContent()), "", "\t")
 	fmt.Fprintln(parser.Writer, string(jsonBytes))
 	return nil
 }
@@ -196,14 +196,14 @@ func parseEndorsementDescriptors(descriptors []*discovery.EndorsementDescriptor)
 	var res []endorsermentDescriptor
 	for _, desc := range descriptors {
 		endorsersByGroups := make(map[string][]endorser)
-		for grp, endorsers := range desc.EndorsersByGroups {
-			for _, p := range endorsers.Peers {
+		for grp, endorsers := range desc.GetEndorsersByGroups() {
+			for _, p := range endorsers.GetPeers() {
 				endorsersByGroups[grp] = append(endorsersByGroups[grp], endorserFromRaw(p))
 			}
 		}
 		res = append(res, endorsermentDescriptor{
-			Chaincode:         desc.Chaincode,
-			Layouts:           desc.Layouts,
+			Chaincode:         desc.GetChaincode(),
+			Layouts:           desc.GetLayouts(),
 			EndorsersByGroups: endorsersByGroups,
 		})
 	}
@@ -225,12 +225,12 @@ type endorsermentDescriptor struct {
 
 func endorserFromRaw(p *discovery.Peer) endorser {
 	sId := &msp.SerializedIdentity{}
-	proto.Unmarshal(p.Identity, sId)
+	proto.Unmarshal(p.GetIdentity(), sId)
 	return endorser{
-		MSPID:        sId.Mspid,
-		Endpoint:     endpointFromEnvelope(p.MembershipInfo),
-		LedgerHeight: ledgerHeightFromEnvelope(p.StateInfo),
-		Identity:     string(sId.IdBytes),
+		MSPID:        sId.GetMspid(),
+		Endpoint:     endpointFromEnvelope(p.GetMembershipInfo()),
+		LedgerHeight: ledgerHeightFromEnvelope(p.GetStateInfo()),
+		Identity:     string(sId.GetIdBytes()),
 	}
 }
 
@@ -245,10 +245,10 @@ func endpointFromEnvelope(env *gossip.Envelope) string {
 	if !protoext.IsAliveMsg(aliveMsg.GossipMessage) {
 		return ""
 	}
-	if aliveMsg.GetAliveMsg().Membership == nil {
+	if aliveMsg.GetAliveMsg().GetMembership() == nil {
 		return ""
 	}
-	return aliveMsg.GetAliveMsg().Membership.Endpoint
+	return aliveMsg.GetAliveMsg().GetMembership().GetEndpoint()
 }
 
 func ledgerHeightFromEnvelope(env *gossip.Envelope) uint64 {
@@ -262,8 +262,8 @@ func ledgerHeightFromEnvelope(env *gossip.Envelope) uint64 {
 	if !protoext.IsStateInfoMsg(stateInfoMsg.GossipMessage) {
 		return 0
 	}
-	if stateInfoMsg.GetStateInfo().Properties == nil {
+	if stateInfoMsg.GetStateInfo().GetProperties() == nil {
 		return 0
 	}
-	return stateInfoMsg.GetStateInfo().Properties.LedgerHeight
+	return stateInfoMsg.GetStateInfo().GetProperties().GetLedgerHeight()
 }

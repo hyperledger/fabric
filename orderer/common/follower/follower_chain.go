@@ -176,10 +176,10 @@ func NewChain(
 
 		chain.logger.Infof("Created with a nil join-block, ledger height: %d", chain.firstHeight)
 	} else {
-		if joinBlock.Header == nil {
+		if joinBlock.GetHeader() == nil {
 			return nil, errors.New("block header is nil")
 		}
-		if joinBlock.Data == nil {
+		if joinBlock.GetData() == nil {
 			return nil, errors.New("block data is nil")
 		}
 
@@ -191,14 +191,14 @@ func NewChain(
 		}
 		puller.Close()
 
-		if chain.joinBlock.Header.Number < chain.ledgerResources.Height() {
+		if chain.joinBlock.GetHeader().GetNumber() < chain.ledgerResources.Height() {
 			chain.status = types.StatusActive
 		}
 		if isMem, _ := chain.clusterConsenter.IsChannelMember(chain.joinBlock); isMem {
 			chain.consensusRelation = types.ConsensusRelationConsenter
 		}
 
-		chain.logger.Infof("Created with join-block number: %d, ledger height: %d", joinBlock.Header.Number, chain.firstHeight)
+		chain.logger.Infof("Created with join-block number: %d, ledger height: %d", joinBlock.GetHeader().GetNumber(), chain.firstHeight)
 	}
 
 	chain.logger.Debugf("Options are: %v", chain.options)
@@ -374,7 +374,7 @@ func (c *Chain) pull() error {
 // pullUpToJoin pulls blocks up to the join-block height without inspecting membership on fetched config blocks.
 // It checks whether the chain was stopped between blocks.
 func (c *Chain) pullUpToJoin() error {
-	targetHeight := c.joinBlock.Header.Number + 1
+	targetHeight := c.joinBlock.GetHeader().GetNumber() + 1
 	if c.ledgerResources.Height() >= targetHeight {
 		c.logger.Infof("Target height according to join block (%d) is <= to our ledger height (%d), no need to pull up to join block",
 			targetHeight, c.ledgerResources.Height())
@@ -520,7 +520,7 @@ func (c *Chain) pullUntilTarget(targetHeight uint64, updateEndpoints bool) (uint
 		if prevBlock == nil {
 			return 0, errors.Errorf("cannot retrieve previous block %d", firstBlockToPull-1)
 		}
-		actualPrevHash = protoutil.BlockHeaderHash(prevBlock.Header)
+		actualPrevHash = protoutil.BlockHeaderHash(prevBlock.GetHeader())
 	}
 
 	// Pull until the latest height
@@ -536,36 +536,36 @@ func (c *Chain) pullUntilTarget(targetHeight uint64, updateEndpoints bool) (uint
 				return n, errors.WithMessagef(cluster.ErrRetryCountExhausted, "failed to pull block %d", seq)
 			}
 
-			reportedPrevHash := nextBlock.Header.PreviousHash
-			if (nextBlock.Header.Number > 0) && !bytes.Equal(reportedPrevHash, actualPrevHash) {
+			reportedPrevHash := nextBlock.GetHeader().GetPreviousHash()
+			if (nextBlock.GetHeader().GetNumber() > 0) && !bytes.Equal(reportedPrevHash, actualPrevHash) {
 				return n, errors.Errorf("block header previous hash mismatch on sequence %d, expected %x, got %x",
-					nextBlock.Header.Number, actualPrevHash, reportedPrevHash)
+					nextBlock.GetHeader().GetNumber(), actualPrevHash, reportedPrevHash)
 			}
 
-			if c.joinBlock != nil && c.joinBlock.Header.Number == nextBlock.Header.Number {
+			if c.joinBlock != nil && c.joinBlock.GetHeader().GetNumber() == nextBlock.GetHeader().GetNumber() {
 				// We don't need to verify the block.Data because we verify the join-block's DataHash against the
 				// hash(join-block.Data) when we verify it during the `Join` REST API call
-				if !proto.Equal(nextBlock.Header, c.joinBlock.Header) {
-					c.logger.Errorf("Block header mismatch between the block we pulled and the block we joined with, sequence %d", c.joinBlock.Header.Number)
-					return n, errors.Errorf("block header mismatch between the block we pulled and the block we joined with, sequence %d", c.joinBlock.Header.Number)
+				if !proto.Equal(nextBlock.GetHeader(), c.joinBlock.GetHeader()) {
+					c.logger.Errorf("Block header mismatch between the block we pulled and the block we joined with, sequence %d", c.joinBlock.GetHeader().GetNumber())
+					return n, errors.Errorf("block header mismatch between the block we pulled and the block we joined with, sequence %d", c.joinBlock.GetHeader().GetNumber())
 				}
 			}
 
-			actualPrevHash = protoutil.BlockHeaderHash(nextBlock.Header)
+			actualPrevHash = protoutil.BlockHeaderHash(nextBlock.GetHeader())
 			if err := c.ledgerResources.Append(nextBlock); err != nil {
-				return n, errors.WithMessagef(err, "failed to append block %d to the ledger", nextBlock.Header.Number)
+				return n, errors.WithMessagef(err, "failed to append block %d to the ledger", nextBlock.GetHeader().GetNumber())
 			}
 
 			if protoutil.IsConfigBlock(nextBlock) {
-				c.logger.Debugf("Pulled blocks from %d to %d, last block is config", firstBlockToPull, nextBlock.Header.Number)
+				c.logger.Debugf("Pulled blocks from %d to %d, last block is config", firstBlockToPull, nextBlock.GetHeader().GetNumber())
 				c.lastConfig = nextBlock
 				if err := c.blockPullerFactory.UpdateVerifierFromConfigBlock(nextBlock); err != nil {
-					return n, errors.WithMessagef(err, "failed to update verifier from last config,  block number: %d", nextBlock.Header.Number)
+					return n, errors.WithMessagef(err, "failed to update verifier from last config,  block number: %d", nextBlock.GetHeader().GetNumber())
 				}
 				if updateEndpoints {
 					endpoints, err := cluster.EndpointconfigFromConfigBlock(nextBlock, c.cryptoProvider)
 					if err != nil {
-						return n, errors.WithMessagef(err, "failed to extract endpoints from last config,  block number: %d", nextBlock.Header.Number)
+						return n, errors.WithMessagef(err, "failed to extract endpoints from last config,  block number: %d", nextBlock.GetHeader().GetNumber())
 					}
 					c.blockPuller.UpdateEndpoints(endpoints)
 				}

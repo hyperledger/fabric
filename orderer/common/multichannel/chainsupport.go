@@ -136,7 +136,7 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 		return nil, err
 	}
 
-	bundle, err := cs.CreateBundle(cs.ChannelID(), env.Config)
+	bundle, err := cs.CreateBundle(cs.ChannelID(), env.GetConfig())
 	if err != nil {
 		return nil, err
 	}

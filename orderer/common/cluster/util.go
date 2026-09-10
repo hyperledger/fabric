@@ -220,38 +220,38 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 		return errors.Errorf("index %d out of bounds (total %d blocks)", indexInBuffer, len(blockBuff))
 	}
 	block := blockBuff[indexInBuffer]
-	if block.Header == nil {
+	if block.GetHeader() == nil {
 		return errors.New("missing block header")
 	}
-	if block.Data == nil {
+	if block.GetData() == nil {
 		return errors.New("missing block data")
 	}
-	seq := block.Header.Number
-	dataHash, err := protoutil.BlockDataHash(block.Data)
+	seq := block.GetHeader().GetNumber()
+	dataHash, err := protoutil.BlockDataHash(block.GetData())
 	if err != nil {
 		return err
 	}
 	// Verify data hash matches the hash in the header
-	if !bytes.Equal(dataHash, block.Header.DataHash) {
+	if !bytes.Equal(dataHash, block.GetHeader().GetDataHash()) {
 		computedHash := hex.EncodeToString(dataHash)
-		claimedHash := hex.EncodeToString(block.Header.DataHash)
+		claimedHash := hex.EncodeToString(block.GetHeader().GetDataHash())
 		return errors.Errorf("computed hash of block (%d) (%s) doesn't match claimed hash (%s)",
 			seq, computedHash, claimedHash)
 	}
 	// We have a previous block in the buffer, ensure current block's previous hash matches the previous one.
 	if indexInBuffer > 0 {
 		prevBlock := blockBuff[indexInBuffer-1]
-		currSeq := block.Header.Number
-		if prevBlock.Header == nil {
+		currSeq := block.GetHeader().GetNumber()
+		if prevBlock.GetHeader() == nil {
 			return errors.New("previous block header is nil")
 		}
-		prevSeq := prevBlock.Header.Number
+		prevSeq := prevBlock.GetHeader().GetNumber()
 		if prevSeq+1 != currSeq {
 			return errors.Errorf("sequences %d and %d were received consecutively", prevSeq, currSeq)
 		}
-		if !bytes.Equal(block.Header.PreviousHash, protoutil.BlockHeaderHash(prevBlock.Header)) {
-			claimedPrevHash := hex.EncodeToString(block.Header.PreviousHash)
-			actualPrevHash := hex.EncodeToString(protoutil.BlockHeaderHash(prevBlock.Header))
+		if !bytes.Equal(block.GetHeader().GetPreviousHash(), protoutil.BlockHeaderHash(prevBlock.GetHeader())) {
+			claimedPrevHash := hex.EncodeToString(block.GetHeader().GetPreviousHash())
+			actualPrevHash := hex.EncodeToString(protoutil.BlockHeaderHash(prevBlock.GetHeader()))
 			return errors.Errorf("block [%d]'s hash (%s) mismatches block [%d]'s prev block hash (%s)",
 				prevSeq, actualPrevHash, currSeq, claimedPrevHash)
 		}
@@ -261,7 +261,7 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 
 // VerifyBlockSignature verifies the signature on the block with the given BlockVerifier and the given config.
 func VerifyBlockSignature(block *common.Block, verifier protoutil.BlockVerifierFunc) error {
-	return verifier(block.Header, block.Metadata)
+	return verifier(block.GetHeader(), block.GetMetadata())
 }
 
 // EndpointCriteria defines criteria of how to connect to a remote orderer node.
@@ -415,12 +415,12 @@ func BlockVerifierBuilder(bccsp bccsp.BCCSP) func(block *common.Block) protoutil
 }
 
 func bundleFromConfigBlock(block *common.Block, bccsp bccsp.BCCSP) (*channelconfig.Bundle, protoutil.BlockVerifierFunc) {
-	if block.Data == nil || len(block.Data.Data) == 0 {
+	if block.GetData() == nil || len(block.GetData().GetData()) == 0 {
 		return nil, createErrorFunc(errors.New("block contains no data"))
 	}
 
 	env := &common.Envelope{}
-	if err := proto.Unmarshal(block.Data.Data[0], env); err != nil {
+	if err := proto.Unmarshal(block.GetData().GetData()[0], env); err != nil {
 		return nil, createErrorFunc(err)
 	}
 
@@ -483,10 +483,10 @@ func (bv *BlockValidationPolicyVerifier) VerifyBlockSignature(sd []*protoutil.Si
 	policyMgr := bv.PolicyMgr
 	// If the envelope passed isn't nil, we should use a different policy manager.
 	if envelope != nil {
-		bundle, err := channelconfig.NewBundle(bv.Channel, envelope.Config, bv.BCCSP)
+		bundle, err := channelconfig.NewBundle(bv.Channel, envelope.GetConfig(), bv.BCCSP)
 		if err != nil {
 			buff := &bytes.Buffer{}
-			protolator.DeepMarshalJSON(buff, envelope.Config)
+			protolator.DeepMarshalJSON(buff, envelope.GetConfig())
 			bv.Logger.Errorf("Failed creating a new bundle for channel %s, Config content is: %s", bv.Channel, buff.String())
 			return err
 		}
@@ -664,14 +664,14 @@ func (cm *ComparisonMemoizer) setup() {
 func requestAsString(request *orderer.StepRequest) string {
 	switch t := request.GetPayload().(type) {
 	case *orderer.StepRequest_SubmitRequest:
-		if t.SubmitRequest == nil || t.SubmitRequest.Payload == nil {
+		if t.SubmitRequest == nil || t.SubmitRequest.GetPayload() == nil {
 			return fmt.Sprintf("Empty SubmitRequest: %v", t.SubmitRequest)
 		}
 		return fmt.Sprintf("SubmitRequest for channel %s with payload of size %d",
-			t.SubmitRequest.Channel, len(t.SubmitRequest.Payload.Payload))
+			t.SubmitRequest.GetChannel(), len(t.SubmitRequest.GetPayload().GetPayload()))
 	case *orderer.StepRequest_ConsensusRequest:
 		return fmt.Sprintf("ConsensusRequest for channel %s with payload of size %d",
-			t.ConsensusRequest.Channel, len(t.ConsensusRequest.Payload))
+			t.ConsensusRequest.GetChannel(), len(t.ConsensusRequest.GetPayload()))
 	default:
 		return fmt.Sprintf("unknown type: %v", request)
 	}
@@ -687,11 +687,11 @@ func exportKM(cs tls.ConnectionState, label string, context []byte) ([]byte, err
 
 func GetSessionBindingHash(authReq *orderer.NodeAuthRequest) []byte {
 	return util.ComputeSHA256(util.ConcatenateBytes(
-		[]byte(strconv.FormatUint(uint64(authReq.Version), 10)),
-		EncodeTimestamp(authReq.Timestamp),
-		[]byte(strconv.FormatUint(authReq.FromId, 10)),
-		[]byte(strconv.FormatUint(authReq.ToId, 10)),
-		[]byte(authReq.Channel),
+		[]byte(strconv.FormatUint(uint64(authReq.GetVersion()), 10)),
+		EncodeTimestamp(authReq.GetTimestamp()),
+		[]byte(strconv.FormatUint(authReq.GetFromId(), 10)),
+		[]byte(strconv.FormatUint(authReq.GetToId(), 10)),
+		[]byte(authReq.GetChannel()),
 	))
 }
 
@@ -765,7 +765,7 @@ func verifyBlockSequence(blockBuff []*common.Block, signatureVerifier protoutil.
 
 		if err := VerifyBlockSignature(block, signatureVerifier); err != nil {
 			// Genesis blocks are not signed, so silently ignore the error
-			if block.Header.Number > 0 {
+			if block.GetHeader().GetNumber() > 0 {
 				return err
 			}
 		}
@@ -824,7 +824,7 @@ func LatestHeightAndEndpoint(puller ChainPuller) (string, uint64, error) {
 
 func EncodeTimestamp(t *timestamppb.Timestamp) []byte {
 	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, uint64(t.Seconds))
+	binary.LittleEndian.PutUint64(b, uint64(t.GetSeconds()))
 	return b
 }
 

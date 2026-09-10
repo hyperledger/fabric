@@ -333,8 +333,8 @@ func TestSelf(t *testing.T) {
 	env := gc.Self().Envelope
 	sMsg, _ := protoext.EnvelopeToGossipMessage(env)
 	require.True(t, gproto.Equal(gMsg, sMsg.GossipMessage))
-	require.Equal(t, gMsg.GetStateInfo().Properties.LedgerHeight, uint64(1))
-	require.Equal(t, gMsg.GetStateInfo().PkiId, []byte("1"))
+	require.Equal(t, gMsg.GetStateInfo().GetProperties().GetLedgerHeight(), uint64(1))
+	require.Equal(t, gMsg.GetStateInfo().GetPkiId(), []byte("1"))
 }
 
 func TestMsgStoreNotExpire(t *testing.T) {
@@ -397,7 +397,7 @@ func TestMsgStoreNotExpire(t *testing.T) {
 		case <-time.After(time.Second):
 			t.Fatal("Haven't received a state info snapshot on time")
 		case msg := <-sentMessages:
-			for _, el := range msg.GetStateSnapshot().Elements {
+			for _, el := range msg.GetStateSnapshot().GetElements() {
 				sMsg, err := protoext.EnvelopeToGossipMessage(el)
 				require.NoError(t, err)
 				outChan <- sMsg
@@ -542,7 +542,7 @@ func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 		msg = m
 	}
 
-	require.Equal(t, ledgerHeight, int(msg.GetStateInfo().Properties.LedgerHeight))
+	require.Equal(t, ledgerHeight, int(msg.GetStateInfo().GetProperties().GetLedgerHeight()))
 }
 
 func TestChannelMsgStoreEviction(t *testing.T) {
@@ -633,12 +633,12 @@ func TestChannelMsgStoreEviction(t *testing.T) {
 	msg := <-msgSentFromPullMediator
 	// It's a digest and not anything else, like an update
 	require.True(t, protoext.IsDigestMsg(msg))
-	require.Len(t, msg.GetDataDig().Digests, adapter.GetConf().MaxBlockCountToStore+1)
+	require.Len(t, msg.GetDataDig().GetDigests(), adapter.GetConf().MaxBlockCountToStore+1)
 	// Check that the last sequences are kept.
 	// Since we checked the length, it proves that the old blocks were discarded, since we had much more
 	// total blocks overall than our capacity
 	for seq := range lastPullPhase {
-		require.Contains(t, msg.GetDataDig().Digests, fmt.Appendf(nil, "%d", seq))
+		require.Contains(t, msg.GetDataDig().GetDigests(), fmt.Appendf(nil, "%d", seq))
 	}
 }
 
@@ -673,7 +673,7 @@ func TestChannelPull(t *testing.T) {
 		case <-time.After(time.Second * 5):
 			t.Fatal("Haven't received blocks on time")
 		case msg := <-receivedBlocksChan:
-			require.Equal(t, uint64(expectedSeq), msg.GetDataMsg().Payload.SeqNum)
+			require.Equal(t, uint64(expectedSeq), msg.GetDataMsg().GetPayload().GetSeqNum())
 		}
 	}
 }
@@ -1001,7 +1001,7 @@ func TestChannelBlockExpiration(t *testing.T) {
 		t.Fatal("Haven't responded to hello message within a time period")
 	case msg := <-respondedChan:
 		if protoext.IsDigestMsg(msg) {
-			require.Equal(t, 1, len(msg.GetDataDig().Digests), "Number of digests returned by channel blockPuller incorrect")
+			require.Equal(t, 1, len(msg.GetDataDig().GetDigests()), "Number of digests returned by channel blockPuller incorrect")
 		} else {
 			t.Fatal("Not correct pull msg type in response - expect digest")
 		}
@@ -1045,7 +1045,7 @@ func TestChannelBlockExpiration(t *testing.T) {
 		t.Fatal("Haven't responded to hello message within a time period")
 	case msg := <-respondedChan:
 		if protoext.IsDigestMsg(msg) {
-			require.Equal(t, 1, len(msg.GetDataDig().Digests), "Number of digests returned by channel blockPuller incorrect")
+			require.Equal(t, 1, len(msg.GetDataDig().GetDigests()), "Number of digests returned by channel blockPuller incorrect")
 		} else {
 			t.Fatal("Not correct pull msg type in response - expect digest")
 		}
@@ -1138,13 +1138,13 @@ func TestNoGossipOrSigningWhenEmptyMembership(t *testing.T) {
 	// We haven't signed anything
 	assert.Equal(t, uint32(2), atomic.LoadUint32(&adapter.signCallCount))
 
-	assert.Empty(t, gc.Self().GetStateInfo().Properties.Chaincodes)
+	assert.Empty(t, gc.Self().GetStateInfo().GetProperties().GetChaincodes())
 	gossipedWG.Add(1)
 	// Now, update chaincodes and check our chaincode information was indeed updated
 	gc.UpdateChaincodes([]*proto.Chaincode{{Name: "mycc"}})
 	// We should have signed regardless!
 	assert.Equal(t, uint32(3), atomic.LoadUint32(&adapter.signCallCount))
-	assert.Equal(t, "mycc", gc.Self().GetStateInfo().Properties.Chaincodes[0].Name)
+	assert.Equal(t, "mycc", gc.Self().GetStateInfo().GetProperties().GetChaincodes()[0].GetName())
 }
 
 func TestChannelPulledBadBlocks(t *testing.T) {
@@ -1288,7 +1288,7 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 	stateInfoMsg := &receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(channelA, createStateInfoMsg(4, pkiIDInOrg1, channelA))}
 	gc.HandleMessage(stateInfoMsg)
 	require.NotEmpty(t, gc.GetPeers())
-	require.Equal(t, 4, int(gc.GetPeers()[0].Properties.LedgerHeight))
+	require.Equal(t, 4, int(gc.GetPeers()[0].Properties.GetLedgerHeight()))
 
 	// Check we don't respond to stateInfoSnapshot requests with wrong MAC
 	sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
@@ -1336,11 +1336,11 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("Haven't received a state info snapshot on time")
 	case msg := <-sentMessages:
-		elements := msg.GetStateSnapshot().Elements
+		elements := msg.GetStateSnapshot().GetElements()
 		require.Len(t, elements, 1)
 		sMsg, err := protoext.EnvelopeToGossipMessage(elements[0])
 		require.NoError(t, err)
-		require.Equal(t, 4, int(sMsg.GetStateInfo().Properties.LedgerHeight))
+		require.Equal(t, 4, int(sMsg.GetStateInfo().GetProperties().GetLedgerHeight()))
 	}
 
 	// Ensure we don't crash if we got an invalid state info message
@@ -1405,11 +1405,11 @@ func TestInterOrgExternalEndpointDisclosure(t *testing.T) {
 	case <-time.After(time.Second):
 		require.Fail(t, "Should have responded to this StateInfoSnapshot, but didn't")
 	case msg := <-sentMessages:
-		elements := msg.GetStateSnapshot().Elements
+		elements := msg.GetStateSnapshot().GetElements()
 		require.Len(t, elements, 2)
 		m1, _ := protoext.EnvelopeToGossipMessage(elements[0])
 		m2, _ := protoext.EnvelopeToGossipMessage(elements[1])
-		pkiIDs := [][]byte{m1.GetStateInfo().PkiId, m2.GetStateInfo().PkiId}
+		pkiIDs := [][]byte{m1.GetStateInfo().GetPkiId(), m2.GetStateInfo().GetPkiId()}
 		require.Contains(t, pkiIDs, []byte(pkiID1))
 		require.Contains(t, pkiIDs, []byte(pkiID3))
 	}
@@ -1437,12 +1437,12 @@ func TestInterOrgExternalEndpointDisclosure(t *testing.T) {
 	case <-time.After(time.Second):
 		require.Fail(t, "Should have responded to this StateInfoSnapshot, but didn't")
 	case msg := <-sentMessages:
-		elements := msg.GetStateSnapshot().Elements
+		elements := msg.GetStateSnapshot().GetElements()
 		require.Len(t, elements, 3)
 		m1, _ := protoext.EnvelopeToGossipMessage(elements[0])
 		m2, _ := protoext.EnvelopeToGossipMessage(elements[1])
 		m3, _ := protoext.EnvelopeToGossipMessage(elements[2])
-		pkiIDs := [][]byte{m1.GetStateInfo().PkiId, m2.GetStateInfo().PkiId, m3.GetStateInfo().PkiId}
+		pkiIDs := [][]byte{m1.GetStateInfo().GetPkiId(), m2.GetStateInfo().GetPkiId(), m3.GetStateInfo().GetPkiId()}
 		require.Contains(t, pkiIDs, []byte(pkiID1))
 		require.Contains(t, pkiIDs, []byte(pkiID2))
 		require.Contains(t, pkiIDs, []byte(pkiID3))
@@ -1749,7 +1749,7 @@ func TestChannelGetPeers(t *testing.T) {
 
 	// Ensure envelope from GetPeers is valid
 	gMsg, _ := protoext.EnvelopeToGossipMessage(gc.GetPeers()[0].Envelope)
-	require.Equal(t, []byte(pkiIDInOrg1), gMsg.GetStateInfo().PkiId)
+	require.Equal(t, []byte(pkiIDInOrg1), gMsg.GetStateInfo().GetPkiId())
 
 	gc.HandleMessage(&receivedMsg{msg: createStateInfoMsg(10, pkiIDInOrg1ButNotEligible, channelA), PKIID: pkiIDInOrg1ButNotEligible})
 	cs.On("VerifyByChannel", mock.Anything).Return(errors.New("Not eligible"))
@@ -1881,7 +1881,7 @@ func TestChannelPullWithDigestsFilter(t *testing.T) {
 	case <-time.After(time.Second * 5):
 		t.Fatal("Haven't received blocks on time")
 	case msg := <-receivedBlocksChan:
-		require.Equal(t, uint64(11), msg.GetDataMsg().Payload.SeqNum)
+		require.Equal(t, uint64(11), msg.GetDataMsg().GetPayload().GetSeqNum())
 	}
 }
 
@@ -2083,7 +2083,7 @@ func simulatePullPhaseWithVariableDigest(gc GossipChannel, t *testing.T, wg *syn
 					DataDig: &proto.DataDigest{
 						MsgType: proto.PullMsgType_BLOCK_MSG,
 						Digests: proposedDigestSeqs,
-						Nonce:   msg.GetHello().Nonce,
+						Nonce:   msg.GetHello().GetNonce(),
 					},
 				},
 			})
@@ -2097,15 +2097,15 @@ func simulatePullPhaseWithVariableDigest(gc GossipChannel, t *testing.T, wg *syn
 			sentReq = true
 			dataReq := msg.GetDataReq()
 			for _, expectedDigest := range util.StringsToBytes(resultDigestSeqs) {
-				require.Contains(t, dataReq.Digests, expectedDigest)
+				require.Contains(t, dataReq.GetDigests(), expectedDigest)
 			}
-			require.Equal(t, len(resultDigestSeqs), len(dataReq.Digests))
+			require.Equal(t, len(resultDigestSeqs), len(dataReq.GetDigests()))
 			// When we send a data request, simulate a response of a data update
 			// from the imaginary peer that got the request
 			dataUpdateMsg := new(receivedMsg)
 			dataUpdateMsg.PKIID = pkiIDInOrg1
-			dataUpdateMsg.msg = createDataUpdateMsg(dataReq.Nonce, seqs...)
-			mutator(dataUpdateMsg.msg.GetDataUpdate().Data[0])
+			dataUpdateMsg.msg = createDataUpdateMsg(dataReq.GetNonce(), seqs...)
+			mutator(dataUpdateMsg.msg.GetDataUpdate().GetData()[0])
 			gc.HandleMessage(dataUpdateMsg)
 			wg.Done()
 		}

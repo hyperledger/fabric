@@ -124,7 +124,7 @@ var _ = Describe("ConfigTx", func() {
 		By("submitting the channel config update")
 		resp, err := ordererclient.Broadcast(network, orderer, configUpdateEnvelope)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+		Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 		ccb := func() uint64 { return nwo.CurrentConfigBlockNumber(network, org2peer0, orderer, "testchannel") }
 		Eventually(ccb, network.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
@@ -182,7 +182,7 @@ var _ = Describe("ConfigTx", func() {
 		By("submitting the channel config update")
 		resp, err = ordererclient.Broadcast(network, orderer, configUpdateEnvelope)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+		Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 		ccb = func() uint64 { return nwo.CurrentConfigBlockNumber(network, org2peer0, orderer, "testchannel") }
 		Eventually(ccb, network.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
@@ -227,7 +227,7 @@ var _ = Describe("ConfigTx", func() {
 			By("submitting the channel config update for " + peer.Organization)
 			resp, err = ordererclient.Broadcast(network, orderer, configUpdateEnvelope)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 			ccb = func() uint64 { return nwo.CurrentConfigBlockNumber(network, peer, orderer, "testchannel") }
 			Eventually(ccb, network.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))

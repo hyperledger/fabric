@@ -216,7 +216,7 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 	gc.blocksPuller = gc.createBlockPuller()
 
 	seqNumFromMsg := func(m any) string {
-		return fmt.Sprintf("%d", m.(*protoext.SignedGossipMessage).GetDataMsg().Payload.SeqNum)
+		return fmt.Sprintf("%d", m.(*protoext.SignedGossipMessage).GetDataMsg().GetPayload().GetSeqNum())
 	}
 	gc.blockMsgStore = msgstore.NewMessageStoreExpirable(comparator, func(m any) {
 		gc.logger.Debugf("Removing %s from the message store", seqNumFromMsg(m))
@@ -227,18 +227,18 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 	})
 
 	hashPeerExpiredInMembership := func(o any) bool {
-		pkiID := o.(*protoext.SignedGossipMessage).GetStateInfo().PkiId
+		pkiID := o.(*protoext.SignedGossipMessage).GetStateInfo().GetPkiId()
 		return gc.Lookup(pkiID) == nil
 	}
 	verifyStateInfoMsg := func(msg *protoext.SignedGossipMessage, orgs ...api.OrgIdentityType) bool {
 		si := msg.GetStateInfo()
 		// No point in verifying ourselves
-		if bytes.Equal(gc.pkiID, si.PkiId) {
+		if bytes.Equal(gc.pkiID, si.GetPkiId()) {
 			return true
 		}
-		peerIdentity := adapter.GetIdentityByPKIID(si.PkiId)
+		peerIdentity := adapter.GetIdentityByPKIID(si.GetPkiId())
 		if len(peerIdentity) == 0 {
-			gc.logger.Warning("Identity for peer", si.PkiId, "doesn't exist")
+			gc.logger.Warning("Identity for peer", si.GetPkiId(), "doesn't exist")
 			return false
 		}
 		isOrgInChan := func(org api.OrgIdentityType) bool {
@@ -261,7 +261,7 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 			return true
 		}
 
-		org := gc.GetOrgOfPeer(si.PkiId)
+		org := gc.GetOrgOfPeer(si.GetPkiId())
 		if !isOrgInChan(org) {
 			gc.logger.Warning("peer", peerIdentity, "'s organization(", string(org), ") isn't in the channel", string(channelID))
 			return false
@@ -355,8 +355,8 @@ func (gc *gossipChannel) LeaveChannel() {
 	var chaincodes []*proto.Chaincode
 	var height uint64
 	if prevMsg := gc.selfStateInfoMsg; prevMsg != nil {
-		chaincodes = prevMsg.GetStateInfo().Properties.Chaincodes
-		height = prevMsg.GetStateInfo().Properties.LedgerHeight
+		chaincodes = prevMsg.GetStateInfo().GetProperties().GetChaincodes()
+		height = prevMsg.GetStateInfo().GetProperties().GetLedgerHeight()
 	}
 	gc.updateProperties(height, chaincodes, true)
 	atomic.StoreInt32(&gc.shouldGossipStateInfo, int32(1))
@@ -381,11 +381,11 @@ func (gc *gossipChannel) GetPeers() []discovery.NetworkMember {
 		if stateInf == nil {
 			continue
 		}
-		props := stateInf.GetStateInfo().Properties
-		if props != nil && props.LeftChannel {
+		props := stateInf.GetStateInfo().GetProperties()
+		if props != nil && props.GetLeftChannel() {
 			continue
 		}
-		member.Properties = stateInf.GetStateInfo().Properties
+		member.Properties = stateInf.GetStateInfo().GetProperties()
 		member.Envelope = stateInf.Envelope
 		members = append(members, member)
 	}
@@ -467,11 +467,11 @@ func (gc *gossipChannel) createBlockPuller() pull.Mediator {
 	}
 	seqNumFromMsg := func(msg *protoext.SignedGossipMessage) string {
 		dataMsg := msg.GetDataMsg()
-		if dataMsg == nil || dataMsg.Payload == nil {
+		if dataMsg == nil || dataMsg.GetPayload() == nil {
 			gc.logger.Warning("Non-data block or with no payload")
 			return ""
 		}
-		return fmt.Sprintf("%d", dataMsg.Payload.SeqNum)
+		return fmt.Sprintf("%d", dataMsg.GetPayload().GetSeqNum())
 	}
 	adapter := &pull.PullAdapter{
 		Sndr:        gc,
@@ -486,7 +486,7 @@ func (gc *gossipChannel) createBlockPuller() pull.Mediator {
 		gc.RLock()
 		height := gc.ledgerHeight
 		gc.RUnlock()
-		digests := digestMsg.Digests
+		digests := digestMsg.GetDigests()
 		digestMsg.Digests = nil
 		for i := range digests {
 			seqNum, err := strconv.ParseUint(string(digests[i]), 10, 64)
@@ -638,7 +638,7 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 		added := false
 
 		if protoext.IsDataMsg(m.GossipMessage) {
-			if m.GetDataMsg().Payload == nil {
+			if m.GetDataMsg().GetPayload() == nil {
 				gc.logger.Warning("Payload is empty, got it from", msg.GetConnectionInfo().ID)
 				return
 			}
@@ -647,7 +647,7 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 				return
 			}
 			if !gc.verifyBlock(m.GossipMessage, msg.GetConnectionInfo().ID) {
-				gc.logger.Warning("Failed verifying block", m.GetDataMsg().Payload.SeqNum)
+				gc.logger.Warning("Failed verifying block", m.GetDataMsg().GetPayload().GetSeqNum())
 				return
 			}
 			gc.Lock()
@@ -693,7 +693,7 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 			var msgs []*protoext.SignedGossipMessage
 			var items []*proto.Envelope
 			filteredEnvelopes := []*proto.Envelope{}
-			for _, item := range m.GetDataUpdate().Data {
+			for _, item := range m.GetDataUpdate().GetData() {
 				gMsg, err := protoext.EnvelopeToGossipMessage(item)
 				if err != nil {
 					gc.logger.Warningf("Data update contains an invalid message: %+v", err)
@@ -742,7 +742,7 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 				connInfo.Endpoint, string(senderOrg))
 			return
 		}
-		msgCreatorOrg := gc.GetOrgOfPeer(m.GetLeadershipMsg().PkiId)
+		msgCreatorOrg := gc.GetOrgOfPeer(m.GetLeadershipMsg().GetPkiId())
 		if !bytes.Equal(gc.selfOrg, msgCreatorOrg) {
 			gc.logger.Warningf("Received leadership message created by a foreign organization %s", string(msgCreatorOrg))
 			return
@@ -757,7 +757,7 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 
 func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender common.PKIidType) {
 	chanName := string(gc.chainID)
-	for _, envelope := range m.GetStateSnapshot().Elements {
+	for _, envelope := range m.GetStateSnapshot().GetElements() {
 		stateInf, err := protoext.EnvelopeToGossipMessage(envelope)
 		if err != nil {
 			gc.logger.Warningf("Channel %s : StateInfo snapshot contains an invalid message: %+v", chanName, err)
@@ -769,23 +769,23 @@ func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender c
 			return
 		}
 		si := stateInf.GetStateInfo()
-		orgID := gc.GetOrgOfPeer(si.PkiId)
+		orgID := gc.GetOrgOfPeer(si.GetPkiId())
 		if orgID == nil {
 			gc.logger.Debug("Channel", chanName, ": Couldn't find org identity of peer",
-				string(si.PkiId), "message sent from", string(sender))
+				string(si.GetPkiId()), "message sent from", string(sender))
 			return
 		}
 
 		if !gc.IsOrgInChannel(orgID) {
-			gc.logger.Warning("Channel", chanName, ": Peer", stateInf.GetStateInfo().PkiId,
+			gc.logger.Warning("Channel", chanName, ": Peer", stateInf.GetStateInfo().GetPkiId(),
 				"is not in an eligible org, can't process a stateInfo from it, sent from", sender)
 			return
 		}
 
-		expectedMAC := GenerateMAC(si.PkiId, gc.chainID)
-		if !bytes.Equal(si.Channel_MAC, expectedMAC) {
+		expectedMAC := GenerateMAC(si.GetPkiId(), gc.chainID)
+		if !bytes.Equal(si.GetChannel_MAC(), expectedMAC) {
 			gc.logger.Warning("Channel", chanName, ": StateInfo message", stateInf,
-				", has an invalid MAC. Expected", expectedMAC, ", got", si.Channel_MAC, ", sent from", sender)
+				", has an invalid MAC. Expected", expectedMAC, ", got", si.GetChannel_MAC(), ", sent from", sender)
 			return
 		}
 		err = gc.ValidateStateInfoMessage(stateInf)
@@ -794,7 +794,7 @@ func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender c
 			return
 		}
 
-		if gc.Lookup(si.PkiId) == nil {
+		if gc.Lookup(si.GetPkiId()) == nil {
 			// Skip StateInfo messages that belong to peers
 			// that have been expired
 			continue
@@ -809,20 +809,20 @@ func (gc *gossipChannel) verifyBlock(msg *proto.GossipMessage, sender common.PKI
 		gc.logger.Warning("Received from ", sender, "a DataUpdate message that contains a non-block GossipMessage:", msg)
 		return false
 	}
-	payload := msg.GetDataMsg().Payload
+	payload := msg.GetDataMsg().GetPayload()
 	if payload == nil {
 		gc.logger.Warning("Received empty payload from", sender)
 		return false
 	}
-	seqNum := payload.SeqNum
-	rawBlock := payload.Data
+	seqNum := payload.GetSeqNum()
+	rawBlock := payload.GetData()
 	block, err := protoutil.UnmarshalBlock(rawBlock)
 	if err != nil {
 		gc.logger.Warningf("Received improperly encoded block from %v in DataUpdate: %+v", sender, err)
 		return false
 	}
 
-	err = gc.mcs.VerifyBlock(msg.Channel, seqNum, block)
+	err = gc.mcs.VerifyBlock(msg.GetChannel(), seqNum, block)
 	if err != nil {
 		gc.logger.Warningf("Received fabricated block from %v in DataUpdate: %+v", sender, err)
 		return false
@@ -836,7 +836,7 @@ func (gc *gossipChannel) createStateInfoSnapshot(requestersOrg api.OrgIdentityTy
 	elements := []*proto.Envelope{}
 	for _, rawEl := range rawElements {
 		msg := rawEl.(*protoext.SignedGossipMessage)
-		orgOfCurrentMsg := gc.GetOrgOfPeer(msg.GetStateInfo().PkiId)
+		orgOfCurrentMsg := gc.GetOrgOfPeer(msg.GetStateInfo().GetPkiId())
 		// If we're in the same org as the requester, or the message belongs to a foreign org
 		// don't do any filtering
 		if sameOrg || !bytes.Equal(orgOfCurrentMsg, gc.selfOrg) {
@@ -845,7 +845,7 @@ func (gc *gossipChannel) createStateInfoSnapshot(requestersOrg api.OrgIdentityTy
 		}
 		// Else, the requester is in a different org, so disclose only StateInfo messages that their
 		// corresponding AliveMessages have external endpoints
-		if netMember := gc.Lookup(msg.GetStateInfo().PkiId); netMember == nil || netMember.Endpoint == "" {
+		if netMember := gc.Lookup(msg.GetStateInfo().GetPkiId()); netMember == nil || netMember.Endpoint == "" {
 			continue
 		}
 		elements = append(elements, msg.Envelope)
@@ -881,9 +881,9 @@ func (gc *gossipChannel) verifyMsg(msg protoext.ReceivedMessage) bool {
 
 	if protoext.IsStateInfoMsg(m.GossipMessage) {
 		si := m.GetStateInfo()
-		expectedMAC := GenerateMAC(si.PkiId, gc.chainID)
-		if !bytes.Equal(expectedMAC, si.Channel_MAC) {
-			gc.logger.Warning("Message contains wrong channel MAC(", si.Channel_MAC, "), expected", expectedMAC)
+		expectedMAC := GenerateMAC(si.GetPkiId(), gc.chainID)
+		if !bytes.Equal(expectedMAC, si.GetChannel_MAC()) {
+			gc.logger.Warning("Message contains wrong channel MAC(", si.GetChannel_MAC(), "), expected", expectedMAC)
 			return false
 		}
 		return true
@@ -892,8 +892,8 @@ func (gc *gossipChannel) verifyMsg(msg protoext.ReceivedMessage) bool {
 	if protoext.IsStateInfoPullRequestMsg(m.GossipMessage) {
 		sipr := m.GetStateInfoPullReq()
 		expectedMAC := GenerateMAC(msg.GetConnectionInfo().ID, gc.chainID)
-		if !bytes.Equal(expectedMAC, sipr.Channel_MAC) {
-			gc.logger.Warning("Message contains wrong channel MAC(", sipr.Channel_MAC, "), expected", expectedMAC)
+		if !bytes.Equal(expectedMAC, sipr.GetChannel_MAC()) {
+			gc.logger.Warning("Message contains wrong channel MAC(", sipr.GetChannel_MAC(), "), expected", expectedMAC)
 			return false
 		}
 		return true
@@ -927,8 +927,8 @@ func (gc *gossipChannel) UpdateLedgerHeight(height uint64) {
 	var chaincodes []*proto.Chaincode
 	var leftChannel bool
 	if prevMsg := gc.selfStateInfoMsg; prevMsg != nil {
-		leftChannel = prevMsg.GetStateInfo().Properties.LeftChannel
-		chaincodes = prevMsg.GetStateInfo().Properties.Chaincodes
+		leftChannel = prevMsg.GetStateInfo().GetProperties().GetLeftChannel()
+		chaincodes = prevMsg.GetStateInfo().GetProperties().GetChaincodes()
 	}
 	gc.updateProperties(height, chaincodes, leftChannel)
 	atomic.StoreInt32(&gc.shouldGossipStateInfo, int32(1))
@@ -951,8 +951,8 @@ func (gc *gossipChannel) UpdateChaincodes(chaincodes []*proto.Chaincode) {
 	var ledgerHeight uint64 = 1
 	var leftChannel bool
 	if prevMsg := gc.selfStateInfoMsg; prevMsg != nil {
-		ledgerHeight = prevMsg.GetStateInfo().Properties.LedgerHeight
-		leftChannel = prevMsg.GetStateInfo().Properties.LeftChannel
+		ledgerHeight = prevMsg.GetStateInfo().GetProperties().GetLedgerHeight()
+		leftChannel = prevMsg.GetStateInfo().GetProperties().GetLeftChannel()
 	}
 	gc.updateProperties(ledgerHeight, chaincodes, leftChannel)
 	atomic.StoreInt32(&gc.shouldGossipStateInfo, int32(1))
@@ -961,7 +961,7 @@ func (gc *gossipChannel) UpdateChaincodes(chaincodes []*proto.Chaincode) {
 // UpdateStateInfo updates this channel's StateInfo message
 // that is periodically published
 func (gc *gossipChannel) updateStateInfo(msg *proto.GossipMessage) {
-	gc.ledgerHeight = msg.GetStateInfo().Properties.LedgerHeight
+	gc.ledgerHeight = msg.GetStateInfo().GetProperties().GetLedgerHeight()
 	gc.selfStateInfoMsg = msg
 }
 
@@ -1000,7 +1000,7 @@ func newStateInfoCache(sweepInterval time.Duration, hasExpired func(any) bool, v
 		stopChan:        make(chan struct{}),
 	}
 	invalidationTrigger := func(m any) {
-		pkiID := m.(*protoext.SignedGossipMessage).GetStateInfo().PkiId
+		pkiID := m.(*protoext.SignedGossipMessage).GetStateInfo().GetPkiId()
 		membershipStore.Remove(pkiID)
 	}
 	s.MessageStore = msgstore.NewMessageStore(pol, invalidationTrigger)
@@ -1054,7 +1054,7 @@ func (cache *stateInfoCache) Add(msg *protoext.SignedGossipMessage) bool {
 	}
 	added := cache.MessageStore.Add(msg)
 	if added {
-		pkiID := msg.GetStateInfo().PkiId
+		pkiID := msg.GetStateInfo().GetPkiId()
 		cache.MembershipStore.Put(pkiID, msg)
 	}
 	return added
@@ -1062,10 +1062,10 @@ func (cache *stateInfoCache) Add(msg *protoext.SignedGossipMessage) bool {
 
 func (cache *stateInfoCache) delete(msg *protoext.SignedGossipMessage) {
 	cache.Purge(func(o any) bool {
-		pkiID := o.(*protoext.SignedGossipMessage).GetStateInfo().PkiId
-		return bytes.Equal(pkiID, msg.GetStateInfo().PkiId)
+		pkiID := o.(*protoext.SignedGossipMessage).GetStateInfo().GetPkiId()
+		return bytes.Equal(pkiID, msg.GetStateInfo().GetPkiId())
 	})
-	cache.Remove(msg.GetStateInfo().PkiId)
+	cache.Remove(msg.GetStateInfo().GetPkiId())
 }
 
 func (cache *stateInfoCache) Stop() {

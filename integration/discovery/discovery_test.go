@@ -277,26 +277,26 @@ var _ = Describe("DiscoveryService", func() {
 			Expect(discoveredConfig).To(ProtoEqual(discoveredConfig2))
 
 			By("validating the membership data")
-			Expect(discoveredConfig.Msps).To(HaveLen(len(network.Organizations)))
+			Expect(discoveredConfig.GetMsps()).To(HaveLen(len(network.Organizations)))
 			for _, o := range network.Orderers {
 				org := network.Organization(o.Organization)
 				mspConfig, err := msp.GetVerifyingMspConfig(network.OrdererOrgMSPDir(org), org.MSPID, "bccsp")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(discoveredConfig.Msps[org.MSPID]).To(ProtoEqual(unmarshalFabricMSPConfig(mspConfig)))
+				Expect(discoveredConfig.GetMsps()[org.MSPID]).To(ProtoEqual(unmarshalFabricMSPConfig(mspConfig)))
 			}
 			for _, p := range network.Peers {
 				org := network.Organization(p.Organization)
 				mspConfig, err := msp.GetVerifyingMspConfig(network.PeerOrgMSPDir(org), org.MSPID, "bccsp")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(discoveredConfig.Msps[org.MSPID]).To(ProtoEqual(unmarshalFabricMSPConfig(mspConfig)))
+				Expect(discoveredConfig.GetMsps()[org.MSPID]).To(ProtoEqual(unmarshalFabricMSPConfig(mspConfig)))
 			}
 
 			By("validating the orderers")
-			Expect(discoveredConfig.Orderers).To(HaveLen(len(network.Orderers)))
+			Expect(discoveredConfig.GetOrderers()).To(HaveLen(len(network.Orderers)))
 		external:
 			for _, orderer := range network.Orderers {
 				ordererMSPID := network.Organization(orderer.Organization).MSPID
-				for _, endpoint := range discoveredConfig.Orderers[ordererMSPID].Endpoint {
+				for _, endpoint := range discoveredConfig.GetOrderers()[ordererMSPID].GetEndpoint() {
 					if proto.Equal(
 						endpoint,
 						&discovery.Endpoint{Host: "127.0.0.1", Port: uint32(network.OrdererPort(orderer, nwo.ListenPort))},
@@ -339,9 +339,9 @@ var _ = Describe("DiscoveryService", func() {
 			discovered := de()
 			Expect(discovered).To(HaveLen(1))
 			Expect(discovered[0].Layouts).To(HaveLen(3))
-			Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
-			Expect(discovered[0].Layouts[1].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
-			Expect(discovered[0].Layouts[2].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+			Expect(discovered[0].Layouts[0].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
+			Expect(discovered[0].Layouts[1].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
+			Expect(discovered[0].Layouts[2].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
 
 			By("discovering endorsers when missing chaincode")
 			endorsers = commands.Endorsers{
@@ -396,7 +396,7 @@ var _ = Describe("DiscoveryService", func() {
 			discovered = de()
 			Expect(discovered).To(HaveLen(1))
 			Expect(discovered[0].Layouts).To(HaveLen(1))
-			Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+			Expect(discovered[0].Layouts[0].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
 
 			By("installing chaincode to all orgs")
 			nwo.InstallChaincode(network, chaincode, org3Peer0)
@@ -477,7 +477,7 @@ var _ = Describe("DiscoveryService", func() {
 			discovered = de()
 			Expect(discovered).To(HaveLen(1))
 			Expect(discovered[0].Layouts).To(HaveLen(1))
-			Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+			Expect(discovered[0].Layouts[0].GetQuantitiesByGroup()).To(ConsistOf(uint32(1), uint32(1)))
 
 			By("changing the channel policy")
 			currentConfig := nwo.GetConfig(network, org3Peer0, orderer, "testchannel")
@@ -522,16 +522,16 @@ var _ = Describe("DiscoveryService", func() {
 func assertAnchorPeers(network *nwo.Network, exist bool, channelID string, orgs ...string) {
 	// get the genesis block
 	configBlock := nwo.UnmarshalBlockFromFile(network.OutputBlockPath(channelID))
-	envelope, err := protoutil.GetEnvelopeFromBlock(configBlock.Data.Data[0])
+	envelope, err := protoutil.GetEnvelopeFromBlock(configBlock.GetData().GetData()[0])
 	Expect(err).NotTo(HaveOccurred())
 
 	// unmarshal the payload bytes
-	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+	payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
 	Expect(err).NotTo(HaveOccurred())
 
 	// unmarshal the config envelope bytes
 	configEnv := &common.ConfigEnvelope{}
-	err = proto.Unmarshal(payload.Data, configEnv)
+	err = proto.Unmarshal(payload.GetData(), configEnv)
 	Expect(err).NotTo(HaveOccurred())
 
 	config := configEnv.GetConfig()
@@ -594,7 +594,7 @@ func peersWithChaincode(discover func() []nwo.DiscoveredPeer, ccName string) fun
 
 func unmarshalFabricMSPConfig(c *pm.MSPConfig) *pm.FabricMSPConfig {
 	fabricConfig := &pm.FabricMSPConfig{}
-	err := proto.Unmarshal(c.Config, fabricConfig)
+	err := proto.Unmarshal(c.GetConfig(), fabricConfig)
 	Expect(err).NotTo(HaveOccurred())
 	return fabricConfig
 }

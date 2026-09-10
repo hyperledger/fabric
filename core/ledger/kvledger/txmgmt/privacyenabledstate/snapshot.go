@@ -316,23 +316,23 @@ func (r *worldStateSnapshotReader) Next() (*statedb.VersionedKV, error) {
 			return nil, err
 		}
 
-		version, _, err := version.NewHeightFromBytes(snapshotRecord.Version)
+		version, _, err := version.NewHeightFromBytes(snapshotRecord.GetVersion())
 		if err != nil {
 			return nil, errors.WithMessage(err, "error while decoding version")
 		}
 
-		if len(snapshotRecord.Metadata) != 0 {
+		if len(snapshotRecord.GetMetadata()) != 0 {
 			r.namespacesThatUseMetadata[namespace] = struct{}{}
 		}
 
 		return &statedb.VersionedKV{
 			CompositeKey: &statedb.CompositeKey{
 				Namespace: namespace,
-				Key:       string(snapshotRecord.Key),
+				Key:       string(snapshotRecord.GetKey()),
 			},
 			VersionedValue: &statedb.VersionedValue{
-				Value:    snapshotRecord.Value,
-				Metadata: snapshotRecord.Metadata,
+				Value:    snapshotRecord.GetValue(),
+				Metadata: snapshotRecord.GetMetadata(),
 				Version:  version,
 			},
 		}, nil
@@ -344,7 +344,7 @@ func (r *worldStateSnapshotReader) Next() (*statedb.VersionedKV, error) {
 			return nil, err
 		}
 
-		version, _, err := version.NewHeightFromBytes(snapshotRecord.Version)
+		version, _, err := version.NewHeightFromBytes(snapshotRecord.GetVersion())
 		if err != nil {
 			return nil, errors.WithMessage(err, "error while decoding version")
 		}
@@ -354,17 +354,17 @@ func (r *worldStateSnapshotReader) Next() (*statedb.VersionedKV, error) {
 			return nil, err
 		}
 
-		if len(snapshotRecord.Metadata) != 0 {
+		if len(snapshotRecord.GetMetadata()) != 0 {
 			r.namespacesThatUseMetadata[ns] = struct{}{}
 		}
 
 		if err := r.invokePvtdataHashesConsumers(
-			ns, coll, snapshotRecord.Key, snapshotRecord.Value, version,
+			ns, coll, snapshotRecord.GetKey(), snapshotRecord.GetValue(), version,
 		); err != nil {
 			return nil, err
 		}
 
-		keyHash := snapshotRecord.Key
+		keyHash := snapshotRecord.GetKey()
 		if r.encodeKeyHashesWithBase64 {
 			keyHash = []byte(base64.StdEncoding.EncodeToString(keyHash))
 		}
@@ -375,8 +375,8 @@ func (r *worldStateSnapshotReader) Next() (*statedb.VersionedKV, error) {
 				Key:       string(keyHash),
 			},
 			VersionedValue: &statedb.VersionedValue{
-				Value:    snapshotRecord.Value,
-				Metadata: snapshotRecord.Metadata,
+				Value:    snapshotRecord.GetValue(),
+				Metadata: snapshotRecord.GetMetadata(),
 				Version:  version,
 			},
 		}, nil

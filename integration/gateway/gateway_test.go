@@ -177,7 +177,7 @@ var _ = Describe("GatewayService basic", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		preparedTransaction := endorseResponse.GetPreparedTransaction()
-		preparedTransaction.Signature, err = signingIdentity.Sign(preparedTransaction.Payload)
+		preparedTransaction.Signature, err = signingIdentity.Sign(preparedTransaction.GetPayload())
 		Expect(err).NotTo(HaveOccurred())
 
 		submitRequest := &gateway.SubmitRequest{
@@ -272,7 +272,7 @@ var _ = Describe("GatewayService basic", func() {
 					Payload: []byte("conga payload"),
 				},
 			}
-			Expect(response.Result.Payload).To(Equal(expectedResponse.Result.Payload))
+			Expect(response.GetResult().GetPayload()).To(Equal(expectedResponse.GetResult().GetPayload()))
 			Expect(response).To(ProtoEqual(expectedResponse))
 		})
 
@@ -304,7 +304,7 @@ var _ = Describe("GatewayService basic", func() {
 				Message: "conga message",
 				Payload: []byte("conga payload"),
 			}
-			Expect(result.Payload).To(Equal(expectedResult.Payload))
+			Expect(result.GetPayload()).To(Equal(expectedResult.GetPayload()))
 			Expect(result).To(ProtoEqual(expectedResult))
 		})
 
@@ -338,7 +338,7 @@ var _ = Describe("GatewayService basic", func() {
 			statusResult, err := commitStatus(transactionID, signingIdentity.Serialize, signingIdentity.Sign)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(statusResult.Result).To(Equal(peer.TxValidationCode_VALID))
+			Expect(statusResult.GetResult()).To(Equal(peer.TxValidationCode_VALID))
 		})
 
 		It("should respond with block number", func() {
@@ -350,7 +350,7 @@ var _ = Describe("GatewayService basic", func() {
 			nextStatus, err := commitStatus(transactionID, signingIdentity.Serialize, signingIdentity.Sign)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(nextStatus.BlockNumber).To(Equal(firstStatus.BlockNumber + 1))
+			Expect(nextStatus.GetBlockNumber()).To(Equal(firstStatus.GetBlockNumber() + 1))
 		})
 
 		It("should fail on unauthorized identity", func() {
@@ -395,14 +395,14 @@ var _ = Describe("GatewayService basic", func() {
 			event, err := eventsClient.Recv()
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(event.Events).To(HaveLen(1), "number of events")
+			Expect(event.GetEvents()).To(HaveLen(1), "number of events")
 			expectedEvent := &peer.ChaincodeEvent{
 				ChaincodeId: "gatewaycc",
 				TxId:        transactionID,
 				EventName:   "EVENT_NAME",
 				Payload:     []byte("EVENT_PAYLOAD"),
 			}
-			Expect(event.Events[0]).To(ProtoEqual(expectedEvent))
+			Expect(event.GetEvents()[0]).To(ProtoEqual(expectedEvent))
 		})
 
 		It("should respond with replayed chaincode events", func() {
@@ -416,7 +416,7 @@ var _ = Describe("GatewayService basic", func() {
 			startPosition := &orderer.SeekPosition{
 				Type: &orderer.SeekPosition_Specified{
 					Specified: &orderer.SeekSpecified{
-						Number: statusResult.BlockNumber,
+						Number: statusResult.GetBlockNumber(),
 					},
 				},
 			}
@@ -427,15 +427,15 @@ var _ = Describe("GatewayService basic", func() {
 			event, err := eventsClient.Recv()
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(event.BlockNumber).To(Equal(statusResult.BlockNumber), "block number")
-			Expect(event.Events).To(HaveLen(1), "number of events")
+			Expect(event.GetBlockNumber()).To(Equal(statusResult.GetBlockNumber()), "block number")
+			Expect(event.GetEvents()).To(HaveLen(1), "number of events")
 			expectedEvent := &peer.ChaincodeEvent{
 				ChaincodeId: "gatewaycc",
 				TxId:        transactionID,
 				EventName:   "EVENT_NAME",
 				Payload:     []byte("EVENT_PAYLOAD"),
 			}
-			Expect(event.Events[0]).To(ProtoEqual(expectedEvent))
+			Expect(event.GetEvents()[0]).To(ProtoEqual(expectedEvent))
 		})
 
 		It("should respond with replayed chaincode events after specified transaction ID", func() {
@@ -454,7 +454,7 @@ var _ = Describe("GatewayService basic", func() {
 			startPosition := &orderer.SeekPosition{
 				Type: &orderer.SeekPosition_Specified{
 					Specified: &orderer.SeekSpecified{
-						Number: statusResult.BlockNumber,
+						Number: statusResult.GetBlockNumber(),
 					},
 				},
 			}
@@ -465,14 +465,14 @@ var _ = Describe("GatewayService basic", func() {
 			event, err := eventsClient.Recv()
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(event.Events).To(HaveLen(1), "number of events")
+			Expect(event.GetEvents()).To(HaveLen(1), "number of events")
 			expectedEvent := &peer.ChaincodeEvent{
 				ChaincodeId: "gatewaycc",
 				TxId:        nextTransactionID,
 				EventName:   "CORRECT_EVENT_NAME",
 				Payload:     []byte("CORRECT_EVENT_PAYLOAD"),
 			}
-			Expect(event.Events[0]).To(ProtoEqual(expectedEvent))
+			Expect(event.GetEvents()[0]).To(ProtoEqual(expectedEvent))
 		})
 
 		It("should default to next commit if start position not specified", func() {
@@ -489,14 +489,14 @@ var _ = Describe("GatewayService basic", func() {
 			event, err := eventsClient.Recv()
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(event.Events).To(HaveLen(1), "number of events")
+			Expect(event.GetEvents()).To(HaveLen(1), "number of events")
 			expectedEvent := &peer.ChaincodeEvent{
 				ChaincodeId: "gatewaycc",
 				TxId:        transactionID,
 				EventName:   "EVENT_NAME",
 				Payload:     []byte("EVENT_PAYLOAD"),
 			}
-			Expect(event.Events[0]).To(ProtoEqual(expectedEvent))
+			Expect(event.GetEvents()[0]).To(ProtoEqual(expectedEvent))
 		})
 
 		It("should fail on unauthorized identity", func() {

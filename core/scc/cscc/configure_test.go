@@ -88,7 +88,7 @@ func TestConfigerInit(t *testing.T) {
 		bccsp:       cryptoProvider,
 	}
 	res := cscc.Init(mockStub)
-	require.Equal(t, int32(shim.OK), res.Status)
+	require.Equal(t, int32(shim.OK), res.GetStatus())
 }
 
 func TestConfigerInvokeInvalidParameters(t *testing.T) {
@@ -107,10 +107,10 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 	require.NotEqual(
 		t,
 		int32(shim.OK),
-		res.Status,
+		res.GetStatus(),
 		"cscc invoke expected to fail having zero arguments",
 	)
-	require.Equal(t, "Incorrect number of arguments, 0", res.Message)
+	require.Equal(t, "Incorrect number of arguments, 0", res.GetMessage())
 
 	mockACLProvider.CheckACLReturns(errors.New("Failed authorization"))
 	args := [][]byte{[]byte("GetChannels")}
@@ -119,10 +119,10 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 	require.NotEqual(
 		t,
 		int32(shim.OK),
-		res.Status,
+		res.GetStatus(),
 		"invoke expected to fail no signed proposal provided",
 	)
-	require.Equal(t, "access denied for [GetChannels]: Failed authorization", res.Message)
+	require.Equal(t, "access denied for [GetChannels]: Failed authorization", res.GetMessage())
 
 	mockACLProvider.CheckACLReturns(nil)
 	args = [][]byte{[]byte("fooFunction"), []byte("testChannelID")}
@@ -131,10 +131,10 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 	require.NotEqual(
 		t,
 		int32(shim.OK),
-		res.Status,
+		res.GetStatus(),
 		"invoke expected wrong function name provided",
 	)
-	require.Equal(t, "Requested function fooFunction not found.", res.Message)
+	require.Equal(t, "Requested function fooFunction not found.", res.GetMessage())
 
 	mockACLProvider.CheckACLReturns(nil)
 	args = [][]byte{[]byte("GetConfigBlock"), []byte("testChannelID")}
@@ -146,10 +146,10 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 	require.NotEqual(
 		t,
 		int32(shim.OK),
-		res.Status,
+		res.GetStatus(),
 		"invoke expected to fail in ccc2cc context",
 	)
-	require.Contains(t, res.Message, "Failed to identify the called chaincode: could not unmarshal proposal")
+	require.Contains(t, res.GetMessage(), "Failed to identify the called chaincode: could not unmarshal proposal")
 
 	mockACLProvider.CheckACLReturns(nil)
 	args = [][]byte{[]byte("GetConfigBlock"), []byte("testChannelID")}
@@ -171,13 +171,13 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 	require.NotEqual(
 		t,
 		int32(shim.OK),
-		res.Status,
+		res.GetStatus(),
 		"invoke expected to fail in ccc2cc context",
 	)
 	require.Equal(
 		t,
 		"Rejecting invoke of CSCC from another chaincode, original invocation for 'fake-cc2cc'",
-		res.Message,
+		res.GetMessage(),
 	)
 
 	mockACLProvider.CheckACLReturns(errors.New("Failed authorization"))
@@ -188,13 +188,13 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 	require.NotEqual(
 		t,
 		int32(shim.OK),
-		res.Status,
+		res.GetStatus(),
 		"invoke expected to fail no signed proposal provided",
 	)
 	require.Equal(
 		t,
 		"access denied for [GetConfigBlock][testChannelID]: Failed authorization",
-		res.Message,
+		res.GetMessage(),
 	)
 }
 
@@ -211,7 +211,7 @@ func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {
 	require.NotEqual(
 		t,
 		int32(shim.OK),
-		res.Status,
+		res.GetStatus(),
 		"cscc invoke JoinChain should have failed with invalid number of args",
 	)
 }
@@ -230,7 +230,7 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 	require.NotEqual(
 		t,
 		int32(shim.OK),
-		res.Status,
+		res.GetStatus(),
 		"cscc invoke JoinChain should have failed with null genesis block",
 	)
 }
@@ -264,14 +264,14 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	}
 	args := [][]byte{[]byte("JoinChain"), blockBytes}
 	sProp := validSignedProposal()
-	sProp.Signature = sProp.ProposalBytes
+	sProp.Signature = sProp.GetProposalBytes()
 
 	// Try fail path with nil block
 	mockStub.GetArgsReturns([][]byte{[]byte("JoinChain"), nil})
 	mockStub.GetSignedProposalReturns(sProp, nil)
 	res := cscc.Invoke(mockStub)
 	// res := stub.MockInvokeWithSignedProposal("2", [][]byte{[]byte("JoinChain"), nil}, sProp)
-	require.Equal(t, int32(shim.ERROR), res.Status)
+	require.Equal(t, int32(shim.ERROR), res.GetStatus())
 
 	// Try fail path with block and nil payload header
 	payload, _ := proto.Marshal(&cb.Payload{})
@@ -287,13 +287,13 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	mockStub.GetArgsReturns([][]byte{[]byte("JoinChain"), badBlockBytes})
 	res = cscc.Invoke(mockStub)
 	// res = stub.MockInvokeWithSignedProposal("2", [][]byte{[]byte("JoinChain"), badBlockBytes}, sProp)
-	require.Equal(t, int32(shim.ERROR), res.Status)
+	require.Equal(t, int32(shim.ERROR), res.GetStatus())
 
 	// Now, continue with valid execution path
 	mockStub.GetArgsReturns(args)
 	mockStub.GetSignedProposalReturns(sProp, nil)
 	res = cscc.Invoke(mockStub)
-	require.Equal(t, int32(shim.OK), res.Status, "invoke JoinChain failed with: %v", res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), "invoke JoinChain failed with: %v", res.GetMessage())
 
 	// This call must fail
 	sProp.Signature = nil
@@ -302,9 +302,9 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	mockStub.GetSignedProposalReturns(sProp, nil)
 
 	res = cscc.Invoke(mockStub)
-	require.Equal(t, int32(shim.ERROR), res.Status)
-	require.Contains(t, res.Message, "access denied for [JoinChain][mytestchannelid]")
-	sProp.Signature = sProp.ProposalBytes
+	require.Equal(t, int32(shim.ERROR), res.GetStatus())
+	require.Contains(t, res.GetMessage(), "access denied for [JoinChain][mytestchannelid]")
+	sProp.Signature = sProp.GetProposalBytes()
 
 	// Query the configuration block
 	// channelID := []byte{143, 222, 22, 192, 73, 145, 76, 110, 167, 154, 118, 66, 132, 204, 113, 168}
@@ -319,25 +319,25 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	mockStub.GetArgsReturns(args)
 	mockStub.GetSignedProposalReturns(sProp, nil)
 	res = cscc.Invoke(mockStub)
-	require.Equal(t, int32(shim.ERROR), res.Status, "invoke GetConfigBlock should have failed: %v", res.Message)
-	require.Contains(t, res.Message, "Failed authorization")
+	require.Equal(t, int32(shim.ERROR), res.GetStatus(), "invoke GetConfigBlock should have failed: %v", res.GetMessage())
+	require.Contains(t, res.GetMessage(), "Failed authorization")
 
 	// Test with ACL okay
 	mockACLProvider.CheckACLReturns(nil)
 	res = cscc.Invoke(mockStub)
-	require.Equal(t, int32(shim.OK), res.Status, "invoke GetConfigBlock failed with: %v", res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), "invoke GetConfigBlock failed with: %v", res.GetMessage())
 
 	// get channels for the peer
 	mockACLProvider.CheckACLReturns(nil)
 	args = [][]byte{[]byte(GetChannels)}
 	mockStub.GetArgsReturns(args)
 	res = cscc.Invoke(mockStub)
-	if res.Status != shim.OK {
+	if res.GetStatus() != shim.OK {
 		t.FailNow()
 	}
 
 	cqr := &pb.ChannelQueryResponse{}
-	err = proto.Unmarshal(res.Payload, cqr)
+	err = proto.Unmarshal(res.GetPayload(), cqr)
 	if err != nil {
 		t.FailNow()
 	}
@@ -369,7 +369,7 @@ func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 
 	channelID := "testjoinchainbysnapshot"
 	sProp := validSignedProposal()
-	sProp.Signature = sProp.ProposalBytes
+	sProp.Signature = sProp.GetProposalBytes()
 
 	// set mocked ACLProcider and Stub
 	mockACLProvider := cscc.aclProvider.(*mocks.ACLProvider)
@@ -382,26 +382,26 @@ func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 	mockStub.GetSignedProposalReturns(sProp, nil)
 	mockStub.GetArgsReturns([][]byte{[]byte("JoinChainBySnapshot"), []byte(snapshotDir)})
 	res := cscc.Invoke(mockStub)
-	require.Equal(t, int32(shim.OK), res.Status)
+	require.Equal(t, int32(shim.OK), res.GetStatus())
 
 	// wait until ledger creation is done
 	ledgerCreationDone := func() bool {
 		resp := cscc.joinBySnapshotStatus()
-		require.Equal(t, shim.OK, int(resp.Status))
+		require.Equal(t, shim.OK, int(resp.GetStatus()))
 		status := &pb.JoinBySnapshotStatus{}
-		err := proto.Unmarshal(resp.Payload, status)
+		err := proto.Unmarshal(resp.GetPayload(), status)
 		require.NoError(t, err)
-		return !status.InProgress
+		return !status.GetInProgress()
 	}
 	require.Eventually(t, ledgerCreationDone, time.Minute, time.Second)
 
 	// verify get channels
 	mockStub.GetArgsReturns([][]byte{[]byte(GetChannels)})
 	res = cscc.Invoke(mockStub)
-	require.Equal(t, int32(shim.OK), res.Status)
+	require.Equal(t, int32(shim.OK), res.GetStatus())
 
 	cqr := &pb.ChannelQueryResponse{}
-	require.NoError(t, proto.Unmarshal(res.Payload, cqr))
+	require.NoError(t, proto.Unmarshal(res.GetPayload(), cqr))
 	require.Equal(t, 1, len(cqr.GetChannels()))
 	require.Equal(t, channelID, cqr.GetChannels()[0].GetChannelId())
 
@@ -410,26 +410,26 @@ func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 	require.NotNil(t, lgr)
 	bcInfo, err := lgr.GetBlockchainInfo()
 	require.NoError(t, err)
-	require.Equal(t, uint64(1), bcInfo.Height)
+	require.Equal(t, uint64(1), bcInfo.GetHeight())
 
 	// error path due to missing argument
 	mockStub.GetArgsReturns([][]byte{[]byte("JoinChainBySnapshot")})
 	res = cscc.Invoke(mockStub)
-	require.Equal(t, int32(shim.ERROR), res.Status)
-	require.Equal(t, "Incorrect number of arguments, 1", res.Message)
+	require.Equal(t, int32(shim.ERROR), res.GetStatus())
+	require.Equal(t, "Incorrect number of arguments, 1", res.GetMessage())
 
 	// error path due to invalid snapshot dir (ledger creation fails in this case)
 	mockStub.GetArgsReturns([][]byte{[]byte("JoinChainBySnapshot"), []byte("invalid-snapshot")})
 	res = cscc.Invoke(mockStub)
-	require.Equal(t, int32(shim.ERROR), res.Status)
-	require.Contains(t, res.Message, "no such file or directory")
+	require.Equal(t, int32(shim.ERROR), res.GetStatus())
+	require.Contains(t, res.GetMessage(), "no such file or directory")
 
 	// error path due to CheckACL error
 	mockACLProvider.CheckACLReturns(errors.New("Failed authorization"))
 	mockStub.GetArgsReturns([][]byte{[]byte("JoinChainBySnapshot"), []byte(snapshotDir)})
 	res = cscc.Invoke(mockStub)
-	require.Equal(t, int32(shim.ERROR), res.Status)
-	require.Contains(t, res.Message, "access denied for [JoinChainBySnapshot]")
+	require.Equal(t, int32(shim.ERROR), res.GetStatus())
+	require.Contains(t, res.GetMessage(), "access denied for [JoinChainBySnapshot]")
 }
 
 func TestConfigerInvokeGetChannelConfig(t *testing.T) {
@@ -471,10 +471,10 @@ func TestConfigerInvokeGetChannelConfig(t *testing.T) {
 	t.Run("green-path", func(t *testing.T) {
 		_, mockStub := initMocks()
 		res := cscc.Invoke(mockStub)
-		require.Equal(t, int32(shim.OK), res.Status)
+		require.Equal(t, int32(shim.OK), res.GetStatus())
 
 		retrievedChannelConfig := &cb.Config{}
-		require.NoError(t, proto.Unmarshal(res.Payload, retrievedChannelConfig))
+		require.NoError(t, proto.Unmarshal(res.GetPayload(), retrievedChannelConfig))
 		require.True(
 			t,
 			proto.Equal(
@@ -488,32 +488,32 @@ func TestConfigerInvokeGetChannelConfig(t *testing.T) {
 		mockACLProvider, mockStub := initMocks()
 		mockACLProvider.CheckACLReturns(errors.New("auth error"))
 		res := cscc.Invoke(mockStub)
-		require.Equal(t, int32(shim.ERROR), res.Status)
-		require.Equal(t, res.Message, "access denied for [GetChannelConfig][test-channel-id]: auth error")
+		require.Equal(t, int32(shim.ERROR), res.GetStatus())
+		require.Equal(t, res.GetMessage(), "access denied for [GetChannelConfig][test-channel-id]: auth error")
 	})
 
 	t.Run("missing-channel-name-error", func(t *testing.T) {
 		_, mockStub := initMocks()
 		mockStub.GetArgsReturns([][]byte{[]byte("GetChannelConfig")})
 		res := cscc.Invoke(mockStub)
-		require.Equal(t, int32(shim.ERROR), res.Status)
-		require.Equal(t, "Incorrect number of arguments, 1", res.Message)
+		require.Equal(t, int32(shim.ERROR), res.GetStatus())
+		require.Equal(t, "Incorrect number of arguments, 1", res.GetMessage())
 	})
 
 	t.Run("nil-channel-name-error", func(t *testing.T) {
 		_, mockStub := initMocks()
 		mockStub.GetArgsReturns([][]byte{[]byte("GetChannelConfig"), {}})
 		res := cscc.Invoke(mockStub)
-		require.Equal(t, int32(shim.ERROR), res.Status)
-		require.Equal(t, "empty channel name provided", res.Message)
+		require.Equal(t, int32(shim.ERROR), res.GetStatus())
+		require.Equal(t, "empty channel name provided", res.GetMessage())
 	})
 
 	t.Run("non-existing-channel-name-error", func(t *testing.T) {
 		_, mockStub := initMocks()
 		mockStub.GetArgsReturns([][]byte{[]byte("GetChannelConfig"), []byte("non-existing-channel")})
 		res := cscc.Invoke(mockStub)
-		require.Equal(t, int32(shim.ERROR), res.Status)
-		require.Equal(t, "unknown channel ID, non-existing-channel", res.Message)
+		require.Equal(t, int32(shim.ERROR), res.GetStatus())
+		require.Equal(t, "unknown channel ID, non-existing-channel", res.GetMessage())
 	})
 }
 
@@ -542,10 +542,10 @@ func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	require.NotEqual(
 		t,
 		int32(shim.OK),
-		res.Status,
+		res.GetStatus(),
 		"invoke JoinChain should have failed with wrong genesis block",
 	)
-	require.Contains(t, res.Message, "missing Application configuration group")
+	require.Contains(t, res.GetMessage(), "missing Application configuration group")
 }
 
 func newPeerConfiger(t *testing.T, ledgerMgr *ledgermgmt.LedgerMgr, grpcServer *grpc.Server, peerEndpoint string) *PeerConfiger {
@@ -642,5 +642,5 @@ func channelConfigFromBlock(t *testing.T, configBlock *cb.Block) *cb.Config {
 	configEnv := &cb.ConfigEnvelope{}
 	_, err = protoutil.UnmarshalEnvelopeOfType(envelopeConfig, cb.HeaderType_CONFIG, configEnv)
 	require.NoError(t, err)
-	return configEnv.Config
+	return configEnv.GetConfig()
 }

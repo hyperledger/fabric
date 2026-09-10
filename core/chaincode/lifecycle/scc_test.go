@@ -174,11 +174,11 @@ var _ = Describe("SCC", func() {
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
 				res := scc.Invoke(fakeStub)
-				Expect(res.Status).To(Equal(int32(200)))
+				Expect(res.GetStatus()).To(Equal(int32(200)))
 				payload := &lb.InstallChaincodeResult{}
-				err := proto.Unmarshal(res.Payload, payload)
+				err := proto.Unmarshal(res.GetPayload(), payload)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(payload.PackageId).To(Equal("package-id"))
+				Expect(payload.GetPackageId()).To(Equal("package-id"))
 
 				Expect(fakeSCCFuncs.InstallChaincodeCallCount()).To(Equal(1))
 				ccInstallPackage := fakeSCCFuncs.InstallChaincodeArgsForCall(0)
@@ -192,8 +192,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'InstallChaincode': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'InstallChaincode': underlying-error"))
 				})
 			})
 		})
@@ -231,13 +231,13 @@ var _ = Describe("SCC", func() {
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
 				res := scc.Invoke(fakeStub)
-				Expect(res.Status).To(Equal(int32(200)))
+				Expect(res.GetStatus()).To(Equal(int32(200)))
 				payload := &lb.QueryInstalledChaincodeResult{}
-				err := proto.Unmarshal(res.Payload, payload)
+				err := proto.Unmarshal(res.GetPayload(), payload)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(payload.Label).To(Equal("awesome_package_label"))
-				Expect(payload.PackageId).To(Equal("awesome_package"))
-				Expect(payload.References).To(Equal(map[string]*lb.QueryInstalledChaincodeResult_References{
+				Expect(payload.GetLabel()).To(Equal("awesome_package_label"))
+				Expect(payload.GetPackageId()).To(Equal("awesome_package"))
+				Expect(payload.GetReferences()).To(Equal(map[string]*lb.QueryInstalledChaincodeResult_References{
 					"test-channel": {
 						Chaincodes: []*lb.QueryInstalledChaincodeResult_Chaincode{
 							{
@@ -260,8 +260,8 @@ var _ = Describe("SCC", func() {
 
 				It("returns 404 Not Found", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(404)))
-					Expect(res.Message).To(Equal("chaincode install package 'less_awesome_package' not found"))
+					Expect(res.GetStatus()).To(Equal(int32(404)))
+					Expect(res.GetMessage()).To(Equal("chaincode install package 'less_awesome_package' not found"))
 				})
 			})
 
@@ -272,8 +272,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryInstalledChaincode': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'QueryInstalledChaincode': underlying-error"))
 				})
 			})
 		})
@@ -300,11 +300,11 @@ var _ = Describe("SCC", func() {
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
 				res := scc.Invoke(fakeStub)
-				Expect(res.Status).To(Equal(int32(200)))
+				Expect(res.GetStatus()).To(Equal(int32(200)))
 				payload := &lb.GetInstalledChaincodePackageResult{}
-				err := proto.Unmarshal(res.Payload, payload)
+				err := proto.Unmarshal(res.GetPayload(), payload)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(payload.ChaincodeInstallPackage).To(Equal([]byte("chaincode-package")))
+				Expect(payload.GetChaincodeInstallPackage()).To(Equal([]byte("chaincode-package")))
 
 				Expect(fakeSCCFuncs.GetInstalledChaincodePackageCallCount()).To(Equal(1))
 				packageID := fakeSCCFuncs.GetInstalledChaincodePackageArgsForCall(0)
@@ -318,8 +318,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'GetInstalledChaincodePackage': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'GetInstalledChaincodePackage': underlying-error"))
 				})
 			})
 		})
@@ -361,16 +361,16 @@ var _ = Describe("SCC", func() {
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
 				res := scc.Invoke(fakeStub)
-				Expect(res.Status).To(Equal(int32(200)))
+				Expect(res.GetStatus()).To(Equal(int32(200)))
 				payload := &lb.QueryInstalledChaincodesResult{}
-				err := proto.Unmarshal(res.Payload, payload)
+				err := proto.Unmarshal(res.GetPayload(), payload)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(payload.InstalledChaincodes).To(HaveLen(2))
+				Expect(payload.GetInstalledChaincodes()).To(HaveLen(2))
 
-				Expect(payload.InstalledChaincodes[0].Label).To(Equal("cc0-label"))
-				Expect(payload.InstalledChaincodes[0].PackageId).To(Equal("cc0-package-id"))
-				Expect(payload.InstalledChaincodes[0].References).To(Equal(map[string]*lb.QueryInstalledChaincodesResult_References{
+				Expect(payload.GetInstalledChaincodes()[0].GetLabel()).To(Equal("cc0-label"))
+				Expect(payload.GetInstalledChaincodes()[0].GetPackageId()).To(Equal("cc0-package-id"))
+				Expect(payload.GetInstalledChaincodes()[0].GetReferences()).To(Equal(map[string]*lb.QueryInstalledChaincodesResult_References{
 					"test-channel": {
 						Chaincodes: []*lb.QueryInstalledChaincodesResult_Chaincode{
 							{
@@ -381,8 +381,8 @@ var _ = Describe("SCC", func() {
 					},
 				}))
 
-				Expect(payload.InstalledChaincodes[1].Label).To(Equal("cc1-label"))
-				Expect(payload.InstalledChaincodes[1].PackageId).To(Equal("cc1-package-id"))
+				Expect(payload.GetInstalledChaincodes()[1].GetLabel()).To(Equal("cc1-label"))
+				Expect(payload.GetInstalledChaincodes()[1].GetPackageId()).To(Equal("cc1-package-id"))
 
 				Expect(fakeSCCFuncs.QueryInstalledChaincodesCallCount()).To(Equal(1))
 			})
@@ -479,9 +479,9 @@ var _ = Describe("SCC", func() {
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
 				res := scc.Invoke(fakeStub)
-				Expect(res.Status).To(Equal(int32(200)))
+				Expect(res.GetStatus()).To(Equal(int32(200)))
 				payload := &lb.ApproveChaincodeDefinitionForMyOrgResult{}
-				err = proto.Unmarshal(res.Payload, payload)
+				err = proto.Unmarshal(res.GetPayload(), payload)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeSCCFuncs.ApproveChaincodeDefinitionForOrgCallCount()).To(Equal(1))
@@ -513,8 +513,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: invalid chaincode name '!nvalid'. Names can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: invalid chaincode name '!nvalid'. Names can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics"))
 				})
 			})
 
@@ -525,8 +525,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: invalid chaincode version '$money$'. Versions can only consist of alphanumerics, '_', '-', '+', and '.'"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: invalid chaincode version '$money$'. Versions can only consist of alphanumerics, '_', '-', '+', and '.'"))
 				})
 			})
 
@@ -537,8 +537,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: chaincode name 'cscc' is the name of a system chaincode"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: chaincode name 'cscc' is the name of a system chaincode"))
 				})
 			})
 
@@ -549,8 +549,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: invalid collection name 'collection@test'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: invalid collection name 'collection@test'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'"))
 				})
 			})
 
@@ -561,8 +561,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: invalid collection name '_collection'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: invalid collection name '_collection'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'"))
 				})
 			})
 
@@ -574,8 +574,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection member policy is not set for collection 'test-collection'"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection member policy is not set for collection 'test-collection'"))
 				})
 			})
 
@@ -587,8 +587,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection member org policy is empty for collection 'test-collection'"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection member org policy is empty for collection 'test-collection'"))
 				})
 			})
 
@@ -599,8 +599,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- error in member org policy: signature policy is not an OR concatenation, NOutOf 2"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- error in member org policy: signature policy is not an OR concatenation, NOutOf 2"))
 				})
 			})
 
@@ -614,8 +614,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).Should(ContainSubstring("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- cannot unmarshal identity bytes into MSPRole"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).Should(ContainSubstring("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- cannot unmarshal identity bytes into MSPRole"))
 				})
 			})
 
@@ -626,8 +626,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).Should(ContainSubstring("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: invalid member org policy for collection 'test-collection': identity index out of range, requested 1, but identities length is 1"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).Should(ContainSubstring("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: invalid member org policy for collection 'test-collection': identity index out of range, requested 1, but identities length is 1"))
 				})
 			})
 
@@ -644,8 +644,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).Should(ContainSubstring("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- collection member 'test-member-role' is not part of the channel"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).Should(ContainSubstring("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- collection member 'test-member-role' is not part of the channel"))
 				})
 			})
 
@@ -659,8 +659,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).Should(ContainSubstring("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- cannot unmarshal identity bytes into OrganizationUnit"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).Should(ContainSubstring("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- cannot unmarshal identity bytes into OrganizationUnit"))
 				})
 			})
 
@@ -677,8 +677,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- collection member 'test-member-ou' is not part of the channel"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- collection member 'test-member-ou' is not part of the channel"))
 				})
 			})
 
@@ -689,8 +689,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- contains an identity that is not part of the channel"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- contains an identity that is not part of the channel"))
 				})
 			})
 
@@ -703,8 +703,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- principal type ANONYMITY is not supported"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- principal type ANONYMITY is not supported"))
 				})
 			})
 
@@ -715,8 +715,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- found duplicate in collection configuration"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- found duplicate in collection configuration"))
 				})
 			})
 
@@ -727,8 +727,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- requiredPeerCount (-2) cannot be less than zero"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- requiredPeerCount (-2) cannot be less than zero"))
 				})
 			})
 
@@ -740,8 +740,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- maximum peer count (10) cannot be less than the required peer count (20)"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: collection-name: test-collection -- maximum peer count (10) cannot be less than the required peer count (20)"))
 				})
 			})
 
@@ -753,7 +753,7 @@ var _ = Describe("SCC", func() {
 
 				It("does not return error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(200)))
+					Expect(res.GetStatus()).To(Equal(int32(200)))
 				})
 			})
 
@@ -769,7 +769,7 @@ var _ = Describe("SCC", func() {
 
 				It("does not return error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(200)))
+					Expect(res.GetStatus()).To(Equal(int32(200)))
 				})
 			})
 
@@ -786,8 +786,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: the proposed collection config does not contain previously defined collections"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: the proposed collection config does not contain previously defined collections"))
 				})
 			})
 
@@ -807,8 +807,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: existing collection [missing-collection] missing in the proposed collection configuration"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: existing collection [missing-collection] missing in the proposed collection configuration"))
 				})
 			})
 
@@ -827,8 +827,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal(
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal(
 						fmt.Sprintf(
 							"failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: the BlockToLive in an existing collection [test-collection] modified. Existing value [%d]",
 							committedCollConfigs[0].BlockToLive,
@@ -844,8 +844,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: could not get MSP manager for channel 'test-channel'"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: could not get MSP manager for channel 'test-channel'"))
 				})
 			})
 
@@ -856,8 +856,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: could not get MSPs: No MSPs"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: could not get MSPs: No MSPs"))
 				})
 			})
 
@@ -868,8 +868,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: could not retrieve committed definition for chaincode 'cc_name': could not fetch definition"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': error validating chaincode definition: could not retrieve committed definition for chaincode 'cc_name': could not fetch definition"))
 				})
 			})
 
@@ -880,8 +880,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': underlying-error"))
 				})
 			})
 
@@ -962,10 +962,10 @@ var _ = Describe("SCC", func() {
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
 				res := scc.Invoke(fakeStub)
-				Expect(res.Message).To(Equal(""))
-				Expect(res.Status).To(Equal(int32(200)))
+				Expect(res.GetMessage()).To(Equal(""))
+				Expect(res.GetStatus()).To(Equal(int32(200)))
 				payload := &lb.CommitChaincodeDefinitionResult{}
-				err = proto.Unmarshal(res.Payload, payload)
+				err = proto.Unmarshal(res.GetPayload(), payload)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeSCCFuncs.CommitChaincodeDefinitionCallCount()).To(Equal(1))
@@ -1024,8 +1024,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': error validating chaincode definition: invalid chaincode name '_invalid'. Names can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': error validating chaincode definition: invalid chaincode name '_invalid'. Names can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics"))
 				})
 			})
 
@@ -1040,8 +1040,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': error validating chaincode definition: invalid chaincode version '$money$'. Versions can only consist of alphanumerics, '_', '-', '+', and '.'"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': error validating chaincode definition: invalid chaincode version '$money$'. Versions can only consist of alphanumerics, '_', '-', '+', and '.'"))
 				})
 			})
 
@@ -1056,8 +1056,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': error validating chaincode definition: chaincode name 'qscc' is the name of a system chaincode"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': error validating chaincode definition: chaincode name 'qscc' is the name of a system chaincode"))
 				})
 			})
 
@@ -1082,8 +1082,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': error validating chaincode definition: invalid collection name 'collection(test'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': error validating chaincode definition: invalid collection name 'collection(test'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'"))
 				})
 			})
 
@@ -1108,8 +1108,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': error validating chaincode definition: invalid collection name '&collection'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': error validating chaincode definition: invalid collection name '&collection'. Names can only consist of alphanumerics, '_', and '-' and cannot begin with '_'"))
 				})
 			})
 
@@ -1123,8 +1123,8 @@ var _ = Describe("SCC", func() {
 
 				It("returns an error indicating the lack of agreement", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': chaincode definition not agreed to by this org (fake-mspid)"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': chaincode definition not agreed to by this org (fake-mspid)"))
 				})
 			})
 
@@ -1135,8 +1135,8 @@ var _ = Describe("SCC", func() {
 
 				It("returns an error indicating the lack of agreement", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': impossibly, this peer's org is processing requests for a channel it is not a member of"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': impossibly, this peer's org is processing requests for a channel it is not a member of"))
 				})
 			})
 
@@ -1147,8 +1147,8 @@ var _ = Describe("SCC", func() {
 
 				It("returns an error indicating the lack of agreement", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("could not get channelconfig for channel 'test-channel'"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("could not get channelconfig for channel 'test-channel'"))
 				})
 			})
 
@@ -1159,8 +1159,8 @@ var _ = Describe("SCC", func() {
 
 				It("returns an error indicating the lack of agreement", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("could not get application config for channel 'test-channel'"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("could not get application config for channel 'test-channel'"))
 				})
 
 				Context("when there is no application config because there is no channel", func() {
@@ -1170,8 +1170,8 @@ var _ = Describe("SCC", func() {
 
 					It("returns an error indicating the lack of agreement", func() {
 						res := scc.Invoke(fakeStub)
-						Expect(res.Status).To(Equal(int32(500)))
-						Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': no application config for channel ''"))
+						Expect(res.GetStatus()).To(Equal(int32(500)))
+						Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': no application config for channel ''"))
 					})
 				})
 			})
@@ -1183,8 +1183,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'CommitChaincodeDefinition': underlying-error"))
 				})
 			})
 		})
@@ -1231,10 +1231,10 @@ var _ = Describe("SCC", func() {
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
 				res := scc.Invoke(fakeStub)
-				Expect(res.Message).To(Equal(""))
-				Expect(res.Status).To(Equal(int32(200)))
+				Expect(res.GetMessage()).To(Equal(""))
+				Expect(res.GetStatus()).To(Equal(int32(200)))
 				payload := &lb.CheckCommitReadinessResult{}
-				err = proto.Unmarshal(res.Payload, payload)
+				err = proto.Unmarshal(res.GetPayload(), payload)
 				Expect(err).NotTo(HaveOccurred())
 
 				orgApprovals := payload.GetApprovals()
@@ -1247,7 +1247,7 @@ var _ = Describe("SCC", func() {
 				chname, ccname, cd, pubState, orgStates := fakeSCCFuncs.CheckCommitReadinessArgsForCall(0)
 				Expect(chname).To(Equal("test-channel"))
 				Expect(ccname).To(Equal("name"))
-				colls, ok := proto.Clone(arg.Collections).(*pb.CollectionConfigPackage)
+				colls, ok := proto.Clone(arg.GetCollections()).(*pb.CollectionConfigPackage)
 				Expect(ok).To(BeTrue())
 				etl := &lifecycle.ChaincodeDefinition{
 					Sequence: 7,
@@ -1282,8 +1282,8 @@ var _ = Describe("SCC", func() {
 
 				It("returns an error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("could not get application config for channel 'test-channel'"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("could not get application config for channel 'test-channel'"))
 				})
 
 				Context("when there is no application config because there is no channel", func() {
@@ -1293,8 +1293,8 @@ var _ = Describe("SCC", func() {
 
 					It("returns an error", func() {
 						res := scc.Invoke(fakeStub)
-						Expect(res.Status).To(Equal(int32(500)))
-						Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CheckCommitReadiness': no application config for channel ''"))
+						Expect(res.GetStatus()).To(Equal(int32(500)))
+						Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'CheckCommitReadiness': no application config for channel ''"))
 					})
 				})
 			})
@@ -1306,8 +1306,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'CheckCommitReadiness': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'CheckCommitReadiness': underlying-error"))
 				})
 			})
 		})
@@ -1356,9 +1356,9 @@ var _ = Describe("SCC", func() {
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
 				res := scc.Invoke(fakeStub)
-				Expect(res.Status).To(Equal(int32(200)))
+				Expect(res.GetStatus()).To(Equal(int32(200)))
 				payload := &lb.QueryApprovedChaincodeDefinitionResult{}
-				err := proto.Unmarshal(res.Payload, payload)
+				err := proto.Unmarshal(res.GetPayload(), payload)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(payload).To(ProtoEqual(&lb.QueryApprovedChaincodeDefinitionResult{
 					Sequence:            7,
@@ -1396,8 +1396,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinition': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinition': underlying-error"))
 				})
 			})
 
@@ -1408,8 +1408,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinition': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinition': underlying-error"))
 				})
 			})
 		})
@@ -1498,9 +1498,9 @@ var _ = Describe("SCC", func() {
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
 				res := scc.Invoke(fakeStub)
-				Expect(res.Status).To(Equal(int32(200)))
+				Expect(res.GetStatus()).To(Equal(int32(200)))
 				payload := &lb.QueryApprovedChaincodeDefinitionsResult{}
-				err := proto.Unmarshal(res.Payload, payload)
+				err := proto.Unmarshal(res.GetPayload(), payload)
 				Expect(err).NotTo(HaveOccurred())
 
 				expectedDefinitions := &lb.QueryApprovedChaincodeDefinitionsResult{
@@ -1558,7 +1558,7 @@ var _ = Describe("SCC", func() {
 						},
 					},
 				}
-				Expect(payload.ApprovedChaincodeDefinitions).To(ConsistOf(expectedDefinitions.ApprovedChaincodeDefinitions))
+				Expect(payload.GetApprovedChaincodeDefinitions()).To(ConsistOf(expectedDefinitions.GetApprovedChaincodeDefinitions()))
 
 				Expect(fakeSCCFuncs.QueryApprovedChaincodeDefinitionsCallCount()).To(Equal(1))
 				chname, privState := fakeSCCFuncs.QueryApprovedChaincodeDefinitionsArgsForCall(0)
@@ -1601,8 +1601,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinitions': could not extract chaincode name and sequence number from private name: badkey: invalid private name format: badkey"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinitions': could not extract chaincode name and sequence number from private name: badkey: invalid private name format: badkey"))
 				})
 			})
 
@@ -1613,8 +1613,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinitions': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinitions': underlying-error"))
 				})
 			})
 
@@ -1625,8 +1625,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinitions': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinitions': underlying-error"))
 				})
 			})
 		})
@@ -1685,9 +1685,9 @@ var _ = Describe("SCC", func() {
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
 				res := scc.Invoke(fakeStub)
-				Expect(res.Status).To(Equal(int32(200)))
+				Expect(res.GetStatus()).To(Equal(int32(200)))
 				payload := &lb.QueryChaincodeDefinitionResult{}
-				err := proto.Unmarshal(res.Payload, payload)
+				err := proto.Unmarshal(res.GetPayload(), payload)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(payload).To(ProtoEqual(&lb.QueryChaincodeDefinitionResult{
 					Sequence:            2,
@@ -1723,8 +1723,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinition': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinition': underlying-error"))
 				})
 			})
 
@@ -1735,8 +1735,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinition': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinition': underlying-error"))
 				})
 			})
 
@@ -1747,8 +1747,8 @@ var _ = Describe("SCC", func() {
 
 				It("returns 404 Not Found", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(404)))
-					Expect(res.Message).To(Equal("namespace nicetry is not defined"))
+					Expect(res.GetStatus()).To(Equal(int32(404)))
+					Expect(res.GetMessage()).To(Equal("namespace nicetry is not defined"))
 				})
 			})
 
@@ -1759,8 +1759,8 @@ var _ = Describe("SCC", func() {
 
 				It("returns an error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("could not get application config for channel 'test-channel'"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("could not get application config for channel 'test-channel'"))
 				})
 
 				Context("when there is no application config because there is no channel", func() {
@@ -1770,8 +1770,8 @@ var _ = Describe("SCC", func() {
 
 					It("returns an error", func() {
 						res := scc.Invoke(fakeStub)
-						Expect(res.Status).To(Equal(int32(500)))
-						Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinition': no application config for channel ''"))
+						Expect(res.GetStatus()).To(Equal(int32(500)))
+						Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinition': no application config for channel ''"))
 					})
 				})
 			})
@@ -1820,9 +1820,9 @@ var _ = Describe("SCC", func() {
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
 				res := scc.Invoke(fakeStub)
-				Expect(res.Status).To(Equal(int32(200)))
+				Expect(res.GetStatus()).To(Equal(int32(200)))
 				payload := &lb.QueryChaincodeDefinitionsResult{}
-				err := proto.Unmarshal(res.Payload, payload)
+				err := proto.Unmarshal(res.GetPayload(), payload)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(payload.GetChaincodeDefinitions()).To(ConsistOf(
 					&lb.QueryChaincodeDefinitionsResult_ChaincodeDefinition{
@@ -1855,8 +1855,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinitions': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinitions': underlying-error"))
 				})
 			})
 
@@ -1867,8 +1867,8 @@ var _ = Describe("SCC", func() {
 
 				It("wraps and returns the error", func() {
 					res := scc.Invoke(fakeStub)
-					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinitions': underlying-error"))
+					Expect(res.GetStatus()).To(Equal(int32(500)))
+					Expect(res.GetMessage()).To(Equal("failed to invoke backing implementation of 'QueryChaincodeDefinitions': underlying-error"))
 				})
 			})
 		})

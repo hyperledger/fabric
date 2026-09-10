@@ -24,7 +24,7 @@ func createTestTransactionEnvelope(channel string, response *peer.Response, simR
 	}
 
 	// endorse it to get a proposal response
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, getChaincodeID(), signer)
+	presp, err := protoutil.CreateProposalResponse(prop.GetHeader(), prop.GetPayload(), response, simRes, nil, getChaincodeID(), signer)
 	if err != nil {
 		return nil, fmt.Errorf("CreateProposalResponse failed, err %s", err)
 	}
@@ -57,27 +57,27 @@ func TestCheckSignatureFromCreator(t *testing.T) {
 	require.NotNil(t, env)
 
 	// get the payload from the envelope
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	require.NoError(t, err, "GetPayload returns err %s", err)
 
 	// validate the header
-	chdr, shdr, err := validateCommonHeader(payload.Header)
+	chdr, shdr, err := validateCommonHeader(payload.GetHeader())
 	require.NoError(t, err, "validateCommonHeader returns err %s", err)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
 	// validate the signature in the envelope
-	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, chdr.ChannelId, cryptoProvider)
+	err = checkSignatureFromCreator(shdr.GetCreator(), env.GetSignature(), env.GetPayload(), chdr.GetChannelId(), cryptoProvider)
 	require.NoError(t, err, "checkSignatureFromCreator returns err %s", err)
 
 	// corrupt the creator
-	err = checkSignatureFromCreator([]byte("junk"), env.Signature, env.Payload, chdr.ChannelId, cryptoProvider)
+	err = checkSignatureFromCreator([]byte("junk"), env.GetSignature(), env.GetPayload(), chdr.GetChannelId(), cryptoProvider)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "MSP error: could not deserialize")
 
 	// check nonexistent channel
-	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, "junkchannel", cryptoProvider)
+	err = checkSignatureFromCreator(shdr.GetCreator(), env.GetSignature(), env.GetPayload(), "junkchannel", cryptoProvider)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "MSP error: channel doesn't exist")
 }

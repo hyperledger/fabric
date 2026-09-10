@@ -284,11 +284,11 @@ func extractChannelConfig(block *cb.Block, bccsp bccsp.BCCSP) (*ChannelConfig, e
 		return nil, errors.WithMessage(err, "malformed configuration envelope")
 	}
 
-	if configEnv.Config == nil {
+	if configEnv.GetConfig() == nil {
 		return nil, errors.New("no config found in envelope")
 	}
 
-	if configEnv.Config.ChannelGroup == nil {
+	if configEnv.GetConfig().GetChannelGroup() == nil {
 		return nil, errors.New("no channel configuration found in the config block")
 	}
 
@@ -296,12 +296,12 @@ func extractChannelConfig(block *cb.Block, bccsp bccsp.BCCSP) (*ChannelConfig, e
 		return nil, errors.New("no channel configuration groups are available")
 	}
 
-	_, exists := configEnv.Config.ChannelGroup.Groups[ApplicationGroupKey]
+	_, exists := configEnv.GetConfig().GetChannelGroup().GetGroups()[ApplicationGroupKey]
 	if !exists {
 		return nil, errors.Errorf("invalid configuration block, missing %s configuration group", ApplicationGroupKey)
 	}
 
-	cc, err := NewChannelConfig(configEnv.Config.ChannelGroup, bccsp)
+	cc, err := NewChannelConfig(configEnv.GetConfig().GetChannelGroup(), bccsp)
 	if err != nil {
 		return nil, errors.WithMessage(err, "no valid channel configuration found")
 	}
@@ -311,7 +311,7 @@ func extractChannelConfig(block *cb.Block, bccsp bccsp.BCCSP) (*ChannelConfig, e
 // MarshalEtcdRaftMetadata serializes etcd RAFT metadata.
 func MarshalEtcdRaftMetadata(md *etcdraft.ConfigMetadata) ([]byte, error) {
 	copyMd := proto.Clone(md).(*etcdraft.ConfigMetadata)
-	for _, c := range copyMd.Consenters {
+	for _, c := range copyMd.GetConsenters() {
 		// Expect the user to set the config value for client/server certs to the
 		// path where they are persisted locally, then load these files to memory.
 		clientCert, err := os.ReadFile(string(c.GetClientTlsCert()))

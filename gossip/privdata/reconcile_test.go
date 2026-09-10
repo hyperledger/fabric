@@ -176,8 +176,8 @@ func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 		require.Equal(t, 1, len(reconciledPvtdata))
 		require.Equal(t, blockNum, reconciledPvtdata[0].BlockNum)
 		require.Equal(t, seqInBlock, reconciledPvtdata[0].WriteSets[1].SeqInBlock)
-		require.Equal(t, "ns1", reconciledPvtdata[0].WriteSets[1].WriteSet.NsPvtRwset[0].Namespace)
-		require.Equal(t, "col1", reconciledPvtdata[0].WriteSets[1].WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName)
+		require.Equal(t, "ns1", reconciledPvtdata[0].WriteSets[1].WriteSet.GetNsPvtRwset()[0].GetNamespace())
+		require.Equal(t, "col1", reconciledPvtdata[0].WriteSets[1].WriteSet.GetNsPvtRwset()[0].GetCollectionPvtRwset()[0].GetCollectionName())
 		commitPvtDataOfOldBlocksHappened = true
 
 		unreconciledPvtdata := args.Get(1).(ledger.MissingPvtDataInfo)
@@ -273,8 +273,8 @@ func TestReconciliationHappyPathWithScheduler(t *testing.T) {
 		require.Equal(t, 1, len(reconciledPvtdata))
 		require.Equal(t, blockNum, reconciledPvtdata[0].BlockNum)
 		require.Equal(t, seqInBlock, reconciledPvtdata[0].WriteSets[1].SeqInBlock)
-		require.Equal(t, "ns1", reconciledPvtdata[0].WriteSets[1].WriteSet.NsPvtRwset[0].Namespace)
-		require.Equal(t, "col1", reconciledPvtdata[0].WriteSets[1].WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName)
+		require.Equal(t, "ns1", reconciledPvtdata[0].WriteSets[1].WriteSet.GetNsPvtRwset()[0].GetNamespace())
+		require.Equal(t, "col1", reconciledPvtdata[0].WriteSets[1].WriteSet.GetNsPvtRwset()[0].GetCollectionPvtRwset()[0].GetCollectionName())
 		commitPvtDataOfOldBlocksHappened = true
 
 		require.Nil(t, args.Get(1))
@@ -426,11 +426,11 @@ func TestReconciliationPullingMissingPrivateDataAtOnePass(t *testing.T) {
 	require.Equal(t, uint64(1), pvtDataStore[0][0].WriteSets[1].SeqInBlock)
 	require.Equal(t, uint64(2), pvtDataStore[1][0].WriteSets[2].SeqInBlock)
 
-	require.Equal(t, "ns1", pvtDataStore[0][0].WriteSets[1].WriteSet.NsPvtRwset[0].Namespace)
-	require.Equal(t, "ns2", pvtDataStore[1][0].WriteSets[2].WriteSet.NsPvtRwset[0].Namespace)
+	require.Equal(t, "ns1", pvtDataStore[0][0].WriteSets[1].WriteSet.GetNsPvtRwset()[0].GetNamespace())
+	require.Equal(t, "ns2", pvtDataStore[1][0].WriteSets[2].WriteSet.GetNsPvtRwset()[0].GetNamespace())
 
-	require.Equal(t, "col1", pvtDataStore[0][0].WriteSets[1].WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName)
-	require.Equal(t, "col2", pvtDataStore[1][0].WriteSets[2].WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName)
+	require.Equal(t, "col1", pvtDataStore[0][0].WriteSets[1].WriteSet.GetNsPvtRwset()[0].GetCollectionPvtRwset()[0].GetCollectionName())
+	require.Equal(t, "col2", pvtDataStore[1][0].WriteSets[2].WriteSet.GetNsPvtRwset()[0].GetCollectionPvtRwset()[0].GetCollectionName())
 
 	require.True(t, commitPvtDataOfOldBlocksHappened)
 }

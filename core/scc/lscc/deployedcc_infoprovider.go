@@ -44,12 +44,12 @@ func (p *DeployedCCInfoProvider) UpdatedChaincodes(stateUpdates map[string][]*kv
 		// There are LSCC entries for the chaincode and for the chaincode collections.
 		// We can detect collections based on the presence of a CollectionSeparator,
 		// which never exists in chaincode names.
-		if privdata.IsCollectionConfigKey(kvWrite.Key) {
-			ccname := privdata.GetCCNameFromCollectionConfigKey(kvWrite.Key)
+		if privdata.IsCollectionConfigKey(kvWrite.GetKey()) {
+			ccname := privdata.GetCCNameFromCollectionConfigKey(kvWrite.GetKey())
 			updatedCCNames[ccname] = true
 			continue
 		}
-		updatedCCNames[kvWrite.Key] = true
+		updatedCCNames[kvWrite.GetKey()] = true
 	}
 
 	for updatedCCNames := range updatedCCNames {
@@ -83,8 +83,8 @@ func (p *DeployedCCInfoProvider) ChaincodeInfo(channelName, chaincodeName string
 	}
 	return &ledger.DeployedChaincodeInfo{
 		Name:                        chaincodeName,
-		Hash:                        chaincodeData.Id,
-		Version:                     chaincodeData.Version,
+		Hash:                        chaincodeData.GetId(),
+		Version:                     chaincodeData.GetVersion(),
 		ExplicitCollectionConfigPkg: collConfigPkg,
 		IsLegacy:                    true,
 	}, nil
@@ -109,12 +109,12 @@ func (p *DeployedCCInfoProvider) AllChaincodesInfo(channelName string, qe ledger
 		}
 
 		kv := entry.(*queryresult.KV)
-		if !privdata.IsCollectionConfigKey(kv.Key) {
-			deployedccInfo, err := p.ChaincodeInfo(channelName, kv.Key, qe)
+		if !privdata.IsCollectionConfigKey(kv.GetKey()) {
+			deployedccInfo, err := p.ChaincodeInfo(channelName, kv.GetKey(), qe)
 			if err != nil {
 				return nil, err
 			}
-			result[kv.Key] = deployedccInfo
+			result[kv.GetKey()] = deployedccInfo
 		}
 	}
 	return result, nil
@@ -133,9 +133,9 @@ func (p *DeployedCCInfoProvider) CollectionInfo(channelName, chaincodeName, coll
 	if err != nil || collConfigPkg == nil {
 		return nil, err
 	}
-	for _, conf := range collConfigPkg.Config {
+	for _, conf := range collConfigPkg.GetConfig() {
 		staticCollConfig := conf.GetStaticCollectionConfig()
-		if staticCollConfig != nil && staticCollConfig.Name == collectionName {
+		if staticCollConfig != nil && staticCollConfig.GetName() == collectionName {
 			return staticCollConfig, nil
 		}
 	}

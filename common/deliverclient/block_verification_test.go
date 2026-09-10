@@ -38,7 +38,7 @@ func TestNewBlockVerificationAssistantFromConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	block := blockWithGroups(group, "channel1", 1)
-	blockHeaderHash := protoutil.BlockHeaderHash(block.Header)
+	blockHeaderHash := protoutil.BlockHeaderHash(block.GetHeader())
 
 	config := &common.Config{ChannelGroup: group}
 	logger := flogging.MustGetLogger("logger")
@@ -54,7 +54,7 @@ func TestNewBlockVerificationAssistantFromConfig(t *testing.T) {
 		require.Equal(t, &common.BlockHeader{Number: 1}, assistant.lastBlockHeader)
 		require.Equal(t, blockHeaderHash, assistant.lastBlockHeaderHash)
 		require.Equal(t, logger, assistant.logger)
-		err = assistant.sigVerifierFunc(block.Header, block.Metadata)
+		err = assistant.sigVerifierFunc(block.GetHeader(), block.GetMetadata())
 		require.EqualError(t, err, "signature set did not satisfy policy")
 	})
 
@@ -98,11 +98,11 @@ func TestNewBlockVerificationAssistantFromConfigBlock(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "channel1", assistant.channelID)
 		require.Equal(t, blockVerifierAssembler, assistant.verifierAssembler)
-		require.Equal(t, configBlock.Header, assistant.configBlockHeader)
-		require.Equal(t, lastBlock.Header, assistant.lastBlockHeader)
-		require.Equal(t, protoutil.BlockHeaderHash(lastBlock.Header), assistant.lastBlockHeaderHash)
+		require.Equal(t, configBlock.GetHeader(), assistant.configBlockHeader)
+		require.Equal(t, lastBlock.GetHeader(), assistant.lastBlockHeader)
+		require.Equal(t, protoutil.BlockHeaderHash(lastBlock.GetHeader()), assistant.lastBlockHeaderHash)
 		require.Equal(t, logger, assistant.logger)
-		err = assistant.sigVerifierFunc(nextBlock.Header, nextBlock.Metadata)
+		err = assistant.sigVerifierFunc(nextBlock.GetHeader(), nextBlock.GetMetadata())
 		require.EqualError(t, err, "signature set did not satisfy policy")
 	})
 
@@ -164,8 +164,8 @@ func TestBlockVerificationAssistant_VerifyBlock(t *testing.T) {
 
 		err = assistant.VerifyBlock(block)
 		require.NoError(t, err)
-		require.Equal(t, assistant.lastBlockHeader, block.Header)
-		require.Equal(t, assistant.lastBlockHeaderHash, protoutil.BlockHeaderHash(block.Header))
+		require.Equal(t, assistant.lastBlockHeader, block.GetHeader())
+		require.Equal(t, assistant.lastBlockHeaderHash, protoutil.BlockHeaderHash(block.GetHeader()))
 	})
 
 	t.Run("success: verify non config block", func(t *testing.T) {
@@ -283,7 +283,7 @@ func TestBlockVerificationAssistant_VerifyBlock(t *testing.T) {
 		require.NoError(t, err)
 		assistant.sigVerifierFunc = sigVerifierFuncReturnNoError()
 
-		expectedDataHash := block.Header.DataHash
+		expectedDataHash := block.GetHeader().GetDataHash()
 		block.Header.DataHash = []byte{4, 5, 6}
 
 		err = assistant.VerifyBlock(block)
@@ -341,7 +341,7 @@ func TestBlockVerificationAssistant_VerifyBlock(t *testing.T) {
 
 		err = assistant.VerifyBlock(block)
 		require.Error(t, err)
-		require.Equal(t, err.Error(), errors.Errorf("failed to verify transactions are well formed for block with id [%d] on channel [%s]: transaction 0 has no signature", block.Header.Number, assistant.channelID).Error())
+		require.Equal(t, err.Error(), errors.Errorf("failed to verify transactions are well formed for block with id [%d] on channel [%s]: transaction 0 has no signature", block.GetHeader().GetNumber(), assistant.channelID).Error())
 	})
 }
 
@@ -371,10 +371,10 @@ func TestBlockVerificationAssistant_UpdateConfig(t *testing.T) {
 
 		err = assistant.UpdateConfig(configBlock)
 		require.NoError(t, err)
-		require.Equal(t, assistant.configBlockHeader, configBlock.Header)
-		require.Equal(t, assistant.lastBlockHeader, configBlock.Header)
-		require.Equal(t, assistant.lastBlockHeaderHash, protoutil.BlockHeaderHash(configBlock.Header))
-		require.Equal(t, assistant.sigVerifierFunc(configBlock.Header, configBlock.Metadata).Error(), expectedVerifierFunc(configBlock.Header, configBlock.Metadata).Error())
+		require.Equal(t, assistant.configBlockHeader, configBlock.GetHeader())
+		require.Equal(t, assistant.lastBlockHeader, configBlock.GetHeader())
+		require.Equal(t, assistant.lastBlockHeaderHash, protoutil.BlockHeaderHash(configBlock.GetHeader()))
+		require.Equal(t, assistant.sigVerifierFunc(configBlock.GetHeader(), configBlock.GetMetadata()).Error(), expectedVerifierFunc(configBlock.GetHeader(), configBlock.GetMetadata()).Error())
 	})
 
 	t.Run("block data is corrupt", func(t *testing.T) {
@@ -466,8 +466,8 @@ func TestBlockVerificationAssistant_UpdateBlockHeader(t *testing.T) {
 	require.NoError(t, err)
 
 	assistant.UpdateBlockHeader(block)
-	require.Equal(t, assistant.lastBlockHeader, block.Header)
-	require.Equal(t, assistant.lastBlockHeaderHash, protoutil.BlockHeaderHash(block.Header))
+	require.Equal(t, assistant.lastBlockHeader, block.GetHeader())
+	require.Equal(t, assistant.lastBlockHeaderHash, protoutil.BlockHeaderHash(block.GetHeader()))
 }
 
 func TestBlockVerificationAssistant_VerifyBlockAttestation(t *testing.T) {
@@ -494,8 +494,8 @@ func TestBlockVerificationAssistant_VerifyBlockAttestation(t *testing.T) {
 
 		err = assistant.VerifyBlockAttestation(block)
 		require.NoError(t, err)
-		require.Equal(t, assistant.lastBlockHeader, block.Header)
-		require.Equal(t, assistant.lastBlockHeaderHash, protoutil.BlockHeaderHash(block.Header))
+		require.Equal(t, assistant.lastBlockHeader, block.GetHeader())
+		require.Equal(t, assistant.lastBlockHeaderHash, protoutil.BlockHeaderHash(block.GetHeader()))
 	})
 
 	t.Run("verify non block attestation with nil data succeed", func(t *testing.T) {
@@ -617,7 +617,7 @@ func blockWithGroups(groups *common.ConfigGroup, channelID string, blockNumber u
 			}),
 		},
 	}
-	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 	block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&common.Metadata{
 		Value: protoutil.MarshalOrPanic(&common.OrdererBlockMetadata{
 			LastConfig: &common.LastConfig{
@@ -650,7 +650,7 @@ func nonConfigBlock(channelID string, blockNumber uint64) *common.Block {
 		},
 	}
 
-	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 	protoutil.InitBlockMetadata(block)
 
 	return block

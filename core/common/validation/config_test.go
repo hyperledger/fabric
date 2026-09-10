@@ -47,7 +47,7 @@ func TestValidateConfigTx(t *testing.T) {
 	}
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
-	updateResult.Signature, _ = signer.Sign(updateResult.Payload)
+	updateResult.Signature, _ = signer.Sign(updateResult.GetPayload())
 	_, txResult := ValidateTransaction(updateResult, cryptoProvider)
 	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)

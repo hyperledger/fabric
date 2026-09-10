@@ -73,7 +73,7 @@ func (r *deliverClient) readUntilClose() {
 			return
 		}
 
-		switch t := msg.Type.(type) {
+		switch t := msg.GetType().(type) {
 		case *ab.DeliverResponse_Status:
 			fmt.Println("Got status ", t)
 			return
@@ -85,7 +85,7 @@ func (r *deliverClient) readUntilClose() {
 					fmt.Printf("  Error pretty printing block: %s", err)
 				}
 			} else {
-				fmt.Println("Received block: ", t.Block.Header.Number)
+				fmt.Println("Received block: ", t.Block.GetHeader().GetNumber())
 			}
 		}
 	}

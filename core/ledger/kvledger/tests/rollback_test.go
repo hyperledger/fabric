@@ -33,13 +33,13 @@ func TestRollbackKVLedger(t *testing.T) {
 	// Rollback the testLedger (invalid rollback params)
 	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "noLedger", 0)
 	require.Equal(t, "ledgerID [noLedger] does not exist", err.Error())
-	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "testLedger", bcInfo.Height)
+	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "testLedger", bcInfo.GetHeight())
 	expectedErr := fmt.Sprintf("target block number [%d] should be less than the biggest block number [%d]",
-		bcInfo.Height, bcInfo.Height-1)
+		bcInfo.GetHeight(), bcInfo.GetHeight()-1)
 	require.Equal(t, expectedErr, err.Error())
 
 	// Rollback the testLedger (valid rollback params)
-	targetBlockNum := bcInfo.Height - 3
+	targetBlockNum := bcInfo.GetHeight() - 3
 	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "testLedger", targetBlockNum)
 	require.NoError(t, err)
 	rebuildable := rebuildableStatedb + rebuildableBookkeeper + rebuildableConfigHistory + rebuildableHistoryDB
@@ -47,7 +47,7 @@ func TestRollbackKVLedger(t *testing.T) {
 	env.initLedgerMgmt()
 	preResetHt, err := kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, []string{"testLedger"})
 	require.NoError(t, err)
-	require.Equal(t, bcInfo.Height, preResetHt["testLedger"])
+	require.Equal(t, bcInfo.GetHeight(), preResetHt["testLedger"])
 	t.Logf("preResetHt = %#v", preResetHt)
 
 	l = env.openTestLedger("testLedger")

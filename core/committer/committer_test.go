@@ -112,7 +112,7 @@ func (m *mockLedger) GetPvtDataByNum(blockNum uint64, filter ledger2.PvtNsCollFi
 func (m *mockLedger) CommitLegacy(blockAndPvtdata *ledger2.BlockAndPvtData, commitOpts *ledger2.CommitOptions) error {
 	m.height += 1
 	m.previousHash = m.currentHash
-	m.currentHash = blockAndPvtdata.Block.Header.DataHash
+	m.currentHash = blockAndPvtdata.Block.GetHeader().GetDataHash()
 	args := m.Called(blockAndPvtdata)
 	return args.Error(0)
 }
@@ -130,7 +130,7 @@ func createLedger(channelID string) (*common.Block, *mockLedger) {
 	ledger := &mockLedger{
 		height:       1,
 		previousHash: []byte{},
-		currentHash:  gb.Header.DataHash,
+		currentHash:  gb.GetHeader().GetDataHash(),
 	}
 	return gb, ledger
 }
@@ -138,13 +138,13 @@ func createLedger(channelID string) (*common.Block, *mockLedger) {
 func TestKVLedgerBlockStorage(t *testing.T) {
 	t.Parallel()
 	gb, ledger := createLedger("TestLedger")
-	block1 := testutil.ConstructBlock(t, 1, gb.Header.DataHash, [][]byte{{1, 2, 3, 4}, {5, 6, 7, 8}}, true)
+	block1 := testutil.ConstructBlock(t, 1, gb.GetHeader().GetDataHash(), [][]byte{{1, 2, 3, 4}, {5, 6, 7, 8}}, true)
 
 	ledger.On("CommitLegacy", mock.Anything).Run(func(args mock.Arguments) {
 		b := args.Get(0).(*ledger2.BlockAndPvtData)
-		require.Equal(t, uint64(1), b.Block.Header.GetNumber())
-		require.Equal(t, gb.Header.DataHash, b.Block.Header.PreviousHash)
-		require.Equal(t, block1.Header.DataHash, b.Block.Header.DataHash)
+		require.Equal(t, uint64(1), b.Block.GetHeader().GetNumber())
+		require.Equal(t, gb.GetHeader().GetDataHash(), b.Block.GetHeader().GetPreviousHash())
+		require.Equal(t, block1.GetHeader().GetDataHash(), b.Block.GetHeader().GetDataHash())
 	}).Return(nil)
 
 	ledger.On("GetBlockByNumber", uint64(0)).Return(gb, nil)

@@ -142,7 +142,7 @@ func (p *plan) processEndorsement(endorser *endorser, response *peer.ProposalRes
 		}
 		if quantity, ok := layout.required[group]; ok {
 			layout.required[group] = quantity - 1
-			layout.endorsements = append(layout.endorsements, response.Endorsement)
+			layout.endorsements = append(layout.endorsements, response.GetEndorsement())
 			if layout.required[group] == 0 {
 				// this group for this layout is complete - remove from map
 				delete(layout.required, group)
@@ -212,7 +212,7 @@ func uniqueEndorsements(endorsements []*peer.Endorsement) []*peer.Endorsement {
 		if e == nil {
 			continue
 		}
-		key := string(e.Endorser)
+		key := string(e.GetEndorser())
 		if _, used := endorsersUsed[key]; used {
 			continue
 		}

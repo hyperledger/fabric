@@ -45,13 +45,13 @@ func NewApplicationConfig(appGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler)
 	}
 
 	if !ac.Capabilities().ACLs() {
-		if _, ok := appGroup.Values[ACLsKey]; ok {
+		if _, ok := appGroup.GetValues()[ACLsKey]; ok {
 			return nil, errors.New("ACLs may not be specified without the required capability")
 		}
 	}
 
 	var err error
-	for orgName, orgGroup := range appGroup.Groups {
+	for orgName, orgGroup := range appGroup.GetGroups() {
 		ac.applicationOrgs[orgName], err = NewApplicationOrgConfig(orgName, orgGroup, mspConfig)
 		if err != nil {
 			return nil, err
@@ -68,12 +68,12 @@ func (ac *ApplicationConfig) Organizations() map[string]ApplicationOrg {
 
 // Capabilities returns a map of capability name to Capability
 func (ac *ApplicationConfig) Capabilities() ApplicationCapabilities {
-	return capabilities.NewApplicationProvider(ac.protos.Capabilities.Capabilities)
+	return capabilities.NewApplicationProvider(ac.protos.Capabilities.GetCapabilities())
 }
 
 // APIPolicyMapper returns a PolicyMapper that maps API names to policies
 func (ac *ApplicationConfig) APIPolicyMapper() PolicyMapper {
-	pm := newAPIsProvider(ac.protos.ACLs.Acls)
+	pm := newAPIsProvider(ac.protos.ACLs.GetAcls())
 
 	return pm
 }

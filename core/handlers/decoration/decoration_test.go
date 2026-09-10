@@ -32,7 +32,7 @@ func TestApplyDecorations(t *testing.T) {
 			"Expected decorators to be applied in the provided sequence")
 	}
 
-	require.Equal(t, uint32(iterations), binary.BigEndian.Uint32(finalInput.Decorations[decorationKey]),
+	require.Equal(t, uint32(iterations), binary.BigEndian.Uint32(finalInput.GetDecorations()[decorationKey]),
 		"Expected decorators to be applied in the provided sequence")
 }
 
@@ -51,8 +51,8 @@ type mockDecorator struct {
 func (d *mockDecorator) Decorate(proposal *peer.Proposal,
 	input *peer.ChaincodeInput,
 ) *peer.ChaincodeInput {
-	d.sequence = binary.BigEndian.Uint32(input.Decorations[decorationKey])
-	binary.BigEndian.PutUint32(input.Decorations[decorationKey], d.sequence+1)
+	d.sequence = binary.BigEndian.Uint32(input.GetDecorations()[decorationKey])
+	binary.BigEndian.PutUint32(input.GetDecorations()[decorationKey], d.sequence+1)
 
 	return input
 }

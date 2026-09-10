@@ -57,10 +57,10 @@ func prepareTxOps(rwset *rwsetutil.TxRwSet, precedingUpdates *publicAndHashUpdat
 func (txops txOps) applyTxRwset(rwset *rwsetutil.TxRwSet) error {
 	for _, nsRWSet := range rwset.NsRwSets {
 		ns := nsRWSet.NameSpace
-		for _, kvWrite := range nsRWSet.KvRwSet.Writes {
+		for _, kvWrite := range nsRWSet.KvRwSet.GetWrites() {
 			txops.applyKVWrite(ns, "", kvWrite)
 		}
-		for _, kvMetadataWrite := range nsRWSet.KvRwSet.MetadataWrites {
+		for _, kvMetadataWrite := range nsRWSet.KvRwSet.GetMetadataWrites() {
 			if err := txops.applyMetadata(ns, "", kvMetadataWrite); err != nil {
 				return err
 			}
@@ -69,23 +69,23 @@ func (txops txOps) applyTxRwset(rwset *rwsetutil.TxRwSet) error {
 		// apply collection level kvwrite and kvMetadataWrite
 		for _, collHashRWset := range nsRWSet.CollHashedRwSets {
 			coll := collHashRWset.CollectionName
-			for _, hashedWrite := range collHashRWset.HashedRwSet.HashedWrites {
+			for _, hashedWrite := range collHashRWset.HashedRwSet.GetHashedWrites() {
 				txops.applyKVWrite(
 					ns, coll,
 					&kvrwset.KVWrite{
-						Key:      string(hashedWrite.KeyHash),
-						Value:    hashedWrite.ValueHash,
+						Key:      string(hashedWrite.GetKeyHash()),
+						Value:    hashedWrite.GetValueHash(),
 						IsDelete: rwsetutil.IsKVWriteHashDelete(hashedWrite),
 					},
 				)
 			}
 
-			for _, metadataWrite := range collHashRWset.HashedRwSet.MetadataWrites {
+			for _, metadataWrite := range collHashRWset.HashedRwSet.GetMetadataWrites() {
 				if err := txops.applyMetadata(
 					ns, coll,
 					&kvrwset.KVMetadataWrite{
-						Key:     string(metadataWrite.KeyHash),
-						Entries: metadataWrite.Entries,
+						Key:     string(metadataWrite.GetKeyHash()),
+						Entries: metadataWrite.GetEntries(),
 					},
 				); err != nil {
 					return err
@@ -99,22 +99,22 @@ func (txops txOps) applyTxRwset(rwset *rwsetutil.TxRwSet) error {
 // applyKVWrite records upsertion/deletion of a kvwrite
 func (txops txOps) applyKVWrite(ns, coll string, kvWrite *kvrwset.KVWrite) {
 	if rwsetutil.IsKVWriteDelete(kvWrite) {
-		txops.delete(compositeKey{ns, coll, kvWrite.Key})
+		txops.delete(compositeKey{ns, coll, kvWrite.GetKey()})
 	} else {
-		txops.upsert(compositeKey{ns, coll, kvWrite.Key}, kvWrite.Value)
+		txops.upsert(compositeKey{ns, coll, kvWrite.GetKey()}, kvWrite.GetValue())
 	}
 }
 
 // applyMetadata records updatation/deletion of a metadataWrite
 func (txops txOps) applyMetadata(ns, coll string, metadataWrite *kvrwset.KVMetadataWrite) error {
 	if metadataWrite.Entries == nil {
-		txops.metadataDelete(compositeKey{ns, coll, metadataWrite.Key})
+		txops.metadataDelete(compositeKey{ns, coll, metadataWrite.GetKey()})
 	} else {
-		metadataBytes, err := statemetadata.Serialize(metadataWrite.Entries)
+		metadataBytes, err := statemetadata.Serialize(metadataWrite.GetEntries())
 		if err != nil {
 			return err
 		}
-		txops.metadataUpdate(compositeKey{ns, coll, metadataWrite.Key}, metadataBytes)
+		txops.metadataUpdate(compositeKey{ns, coll, metadataWrite.GetKey()}, metadataBytes)
 	}
 	return nil
 }

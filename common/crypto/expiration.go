@@ -25,7 +25,7 @@ func ExpiresAt(identityBytes []byte) time.Time {
 	if err := proto.Unmarshal(identityBytes, sId); err != nil {
 		return time.Time{}
 	}
-	return certExpirationTime(sId.IdBytes)
+	return certExpirationTime(sId.GetIdBytes())
 }
 
 func certExpirationTime(pemBytes []byte) time.Time {
@@ -54,7 +54,7 @@ func TrackExpiration(tls bool, serverCert []byte, clientCertChain [][]byte, sIDB
 		return
 	}
 
-	trackCertExpiration(sID.IdBytes, "enrollment", info, warn, now, s)
+	trackCertExpiration(sID.GetIdBytes(), "enrollment", info, warn, now, s)
 
 	if !tls {
 		return

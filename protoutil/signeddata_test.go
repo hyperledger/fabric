@@ -114,7 +114,7 @@ func TestEnvelopeAsSignedData(t *testing.T) {
 	if !bytes.Equal(signedData[0].Identity, identity) {
 		t.Errorf("Wrong identity bytes")
 	}
-	if !bytes.Equal(signedData[0].Data, env.Payload) {
+	if !bytes.Equal(signedData[0].Data, env.GetPayload()) {
 		t.Errorf("Wrong data bytes")
 	}
 	if !bytes.Equal(signedData[0].Signature, sig) {

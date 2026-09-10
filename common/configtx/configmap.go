@@ -76,7 +76,7 @@ func recurseConfig(result map[string]comparable, path []string, group *cb.Config
 		return err
 	}
 
-	for key, group := range group.Groups {
+	for key, group := range group.GetGroups() {
 		nextPath := make([]string, len(path)+1)
 		copy(nextPath, path)
 		nextPath[len(nextPath)-1] = key
@@ -85,13 +85,13 @@ func recurseConfig(result map[string]comparable, path []string, group *cb.Config
 		}
 	}
 
-	for key, value := range group.Values {
+	for key, value := range group.GetValues() {
 		if err := addToMap(comparable{key: key, path: path, ConfigValue: value}, result); err != nil {
 			return err
 		}
 	}
 
-	for key, policy := range group.Policies {
+	for key, policy := range group.GetPolicies() {
 		if err := addToMap(comparable{key: key, path: path, ConfigPolicy: policy}, result); err != nil {
 			return err
 		}
@@ -165,20 +165,20 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 	// This code needs to sit here until validation of v1.0 channels is deprecated from the codebase.
 	if _, ok := configMap[hackyFixOrdererCapabilities]; ok {
 		// Hacky fix constants, used in recurseConfigMap
-		if newConfigGroup.ModPolicy == "" {
+		if newConfigGroup.GetModPolicy() == "" {
 			logger.Debugf("Performing upgrade of group %s empty mod_policy", groupPath)
 			newConfigGroup.ModPolicy = hackyFixNewModPolicy
 		}
 
-		for key, value := range newConfigGroup.Values {
-			if value.ModPolicy == "" {
+		for key, value := range newConfigGroup.GetValues() {
+			if value.GetModPolicy() == "" {
 				logger.Debugf("Performing upgrade of value %s empty mod_policy", valuePrefix+path+pathSeparator+key)
 				value.ModPolicy = hackyFixNewModPolicy
 			}
 		}
 
-		for key, policy := range newConfigGroup.Policies {
-			if policy.ModPolicy == "" {
+		for key, policy := range newConfigGroup.GetPolicies() {
+			if policy.GetModPolicy() == "" {
 				logger.Debugf("Performing upgrade of policy %s empty mod_policy", policyPrefix+path+pathSeparator+key)
 
 				policy.ModPolicy = hackyFixNewModPolicy

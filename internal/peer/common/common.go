@@ -262,13 +262,13 @@ func GetOrdererEndpointOfChain(chainID string, signer Signer, endorserClient pb.
 		return nil, errors.New("received nil proposal response")
 	}
 
-	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != http.StatusOK {
-		return nil, errors.Errorf("error bad proposal response %d: %s", proposalResp.Response.Status, proposalResp.Response.Message)
+	if proposalResp.GetResponse().GetStatus() != 0 && proposalResp.GetResponse().GetStatus() != http.StatusOK {
+		return nil, errors.Errorf("error bad proposal response %d: %s", proposalResp.GetResponse().GetStatus(), proposalResp.GetResponse().GetMessage())
 	}
 
 	// parse config
 	channelConfig := &pcommon.Config{}
-	if err := proto.Unmarshal(proposalResp.Response.Payload, channelConfig); err != nil {
+	if err := proto.Unmarshal(proposalResp.GetResponse().GetPayload(), channelConfig); err != nil {
 		return nil, errors.WithMessage(err, "error unmarshalling channel config")
 	}
 

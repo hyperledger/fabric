@@ -158,21 +158,21 @@ func (i *Installer) submitInstallProposal(signedProposal *pb.SignedProposal) err
 		return errors.New("chaincode install failed: received nil proposal response")
 	}
 
-	if proposalResponse.Response == nil {
+	if proposalResponse.GetResponse() == nil {
 		return errors.New("chaincode install failed: received proposal response with nil response")
 	}
 
-	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("chaincode install failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+	if proposalResponse.GetResponse().GetStatus() != int32(cb.Status_SUCCESS) {
+		return errors.Errorf("chaincode install failed with status: %d - %s", proposalResponse.GetResponse().GetStatus(), proposalResponse.GetResponse().GetMessage())
 	}
 	logger.Infof("Installed remotely: %v", proposalResponse)
 
 	icr := &lb.InstallChaincodeResult{}
-	err = proto.Unmarshal(proposalResponse.Response.Payload, icr)
+	err = proto.Unmarshal(proposalResponse.GetResponse().GetPayload(), icr)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
-	logger.Infof("Chaincode code package identifier: %s", icr.PackageId)
+	logger.Infof("Chaincode code package identifier: %s", icr.GetPackageId())
 
 	return nil
 }

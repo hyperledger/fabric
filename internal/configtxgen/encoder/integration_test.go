@@ -20,23 +20,23 @@ import (
 )
 
 func hasModPolicySet(groupName string, cg *cb.ConfigGroup) error {
-	if cg.ModPolicy == "" {
+	if cg.GetModPolicy() == "" {
 		return errors.Errorf("group %s has empty mod_policy", groupName)
 	}
 
-	for valueName, value := range cg.Values {
-		if value.ModPolicy == "" {
+	for valueName, value := range cg.GetValues() {
+		if value.GetModPolicy() == "" {
 			return errors.Errorf("group %s has value %s with empty mod_policy", groupName, valueName)
 		}
 	}
 
-	for policyName, policy := range cg.Policies {
-		if policy.ModPolicy == "" {
+	for policyName, policy := range cg.GetPolicies() {
+		if policy.GetModPolicy() == "" {
 			return errors.Errorf("group %s has policy %s with empty mod_policy", groupName, policyName)
 		}
 	}
 
-	for groupName, group := range cg.Groups {
+	for groupName, group := range cg.GetGroups() {
 		err := hasModPolicySet(groupName, group)
 		if err != nil {
 			return errors.WithMessagef(err, "missing sub-mod_policy for group %s", groupName)

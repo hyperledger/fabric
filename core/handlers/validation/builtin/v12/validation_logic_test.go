@@ -50,7 +50,7 @@ func createTx(endorsedByDuplicatedIdentity bool) (*common.Envelope, error) {
 		return nil, err
 	}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, []byte("res"), nil, ccid, id)
+	presp, err := protoutil.CreateProposalResponse(prop.GetHeader(), prop.GetPayload(), &peer.Response{Status: 200}, []byte("res"), nil, ccid, id)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func createLSCCTxPutCdsWithCollection(ccname, ccver, f string, res, cdsbytes []b
 
 	ccid := &peer.ChaincodeID{Name: ccname, Version: ccver}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, res, nil, ccid, id)
+	presp, err := protoutil.CreateProposalResponse(prop.GetHeader(), prop.GetPayload(), &peer.Response{Status: 200}, res, nil, ccid, id)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func createLSCCTxPutCds(ccname, ccver, f string, res, cdsbytes []byte, putcds bo
 
 	ccid := &peer.ChaincodeID{Name: ccname, Version: ccver}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, res, nil, ccid, id)
+	presp, err := protoutil.CreateProposalResponse(prop.GetHeader(), prop.GetPayload(), &peer.Response{Status: 200}, res, nil, ccid, id)
 	if err != nil {
 		return nil, err
 	}
@@ -827,7 +827,7 @@ func TestValidateDeployNOKNilChaincodeSpec(t *testing.T) {
 
 	ccid := &peer.ChaincodeID{Name: ccname, Version: ccver}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, res, nil, ccid, id)
+	presp, err := protoutil.CreateProposalResponse(prop.GetHeader(), prop.GetPayload(), &peer.Response{Status: 200}, res, nil, ccid, id)
 	require.NoError(t, err)
 
 	env, err := protoutil.CreateSignedTx(prop, id, presp)
@@ -1607,7 +1607,7 @@ func testValidateCollection(t *testing.T, v *Validator, collectionConfigs []*pee
 	require.NotNil(t, ccpBytes)
 
 	lsccargs := [][]byte{nil, nil, nil, nil, nil, ccpBytes}
-	rwset := &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: cdRWSet.Name}, {Key: privdata.BuildCollectionKVSKey(cdRWSet.Name), Value: ccpBytes}}}
+	rwset := &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: cdRWSet.GetName()}, {Key: privdata.BuildCollectionKVSKey(cdRWSet.GetName()), Value: ccpBytes}}}
 
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
 	return err

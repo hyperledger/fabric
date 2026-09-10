@@ -79,11 +79,11 @@ func TestSnapshotGenerationAndBootstrap(t *testing.T) {
 	require.NoError(t, err)
 	testLedger.verifyBlockchainInfo(
 		&common.BlockchainInfo{
-			Height:            originalBCInfo.Height,
-			CurrentBlockHash:  originalBCInfo.CurrentBlockHash,
-			PreviousBlockHash: originalBCInfo.PreviousBlockHash,
+			Height:            originalBCInfo.GetHeight(),
+			CurrentBlockHash:  originalBCInfo.GetCurrentBlockHash(),
+			PreviousBlockHash: originalBCInfo.GetPreviousBlockHash(),
 			BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
-				LastBlockInSnapshot: originalBCInfo.Height - 1,
+				LastBlockInSnapshot: originalBCInfo.GetHeight() - 1,
 			},
 		},
 	)

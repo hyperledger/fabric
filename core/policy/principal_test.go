@@ -37,18 +37,18 @@ func TestLocalMSPPrincipalGetter_Get(t *testing.T) {
 	p, err := g.Get(Admins)
 	require.NoError(t, err)
 	require.NotNil(t, p)
-	require.Equal(t, msp.MSPPrincipal_ROLE, p.PrincipalClassification)
+	require.Equal(t, msp.MSPPrincipal_ROLE, p.GetPrincipalClassification())
 	role := &msp.MSPRole{}
-	proto.Unmarshal(p.Principal, role)
-	require.Equal(t, localMSPID, role.MspIdentifier)
-	require.Equal(t, msp.MSPRole_ADMIN, role.Role)
+	proto.Unmarshal(p.GetPrincipal(), role)
+	require.Equal(t, localMSPID, role.GetMspIdentifier())
+	require.Equal(t, msp.MSPRole_ADMIN, role.GetRole())
 
 	p, err = g.Get(Members)
 	require.NoError(t, err)
 	require.NotNil(t, p)
-	require.Equal(t, msp.MSPPrincipal_ROLE, p.PrincipalClassification)
+	require.Equal(t, msp.MSPPrincipal_ROLE, p.GetPrincipalClassification())
 	role = &msp.MSPRole{}
-	proto.Unmarshal(p.Principal, role)
-	require.Equal(t, localMSPID, role.MspIdentifier)
-	require.Equal(t, msp.MSPRole_MEMBER, role.Role)
+	proto.Unmarshal(p.GetPrincipal(), role)
+	require.Equal(t, localMSPID, role.GetMspIdentifier())
+	require.Equal(t, msp.MSPRole_MEMBER, role.GetRole())
 }

@@ -269,12 +269,12 @@ func (cs *NodeClientStream) Auth() error {
 	payload.SessionBinding = tlsBinding
 
 	asnSignFields, _ := asn1.Marshal(AuthRequestSignature{
-		Version:        int64(payload.Version),
-		Timestamp:      EncodeTimestamp(payload.Timestamp),
-		FromId:         strconv.FormatUint(payload.FromId, 10),
-		ToId:           strconv.FormatUint(payload.ToId, 10),
-		SessionBinding: payload.SessionBinding,
-		Channel:        payload.Channel,
+		Version:        int64(payload.GetVersion()),
+		Timestamp:      EncodeTimestamp(payload.GetTimestamp()),
+		FromId:         strconv.FormatUint(payload.GetFromId(), 10),
+		ToId:           strconv.FormatUint(payload.GetToId(), 10),
+		SessionBinding: payload.GetSessionBinding(),
+		Channel:        payload.GetChannel(),
 	})
 	sig, err := cs.Signer.Sign(asnSignFields)
 	if err != nil {
@@ -304,8 +304,8 @@ func BuildStepRequest(request *orderer.StepRequest) (*orderer.ClusterNodeService
 		stepRequest = &orderer.ClusterNodeServiceStepRequest{
 			Payload: &orderer.ClusterNodeServiceStepRequest_NodeConrequest{
 				NodeConrequest: &orderer.NodeConsensusRequest{
-					Payload:  consReq.Payload,
-					Metadata: consReq.Metadata,
+					Payload:  consReq.GetPayload(),
+					Metadata: consReq.GetMetadata(),
 				},
 			},
 		}
@@ -314,8 +314,8 @@ func BuildStepRequest(request *orderer.StepRequest) (*orderer.ClusterNodeService
 		stepRequest = &orderer.ClusterNodeServiceStepRequest{
 			Payload: &orderer.ClusterNodeServiceStepRequest_NodeTranrequest{
 				NodeTranrequest: &orderer.NodeTransactionOrderRequest{
-					Payload:           subReq.Payload,
-					LastValidationSeq: subReq.LastValidationSeq,
+					Payload:           subReq.GetPayload(),
+					LastValidationSeq: subReq.GetLastValidationSeq(),
 				},
 			},
 		}
@@ -332,8 +332,8 @@ func BuildStepRespone(stepResponse *orderer.ClusterNodeServiceStepResponse) (*or
 		stepResponse := &orderer.StepResponse{
 			Payload: &orderer.StepResponse_SubmitRes{
 				SubmitRes: &orderer.SubmitResponse{
-					Channel: respPayload.Channel,
-					Status:  respPayload.Status,
+					Channel: respPayload.GetChannel(),
+					Status:  respPayload.GetStatus(),
 				},
 			},
 		}

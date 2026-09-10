@@ -92,7 +92,7 @@ func (m *Mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 
 		// DeployedChaincodeInfoProvider implementation in new lifecycle return an empty 'CollectionConfigPackage'
 		// (instead of a nil) to indicate the absence of collection config, so check for both conditions
-		if ccInfo.ExplicitCollectionConfigPkg == nil || len(ccInfo.ExplicitCollectionConfigPkg.Config) == 0 {
+		if ccInfo.ExplicitCollectionConfigPkg == nil || len(ccInfo.ExplicitCollectionConfigPkg.GetConfig()) == 0 {
 			continue
 		}
 		updatedCollConfigs[ccInfo.Name] = ccInfo.ExplicitCollectionConfigPkg

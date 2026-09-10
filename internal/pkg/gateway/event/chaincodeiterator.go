@@ -28,7 +28,7 @@ func (iter *ChaincodeEventsIterator) Next() (*gateway.ChaincodeEventsResponse, e
 			return nil, err
 		}
 
-		if len(result.Events) > 0 {
+		if len(result.GetEvents()) > 0 {
 			return result, nil
 		}
 	}

@@ -104,7 +104,7 @@ func TestPolicyBad(t *testing.T) {
 
 	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	prop := &peer.Proposal{}
-	if proto.Unmarshal(sProp.ProposalBytes, prop) != nil {
+	if proto.Unmarshal(sProp.GetProposalBytes(), prop) != nil {
 		t.FailNow()
 	}
 	prop.Header = []byte("bad hdr")

@@ -68,12 +68,12 @@ func (c collConfigCache) populate(ns string, pkg *peer.CollectionConfigPackage) 
 	// an entry with an empty collection name to indicate that the cache is populated for the namespace 'ns'
 	// see function 'isPopulatedFor'
 	c[collConfigkey{ns, ""}] = true
-	for _, config := range pkg.Config {
+	for _, config := range pkg.GetConfig() {
 		sConfig := config.GetStaticCollectionConfig()
 		if sConfig == nil {
 			continue
 		}
-		c[collConfigkey{ns, sConfig.Name}] = true
+		c[collConfigkey{ns, sConfig.GetName()}] = true
 	}
 }
 

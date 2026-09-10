@@ -179,7 +179,7 @@ func TestGreenPath(t *testing.T) {
 		require.NoError(t, err)
 		res, err := client.Send(context.Background(), req, client.AuthInfo)
 		require.NoError(t, err)
-		endorsers, err := res.ForChannel("mychannel").Endorsers(cc2cc.Chaincodes, disc.NoFilter)
+		endorsers, err := res.ForChannel("mychannel").Endorsers(cc2cc.GetChaincodes(), disc.NoFilter)
 		require.NoError(t, err)
 		endorsersByMSP := map[string][]string{}
 
@@ -195,7 +195,7 @@ func TestGreenPath(t *testing.T) {
 		require.NoError(t, err)
 		res, err := client.Send(context.Background(), req, client.AuthInfo)
 		require.NoError(t, err)
-		endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.NoFilter)
+		endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.GetChaincodes(), disc.NoFilter)
 		require.NoError(t, err)
 
 		endorsersByMSP := map[string][]string{}
@@ -213,17 +213,17 @@ func TestGreenPath(t *testing.T) {
 		conf, err := res.ForChannel("mychannel").Config()
 		require.NoError(t, err)
 		// Ensure MSP Configs are exactly as they appear in the config block
-		for mspID, mspConfig := range conf.Msps {
+		for mspID, mspConfig := range conf.GetMsps() {
 			expectedConfig := service.sup.mspConfigs[mspID]
 			require.True(t, proto.Equal(expectedConfig, mspConfig))
 		}
 		// Ensure orderer endpoints are as they appear in the config block
-		for mspID, endpoints := range conf.Orderers {
+		for mspID, endpoints := range conf.GetOrderers() {
 			require.Equal(t, "OrdererMSP", mspID)
-			endpoints := endpoints.Endpoint
+			endpoints := endpoints.GetEndpoint()
 			require.Len(t, endpoints, 1)
-			require.Equal(t, "orderer.example.com", endpoints[0].Host)
-			require.Equal(t, uint32(7050), endpoints[0].Port)
+			require.Equal(t, "orderer.example.com", endpoints[0].GetHost())
+			require.Equal(t, uint32(7050), endpoints[0].GetPort())
 		}
 	})
 }
@@ -250,7 +250,7 @@ func TestEndorsementComputationFailure(t *testing.T) {
 	res, err := client.Send(context.Background(), req, client.AuthInfo)
 	require.NoError(t, err)
 
-	endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.NoFilter)
+	endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.GetChaincodes(), disc.NoFilter)
 	require.Empty(t, endorsers)
 	require.Contains(t, err.Error(), "failed constructing descriptor")
 }
@@ -276,7 +276,7 @@ func TestLedgerFailure(t *testing.T) {
 	res, err := client.Send(context.Background(), req, client.AuthInfo)
 	require.NoError(t, err)
 
-	endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.NoFilter)
+	endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.GetChaincodes(), disc.NoFilter)
 	require.Empty(t, endorsers)
 	require.Contains(t, err.Error(), "failed constructing descriptor")
 }
@@ -559,7 +559,7 @@ func createMSP(t *testing.T, dir, mspID string) (msp.MSP, *msprotos.FabricMSPCon
 	require.NoError(t, err)
 
 	fabConf := &msprotos.FabricMSPConfig{}
-	proto.Unmarshal(mspConf.Config, fabConf)
+	proto.Unmarshal(mspConf.GetConfig(), fabConf)
 
 	channelMSP.Setup(mspConf)
 	return channelMSP, fabConf
@@ -786,7 +786,7 @@ func peersToTestPeers(peers []*disc.Peer) testPeerSet {
 			stateInfoMember = gdisc.NetworkMember{
 				PKIid:      pkiID,
 				Envelope:   p.StateInfoMessage.Envelope,
-				Properties: stateInfo.GetStateInfo().Properties,
+				Properties: stateInfo.GetStateInfo().GetProperties(),
 			}
 		}
 
@@ -854,7 +854,7 @@ func stateInfoMsg(pkiID gcommon.PKIidType) gdisc.NetworkMember {
 	}
 	sm, _ := protoext.NoopSign(gm)
 	return gdisc.NetworkMember{
-		Properties: si.Properties,
+		Properties: si.GetProperties(),
 		PKIid:      pkiID,
 		Envelope:   sm.Envelope,
 	}

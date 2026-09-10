@@ -30,17 +30,17 @@ func computePoliciesMapUpdate(original, updated map[string]*cb.ConfigPolicy) (re
 			continue
 		}
 
-		if originalPolicy.ModPolicy == updatedPolicy.ModPolicy && proto.Equal(originalPolicy.Policy, updatedPolicy.Policy) {
+		if originalPolicy.GetModPolicy() == updatedPolicy.GetModPolicy() && proto.Equal(originalPolicy.GetPolicy(), updatedPolicy.GetPolicy()) {
 			sameSet[policyName] = &cb.ConfigPolicy{
-				Version: originalPolicy.Version,
+				Version: originalPolicy.GetVersion(),
 			}
 			continue
 		}
 
 		writeSet[policyName] = &cb.ConfigPolicy{
-			Version:   originalPolicy.Version + 1,
-			ModPolicy: updatedPolicy.ModPolicy,
-			Policy:    updatedPolicy.Policy,
+			Version:   originalPolicy.GetVersion() + 1,
+			ModPolicy: updatedPolicy.GetModPolicy(),
+			Policy:    updatedPolicy.GetPolicy(),
 		}
 	}
 
@@ -52,8 +52,8 @@ func computePoliciesMapUpdate(original, updated map[string]*cb.ConfigPolicy) (re
 		updatedMembers = true
 		writeSet[policyName] = &cb.ConfigPolicy{
 			Version:   0,
-			ModPolicy: updatedPolicy.ModPolicy,
-			Policy:    updatedPolicy.Policy,
+			ModPolicy: updatedPolicy.GetModPolicy(),
+			Policy:    updatedPolicy.GetPolicy(),
 		}
 	}
 
@@ -75,17 +75,17 @@ func computeValuesMapUpdate(original, updated map[string]*cb.ConfigValue) (readS
 			continue
 		}
 
-		if originalValue.ModPolicy == updatedValue.ModPolicy && bytes.Equal(originalValue.Value, updatedValue.Value) {
+		if originalValue.GetModPolicy() == updatedValue.GetModPolicy() && bytes.Equal(originalValue.GetValue(), updatedValue.GetValue()) {
 			sameSet[valueName] = &cb.ConfigValue{
-				Version: originalValue.Version,
+				Version: originalValue.GetVersion(),
 			}
 			continue
 		}
 
 		writeSet[valueName] = &cb.ConfigValue{
-			Version:   originalValue.Version + 1,
-			ModPolicy: updatedValue.ModPolicy,
-			Value:     updatedValue.Value,
+			Version:   originalValue.GetVersion() + 1,
+			ModPolicy: updatedValue.GetModPolicy(),
+			Value:     updatedValue.GetValue(),
 		}
 	}
 
@@ -97,8 +97,8 @@ func computeValuesMapUpdate(original, updated map[string]*cb.ConfigValue) (readS
 		updatedMembers = true
 		writeSet[valueName] = &cb.ConfigValue{
 			Version:   0,
-			ModPolicy: updatedValue.ModPolicy,
-			Value:     updatedValue.Value,
+			ModPolicy: updatedValue.GetModPolicy(),
+			Value:     updatedValue.GetValue(),
 		}
 	}
 
@@ -140,10 +140,10 @@ func computeGroupsMapUpdate(original, updated map[string]*cb.ConfigGroup) (readS
 		_, groupWriteSet, _ := computeGroupUpdate(protoutil.NewConfigGroup(), updatedGroup)
 		writeSet[groupName] = &cb.ConfigGroup{
 			Version:   0,
-			ModPolicy: updatedGroup.ModPolicy,
-			Policies:  groupWriteSet.Policies,
-			Values:    groupWriteSet.Values,
-			Groups:    groupWriteSet.Groups,
+			ModPolicy: updatedGroup.GetModPolicy(),
+			Policies:  groupWriteSet.GetPolicies(),
+			Values:    groupWriteSet.GetValues(),
+			Groups:    groupWriteSet.GetGroups(),
 		}
 	}
 
@@ -151,12 +151,12 @@ func computeGroupsMapUpdate(original, updated map[string]*cb.ConfigGroup) (readS
 }
 
 func computeGroupUpdate(original, updated *cb.ConfigGroup) (readSet, writeSet *cb.ConfigGroup, updatedGroup bool) {
-	readSetPolicies, writeSetPolicies, sameSetPolicies, policiesMembersUpdated := computePoliciesMapUpdate(original.Policies, updated.Policies)
-	readSetValues, writeSetValues, sameSetValues, valuesMembersUpdated := computeValuesMapUpdate(original.Values, updated.Values)
-	readSetGroups, writeSetGroups, sameSetGroups, groupsMembersUpdated := computeGroupsMapUpdate(original.Groups, updated.Groups)
+	readSetPolicies, writeSetPolicies, sameSetPolicies, policiesMembersUpdated := computePoliciesMapUpdate(original.GetPolicies(), updated.GetPolicies())
+	readSetValues, writeSetValues, sameSetValues, valuesMembersUpdated := computeValuesMapUpdate(original.GetValues(), updated.GetValues())
+	readSetGroups, writeSetGroups, sameSetGroups, groupsMembersUpdated := computeGroupsMapUpdate(original.GetGroups(), updated.GetGroups())
 
 	// If the updated group is 'Equal' to the updated group (none of the members nor the mod policy changed)
-	if !(policiesMembersUpdated || valuesMembersUpdated || groupsMembersUpdated || original.ModPolicy != updated.ModPolicy) {
+	if !(policiesMembersUpdated || valuesMembersUpdated || groupsMembersUpdated || original.GetModPolicy() != updated.GetModPolicy()) {
 
 		// If there were no modified entries in any of the policies/values/groups maps
 		if len(readSetPolicies) == 0 &&
@@ -166,22 +166,22 @@ func computeGroupUpdate(original, updated *cb.ConfigGroup) (readSet, writeSet *c
 			len(readSetGroups) == 0 &&
 			len(writeSetGroups) == 0 {
 			return &cb.ConfigGroup{
-					Version: original.Version,
+					Version: original.GetVersion(),
 				},
 				&cb.ConfigGroup{
-					Version: original.Version,
+					Version: original.GetVersion(),
 				},
 				false
 		}
 
 		return &cb.ConfigGroup{
-				Version:  original.Version,
+				Version:  original.GetVersion(),
 				Policies: readSetPolicies,
 				Values:   readSetValues,
 				Groups:   readSetGroups,
 			},
 			&cb.ConfigGroup{
-				Version:  original.Version,
+				Version:  original.GetVersion(),
 				Policies: writeSetPolicies,
 				Values:   writeSetValues,
 				Groups:   writeSetGroups,
@@ -205,31 +205,31 @@ func computeGroupUpdate(original, updated *cb.ConfigGroup) (readSet, writeSet *c
 	}
 
 	return &cb.ConfigGroup{
-			Version:  original.Version,
+			Version:  original.GetVersion(),
 			Policies: readSetPolicies,
 			Values:   readSetValues,
 			Groups:   readSetGroups,
 		},
 		&cb.ConfigGroup{
-			Version:   original.Version + 1,
+			Version:   original.GetVersion() + 1,
 			Policies:  writeSetPolicies,
 			Values:    writeSetValues,
 			Groups:    writeSetGroups,
-			ModPolicy: updated.ModPolicy,
+			ModPolicy: updated.GetModPolicy(),
 		},
 		true
 }
 
 func Compute(original, updated *cb.Config) (*cb.ConfigUpdate, error) {
-	if original.ChannelGroup == nil {
+	if original.GetChannelGroup() == nil {
 		return nil, fmt.Errorf("no channel group included for original config")
 	}
 
-	if updated.ChannelGroup == nil {
+	if updated.GetChannelGroup() == nil {
 		return nil, fmt.Errorf("no channel group included for updated config")
 	}
 
-	readSet, writeSet, groupUpdated := computeGroupUpdate(original.ChannelGroup, updated.ChannelGroup)
+	readSet, writeSet, groupUpdated := computeGroupUpdate(original.GetChannelGroup(), updated.GetChannelGroup())
 	if !groupUpdated {
 		return nil, fmt.Errorf("no differences detected between original and updated config")
 	}

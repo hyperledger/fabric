@@ -112,8 +112,8 @@ func VerifyLedger(blockStorePath string, outputDir string) (bool, error) {
 				return false, errors.Errorf("Cannot decode the block %d", i)
 			}
 
-			if block.Header.Number != i {
-				return false, errors.Errorf("The next block is expected to be %d but got %d", i, block.Header.Number)
+			if block.GetHeader().GetNumber() != i {
+				return false, errors.Errorf("The next block is expected to be %d but got %d", i, block.GetHeader().GetNumber())
 			}
 
 			// Perform checks for this block
@@ -137,7 +137,7 @@ func VerifyLedger(blockStorePath string, outputDir string) (bool, error) {
 			}
 
 			// Remember the header hash to compare it with the "previous hash" in the next block
-			previousHash = protoutil.BlockHeaderHash(block.Header)
+			previousHash = protoutil.BlockHeaderHash(block.GetHeader())
 		}
 
 		err = blockResult.writer.CloseList()
@@ -224,23 +224,23 @@ type blockCheckResult struct {
 // checkBlock - Performs checks a block's hash
 func checkBlock(block *common.Block, previousHash []byte) (*blockCheckResult, error) {
 	result := blockCheckResult{
-		BlockNum: block.Header.Number,
+		BlockNum: block.GetHeader().GetNumber(),
 		Valid:    true,
 		Errors:   []string{},
 	}
 
-	hash, err := protoutil.BlockDataHash(block.Data)
+	hash, err := protoutil.BlockDataHash(block.GetData())
 	if err != nil {
 		result.Errors = append(result.Errors, err.Error())
 	}
 	// Check if the hash value of the data matches the hash value field in the header
-	if !bytes.Equal(block.Header.DataHash, hash) {
+	if !bytes.Equal(block.GetHeader().GetDataHash(), hash) {
 		result.Valid = false
 		result.Errors = append(result.Errors, errorDataHashMismatch)
 	}
 	if len(previousHash) > 0 {
 		// Check if the hash value of the previous header matches the prev hash value field in the header
-		if !bytes.Equal(block.Header.PreviousHash, previousHash) {
+		if !bytes.Equal(block.GetHeader().GetPreviousHash(), previousHash) {
 			result.Valid = false
 			result.Errors = append(result.Errors, errorPrevHashMismatch)
 		}

@@ -192,11 +192,11 @@ func TestConsensusSpecificInit(t *testing.T) {
 
 				// need not be tested in subsequent tests
 				require.NotNil(t, profile.Orderer.EtcdRaft, "EtcdRaft config settings should be set")
-				require.Equal(t, profile.Orderer.EtcdRaft.Consenters[0].ClientTlsCert, consenters[0].ClientTlsCert,
+				require.Equal(t, profile.Orderer.EtcdRaft.GetConsenters()[0].GetClientTlsCert(), consenters[0].GetClientTlsCert(),
 					"Client TLS cert path should be correctly set")
 
 				// specific assertion for this test context
-				require.Equal(t, profile.Orderer.EtcdRaft.Options, genesisDefaults.Orderer.EtcdRaft.Options,
+				require.Equal(t, profile.Orderer.EtcdRaft.GetOptions(), genesisDefaults.Orderer.EtcdRaft.GetOptions(),
 					"Options should be set to the default value")
 			})
 
@@ -209,9 +209,9 @@ func TestConsensusSpecificInit(t *testing.T) {
 				profile.completeInitialization(devConfigDir)
 
 				// specific assertions for this test context
-				require.Equal(t, profile.Orderer.EtcdRaft.Options.HeartbeatTick, heartbeatTick,
+				require.Equal(t, profile.Orderer.EtcdRaft.GetOptions().GetHeartbeatTick(), heartbeatTick,
 					"HeartbeatTick should be set to the specified value")
-				require.Equal(t, profile.Orderer.EtcdRaft.Options.ElectionTick, genesisDefaults.Orderer.EtcdRaft.Options.ElectionTick,
+				require.Equal(t, profile.Orderer.EtcdRaft.GetOptions().GetElectionTick(), genesisDefaults.Orderer.EtcdRaft.GetOptions().GetElectionTick(),
 					"ElectionTick should be set to the default value")
 			})
 
@@ -224,9 +224,9 @@ func TestConsensusSpecificInit(t *testing.T) {
 				profile.completeInitialization(devConfigDir)
 
 				// specific assertions for this test context
-				require.Equal(t, profile.Orderer.EtcdRaft.Options.ElectionTick, electionTick,
+				require.Equal(t, profile.Orderer.EtcdRaft.GetOptions().GetElectionTick(), electionTick,
 					"ElectionTick should be set to the specified value")
-				require.Equal(t, profile.Orderer.EtcdRaft.Options.HeartbeatTick, genesisDefaults.Orderer.EtcdRaft.Options.HeartbeatTick,
+				require.Equal(t, profile.Orderer.EtcdRaft.GetOptions().GetHeartbeatTick(), genesisDefaults.Orderer.EtcdRaft.GetOptions().GetHeartbeatTick(),
 					"HeartbeatTick should be set to the default value")
 			})
 

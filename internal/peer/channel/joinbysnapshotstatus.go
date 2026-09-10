@@ -51,8 +51,8 @@ func joinBySnapshotStatus(cf *ChannelCmdFactory) error {
 		return err
 	}
 
-	if status.InProgress {
-		fmt.Printf("A joinbysnapshot operation is in progress for snapshot at %s\n", status.BootstrappingSnapshotDir)
+	if status.GetInProgress() {
+		fmt.Printf("A joinbysnapshot operation is in progress for snapshot at %s\n", status.GetBootstrappingSnapshotDir())
 	} else {
 		fmt.Println("No joinbysnapshot operation is in progress")
 	}
@@ -89,12 +89,12 @@ func (cc *endorserClient) joinBySnapshotStatus() (*pb.JoinBySnapshotStatus, erro
 		return nil, fmt.Errorf("failed sending proposal, due to %s", err)
 	}
 
-	if proposalResp.Response == nil || proposalResp.Response.Status != http.StatusOK {
-		return nil, fmt.Errorf("received bad response, status %d: %s", proposalResp.Response.Status, proposalResp.Response.Message)
+	if proposalResp.GetResponse() == nil || proposalResp.GetResponse().GetStatus() != http.StatusOK {
+		return nil, fmt.Errorf("received bad response, status %d: %s", proposalResp.GetResponse().GetStatus(), proposalResp.GetResponse().GetMessage())
 	}
 
 	joinbysnapshotStatus := &pb.JoinBySnapshotStatus{}
-	err = proto.Unmarshal(proposalResp.Response.Payload, joinbysnapshotStatus)
+	err = proto.Unmarshal(proposalResp.GetResponse().GetPayload(), joinbysnapshotStatus)
 	if err != nil {
 		return nil, fmt.Errorf("cannot query joinbysnapshot status, due to %s", err)
 	}

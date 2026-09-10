@@ -101,7 +101,7 @@ func (s *SupportImpl) GetLedgerHeight(channelID string) (uint64, error) {
 		return 0, errors.Wrap(err, fmt.Sprintf("failed to obtain information for Channel %s", channelID))
 	}
 
-	return info.Height, nil
+	return info.GetHeight(), nil
 }
 
 // IsSysCC returns true if the name matches a system chaincode's
@@ -121,7 +121,7 @@ func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, name strin
 	decorators := library.InitRegistry(library.Config{}).Lookup(library.Decoration).([]decoration.Decorator)
 	input.Decorations = make(map[string][]byte)
 	input = decoration.Apply(txParams.Proposal, input, decorators...)
-	txParams.ProposalDecorations = input.Decorations
+	txParams.ProposalDecorations = input.GetDecorations()
 
 	return s.ChaincodeSupport.Execute(txParams, name, input)
 }

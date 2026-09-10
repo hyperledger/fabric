@@ -79,17 +79,17 @@ func (bg *blkGenerator) nextBlock() *common.Block {
 		}
 	}
 	// close() has been called and no pending tx
-	if len(block.Data.Data) == 0 {
+	if len(block.GetData().GetData()) == 0 {
 		return nil
 	}
-	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 	block.Header.Number = bg.blockNum
 	block.Header.PreviousHash = bg.previousBlockHash
-	txsfltr := txflags.NewWithValues(len(block.Data.Data), peer.TxValidationCode_VALID)
+	txsfltr := txflags.NewWithValues(len(block.GetData().GetData()), peer.TxValidationCode_VALID)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsfltr
 
 	bg.blockNum++
-	bg.previousBlockHash = protoutil.BlockHeaderHash(block.Header)
+	bg.previousBlockHash = protoutil.BlockHeaderHash(block.GetHeader())
 	return block
 }
 

@@ -159,7 +159,7 @@ func setupDirectoryStructure(t *testing.T) (string, map[string][]byte) {
 		}
 
 		codehash := sha256.New()
-		codehash.Write(cds.CodePackage)
+		codehash.Write(cds.GetCodePackage())
 
 		metahash := sha256.New()
 		metahash.Write([]byte(name))

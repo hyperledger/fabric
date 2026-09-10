@@ -26,9 +26,9 @@ func Deserialize(metadataBytes []byte) (map[string][]byte, error) {
 	if err := proto.Unmarshal(metadataBytes, metadata); err != nil {
 		return nil, err
 	}
-	m := make(map[string][]byte, len(metadata.Entries))
-	for _, metadataEntry := range metadata.Entries {
-		m[metadataEntry.Name] = metadataEntry.Value
+	m := make(map[string][]byte, len(metadata.GetEntries()))
+	for _, metadataEntry := range metadata.GetEntries() {
+		m[metadataEntry.GetName()] = metadataEntry.GetValue()
 	}
 	return m, nil
 }

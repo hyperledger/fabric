@@ -188,7 +188,7 @@ func rwsetDifference(rwset1, rwset2 []byte) (*resultDifference, error) {
 		writes := writeset{}
 		pvtHashes := writeset{}
 		metadata := metaset{}
-		kvrws, err := protoutil.UnmarshalKVRWSet(txrw.Rwset)
+		kvrws, err := protoutil.UnmarshalKVRWSet(txrw.GetRwset())
 		if err != nil {
 			return nil, err
 		}

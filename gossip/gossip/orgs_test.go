@@ -511,7 +511,7 @@ func expectedMembershipSize(peersInOrg, externalEndpointsInOrg int, org string, 
 
 func extractOrgsFromMsg(msg *proto.GossipMessage, sec api.SecurityAdvisor) []string {
 	if protoext.IsAliveMsg(msg) {
-		return []string{string(sec.OrgByPeerIdentity(msg.GetAliveMsg().Membership.PkiId))}
+		return []string{string(sec.OrgByPeerIdentity(msg.GetAliveMsg().GetMembership().GetPkiId()))}
 	}
 
 	orgs := map[string]struct{}{}
@@ -520,9 +520,9 @@ func extractOrgsFromMsg(msg *proto.GossipMessage, sec api.SecurityAdvisor) []str
 		if protoext.IsDigestMsg(msg) || protoext.IsDataReq(msg) {
 			var digests []string
 			if protoext.IsDigestMsg(msg) {
-				digests = util.BytesToStrings(msg.GetDataDig().Digests)
+				digests = util.BytesToStrings(msg.GetDataDig().GetDigests())
 			} else {
-				digests = util.BytesToStrings(msg.GetDataReq().Digests)
+				digests = util.BytesToStrings(msg.GetDataReq().GetDigests())
 			}
 
 			for _, dig := range digests {
@@ -532,9 +532,9 @@ func extractOrgsFromMsg(msg *proto.GossipMessage, sec api.SecurityAdvisor) []str
 		}
 
 		if protoext.IsDataUpdate(msg) {
-			for _, identityMsg := range msg.GetDataUpdate().Data {
+			for _, identityMsg := range msg.GetDataUpdate().GetData() {
 				gMsg, _ := protoext.EnvelopeToGossipMessage(identityMsg)
-				id := string(gMsg.GetPeerIdentity().Cert)
+				id := string(gMsg.GetPeerIdentity().GetCert())
 				org := sec.OrgByPeerIdentity(api.PeerIdentityType(id))
 				orgs[string(org)] = struct{}{}
 			}
@@ -542,11 +542,11 @@ func extractOrgsFromMsg(msg *proto.GossipMessage, sec api.SecurityAdvisor) []str
 	}
 
 	if msg.GetMemRes() != nil {
-		alive := msg.GetMemRes().Alive
-		dead := msg.GetMemRes().Dead
+		alive := msg.GetMemRes().GetAlive()
+		dead := msg.GetMemRes().GetDead()
 		for _, envp := range append(alive, dead...) {
 			msg, _ := protoext.EnvelopeToGossipMessage(envp)
-			orgs[string(sec.OrgByPeerIdentity(msg.GetAliveMsg().Membership.PkiId))] = struct{}{}
+			orgs[string(sec.OrgByPeerIdentity(msg.GetAliveMsg().GetMembership().GetPkiId()))] = struct{}{}
 		}
 	}
 
@@ -591,9 +591,9 @@ func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor, peers
 		if !(isIdentityPull && protoext.IsDataUpdate(msg.GossipMessage)) {
 			continue
 		}
-		for _, envp := range msg.GetDataUpdate().Data {
+		for _, envp := range msg.GetDataUpdate().GetData() {
 			identityMsg, _ := protoext.EnvelopeToGossipMessage(envp)
-			pkiID := identityMsg.GetPeerIdentity().PkiId
+			pkiID := identityMsg.GetPeerIdentity().GetPkiId()
 			_, hasExternalEndpoint := peersWithExternalEndpoints[string(pkiID)]
 			require.True(t, hasExternalEndpoint,
 				"Peer %s doesn't have an external endpoint but its identity was gossiped", string(pkiID))
@@ -603,15 +603,15 @@ func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor, peers
 
 func inspectStateInfoMsg(t *testing.T, m *msg, peersWithExternalEndpoints map[string]struct{}) {
 	if protoext.IsStateInfoMsg(m.GossipMessage) {
-		pkiID := m.GetStateInfo().PkiId
+		pkiID := m.GetStateInfo().GetPkiId()
 		_, hasExternalEndpoint := peersWithExternalEndpoints[string(pkiID)]
 		require.True(t, hasExternalEndpoint, "peer %s has no external endpoint but crossed an org", string(pkiID))
 		return
 	}
 
-	for _, envp := range m.GetStateSnapshot().Elements {
+	for _, envp := range m.GetStateSnapshot().GetElements() {
 		msg, _ := protoext.EnvelopeToGossipMessage(envp)
-		pkiID := msg.GetStateInfo().PkiId
+		pkiID := msg.GetStateInfo().GetPkiId()
 		_, hasExternalEndpoint := peersWithExternalEndpoints[string(pkiID)]
 		require.True(t, hasExternalEndpoint, "peer %s has no external endpoint but crossed an org", string(pkiID))
 	}

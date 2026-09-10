@@ -21,15 +21,15 @@ import (
 func GetPayloads(txActions *peer.TransactionAction) (*peer.ChaincodeActionPayload, *peer.ChaincodeAction, error) {
 	// TODO: pass in the tx type (in what follows we're assuming the
 	// type is ENDORSER_TRANSACTION)
-	ccPayload, err := UnmarshalChaincodeActionPayload(txActions.Payload)
+	ccPayload, err := UnmarshalChaincodeActionPayload(txActions.GetPayload())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if ccPayload.Action == nil || ccPayload.Action.ProposalResponsePayload == nil {
+	if ccPayload.GetAction() == nil || ccPayload.Action.ProposalResponsePayload == nil {
 		return nil, nil, errors.New("no payload in ChaincodeActionPayload")
 	}
-	pRespPayload, err := UnmarshalProposalResponsePayload(ccPayload.Action.ProposalResponsePayload)
+	pRespPayload, err := UnmarshalProposalResponsePayload(ccPayload.GetAction().GetProposalResponsePayload())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -38,7 +38,7 @@ func GetPayloads(txActions *peer.TransactionAction) (*peer.ChaincodeActionPayloa
 		return nil, nil, errors.New("response payload is missing extension")
 	}
 
-	respPayload, err := UnmarshalChaincodeAction(pRespPayload.Extension)
+	respPayload, err := UnmarshalChaincodeAction(pRespPayload.GetExtension())
 	if err != nil {
 		return ccPayload, nil, err
 	}
@@ -149,13 +149,13 @@ func CreateSignedTx(
 	}
 
 	// the original header
-	hdr, err := UnmarshalHeader(proposal.Header)
+	hdr, err := UnmarshalHeader(proposal.GetHeader())
 	if err != nil {
 		return nil, err
 	}
 
 	// the original payload
-	pPayl, err := UnmarshalChaincodeProposalPayload(proposal.Payload)
+	pPayl, err := UnmarshalChaincodeProposalPayload(proposal.GetPayload())
 	if err != nil {
 		return nil, err
 	}
@@ -166,30 +166,30 @@ func CreateSignedTx(
 		return nil, err
 	}
 
-	shdr, err := UnmarshalSignatureHeader(hdr.SignatureHeader)
+	shdr, err := UnmarshalSignatureHeader(hdr.GetSignatureHeader())
 	if err != nil {
 		return nil, err
 	}
 
-	if !bytes.Equal(signerBytes, shdr.Creator) {
+	if !bytes.Equal(signerBytes, shdr.GetCreator()) {
 		return nil, errors.New("signer must be the same as the one referenced in the header")
 	}
 
 	// ensure that all actions are bitwise equal and that they are successful
 	var a1 []byte
 	for n, r := range resps {
-		if r.Response.Status < 200 || r.Response.Status >= 400 {
-			return nil, errors.Errorf("proposal response was not successful, error code %d, msg %s", r.Response.Status, r.Response.Message)
+		if r.GetResponse().GetStatus() < 200 || r.GetResponse().GetStatus() >= 400 {
+			return nil, errors.Errorf("proposal response was not successful, error code %d, msg %s", r.GetResponse().GetStatus(), r.GetResponse().GetMessage())
 		}
 
 		if n == 0 {
-			a1 = r.Payload
+			a1 = r.GetPayload()
 			continue
 		}
 
-		if !bytes.Equal(a1, r.Payload) {
+		if !bytes.Equal(a1, r.GetPayload()) {
 			return nil, errors.Errorf("ProposalResponsePayloads do not match (base64): '%s' vs '%s'",
-				b64.StdEncoding.EncodeToString(r.Payload), b64.StdEncoding.EncodeToString(a1))
+				b64.StdEncoding.EncodeToString(r.GetPayload()), b64.StdEncoding.EncodeToString(a1))
 		}
 	}
 
@@ -197,14 +197,14 @@ func CreateSignedTx(
 	endorsersUsed := make(map[string]struct{})
 	var endorsements []*peer.Endorsement
 	for _, r := range resps {
-		if r.Endorsement == nil {
+		if r.GetEndorsement() == nil {
 			continue
 		}
-		key := string(r.Endorsement.Endorser)
+		key := string(r.GetEndorsement().GetEndorser())
 		if _, used := endorsersUsed[key]; used {
 			continue
 		}
-		endorsements = append(endorsements, r.Endorsement)
+		endorsements = append(endorsements, r.GetEndorsement())
 		endorsersUsed[key] = struct{}{}
 	}
 
@@ -213,7 +213,7 @@ func CreateSignedTx(
 	}
 
 	// create ChaincodeEndorsedAction
-	cea := &peer.ChaincodeEndorsedAction{ProposalResponsePayload: resps[0].Payload, Endorsements: endorsements}
+	cea := &peer.ChaincodeEndorsedAction{ProposalResponsePayload: resps[0].GetPayload(), Endorsements: endorsements}
 
 	// obtain the bytes of the proposal payload that will go to the transaction
 	propPayloadBytes, err := GetBytesProposalPayloadForTx(pPayl)
@@ -229,7 +229,7 @@ func CreateSignedTx(
 	}
 
 	// create a transaction
-	taa := &peer.TransactionAction{Header: hdr.SignatureHeader, Payload: capBytes}
+	taa := &peer.TransactionAction{Header: hdr.GetSignatureHeader(), Payload: capBytes}
 	taas := make([]*peer.TransactionAction, 1)
 	taas[0] = taa
 	tx := &peer.Transaction{Actions: taas}
@@ -441,7 +441,7 @@ func GetBytesProposalPayloadForTx(
 	}
 
 	// strip the transient bytes off the payload
-	cppNoTransient := &peer.ChaincodeProposalPayload{Input: payload.Input, TransientMap: nil}
+	cppNoTransient := &peer.ChaincodeProposalPayload{Input: payload.GetInput(), TransientMap: nil}
 	cppBytes, err := GetBytesChaincodeProposalPayload(cppNoTransient)
 	if err != nil {
 		return nil, err
@@ -465,9 +465,9 @@ func GetProposalHash2(header *common.Header, ccPropPayl []byte) ([]byte, error) 
 
 	hash := sha256.New()
 	// hash the serialized Channel Header object
-	hash.Write(header.ChannelHeader)
+	hash.Write(header.GetChannelHeader())
 	// hash the serialized Signature Header object
-	hash.Write(header.SignatureHeader)
+	hash.Write(header.GetSignatureHeader())
 	// hash the bytes of the chaincode proposal payload that we are given
 	hash.Write(ccPropPayl)
 	return hash.Sum(nil), nil
@@ -497,9 +497,9 @@ func GetProposalHash1(header *common.Header, ccPropPayl []byte) ([]byte, error) 
 
 	hash2 := sha256.New()
 	// hash the serialized Channel Header object
-	hash2.Write(header.ChannelHeader)
+	hash2.Write(header.GetChannelHeader())
 	// hash the serialized Signature Header object
-	hash2.Write(header.SignatureHeader)
+	hash2.Write(header.GetSignatureHeader())
 	// hash of the part of the chaincode proposal payload that will go to the tx
 	hash2.Write(ppBytes)
 	return hash2.Sum(nil), nil
@@ -514,29 +514,29 @@ func GetOrComputeTxIDFromEnvelope(txEnvelopBytes []byte) (string, error) {
 		return "", errors.WithMessage(err, "error getting txID from envelope")
 	}
 
-	txPayload, err := UnmarshalPayload(txEnvelope.Payload)
+	txPayload, err := UnmarshalPayload(txEnvelope.GetPayload())
 	if err != nil {
 		return "", errors.WithMessage(err, "error getting txID from payload")
 	}
 
-	if txPayload.Header == nil {
+	if txPayload.GetHeader() == nil {
 		return "", errors.New("error getting txID from header: payload header is nil")
 	}
 
-	chdr, err := UnmarshalChannelHeader(txPayload.Header.ChannelHeader)
+	chdr, err := UnmarshalChannelHeader(txPayload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return "", errors.WithMessage(err, "error getting txID from channel header")
 	}
 
-	if chdr.TxId != "" {
-		return chdr.TxId, nil
+	if chdr.GetTxId() != "" {
+		return chdr.GetTxId(), nil
 	}
 
-	sighdr, err := UnmarshalSignatureHeader(txPayload.Header.SignatureHeader)
+	sighdr, err := UnmarshalSignatureHeader(txPayload.GetHeader().GetSignatureHeader())
 	if err != nil {
 		return "", errors.WithMessage(err, "error getting nonce and creator for computing txID")
 	}
 
-	txid := ComputeTxID(sighdr.Nonce, sighdr.Creator)
+	txid := ComputeTxID(sighdr.GetNonce(), sighdr.GetCreator())
 	return txid, nil
 }

@@ -58,7 +58,7 @@ func (c *cache) put(block *common.Block, blockSize int) {
 		return
 	}
 
-	seq := block.Header.Number
+	seq := block.GetHeader().GetNumber()
 
 	if c.maxSeq > seq {
 		return

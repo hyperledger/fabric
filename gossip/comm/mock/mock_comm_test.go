@@ -79,7 +79,7 @@ func TestMockComm_PingPong(t *testing.T) {
 
 	msg := <-rcvChB
 	dataMsg := msg.GetGossipMessage().GetDataMsg()
-	data := string(dataMsg.Payload.Data)
+	data := string(dataMsg.GetPayload().GetData())
 	require.Equal(t, "Ping", data)
 
 	msg.Respond(&proto.GossipMessage{
@@ -95,6 +95,6 @@ func TestMockComm_PingPong(t *testing.T) {
 
 	msg = <-rcvChA
 	dataMsg = msg.GetGossipMessage().GetDataMsg()
-	data = string(dataMsg.Payload.Data)
+	data = string(dataMsg.GetPayload().GetData())
 	require.Equal(t, "Pong", data)
 }

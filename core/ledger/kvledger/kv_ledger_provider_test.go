@@ -95,7 +95,7 @@ func testLedgerProvider(t *testing.T, enableHistoryDB bool) {
 		bcInfo, err := ledger.GetBlockchainInfo()
 		ledger.Close()
 		require.NoError(t, err)
-		require.Equal(t, uint64(1), bcInfo.Height)
+		require.Equal(t, uint64(1), bcInfo.GetHeight())
 
 		// check that ledger metadata keys were persisted in idStore with active status
 		s := provider.idStore
@@ -103,7 +103,7 @@ func testLedgerProvider(t *testing.T, enableHistoryDB bool) {
 		require.NoError(t, err)
 		metadata := &msgs.LedgerMetadata{}
 		require.NoError(t, proto.Unmarshal(val, metadata))
-		require.Equal(t, msgs.Status_ACTIVE, metadata.Status)
+		require.Equal(t, msgs.Status_ACTIVE, metadata.GetStatus())
 	}
 	gb, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(2))
 	_, err = provider.CreateFromGenesisBlock(gb)
@@ -319,7 +319,7 @@ func testDeletionOfUnderConstructionLedgersAtStart(t *testing.T, enableHistoryDB
 		require.NoError(t, err)
 		m, err := provider.idStore.getLedgerMetadata(ledgerID)
 		require.NoError(t, err)
-		require.Equal(t, msgs.Status_ACTIVE, m.Status)
+		require.Equal(t, msgs.Status_ACTIVE, m.GetStatus())
 		// mimic a situation that a crash happens after ledger creation but before changing the UNDER_CONSTRUCTION status
 		// to Status_ACTIVE
 		require.NoError(
@@ -446,7 +446,7 @@ func TestLedgerBackup(t *testing.T) {
 	}
 	provider := testutilNewProvider(origConf, t, &mock.DeployedChaincodeInfoProvider{})
 	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	lgr, _ := provider.CreateFromGenesisBlock(gb)
 
 	txid := util.GenerateUUID()
@@ -508,8 +508,8 @@ func TestLedgerBackup(t *testing.T) {
 	require.NoError(t, err)
 	defer lgr.Close()
 
-	block1Hash := protoutil.BlockHeaderHash(block1.Header)
-	block2Hash := protoutil.BlockHeaderHash(block2.Header)
+	block1Hash := protoutil.BlockHeaderHash(block1.GetHeader())
+	block2Hash := protoutil.BlockHeaderHash(block2.GetHeader())
 	bcInfo, _ := lgr.GetBlockchainInfo()
 	require.Equal(t, &common.BlockchainInfo{
 		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash,
@@ -534,18 +534,18 @@ func TestLedgerBackup(t *testing.T) {
 	require.True(t, proto.Equal(b2, block2), "proto messages are not equal")
 
 	// get the tran id from the 2nd block, then use it to test GetTransactionByID()
-	txEnvBytes2 := block1.Data.Data[0]
+	txEnvBytes2 := block1.GetData().GetData()[0]
 	txEnv2, err := protoutil.GetEnvelopeFromBlock(txEnvBytes2)
 	require.NoError(t, err, "Error upon GetEnvelopeFromBlock")
-	payload2, err := protoutil.UnmarshalPayload(txEnv2.Payload)
+	payload2, err := protoutil.UnmarshalPayload(txEnv2.GetPayload())
 	require.NoError(t, err, "Error upon GetPayload")
-	chdr, err := protoutil.UnmarshalChannelHeader(payload2.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload2.GetHeader().GetChannelHeader())
 	require.NoError(t, err, "Error upon GetChannelHeaderFromBytes")
-	txID2 := chdr.TxId
+	txID2 := chdr.GetTxId()
 	processedTran2, err := lgr.GetTransactionByID(txID2)
 	require.NoError(t, err, "Error upon GetTransactionByID")
 	// get the tran envelope from the retrieved ProcessedTransaction
-	retrievedTxEnv2 := processedTran2.TransactionEnvelope
+	retrievedTxEnv2 := processedTran2.GetTransactionEnvelope()
 	require.Equal(t, txEnv2, retrievedTxEnv2)
 
 	qe, _ := lgr.NewQueryExecutor()
@@ -560,10 +560,10 @@ func TestLedgerBackup(t *testing.T) {
 
 	result1, err := itr.Next()
 	require.NoError(t, err)
-	require.Equal(t, []byte("value4"), result1.(*queryresult.KeyModification).Value)
+	require.Equal(t, []byte("value4"), result1.(*queryresult.KeyModification).GetValue())
 	result2, err := itr.Next()
 	require.NoError(t, err)
-	require.Equal(t, []byte("value1"), result2.(*queryresult.KeyModification).Value)
+	require.Equal(t, []byte("value1"), result2.(*queryresult.KeyModification).GetValue())
 }
 
 func constructTestLedgerID(i int) string {
@@ -725,5 +725,5 @@ func verifyLedgerIDExists(t *testing.T, provider *Provider, ledgerID string, exp
 
 	metadata, err := provider.idStore.getLedgerMetadata(ledgerID)
 	require.NoError(t, err)
-	require.Equal(t, metadata.Status, expectedStatus)
+	require.Equal(t, metadata.GetStatus(), expectedStatus)
 }

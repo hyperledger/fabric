@@ -39,14 +39,14 @@ func (cs *ccSrv) Register(stream pb.ChaincodeSupport_RegisterServer) error {
 	}
 
 	// First message is a register message
-	require.Equal(cs.t, pb.ChaincodeMessage_REGISTER.String(), msg.Type.String())
+	require.Equal(cs.t, pb.ChaincodeMessage_REGISTER.String(), msg.GetType().String())
 	// And its chaincode name is the expected one
 	chaincodeID := &pb.ChaincodeID{}
-	err = proto.Unmarshal(msg.Payload, chaincodeID)
+	err = proto.Unmarshal(msg.GetPayload(), chaincodeID)
 	if err != nil {
 		return err
 	}
-	require.Equal(cs.t, cs.expectedCCname, chaincodeID.Name)
+	require.Equal(cs.t, cs.expectedCCname, chaincodeID.GetName())
 	// Subsequent messages are just echoed back
 	for {
 		msg, _ = stream.Recv()
@@ -223,7 +223,7 @@ func TestAccessControl(t *testing.T) {
 	echoMsg := realCC.recv()
 	// The real chaincode should be echoed back its message
 	require.NotNil(t, echoMsg)
-	require.Equal(t, pb.ChaincodeMessage_PUT_STATE, echoMsg.Type)
+	require.Equal(t, pb.ChaincodeMessage_PUT_STATE, echoMsg.GetType())
 	// Log should not complain about anything
 	require.Empty(t, recorder.Messages())
 
@@ -254,7 +254,7 @@ func TestAccessControl(t *testing.T) {
 	require.NoError(t, err)
 	defer malformedMessageCC.close()
 	// Save old payload
-	originalPayload := registerMsg.Payload
+	originalPayload := registerMsg.GetPayload()
 	registerMsg.Payload = append(registerMsg.Payload, 0)
 	malformedMessageCC.sendMsg(registerMsg)
 	malformedMessageCC.sendMsg(putStateMsg)

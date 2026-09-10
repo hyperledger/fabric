@@ -39,10 +39,10 @@ func (v *validator) preLoadCommittedVersionOfRSet(blk *block) error {
 
 	for _, tx := range blk.txs {
 		for _, nsRWSet := range tx.rwset.NsRwSets {
-			for _, kvRead := range nsRWSet.KvRwSet.Reads {
+			for _, kvRead := range nsRWSet.KvRwSet.GetReads() {
 				compositeKey := statedb.CompositeKey{
 					Namespace: nsRWSet.NameSpace,
-					Key:       kvRead.Key,
+					Key:       kvRead.GetKey(),
 				}
 				if _, ok := pubKeysMap[compositeKey]; !ok {
 					pubKeysMap[compositeKey] = nil
@@ -51,11 +51,11 @@ func (v *validator) preLoadCommittedVersionOfRSet(blk *block) error {
 
 			}
 			for _, colHashedRwSet := range nsRWSet.CollHashedRwSets {
-				for _, kvHashedRead := range colHashedRwSet.HashedRwSet.HashedReads {
+				for _, kvHashedRead := range colHashedRwSet.HashedRwSet.GetHashedReads() {
 					hashedCompositeKey := privacyenabledstate.HashedCompositeKey{
 						Namespace:      nsRWSet.NameSpace,
 						CollectionName: colHashedRwSet.CollectionName,
-						KeyHash:        string(kvHashedRead.KeyHash),
+						KeyHash:        string(kvHashedRead.GetKeyHash()),
 					}
 					if _, ok := hashedKeysMap[hashedCompositeKey]; !ok {
 						hashedKeysMap[hashedCompositeKey] = nil
@@ -138,14 +138,14 @@ func (v *validator) validateTx(txRWSet *rwsetutil.TxRwSet, updates *publicAndHas
 	for _, nsRWSet := range txRWSet.NsRwSets {
 		ns := nsRWSet.NameSpace
 		// Validate public reads
-		if valid, err := v.validateReadSet(ns, nsRWSet.KvRwSet.Reads, updates.publicUpdates); !valid || err != nil {
+		if valid, err := v.validateReadSet(ns, nsRWSet.KvRwSet.GetReads(), updates.publicUpdates); !valid || err != nil {
 			if err != nil {
 				return peer.TxValidationCode(-1), err
 			}
 			return peer.TxValidationCode_MVCC_READ_CONFLICT, nil
 		}
 		// Validate range queries for phantom items
-		if valid, err := v.validateRangeQueries(ns, nsRWSet.KvRwSet.RangeQueriesInfo, updates.publicUpdates); !valid || err != nil {
+		if valid, err := v.validateRangeQueries(ns, nsRWSet.KvRwSet.GetRangeQueriesInfo(), updates.publicUpdates); !valid || err != nil {
 			if err != nil {
 				return peer.TxValidationCode(-1), err
 			}
@@ -178,23 +178,23 @@ func (v *validator) validateReadSet(ns string, kvReads []*kvrwset.KVRead, update
 // i.e., it checks whether a key/version combination is already updated in the statedb (by an already committed block)
 // or in the updates (by a preceding valid transaction in the current block)
 func (v *validator) validateKVRead(ns string, kvRead *kvrwset.KVRead, updates *privacyenabledstate.PubUpdateBatch) (bool, error) {
-	readVersion := rwsetutil.NewVersion(kvRead.Version)
-	if updates.Exists(ns, kvRead.Key) {
+	readVersion := rwsetutil.NewVersion(kvRead.GetVersion())
+	if updates.Exists(ns, kvRead.GetKey()) {
 		logger.Warnw("Transaction invalidation due to version mismatch, key in readset has been updated in a prior transaction in this block",
-			"namespace", ns, "key", kvRead.Key, "readVersion", readVersion)
+			"namespace", ns, "key", kvRead.GetKey(), "readVersion", readVersion)
 		return false, nil
 	}
-	committedVersion, err := v.db.GetVersion(ns, kvRead.Key)
+	committedVersion, err := v.db.GetVersion(ns, kvRead.GetKey())
 	if err != nil {
 		return false, err
 	}
 
 	logger.Debugw("Comparing readset version to committed version",
-		"namespace", ns, "key", kvRead.Key, "readVersion", readVersion, "committedVersion", committedVersion)
+		"namespace", ns, "key", kvRead.GetKey(), "readVersion", readVersion, "committedVersion", committedVersion)
 
 	if !version.AreSame(committedVersion, readVersion) {
 		logger.Warnw("Transaction invalidation due to version mismatch, readset version does not match committed version",
-			"namespace", ns, "key", kvRead.Key, "readVersion", readVersion, "committedVersion", committedVersion)
+			"namespace", ns, "key", kvRead.GetKey(), "readVersion", readVersion, "committedVersion", committedVersion)
 		return false, nil
 	}
 	return true, nil
@@ -222,10 +222,10 @@ func (v *validator) validateRangeQuery(ns string, rangeQueryInfo *kvrwset.RangeQ
 	// If during simulation, the caller had not exhausted the iterator so
 	// rangeQueryInfo.EndKey is not actual endKey given by the caller in the range query
 	// but rather it is the last key seen by the caller and hence the combinedItr should include the endKey in the results.
-	includeEndKey := !rangeQueryInfo.ItrExhausted
+	includeEndKey := !rangeQueryInfo.GetItrExhausted()
 
 	combinedItr, err := newCombinedIterator(v.db, updates.UpdateBatch,
-		ns, rangeQueryInfo.StartKey, rangeQueryInfo.EndKey, includeEndKey)
+		ns, rangeQueryInfo.GetStartKey(), rangeQueryInfo.GetEndKey(), includeEndKey)
 	if err != nil {
 		return false, err
 	}
@@ -251,7 +251,7 @@ func (v *validator) validateNsHashedReadSets(ns string, collHashedRWSets []*rwse
 	updates *privacyenabledstate.HashedUpdateBatch,
 ) (bool, error) {
 	for _, collHashedRWSet := range collHashedRWSets {
-		if valid, err := v.validateCollHashedReadSet(ns, collHashedRWSet.CollectionName, collHashedRWSet.HashedRwSet.HashedReads, updates); !valid || err != nil {
+		if valid, err := v.validateCollHashedReadSet(ns, collHashedRWSet.CollectionName, collHashedRWSet.HashedRwSet.GetHashedReads(), updates); !valid || err != nil {
 			return valid, err
 		}
 	}
@@ -273,23 +273,23 @@ func (v *validator) validateCollHashedReadSet(ns, coll string, kvReadHashes []*k
 // i.e., it checks whether a key/version combination is already updated in the statedb (by an already committed block)
 // or in the updates (by a preceding valid transaction in the current block)
 func (v *validator) validateKVReadHash(ns, coll string, kvReadHash *kvrwset.KVReadHash, updates *privacyenabledstate.HashedUpdateBatch) (bool, error) {
-	readHashVersion := rwsetutil.NewVersion(kvReadHash.Version)
-	if updates.Contains(ns, coll, kvReadHash.KeyHash) {
+	readHashVersion := rwsetutil.NewVersion(kvReadHash.GetVersion())
+	if updates.Contains(ns, coll, kvReadHash.GetKeyHash()) {
 		logger.Warnw("Transaction invalidation due to hash version mismatch, hash key in readset has been updated in a prior transaction in this block",
-			"namespace", ns, "collection", coll, "keyHash", kvReadHash.KeyHash, "readHashVersion", readHashVersion)
+			"namespace", ns, "collection", coll, "keyHash", kvReadHash.GetKeyHash(), "readHashVersion", readHashVersion)
 		return false, nil
 	}
-	committedVersion, err := v.db.GetKeyHashVersion(ns, coll, kvReadHash.KeyHash)
+	committedVersion, err := v.db.GetKeyHashVersion(ns, coll, kvReadHash.GetKeyHash())
 	if err != nil {
 		return false, err
 	}
 
 	logger.Debugw("Comparing hash readset version to committed version",
-		"namespace", ns, "collection", coll, "keyHash", kvReadHash.KeyHash, "readVersion", readHashVersion, "committedVersion", committedVersion)
+		"namespace", ns, "collection", coll, "keyHash", kvReadHash.GetKeyHash(), "readVersion", readHashVersion, "committedVersion", committedVersion)
 
 	if !version.AreSame(committedVersion, readHashVersion) {
 		logger.Warnw("Transaction invalidation due to hash version mismatch, readset version does not match committed version",
-			"namespace", ns, "collection", coll, "keyHash", kvReadHash.KeyHash, "readVersion", readHashVersion, "committedVersion", committedVersion)
+			"namespace", ns, "collection", coll, "keyHash", kvReadHash.GetKeyHash(), "readVersion", readHashVersion, "committedVersion", committedVersion)
 		return false, nil
 	}
 	return true, nil
@@ -321,7 +321,7 @@ func (p *pvtdataPurgeTracker) update(rwset *rwsetutil.TxRwSet, version *version.
 					KeyHash:        string(hashedWrite.GetKeyHash()),
 				}
 
-				if hashedWrite.IsPurge {
+				if hashedWrite.GetIsPurge() {
 					p.m[ck] = &AppInitiatedPurgeUpdate{
 						CompositeKey: &ck,
 						Version:      version,

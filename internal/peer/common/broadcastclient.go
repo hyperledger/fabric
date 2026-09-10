@@ -40,8 +40,8 @@ func (s *BroadcastGRPCClient) getAck() error {
 	if err != nil {
 		return err
 	}
-	if msg.Status != cb.Status_SUCCESS {
-		return errors.Errorf("got unexpected status: %v -- %s", msg.Status, msg.Info)
+	if msg.GetStatus() != cb.Status_SUCCESS {
+		return errors.Errorf("got unexpected status: %v -- %s", msg.GetStatus(), msg.GetInfo())
 	}
 	return nil
 }

@@ -114,8 +114,8 @@ func assertIsGenesisBlock(blockBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	if block.Header.Number != 0 || block.Header.GetDataHash() == nil {
-		return fmt.Errorf("The supplied bytes are not of genesis block. blockNum=%d, blockHash=%x", block.Header.Number, block.Header.GetDataHash())
+	if block.GetHeader().GetNumber() != 0 || block.GetHeader().GetDataHash() == nil {
+		return fmt.Errorf("The supplied bytes are not of genesis block. blockNum=%d, blockHash=%x", block.GetHeader().GetNumber(), block.GetHeader().GetDataHash())
 	}
 	return nil
 }

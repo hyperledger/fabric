@@ -30,10 +30,10 @@ func (f *ProcessorFactory) CreateProcessor(txEnvelopeBytes []byte) (processor tx
 	if err != nil {
 		return nil, nil, err
 	}
-	c, ok := f.ProcessorCreators[common.HeaderType(txEnv.ChannelHeader.Type)]
+	c, ok := f.ProcessorCreators[common.HeaderType(txEnv.ChannelHeader.GetType())]
 	if !ok {
 		return nil, nil, &tx.InvalidErr{
-			ActualErr:      errors.Errorf("invalid transaction type %d", txEnv.ChannelHeader.Type),
+			ActualErr:      errors.Errorf("invalid transaction type %d", txEnv.ChannelHeader.GetType()),
 			ValidationCode: peer.TxValidationCode_UNKNOWN_TX_TYPE,
 		}
 	}
@@ -51,14 +51,14 @@ func validateProtoAndConstructTxEnv(txEnvelopeBytes []byte) (*tx.Envelope, error
 		}
 	}
 
-	if len(txenv.Payload) == 0 {
+	if len(txenv.GetPayload()) == 0 {
 		return nil, &tx.InvalidErr{
 			ActualErr:      errors.New("nil envelope payload"),
 			ValidationCode: peer.TxValidationCode_BAD_PAYLOAD,
 		}
 	}
 
-	payload, err := protoutil.UnmarshalPayload(txenv.Payload)
+	payload, err := protoutil.UnmarshalPayload(txenv.GetPayload())
 	if err != nil {
 		return nil, &tx.InvalidErr{
 			ActualErr:      err,
@@ -66,21 +66,21 @@ func validateProtoAndConstructTxEnv(txEnvelopeBytes []byte) (*tx.Envelope, error
 		}
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return nil, &tx.InvalidErr{
 			ActualErr:      errors.New("nil payload header"),
 			ValidationCode: peer.TxValidationCode_BAD_PAYLOAD,
 		}
 	}
 
-	if len(payload.Header.ChannelHeader) == 0 {
+	if len(payload.GetHeader().GetChannelHeader()) == 0 {
 		return nil, &tx.InvalidErr{
 			ActualErr:      errors.New("nil payload channel header"),
 			ValidationCode: peer.TxValidationCode_BAD_PAYLOAD,
 		}
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, &tx.InvalidErr{
 			ActualErr:      err,
@@ -88,14 +88,14 @@ func validateProtoAndConstructTxEnv(txEnvelopeBytes []byte) (*tx.Envelope, error
 		}
 	}
 
-	if len(payload.Header.SignatureHeader) == 0 {
+	if len(payload.GetHeader().GetSignatureHeader()) == 0 {
 		return nil, &tx.InvalidErr{
 			ActualErr:      errors.New("nil payload signature header"),
 			ValidationCode: peer.TxValidationCode_BAD_PAYLOAD,
 		}
 	}
 
-	shdr, err := protoutil.UnmarshalSignatureHeader(payload.Header.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(payload.GetHeader().GetSignatureHeader())
 	if err != nil {
 		return nil, &tx.InvalidErr{
 			ActualErr:      err,
@@ -110,11 +110,11 @@ func validateProtoAndConstructTxEnv(txEnvelopeBytes []byte) (*tx.Envelope, error
 	//   validate epoch in cHdr.Epoch?
 
 	return &tx.Envelope{
-			SignedBytes:          txenv.Payload,
-			Signature:            txenv.Signature,
-			Data:                 payload.Data,
-			ChannelHeaderBytes:   payload.Header.ChannelHeader,
-			SignatureHeaderBytes: payload.Header.SignatureHeader,
+			SignedBytes:          txenv.GetPayload(),
+			Signature:            txenv.GetSignature(),
+			Data:                 payload.GetData(),
+			ChannelHeaderBytes:   payload.GetHeader().GetChannelHeader(),
+			SignatureHeaderBytes: payload.GetHeader().GetSignatureHeader(),
 			ChannelHeader:        chdr,
 			SignatureHeader:      shdr,
 		},

@@ -60,7 +60,7 @@ func ConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	lastBlock, err := ledger.GetBlockByNumber(blockchainInfo.Height - 1)
+	lastBlock, err := ledger.GetBlockByNumber(blockchainInfo.GetHeight() - 1)
 	if err != nil {
 		return nil, err
 	}

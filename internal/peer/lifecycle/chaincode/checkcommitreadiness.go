@@ -178,25 +178,25 @@ func (c *CommitReadinessChecker) ReadinessCheck() error {
 		return errors.New("received nil proposal response")
 	}
 
-	if proposalResponse.Response == nil {
+	if proposalResponse.GetResponse() == nil {
 		return errors.New("received proposal response with nil response")
 	}
 
-	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("query failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+	if proposalResponse.GetResponse().GetStatus() != int32(cb.Status_SUCCESS) {
+		return errors.Errorf("query failed with status: %d - %s", proposalResponse.GetResponse().GetStatus(), proposalResponse.GetResponse().GetMessage())
 	}
 
 	if strings.ToLower(c.Input.OutputFormat) == "json" {
 		// Unmarshal the proposal response to add descriptions to mismatch items
 		readinessResult := &lb.CheckCommitReadinessResult{}
-		err := proto.Unmarshal(proposalResponse.Response.Payload, readinessResult)
+		err := proto.Unmarshal(proposalResponse.GetResponse().GetPayload(), readinessResult)
 		if err != nil {
 			return errors.Wrap(err, "failed to unmarshal readiness result")
 		}
 
 		if c.Input.InspectionEnabled {
-			for org, mismatches := range readinessResult.Mismatches {
-				for i, item := range mismatches.Items {
+			for org, mismatches := range readinessResult.GetMismatches() {
+				for i, item := range mismatches.GetItems() {
 					mismatches.Items[i] = c.mismatchItemWithDescription(item)
 				}
 				readinessResult.Mismatches[org] = mismatches
@@ -237,23 +237,23 @@ func (c *CommitReadinessChecker) mismatchItemWithDescription(item string) string
 // from the server as human readable plain-text.
 func (c *CommitReadinessChecker) printResponse(proposalResponse *pb.ProposalResponse) error {
 	result := &lb.CheckCommitReadinessResult{}
-	err := proto.Unmarshal(proposalResponse.Response.Payload, result)
+	err := proto.Unmarshal(proposalResponse.GetResponse().GetPayload(), result)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
 
 	orgs := []string{}
-	for org := range result.Approvals {
+	for org := range result.GetApprovals() {
 		orgs = append(orgs, org)
 	}
 	sort.Strings(orgs)
 
 	fmt.Fprintf(c.Writer, "Chaincode definition for chaincode '%s', version '%s', sequence '%d' on channel '%s' approval status by org:\n", c.Input.Name, c.Input.Version, c.Input.Sequence, c.Input.ChannelID)
 	for _, org := range orgs {
-		fmt.Fprintf(c.Writer, "%s: %t", org, result.Approvals[org])
+		fmt.Fprintf(c.Writer, "%s: %t", org, result.GetApprovals()[org])
 
-		if mismatch, ok := result.Mismatches[org]; ok && c.Input.InspectionEnabled && len(mismatch.Items) > 0 {
-			fmt.Fprintf(c.Writer, " (mismatch: [%s])", strings.Join(result.Mismatches[org].Items, ", "))
+		if mismatch, ok := result.GetMismatches()[org]; ok && c.Input.InspectionEnabled && len(mismatch.GetItems()) > 0 {
+			fmt.Fprintf(c.Writer, " (mismatch: [%s])", strings.Join(result.GetMismatches()[org].GetItems(), ", "))
 		}
 		fmt.Fprintln(c.Writer)
 	}

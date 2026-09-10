@@ -413,7 +413,7 @@ func InspectChaincodeDiscrepancies(n *Network, channel string, chaincode Chainco
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, org := range checkOrgs {
-		Expect(output.Mismatches).To(HaveKeyWithValue(org.MSPID, gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+		Expect(output.GetMismatches()).To(HaveKeyWithValue(org.MSPID, gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 			"Items": ConsistOf(
 				"EndorsementInfo (Check the Version, InitRequired, EndorsementPlugin)",
 				"ValidationInfo (Check the ValidationParameter, ValidationPlugin)",
@@ -555,7 +555,7 @@ func GetLedgerHeight(n *Network, peer *Peer, channel string) int {
 	channelInfoStr := strings.TrimPrefix(string(sess.Buffer().Contents()[:]), "Blockchain info:")
 	channelInfo := common.BlockchainInfo{}
 	json.Unmarshal([]byte(channelInfoStr), &channelInfo)
-	return int(channelInfo.Height)
+	return int(channelInfo.GetHeight())
 }
 
 // GetMaxLedgerHeight returns the maximum ledger height for the

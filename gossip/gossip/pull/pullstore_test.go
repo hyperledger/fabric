@@ -157,13 +157,13 @@ func createPullInstanceWithFilters(endpoint string, peer2PullInst map[string]*pu
 		if dataMsg == nil {
 			return ""
 		}
-		if dataMsg.Payload == nil {
+		if dataMsg.GetPayload() == nil {
 			return ""
 		}
-		return fmt.Sprintf("%d", dataMsg.Payload.SeqNum)
+		return fmt.Sprintf("%d", dataMsg.GetPayload().GetSeqNum())
 	}
 	blockConsumer := func(msg *protoext.SignedGossipMessage) {
-		inst.items.Add(msg.GetDataMsg().Payload.SeqNum)
+		inst.items.Add(msg.GetDataMsg().GetPayload().GetSeqNum())
 	}
 	inst.pullAdapter = &PullAdapter{
 		Sndr:             inst,
@@ -219,7 +219,7 @@ func TestFilter(t *testing.T) {
 		if protoext.IsDataReq(msg.GetGossipMessage().GossipMessage) {
 			req := msg.GetGossipMessage().GetDataReq()
 			return func(item string) bool {
-				return util.IndexInSlice(util.BytesToStrings(req.Digests), item, eq) != -1
+				return util.IndexInSlice(util.BytesToStrings(req.GetDigests()), item, eq) != -1
 			}
 		}
 		return func(digestItem string) bool {
@@ -461,15 +461,15 @@ func reqMsg(digest ...string) *gossip.GossipMessage {
 func createDigestsFilter(level uint64) IngressDigestFilter {
 	return func(digestMsg *gossip.DataDigest) *gossip.DataDigest {
 		res := &gossip.DataDigest{
-			MsgType: digestMsg.MsgType,
-			Nonce:   digestMsg.Nonce,
+			MsgType: digestMsg.GetMsgType(),
+			Nonce:   digestMsg.GetNonce(),
 		}
-		for i := range digestMsg.Digests {
-			seqNum, err := strconv.ParseUint(string(digestMsg.Digests[i]), 10, 64)
+		for i := range digestMsg.GetDigests() {
+			seqNum, err := strconv.ParseUint(string(digestMsg.GetDigests()[i]), 10, 64)
 			if err != nil || seqNum < level {
 				continue
 			}
-			res.Digests = append(res.Digests, digestMsg.Digests[i])
+			res.Digests = append(res.Digests, digestMsg.GetDigests()[i])
 
 		}
 		return res

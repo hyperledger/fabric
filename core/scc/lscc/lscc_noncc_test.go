@@ -195,8 +195,8 @@ var _ = Describe("LSCC", func() {
 			vscc, policy, unexpectedErr, validationErr := l.ValidationInfo("", "cc-name", fakeQueryExecutor)
 			Expect(validationErr).NotTo(HaveOccurred())
 			Expect(unexpectedErr).NotTo(HaveOccurred())
-			Expect(vscc).To(Equal(ccData.Vscc))
-			Expect(policy).To(Equal(ccData.Policy))
+			Expect(vscc).To(Equal(ccData.GetVscc()))
+			Expect(policy).To(Equal(ccData.GetPolicy()))
 
 			Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(1))
 			namespace, key := fakeQueryExecutor.GetStateArgsForCall(0)

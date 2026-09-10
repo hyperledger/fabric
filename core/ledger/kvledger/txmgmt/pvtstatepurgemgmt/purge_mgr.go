@@ -295,11 +295,11 @@ func (p *PurgeMgr) preloadCommittedVersionsInCache(expInfoMap expiryInfoMap) err
 func transformToExpiryInfoMap(expiryInfo []*expiryInfo) expiryInfoMap {
 	expinfoMap := make(expiryInfoMap)
 	for _, expinfo := range expiryInfo {
-		for ns, colls := range expinfo.pvtdataKeys.Map {
-			for coll, keysAndHashes := range colls.Map {
-				for _, keyAndHash := range keysAndHashes.List {
-					compositeKey := privacyenabledstate.HashedCompositeKey{Namespace: ns, CollectionName: coll, KeyHash: string(keyAndHash.Hash)}
-					expinfoMap[compositeKey] = &keyAndVersion{key: keyAndHash.Key, committingBlock: expinfo.expiryInfoKey.committingBlk}
+		for ns, colls := range expinfo.pvtdataKeys.GetMap() {
+			for coll, keysAndHashes := range colls.GetMap() {
+				for _, keyAndHash := range keysAndHashes.GetList() {
+					compositeKey := privacyenabledstate.HashedCompositeKey{Namespace: ns, CollectionName: coll, KeyHash: string(keyAndHash.GetHash())}
+					expinfoMap[compositeKey] = &keyAndVersion{key: keyAndHash.GetKey(), committingBlock: expinfo.expiryInfoKey.committingBlk}
 				}
 			}
 		}

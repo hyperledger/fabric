@@ -394,7 +394,7 @@ func (g *Node) handleMessage(m protoext.ReceivedMessage) {
 		// It's a membership request, check its self information
 		// matches the sender
 		if m.GetGossipMessage().GetMemReq() != nil {
-			sMsg, err := protoext.EnvelopeToGossipMessage(m.GetGossipMessage().GetMemReq().SelfInformation)
+			sMsg, err := protoext.EnvelopeToGossipMessage(m.GetGossipMessage().GetMemReq().GetSelfInformation())
 			if err != nil {
 				g.logger.Warningf("Got membership request with invalid selfInfo: %+v", errors.WithStack(err))
 				return
@@ -403,7 +403,7 @@ func (g *Node) handleMessage(m protoext.ReceivedMessage) {
 				g.logger.Warning("Got membership request with selfInfo that isn't an AliveMessage")
 				return
 			}
-			if !bytes.Equal(sMsg.GetAliveMsg().Membership.PkiId, m.GetConnectionInfo().ID) {
+			if !bytes.Equal(sMsg.GetAliveMsg().GetMembership().GetPkiId(), m.GetConnectionInfo().ID) {
 				g.logger.Warning("Got membership request with selfInfo that doesn't match the handshake")
 				return
 			}
@@ -479,8 +479,8 @@ func (g *Node) gossipBatch(msgs []*emittedGossipMessage) {
 		if !protoext.IsAliveMsg(msg.GossipMessage) {
 			return false
 		}
-		member := msg.GetAliveMsg().Membership
-		return member.Endpoint == "" && g.IsInMyOrg(discovery.NetworkMember{PKIid: member.PkiId})
+		member := msg.GetAliveMsg().GetMembership()
+		return member.GetEndpoint() == "" && g.IsInMyOrg(discovery.NetworkMember{PKIid: member.GetPkiId()})
 	}
 	isOrgRestricted := func(o any) bool {
 		return aliveMsgsWithNoEndpointAndInOurOrg(o) || protoext.IsOrgRestricted(o.(*emittedGossipMessage).GossipMessage)
@@ -506,7 +506,7 @@ func (g *Node) gossipBatch(msgs []*emittedGossipMessage) {
 	for _, stateInfMsg := range stateInfoMsgs {
 		peerSelector := g.IsInMyOrg
 		gc := g.chanState.lookupChannelForGossipMsg(stateInfMsg.GossipMessage)
-		if gc != nil && g.hasExternalEndpoint(stateInfMsg.GossipMessage.GetStateInfo().PkiId) {
+		if gc != nil && g.hasExternalEndpoint(stateInfMsg.GossipMessage.GetStateInfo().GetPkiId()) {
 			peerSelector = gc.IsMemberInChan
 		}
 
@@ -531,7 +531,7 @@ func (g *Node) gossipBatch(msgs []*emittedGossipMessage) {
 			g.logger.Error("Unknown message type", msg)
 			continue
 		}
-		selectByOriginOrg := g.peersByOriginOrgPolicy(discovery.NetworkMember{PKIid: msg.GetAliveMsg().Membership.PkiId})
+		selectByOriginOrg := g.peersByOriginOrgPolicy(discovery.NetworkMember{PKIid: msg.GetAliveMsg().GetMembership().GetPkiId()})
 		selector := filter.CombineRoutingFilters(selectByOriginOrg, func(member discovery.NetworkMember) bool {
 			return msg.filter(member.PKIid)
 		})
@@ -544,7 +544,7 @@ func (g *Node) sendAndFilterSecrets(msg *protoext.SignedGossipMessage, peers ...
 	for _, peer := range peers {
 		// Prevent forwarding alive messages of external organizations
 		// to peers that have no external endpoints
-		aliveMsgFromDiffOrg := protoext.IsAliveMsg(msg.GossipMessage) && !g.IsInMyOrg(discovery.NetworkMember{PKIid: msg.GetAliveMsg().Membership.PkiId})
+		aliveMsgFromDiffOrg := protoext.IsAliveMsg(msg.GossipMessage) && !g.IsInMyOrg(discovery.NetworkMember{PKIid: msg.GetAliveMsg().GetMembership().GetPkiId()})
 		if aliveMsgFromDiffOrg && !g.hasExternalEndpoint(peer.PKIID) {
 			continue
 		}
@@ -692,9 +692,9 @@ func (g *Node) Gossip(msg *pg.GossipMessage) {
 	}
 
 	if protoext.IsChannelRestricted(msg) {
-		gc := g.chanState.getGossipChannelByChainID(msg.Channel)
+		gc := g.chanState.getGossipChannelByChainID(msg.GetChannel())
 		if gc == nil {
-			g.logger.Warning("Failed obtaining gossipChannel of", msg.Channel, "aborting")
+			g.logger.Warning("Failed obtaining gossipChannel of", msg.GetChannel(), "aborting")
 			return
 		}
 		if protoext.IsDataMsg(msg) {
@@ -940,7 +940,7 @@ func (da *discoveryAdapter) SendToPeer(peer *discovery.NetworkMember, msg *proto
 	// Check membership requests for peers that we know of their PKI-ID.
 	// The only peers we don't know about their PKI-IDs are bootstrap peers.
 	if memReq := msg.GetMemReq(); memReq != nil && len(peer.PKIid) != 0 {
-		selfMsg, err := protoext.EnvelopeToGossipMessage(memReq.SelfInformation)
+		selfMsg, err := protoext.EnvelopeToGossipMessage(memReq.GetSelfInformation())
 		if err != nil {
 			// Shouldn't happen
 			panic(errors.Wrapf(err, "Tried to send a membership request with a malformed AliveMessage"))
@@ -950,7 +950,7 @@ func (da *discoveryAdapter) SendToPeer(peer *discovery.NetworkMember, msg *proto
 		_, omitConcealedFields := da.disclosurePolicy(peer)
 		selfMsg.Envelope = omitConcealedFields(selfMsg)
 		// Backup old known field
-		oldKnown := memReq.Known
+		oldKnown := memReq.GetKnown()
 		// Override new SelfInfo message with updated envelope
 		memReq = &pg.MembershipRequest{
 			SelfInformation: selfMsg.Envelope,
@@ -1019,7 +1019,7 @@ func (g *Node) newDiscoverySecurityAdapter() *discoverySecurityAdapter {
 // validateAliveMsg validates that an Alive message is authentic
 func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *protoext.SignedGossipMessage) bool {
 	am := m.GetAliveMsg()
-	if am == nil || am.Membership == nil || am.Membership.PkiId == nil || !m.IsSigned() {
+	if am == nil || am.GetMembership() == nil || am.Membership.PkiId == nil || !m.IsSigned() {
 		sa.logger.Warning("Invalid alive message:", m)
 		return false
 	}
@@ -1028,17 +1028,17 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *protoext.SignedGossipMes
 
 	// If identity is included inside AliveMessage
 	if am.Identity != nil {
-		identity = am.Identity
-		claimedPKIID := am.Membership.PkiId
+		identity = am.GetIdentity()
+		claimedPKIID := am.GetMembership().GetPkiId()
 		err := sa.idMapper.Put(claimedPKIID, identity)
 		if err != nil {
 			sa.logger.Debugf("Failed validating identity of %v reason: %+v", am, errors.WithStack(err))
 			return false
 		}
 	} else {
-		identity, _ = sa.idMapper.Get(am.Membership.PkiId)
+		identity, _ = sa.idMapper.Get(am.GetMembership().GetPkiId())
 		if identity != nil {
-			sa.logger.Debug("Fetched identity of", protoext.MemberToString(am.Membership), "from identity store")
+			sa.logger.Debug("Fetched identity of", protoext.MemberToString(am.GetMembership()), "from identity store")
 		}
 	}
 
@@ -1114,7 +1114,7 @@ func (g *Node) createCertStorePuller() pull.Mediator {
 		if identityMsg == nil || identityMsg.PkiId == nil {
 			return ""
 		}
-		return string(identityMsg.PkiId)
+		return string(identityMsg.GetPkiId())
 	}
 	certConsumer := func(msg *protoext.SignedGossipMessage) {
 		idMsg := msg.GetPeerIdentity()
@@ -1122,11 +1122,11 @@ func (g *Node) createCertStorePuller() pull.Mediator {
 			g.logger.Warning("Invalid PeerIdentity:", idMsg)
 			return
 		}
-		err := g.idMapper.Put(idMsg.PkiId, idMsg.Cert)
+		err := g.idMapper.Put(idMsg.GetPkiId(), idMsg.GetCert())
 		if err != nil {
 			g.logger.Warningf("Failed associating PKI-ID with certificate: %+v", errors.WithStack(err))
 		}
-		g.logger.Debug("Learned of a new certificate:", idMsg.Cert)
+		g.logger.Debug("Learned of a new certificate:", idMsg.GetCert())
 	}
 	adapter := &pull.PullAdapter{
 		Sndr:            g.comm,
@@ -1223,7 +1223,7 @@ func (g *Node) getOrgOfPeer(PKIID common.PKIidType) api.OrgIdentityType {
 }
 
 func (g *Node) validateLeadershipMessage(msg *protoext.SignedGossipMessage) error {
-	pkiID := msg.GetLeadershipMsg().PkiId
+	pkiID := msg.GetLeadershipMsg().GetPkiId()
 	if len(pkiID) == 0 {
 		return errors.New("Empty PKI-ID")
 	}
@@ -1244,7 +1244,7 @@ func (g *Node) validateStateInfoMsg(msg *protoext.SignedGossipMessage) error {
 		}
 		return g.idMapper.Verify(pkiID, signature, message)
 	}
-	identity, err := g.idMapper.Get(msg.GetStateInfo().PkiId)
+	identity, err := g.idMapper.Get(msg.GetStateInfo().GetPkiId())
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1267,7 +1267,7 @@ func (g *Node) disclosurePolicy(remotePeer *discovery.NetworkMember) (discovery.
 			if !protoext.IsAliveMsg(msg.GossipMessage) {
 				g.logger.Panic("Programming error, this should be used only on alive messages")
 			}
-			org := g.getOrgOfPeer(msg.GetAliveMsg().Membership.PkiId)
+			org := g.getOrgOfPeer(msg.GetAliveMsg().GetMembership().GetPkiId())
 			if len(org) == 0 {
 				g.logger.Warning("Unable to determine org of message", msg.GossipMessage)
 				// Don't disseminate messages who's origin org is unknown
@@ -1285,7 +1285,7 @@ func (g *Node) disclosurePolicy(remotePeer *discovery.NetworkMember) (discovery.
 
 			// Pass the alive message only if the alive message is in the same org as the remote peer
 			// or the message has an external endpoint, and the remote peer also has one
-			return bytes.Equal(org, remotePeerOrg) || msg.GetAliveMsg().Membership.Endpoint != "" && remotePeer.Endpoint != ""
+			return bytes.Equal(org, remotePeerOrg) || msg.GetAliveMsg().GetMembership().GetEndpoint() != "" && remotePeer.Endpoint != ""
 		}, func(msg *protoext.SignedGossipMessage) *pg.Envelope {
 			envelope := proto.Clone(msg.Envelope).(*pg.Envelope)
 			if !bytes.Equal(g.selfOrg, remotePeerOrg) {

@@ -128,7 +128,7 @@ func TestInitialization(t *testing.T) {
 
 	block := blockledger.GetBlock(fl, 0)
 	require.NotNil(t, block, "Error retrieving genesis block")
-	require.Equal(t, protoutil.BlockHeaderHash(genesisBlock.Header), protoutil.BlockHeaderHash(block.Header), "Block hashes did no match")
+	require.Equal(t, protoutil.BlockHeaderHash(genesisBlock.GetHeader()), protoutil.BlockHeaderHash(block.GetHeader()), "Block hashes did no match")
 }
 
 func TestReinitialization(t *testing.T) {
@@ -169,14 +169,14 @@ func TestReinitialization(t *testing.T) {
 
 	block := blockledger.GetBlock(fl, 1)
 	require.NotNil(t, block, "Error retrieving block 1")
-	require.Equal(t, protoutil.BlockHeaderHash(b1.Header), protoutil.BlockHeaderHash(block.Header), "Block hashes did no match")
+	require.Equal(t, protoutil.BlockHeaderHash(b1.GetHeader()), protoutil.BlockHeaderHash(block.GetHeader()), "Block hashes did no match")
 }
 
 func TestAddition(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
 	info, _ := fl.blockStore.GetBlockchainInfo()
-	prevHash := info.CurrentBlockHash
+	prevHash := info.GetCurrentBlockHash()
 	envelope := getSampleEnvelopeWithSignatureHeader()
 	b1 := blockledger.CreateNextBlock(fl, []*cb.Envelope{envelope})
 	fl.Append(b1)
@@ -184,7 +184,7 @@ func TestAddition(t *testing.T) {
 
 	block := blockledger.GetBlock(fl, 1)
 	require.NotNil(t, block, "Error retrieving genesis block")
-	require.Equal(t, prevHash, block.Header.PreviousHash, "Block hashes did no match")
+	require.Equal(t, prevHash, block.GetHeader().GetPreviousHash(), "Block hashes did no match")
 }
 
 func TestRetrieval(t *testing.T) {
@@ -199,15 +199,15 @@ func TestRetrieval(t *testing.T) {
 
 	block, status := it.Next()
 	require.Equal(t, cb.Status_SUCCESS, status, "Expected to successfully read the genesis block")
-	require.Zero(t, block.Header.Number, "Expected to successfully retrieve the genesis block")
+	require.Zero(t, block.GetHeader().GetNumber(), "Expected to successfully retrieve the genesis block")
 
 	block, status = it.Next()
 	require.Equal(t, cb.Status_SUCCESS, status, "Expected to successfully read the second block")
 	require.Equal(
 		t,
 		uint64(1),
-		block.Header.Number,
-		"Expected to successfully retrieve the second block but got block number %d", block.Header.Number,
+		block.GetHeader().GetNumber(),
+		"Expected to successfully retrieve the second block but got block number %d", block.GetHeader().GetNumber(),
 	)
 }
 
@@ -230,8 +230,8 @@ func TestBlockedRetrieval(t *testing.T) {
 	require.Equal(
 		t,
 		uint64(1),
-		block.Header.Number,
-		"Expected to successfully retrieve the second block but got block number %d", block.Header.Number,
+		block.GetHeader().GetNumber(),
+		"Expected to successfully retrieve the second block but got block number %d", block.GetHeader().GetNumber(),
 	)
 
 	b2 := blockledger.CreateNextBlock(fl, []*cb.Envelope{envelope})
@@ -239,7 +239,7 @@ func TestBlockedRetrieval(t *testing.T) {
 
 	block, status = it.Next()
 	require.Equal(t, cb.Status_SUCCESS, status, "Expected to successfully read the third block")
-	require.Equal(t, uint64(2), block.Header.Number, "Expected to successfully retrieve the third block")
+	require.Equal(t, uint64(2), block.GetHeader().GetNumber(), "Expected to successfully retrieve the third block")
 
 	// verify NextCommit seek position
 	it2, num2 := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_NextCommit{NextCommit: &ab.SeekNextCommit{}}})
@@ -251,7 +251,7 @@ func TestBlockedRetrieval(t *testing.T) {
 
 	block, status = it.Next()
 	require.Equal(t, cb.Status_SUCCESS, status)
-	require.Equal(t, uint64(3), block.Header.Number)
+	require.Equal(t, uint64(3), block.GetHeader().GetNumber())
 }
 
 func TestBlockRetrievalWithSnapshot(t *testing.T) {
@@ -267,7 +267,7 @@ func TestBlockRetrievalWithSnapshot(t *testing.T) {
 	// verify lastBlockInSnapshot, which should be numBlocks - 1
 	bcInfo, err := fl.blockStore.GetBlockchainInfo()
 	require.NoError(t, err)
-	require.Equal(t, uint64(numBlocks-1), bcInfo.BootstrappingSnapshotInfo.LastBlockInSnapshot)
+	require.Equal(t, uint64(numBlocks-1), bcInfo.GetBootstrappingSnapshotInfo().GetLastBlockInSnapshot())
 
 	// verify iterator startingNum for Newest, NextCommit, and Specified
 	it, startingNum := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Newest{}})

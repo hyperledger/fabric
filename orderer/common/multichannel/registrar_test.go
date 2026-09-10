@@ -1000,7 +1000,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		checkMetrics(t, fakeFields, []string{"channel", "my-raft-channel"}, 1, 1, 1)
 
 		// Let's assume the chain appended another config block
-		genesisBlockAppRaft.Header.PreviousHash = protoutil.BlockHeaderHash(genesisBlockAppRaft.Header)
+		genesisBlockAppRaft.Header.PreviousHash = protoutil.BlockHeaderHash(genesisBlockAppRaft.GetHeader())
 		genesisBlockAppRaft.Header.Number = 1
 		require.NoError(t, cs.Append(genesisBlockAppRaft))
 		consenter.IsChannelMemberReturns(false, nil)
@@ -1558,27 +1558,27 @@ func checkMetrics(t *testing.T, fakeFields *fakeMetricsFields, expectedLabels []
 
 func makeUpdateConfigEnvelope(t *testing.T, block *cb.Block, signer msp.SigningIdentity) *cb.Envelope {
 	// udate config block
-	envelope, err := protoutil.GetEnvelopeFromBlock(block.Data.Data[0])
+	envelope, err := protoutil.GetEnvelopeFromBlock(block.GetData().GetData()[0])
 	require.NoError(t, err)
 	// unmarshal the payload bytes
-	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+	payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
 	require.NoError(t, err)
 	// unmarshal the config envelope bytes
 	configEnv := &cb.ConfigEnvelope{}
-	err = proto.Unmarshal(payload.Data, configEnv)
+	err = proto.Unmarshal(payload.GetData(), configEnv)
 	require.NoError(t, err)
 	// clone the config
-	updatedConfig := proto.Clone(configEnv.Config).(*cb.Config)
-	batchSizeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchSize"]
+	updatedConfig := proto.Clone(configEnv.GetConfig()).(*cb.Config)
+	batchSizeConfigValue := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetValues()["BatchSize"]
 	batchSizeValue := &ab.BatchSize{}
-	err = proto.Unmarshal(batchSizeConfigValue.Value, batchSizeValue)
+	err = proto.Unmarshal(batchSizeConfigValue.GetValue(), batchSizeValue)
 	require.NoError(t, err)
-	batchSizeValue.AbsoluteMaxBytes = batchSizeValue.AbsoluteMaxBytes + 10
+	batchSizeValue.AbsoluteMaxBytes = batchSizeValue.GetAbsoluteMaxBytes() + 10
 	updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchSize"] = &cb.ConfigValue{
 		ModPolicy: "Admins",
 		Value:     protoutil.MarshalOrPanic(batchSizeValue),
 	}
-	configUpdate, err := update.Compute(configEnv.Config, updatedConfig)
+	configUpdate, err := update.Compute(configEnv.GetConfig(), updatedConfig)
 	require.NoError(t, err)
 	configUpdate.ChannelId = "my-raft-channel"
 
@@ -1590,7 +1590,7 @@ func makeUpdateConfigEnvelope(t *testing.T, block *cb.Block, signer msp.SigningI
 	configUpdateEnv := &cb.ConfigUpdateEnvelope{
 		ConfigUpdate: protoutil.MarshalOrPanic(configUpdate),
 	}
-	configSig.Signature, err = signer.Sign(util.ConcatenateBytes(configSig.SignatureHeader, configUpdateEnv.ConfigUpdate))
+	configSig.Signature, err = signer.Sign(util.ConcatenateBytes(configSig.GetSignatureHeader(), configUpdateEnv.GetConfigUpdate()))
 	require.NoError(t, err)
 	configUpdateEnv.Signatures = append(configUpdateEnv.Signatures, configSig)
 
@@ -1854,8 +1854,8 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 }
 
 func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) {
-	for i, c := range confAppRaft.Orderer.EtcdRaft.Consenters {
-		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
+	for i, c := range confAppRaft.Orderer.EtcdRaft.GetConsenters() {
+		srvC, err := tlsCA.NewServerCertKeyPair(c.GetHost())
 		require.NoError(t, err)
 		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
 		err = os.WriteFile(srvP, srvC.Cert, 0o644)
@@ -1922,7 +1922,7 @@ func TestRegistrar_ConfigBlockOrPanic(t *testing.T) {
 		_, l := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 
 		cBlock := ConfigBlockOrPanic(l)
-		assert.Equal(t, genesisBlockSys.Header, cBlock.Header)
-		assert.Equal(t, genesisBlockSys.Data, cBlock.Data)
+		assert.Equal(t, genesisBlockSys.GetHeader(), cBlock.GetHeader())
+		assert.Equal(t, genesisBlockSys.GetData(), cBlock.GetData())
 	})
 }

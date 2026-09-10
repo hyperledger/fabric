@@ -40,20 +40,20 @@ type ACLProvider interface {
 // Generate generates a snapshot request.
 func (s *SnapshotService) Generate(ctx context.Context, signedRequest *pb.SignedSnapshotRequest) (*emptypb.Empty, error) {
 	request := &pb.SnapshotRequest{}
-	if err := proto.Unmarshal(signedRequest.Request, request); err != nil {
+	if err := proto.Unmarshal(signedRequest.GetRequest(), request); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal snapshot request")
 	}
 
-	if err := s.checkACL(resources.Snapshot_submitrequest, request.SignatureHeader, signedRequest); err != nil {
+	if err := s.checkACL(resources.Snapshot_submitrequest, request.GetSignatureHeader(), signedRequest); err != nil {
 		return nil, err
 	}
 
-	lgr, err := s.getLedger(request.ChannelId)
+	lgr, err := s.getLedger(request.GetChannelId())
 	if err != nil {
 		return nil, err
 	}
 
-	if err := lgr.SubmitSnapshotRequest(request.BlockNumber); err != nil {
+	if err := lgr.SubmitSnapshotRequest(request.GetBlockNumber()); err != nil {
 		return nil, err
 	}
 
@@ -63,20 +63,20 @@ func (s *SnapshotService) Generate(ctx context.Context, signedRequest *pb.Signed
 // Cancel cancels a snapshot request.
 func (s *SnapshotService) Cancel(ctx context.Context, signedRequest *pb.SignedSnapshotRequest) (*emptypb.Empty, error) {
 	request := &pb.SnapshotRequest{}
-	if err := proto.Unmarshal(signedRequest.Request, request); err != nil {
+	if err := proto.Unmarshal(signedRequest.GetRequest(), request); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal snapshot request")
 	}
 
-	if err := s.checkACL(resources.Snapshot_cancelrequest, request.SignatureHeader, signedRequest); err != nil {
+	if err := s.checkACL(resources.Snapshot_cancelrequest, request.GetSignatureHeader(), signedRequest); err != nil {
 		return nil, err
 	}
 
-	lgr, err := s.getLedger(request.ChannelId)
+	lgr, err := s.getLedger(request.GetChannelId())
 	if err != nil {
 		return nil, err
 	}
 
-	if err := lgr.CancelSnapshotRequest(request.BlockNumber); err != nil {
+	if err := lgr.CancelSnapshotRequest(request.GetBlockNumber()); err != nil {
 		return nil, err
 	}
 
@@ -86,15 +86,15 @@ func (s *SnapshotService) Cancel(ctx context.Context, signedRequest *pb.SignedSn
 // QueryPendings returns a list of pending snapshot requests.
 func (s *SnapshotService) QueryPendings(ctx context.Context, signedRequest *pb.SignedSnapshotRequest) (*pb.QueryPendingSnapshotsResponse, error) {
 	query := &pb.SnapshotQuery{}
-	if err := proto.Unmarshal(signedRequest.Request, query); err != nil {
+	if err := proto.Unmarshal(signedRequest.GetRequest(), query); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal snapshot request")
 	}
 
-	if err := s.checkACL(resources.Snapshot_listpending, query.SignatureHeader, signedRequest); err != nil {
+	if err := s.checkACL(resources.Snapshot_listpending, query.GetSignatureHeader(), signedRequest); err != nil {
 		return nil, err
 	}
 
-	lgr, err := s.getLedger(query.ChannelId)
+	lgr, err := s.getLedger(query.GetChannelId())
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (s *SnapshotService) checkACL(resName string, signatureHdr *cb.SignatureHea
 		return errors.New("missing signature header")
 	}
 
-	expirationTime := crypto.ExpiresAt(signatureHdr.Creator)
+	expirationTime := crypto.ExpiresAt(signatureHdr.GetCreator())
 	if !expirationTime.IsZero() && time.Now().After(expirationTime) {
 		return errors.New("client identity expired")
 	}
@@ -120,9 +120,9 @@ func (s *SnapshotService) checkACL(resName string, signatureHdr *cb.SignatureHea
 	if err := s.ACLProvider.CheckACLNoChannel(
 		resName,
 		[]*protoutil.SignedData{{
-			Identity:  signatureHdr.Creator,
-			Data:      signedRequest.Request,
-			Signature: signedRequest.Signature,
+			Identity:  signatureHdr.GetCreator(),
+			Data:      signedRequest.GetRequest(),
+			Signature: signedRequest.GetSignature(),
 		}},
 	); err != nil {
 		return err

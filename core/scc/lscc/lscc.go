@@ -244,7 +244,7 @@ func (ls *LegacySecurity) SecurityCheckLegacyChaincode(cd *ccprovider.ChaincodeD
 	// chaincode under these conditions. More info on
 	// https://jira.hyperledger.org/browse/FAB-3156
 	if fsData.InstantiationPolicy != nil {
-		if !bytes.Equal(fsData.InstantiationPolicy, cd.InstantiationPolicy) {
+		if !bytes.Equal(fsData.GetInstantiationPolicy(), cd.GetInstantiationPolicy()) {
 			return fmt.Errorf("Instantiation policy mismatch for cc %s", cd.ChaincodeID())
 		}
 	}
@@ -279,9 +279,9 @@ func (lscc *SCC) ChaincodeEndorsementInfo(channelID, chaincodeName string, qe le
 	}
 
 	return &lifecycle.ChaincodeEndorsementInfo{
-		Version:           chaincodeData.Version,
-		EndorsementPlugin: chaincodeData.Escc,
-		ChaincodeID:       chaincodeData.Name + ":" + chaincodeData.Version,
+		Version:           chaincodeData.GetVersion(),
+		EndorsementPlugin: chaincodeData.GetEscc(),
+		ChaincodeID:       chaincodeData.GetName() + ":" + chaincodeData.GetVersion(),
 	}, nil
 }
 
@@ -316,8 +316,8 @@ func (lscc *SCC) ValidationInfo(channelID, chaincodeName string, qe ledger.Simpl
 		return
 	}
 
-	plugin = chaincodeData.Vscc
-	args = chaincodeData.Policy
+	plugin = chaincodeData.GetVscc()
+	args = chaincodeData.GetPolicy()
 	return
 }
 
@@ -332,10 +332,10 @@ func (lscc *SCC) putChaincodeData(stub shim.ChaincodeStubInterface, cd *ccprovid
 	}
 
 	if cdbytes == nil {
-		return MarshallErr(cd.Name)
+		return MarshallErr(cd.GetName())
 	}
 
-	err = stub.PutState(cd.Name, cdbytes)
+	err = stub.PutState(cd.GetName(), cdbytes)
 
 	return err
 }

@@ -63,7 +63,7 @@ func TestResetAllLedgers(t *testing.T) {
 		ledgerID := fmt.Sprintf("ledger-%d", i)
 		l := env.openTestLedger(ledgerID)
 		l.verifyLedgerHeight(1)
-		require.Equal(t, blockchainsInfo[i].Height, preResetHt[ledgerID])
+		require.Equal(t, blockchainsInfo[i].GetHeight(), preResetHt[ledgerID])
 		gb, err := l.lgr.GetBlockByNumber(0)
 		require.NoError(t, err)
 		require.Equal(t, genesisBlocks[i], gb)

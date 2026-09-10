@@ -153,11 +153,11 @@ func (creator *BlockPullerCreator) VerifyBlockSequence(blocks []*common.Block, _
 	if blocks[0] == nil {
 		return errors.New("first block is nil")
 	}
-	if blocks[0].Header == nil {
+	if blocks[0].GetHeader() == nil {
 		return errors.New("first block header is nil")
 	}
-	if blocks[0].Header.Number == 0 {
-		if creator.JoinBlock != nil && creator.JoinBlock.Header.Number == 0 {
+	if blocks[0].GetHeader().GetNumber() == 0 {
+		if creator.JoinBlock != nil && creator.JoinBlock.GetHeader().GetNumber() == 0 {
 			// If we have joined with a genesis block,
 			// replace the genesis block we got from the network
 			// with our own.

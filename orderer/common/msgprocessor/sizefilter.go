@@ -36,7 +36,7 @@ func (r *MaxBytesRule) Apply(message *common.Envelope) error {
 		logger.Panic("Programming error: orderer config not found")
 	}
 
-	maxBytes := ordererConf.BatchSize().AbsoluteMaxBytes
+	maxBytes := ordererConf.BatchSize().GetAbsoluteMaxBytes()
 	if size := messageByteSize(message); size > maxBytes {
 		return fmt.Errorf("message payload is %d bytes and exceeds maximum allowed %d bytes", size, maxBytes)
 	}
@@ -46,5 +46,5 @@ func (r *MaxBytesRule) Apply(message *common.Envelope) error {
 func messageByteSize(message *common.Envelope) uint32 {
 	// XXX this is good approximation, but is going to be a few bytes short, because of the field specifiers in the proto marshaling
 	// this should probably be padded to determine the true exact marshaled size
-	return uint32(len(message.Payload) + len(message.Signature))
+	return uint32(len(message.GetPayload()) + len(message.GetSignature()))
 }

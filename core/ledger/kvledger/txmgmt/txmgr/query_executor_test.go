@@ -116,8 +116,8 @@ func testItr(t *testing.T, itr commonledger.ResultsIterator, expectedNs string, 
 	for _, expectedKey := range expectedKeys {
 		queryResult, _ := itr.Next()
 		pvtdataKV := queryResult.(*queryresult.KV)
-		ns := pvtdataKV.Namespace
-		key := pvtdataKV.Key
+		ns := pvtdataKV.GetNamespace()
+		key := pvtdataKV.GetKey()
 		require.Equal(t, expectedNs, ns)
 		require.Equal(t, expectedKey, key)
 	}

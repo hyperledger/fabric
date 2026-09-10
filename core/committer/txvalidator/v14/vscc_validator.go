@@ -40,13 +40,13 @@ func newVSCCValidator(channelID string, cr ChannelResources, pluginValidator *Pl
 }
 
 func getChaincodeHeaderExtension(hdr *common.Header) (*peer.ChaincodeHeaderExtension, error) {
-	chdr, err := protoutil.UnmarshalChannelHeader(hdr.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(hdr.GetChannelHeader())
 	if err != nil {
 		return nil, err
 	}
 
 	chaincodeHdrExt := &peer.ChaincodeHeaderExtension{}
-	err = proto.Unmarshal(chdr.Extension, chaincodeHdrExt)
+	err = proto.Unmarshal(chdr.GetExtension(), chaincodeHdrExt)
 	return chaincodeHdrExt, errors.Wrap(err, "error unmarshalling ChaincodeHeaderExtension")
 }
 
@@ -56,13 +56,13 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 	logger.Debugf("[%s] VSCCValidateTx starts for bytes %p", chainID, envBytes)
 
 	// get header extensions so we have the chaincode ID
-	hdrExt, err := getChaincodeHeaderExtension(payload.Header)
+	hdrExt, err := getChaincodeHeaderExtension(payload.GetHeader())
 	if err != nil {
 		return peer.TxValidationCode_BAD_HEADER_EXTENSION, err
 	}
 
 	// get channel header
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return peer.TxValidationCode_BAD_CHANNEL_HEADER, err
 	}
@@ -79,22 +79,22 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 		return peer.TxValidationCode_BAD_RESPONSE_PAYLOAD, errors.WithMessage(err, "GetActionFromEnvelope failed")
 	}
 	txRWSet := &rwsetutil.TxRwSet{}
-	if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
+	if err = txRWSet.FromProtoBytes(respPayload.GetResults()); err != nil {
 		return peer.TxValidationCode_BAD_RWSET, errors.WithMessage(err, "txRWSet.FromProtoBytes failed")
 	}
 
 	// Verify the header extension and response payload contain the ChaincodeId
-	if hdrExt.ChaincodeId == nil {
+	if hdrExt.GetChaincodeId() == nil {
 		return peer.TxValidationCode_INVALID_OTHER_REASON, errors.New("nil ChaincodeId in header extension")
 	}
 
-	if respPayload.ChaincodeId == nil {
+	if respPayload.GetChaincodeId() == nil {
 		return peer.TxValidationCode_INVALID_OTHER_REASON, errors.New("nil ChaincodeId in ChaincodeAction")
 	}
 
 	// get name and version of the cc we invoked
-	ccID := hdrExt.ChaincodeId.Name
-	ccVer := respPayload.ChaincodeId.Version
+	ccID := hdrExt.GetChaincodeId().GetName()
+	ccVer := respPayload.GetChaincodeId().GetVersion()
 
 	// sanity check on ccID
 	if ccID == "" {
@@ -102,8 +102,8 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 		logger.Errorf("%+v", err)
 		return peer.TxValidationCode_INVALID_OTHER_REASON, err
 	}
-	if ccID != respPayload.ChaincodeId.Name {
-		err = errors.Errorf("inconsistent ccid info (%s/%s)", ccID, respPayload.ChaincodeId.Name)
+	if ccID != respPayload.GetChaincodeId().GetName() {
+		err = errors.Errorf("inconsistent ccid info (%s/%s)", ccID, respPayload.GetChaincodeId().GetName())
 		logger.Errorf("%+v", err)
 		return peer.TxValidationCode_INVALID_OTHER_REASON, err
 	}
@@ -120,10 +120,10 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 		wrNamespace = append(wrNamespace, ccID)
 		if respPayload.Events != nil {
 			ccEvent := &peer.ChaincodeEvent{}
-			if err = proto.Unmarshal(respPayload.Events, ccEvent); err != nil {
+			if err = proto.Unmarshal(respPayload.GetEvents(), ccEvent); err != nil {
 				return peer.TxValidationCode_INVALID_OTHER_REASON, errors.Wrapf(err, "invalid chaincode event")
 			}
-			if ccEvent.ChaincodeId != ccID {
+			if ccEvent.GetChaincodeId() != ccID {
 				return peer.TxValidationCode_INVALID_OTHER_REASON, errors.Errorf("chaincode event chaincode id does not match chaincode action chaincode id")
 			}
 		}
@@ -193,7 +193,7 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 			// Get latest chaincode version, vscc and validate policy
 			txcc, vscc, policy, err := v.GetInfoForValidate(chdr, ns)
 			if err != nil {
-				logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.TxId, err)
+				logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.GetTxId(), err)
 				return peer.TxValidationCode_INVALID_OTHER_REASON, err
 			}
 
@@ -201,7 +201,7 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 			// invoked, we check that the version of the cc that was
 			// invoked corresponds to the version that lscc has returned
 			if ns == ccID && txcc.ChaincodeVersion != ccVer {
-				err = errors.Errorf("chaincode %s:%s/%s didn't match %s:%s/%s in lscc", ccID, ccVer, chdr.ChannelId, txcc.ChaincodeName, txcc.ChaincodeVersion, chdr.ChannelId)
+				err = errors.Errorf("chaincode %s:%s/%s didn't match %s:%s/%s in lscc", ccID, ccVer, chdr.GetChannelId(), txcc.ChaincodeName, txcc.ChaincodeVersion, chdr.GetChannelId())
 				logger.Errorf("%+v", err)
 				return peer.TxValidationCode_EXPIRED_CHAINCODE, err
 			}
@@ -211,8 +211,8 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 				Seq:       seq,
 				Envelope:  envBytes,
 				Block:     block,
-				TxID:      chdr.TxId,
-				Channel:   chdr.ChannelId,
+				TxID:      chdr.GetTxId(),
+				Channel:   chdr.GetChannelId(),
 				Namespace: ns,
 				Policy:    policy,
 				VSCCName:  vscc.ChaincodeName,
@@ -239,7 +239,7 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 		// Get latest chaincode version, vscc and validate policy
 		_, vscc, policy, err := v.GetInfoForValidate(chdr, ccID)
 		if err != nil {
-			logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.TxId, err)
+			logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.GetTxId(), err)
 			return peer.TxValidationCode_INVALID_OTHER_REASON, err
 		}
 
@@ -252,8 +252,8 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 			Seq:       seq,
 			Envelope:  envBytes,
 			Block:     block,
-			TxID:      chdr.TxId,
-			Channel:   chdr.ChannelId,
+			TxID:      chdr.GetTxId(),
+			Channel:   chdr.GetChannelId(),
 			Namespace: ccID,
 			Policy:    policy,
 			VSCCName:  vscc.ChaincodeName,
@@ -314,11 +314,11 @@ func (v *VsccValidatorImpl) getCDataForCC(chid, ccid string) (*ccprovider.Chainc
 		return nil, errors.Wrap(err, "unmarshalling ChaincodeQueryResponse failed")
 	}
 
-	if cd.Vscc == "" {
+	if cd.GetVscc() == "" {
 		return nil, errors.Errorf("lscc's state for [%s] is invalid, vscc field must be set", ccid)
 	}
 
-	if len(cd.Policy) == 0 {
+	if len(cd.GetPolicy()) == 0 {
 		return nil, errors.Errorf("lscc's state for [%s] is invalid, policy field must be set", ccid)
 	}
 
@@ -328,11 +328,11 @@ func (v *VsccValidatorImpl) getCDataForCC(chid, ccid string) (*ccprovider.Chainc
 // GetInfoForValidate gets the ChaincodeInstance(with latest version) of tx, vscc and policy from lscc
 func (v *VsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID string) (*sysccprovider.ChaincodeInstance, *sysccprovider.ChaincodeInstance, []byte, error) {
 	cc := &sysccprovider.ChaincodeInstance{
-		ChannelID:     chdr.ChannelId,
+		ChannelID:     chdr.GetChannelId(),
 		ChaincodeName: ccID,
 	}
 	vscc := &sysccprovider.ChaincodeInstance{
-		ChannelID:     chdr.ChannelId,
+		ChannelID:     chdr.GetChannelId(),
 		ChaincodeName: "vscc", // default vscc for system chaincodes
 	}
 	var policy []byte
@@ -343,14 +343,14 @@ func (v *VsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID 
 		// of VSCC and of the policy that should be used
 
 		// obtain name of the VSCC and the policy
-		cd, err := v.getCDataForCC(chdr.ChannelId, ccID)
+		cd, err := v.getCDataForCC(chdr.GetChannelId(), ccID)
 		if err != nil {
-			logger.Errorf("Unable to get chaincode data from ledger for txid %s, due to %s", chdr.TxId, err)
+			logger.Errorf("Unable to get chaincode data from ledger for txid %s, due to %s", chdr.GetTxId(), err)
 			return nil, nil, nil, err
 		}
-		cc.ChaincodeName = cd.Name
-		cc.ChaincodeVersion = cd.Version
-		vscc.ChaincodeName, policy = cd.Vscc, cd.Policy
+		cc.ChaincodeName = cd.GetName()
+		cc.ChaincodeVersion = cd.GetVersion()
+		vscc.ChaincodeName, policy = cd.GetVscc(), cd.GetPolicy()
 	} else {
 		// when we are validating a system CC, we use the default
 		// VSCC and a default policy that requires one signature
@@ -369,7 +369,7 @@ func (v *VsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID 
 // performs a ledger write
 func (v *VsccValidatorImpl) txWritesToNamespace(ns *rwsetutil.NsRwSet) bool {
 	// check for public writes first
-	if ns.KvRwSet != nil && len(ns.KvRwSet.Writes) > 0 {
+	if ns.KvRwSet != nil && len(ns.KvRwSet.GetWrites()) > 0 {
 		return true
 	}
 
@@ -377,14 +377,14 @@ func (v *VsccValidatorImpl) txWritesToNamespace(ns *rwsetutil.NsRwSet) bool {
 	if v.cr.Capabilities().PrivateChannelData() {
 		// check for private writes for all collections
 		for _, c := range ns.CollHashedRwSets {
-			if c.HashedRwSet != nil && len(c.HashedRwSet.HashedWrites) > 0 {
+			if c.HashedRwSet != nil && len(c.HashedRwSet.GetHashedWrites()) > 0 {
 				return true
 			}
 
 			// only look at private metadata writes if we support that capability
 			if v.cr.Capabilities().KeyLevelEndorsement() {
 				// private metadata updates
-				if c.HashedRwSet != nil && len(c.HashedRwSet.MetadataWrites) > 0 {
+				if c.HashedRwSet != nil && len(c.HashedRwSet.GetMetadataWrites()) > 0 {
 					return true
 				}
 			}
@@ -394,7 +394,7 @@ func (v *VsccValidatorImpl) txWritesToNamespace(ns *rwsetutil.NsRwSet) bool {
 	// only look at metadata writes if we support that capability
 	if v.cr.Capabilities().KeyLevelEndorsement() {
 		// public metadata updates
-		if ns.KvRwSet != nil && len(ns.KvRwSet.MetadataWrites) > 0 {
+		if ns.KvRwSet != nil && len(ns.KvRwSet.GetMetadataWrites()) > 0 {
 			return true
 		}
 	}

@@ -109,7 +109,7 @@ func TestDistributor(t *testing.T) {
 			*proto.PrivatePayload
 			gossip2.SendCriteria
 		}{
-			PrivatePayload: msg.GetPrivateData().Payload,
+			PrivatePayload: msg.GetPrivateData().GetPayload(),
 			SendCriteria:   sendCriteria,
 		}
 	}).Return(nil)
@@ -176,7 +176,7 @@ func TestDistributor(t *testing.T) {
 	i := 0
 	require.Len(t, sendings, 8)
 	for dis := range sendings {
-		key := fmt.Sprintf("%s~%s", dis.PrivatePayload.Namespace, dis.PrivatePayload.CollectionName)
+		key := fmt.Sprintf("%s~%s", dis.PrivatePayload.GetNamespace(), dis.PrivatePayload.GetCollectionName())
 		expectedMaxCount[key] += dis.SendCriteria.MaxPeers
 		expectedMinAck[key] += dis.SendCriteria.MinAck
 		i++

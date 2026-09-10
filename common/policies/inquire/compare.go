@@ -41,7 +41,7 @@ func NewComparablePrincipal(principal *msp.MSPPrincipal) *ComparablePrincipal {
 	cp := &ComparablePrincipal{
 		principal: principal,
 	}
-	switch principal.PrincipalClassification {
+	switch principal.GetPrincipalClassification() {
 	case msp.MSPPrincipal_ROLE:
 		return cp.ToRole()
 	case msp.MSPPrincipal_ORGANIZATION_UNIT:
@@ -49,8 +49,8 @@ func NewComparablePrincipal(principal *msp.MSPPrincipal) *ComparablePrincipal {
 	case msp.MSPPrincipal_IDENTITY:
 		return cp.ToIdentity()
 	}
-	mapping := msp.MSPPrincipal_Classification_name[int32(principal.PrincipalClassification)]
-	logger.Warning("Received an unsupported principal type:", principal.PrincipalClassification, "mapped to", mapping)
+	mapping := msp.MSPPrincipal_Classification_name[int32(principal.GetPrincipalClassification())]
+	logger.Warning("Received an unsupported principal type:", principal.GetPrincipalClassification(), "mapped to", mapping)
 	return nil
 }
 
@@ -84,23 +84,23 @@ func (cp *ComparablePrincipal) IsA(other *ComparablePrincipal) bool {
 
 	// If the other Principal is a member, then any role or OU role
 	// fits, because every role or OU role is also a member of the MSP
-	if other.role != nil && other.role.Role == msp.MSPRole_MEMBER {
+	if other.role != nil && other.role.GetRole() == msp.MSPRole_MEMBER {
 		return true
 	}
 
 	// Check if we're both OU roles
 	if this.ou != nil && other.ou != nil {
-		sameOU := this.ou.OrganizationalUnitIdentifier == other.ou.OrganizationalUnitIdentifier
-		sameIssuer := bytes.Equal(this.ou.CertifiersIdentifier, other.ou.CertifiersIdentifier)
+		sameOU := this.ou.GetOrganizationalUnitIdentifier() == other.ou.GetOrganizationalUnitIdentifier()
+		sameIssuer := bytes.Equal(this.ou.GetCertifiersIdentifier(), other.ou.GetCertifiersIdentifier())
 		return sameOU && sameIssuer
 	}
 
 	// Check if we're both the same MSP Role
 	if this.role != nil && other.role != nil {
-		return this.role.Role == other.role.Role
+		return this.role.GetRole() == other.role.GetRole()
 	}
 
-	if this.principal.PrincipalClassification == msp.MSPPrincipal_IDENTITY {
+	if this.principal.GetPrincipalClassification() == msp.MSPPrincipal_IDENTITY {
 		return bytes.Equal(this.idBytes, other.idBytes) && this.mspID == other.mspID
 	}
 
@@ -112,12 +112,12 @@ func (cp *ComparablePrincipal) IsA(other *ComparablePrincipal) bool {
 // ToOURole converts this ComparablePrincipal to OU principal, and returns nil on failure
 func (cp *ComparablePrincipal) ToOURole() *ComparablePrincipal {
 	ouRole := &msp.OrganizationUnit{}
-	err := proto.Unmarshal(cp.principal.Principal, ouRole)
+	err := proto.Unmarshal(cp.principal.GetPrincipal(), ouRole)
 	if err != nil {
 		logger.Warning("Failed unmarshalling principal:", err)
 		return nil
 	}
-	cp.mspID = ouRole.MspIdentifier
+	cp.mspID = ouRole.GetMspIdentifier()
 	cp.ou = ouRole
 	return cp
 }
@@ -125,25 +125,25 @@ func (cp *ComparablePrincipal) ToOURole() *ComparablePrincipal {
 // ToIdentity converts this ComparablePrincipal to Identity principal, and returns nil on failure
 func (cp *ComparablePrincipal) ToIdentity() *ComparablePrincipal {
 	sID := &msp.SerializedIdentity{}
-	err := proto.Unmarshal(cp.principal.Principal, sID)
+	err := proto.Unmarshal(cp.principal.GetPrincipal(), sID)
 	if err != nil {
 		logger.Warning("Failed unmarshalling principal:", err)
 		return nil
 	}
-	cp.mspID = sID.Mspid
-	cp.idBytes = sID.IdBytes
+	cp.mspID = sID.GetMspid()
+	cp.idBytes = sID.GetIdBytes()
 	return cp
 }
 
 // ToRole converts this ComparablePrincipal to MSP Role, and returns nil if the conversion failed
 func (cp *ComparablePrincipal) ToRole() *ComparablePrincipal {
 	mspRole := &msp.MSPRole{}
-	err := proto.Unmarshal(cp.principal.Principal, mspRole)
+	err := proto.Unmarshal(cp.principal.GetPrincipal(), mspRole)
 	if err != nil {
 		logger.Warning("Failed unmarshalling principal:", err)
 		return nil
 	}
-	cp.mspID = mspRole.MspIdentifier
+	cp.mspID = mspRole.GetMspIdentifier()
 	cp.role = mspRole
 	return cp
 }
@@ -168,10 +168,10 @@ func (cps ComparablePrincipalSet) String() string {
 		buff.WriteString(cp.mspID)
 		buff.WriteString(".")
 		if cp.role != nil {
-			buff.WriteString(fmt.Sprintf("%v", cp.role.Role))
+			buff.WriteString(fmt.Sprintf("%v", cp.role.GetRole()))
 		}
 		if cp.ou != nil {
-			buff.WriteString(fmt.Sprintf("%v", cp.ou.OrganizationalUnitIdentifier))
+			buff.WriteString(fmt.Sprintf("%v", cp.ou.GetOrganizationalUnitIdentifier()))
 		}
 		if i < len(cps)-1 {
 			buff.WriteString(", ")
@@ -210,8 +210,8 @@ func (cp *ComparablePrincipal) equalRoles(cp2 *ComparablePrincipal) bool {
 		return false
 	}
 
-	return cp.role.MspIdentifier == cp2.role.MspIdentifier &&
-		cp.role.Role == cp2.role.Role
+	return cp.role.GetMspIdentifier() == cp2.role.GetMspIdentifier() &&
+		cp.role.GetRole() == cp2.role.GetRole()
 }
 
 func (cp *ComparablePrincipal) equalOUs(cp2 *ComparablePrincipal) bool {
@@ -223,15 +223,15 @@ func (cp *ComparablePrincipal) equalOUs(cp2 *ComparablePrincipal) bool {
 		return false
 	}
 
-	if cp.ou.OrganizationalUnitIdentifier != cp2.ou.OrganizationalUnitIdentifier {
+	if cp.ou.GetOrganizationalUnitIdentifier() != cp2.ou.GetOrganizationalUnitIdentifier() {
 		return false
 	}
 
-	if cp.ou.MspIdentifier != cp2.ou.MspIdentifier {
+	if cp.ou.GetMspIdentifier() != cp2.ou.GetMspIdentifier() {
 		return false
 	}
 
-	return bytes.Equal(cp.ou.CertifiersIdentifier, cp2.ou.CertifiersIdentifier)
+	return bytes.Equal(cp.ou.GetCertifiersIdentifier(), cp2.ou.GetCertifiersIdentifier())
 }
 
 func (cp *ComparablePrincipal) equalPrincipals(cp2 *ComparablePrincipal) bool {
@@ -243,9 +243,9 @@ func (cp *ComparablePrincipal) equalPrincipals(cp2 *ComparablePrincipal) bool {
 		return false
 	}
 
-	if cp.principal.PrincipalClassification != cp2.principal.PrincipalClassification {
+	if cp.principal.GetPrincipalClassification() != cp2.principal.GetPrincipalClassification() {
 		return false
 	}
 
-	return bytes.Equal(cp.principal.Principal, cp2.principal.Principal)
+	return bytes.Equal(cp.principal.GetPrincipal(), cp2.principal.GetPrincipal())
 }

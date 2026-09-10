@@ -36,7 +36,7 @@ func newBlockStore(id string, conf *Conf, indexConfig *IndexConfig,
 	// create ledgerStats and initialize blockchain_height stat
 	ledgerStats := stats.ledgerStats(id)
 	info := fileMgr.getBlockchainInfo()
-	ledgerStats.updateBlockchainHeight(info.Height)
+	ledgerStats.updateBlockchainHeight(info.GetHeight())
 
 	return &BlockStore{id, conf, fileMgr, ledgerStats}, nil
 }
@@ -48,7 +48,7 @@ func (store *BlockStore) AddBlock(block *common.Block) error {
 	result := store.fileMgr.addBlock(block)
 	elapsedBlockCommit := time.Since(startBlockCommit)
 
-	store.updateBlockStats(block.Header.Number, elapsedBlockCommit)
+	store.updateBlockStats(block.GetHeader().GetNumber(), elapsedBlockCommit)
 
 	return result
 }

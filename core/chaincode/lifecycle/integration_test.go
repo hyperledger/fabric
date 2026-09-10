@@ -156,7 +156,7 @@ var _ = Describe("Integration", func() {
 				}),
 			})
 			response := scc.Invoke(fakeStub)
-			Expect(response.Status).To(Equal(int32(200)))
+			Expect(response.GetStatus()).To(Equal(int32(200)))
 
 			// Define for the channel
 			fakeStub.GetArgsReturns([][]byte{
@@ -171,8 +171,8 @@ var _ = Describe("Integration", func() {
 				}),
 			})
 			response = scc.Invoke(fakeStub)
-			Expect(response.Message).To(Equal(""))
-			Expect(response.Status).To(Equal(int32(200)))
+			Expect(response.GetMessage()).To(Equal(""))
+			Expect(response.GetStatus()).To(Equal(int32(200)))
 
 			// Get channel definitions
 			fakeStub.GetArgsReturns([][]byte{
@@ -180,12 +180,12 @@ var _ = Describe("Integration", func() {
 				protoutil.MarshalOrPanic(&lb.QueryChaincodeDefinitionsArgs{}),
 			})
 			response = scc.Invoke(fakeStub)
-			Expect(response.Status).To(Equal(int32(200)))
+			Expect(response.GetStatus()).To(Equal(int32(200)))
 			definitionsResult := &lb.QueryChaincodeDefinitionsResult{}
-			err := proto.Unmarshal(response.Payload, definitionsResult)
+			err := proto.Unmarshal(response.GetPayload(), definitionsResult)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(definitionsResult.ChaincodeDefinitions)).To(Equal(1))
-			Expect(definitionsResult.ChaincodeDefinitions[0].Name).To(Equal("cc-name"))
+			Expect(len(definitionsResult.GetChaincodeDefinitions())).To(Equal(1))
+			Expect(definitionsResult.GetChaincodeDefinitions()[0].GetName()).To(Equal("cc-name"))
 
 			// Get chaincode definition details
 			fakeStub.GetArgsReturns([][]byte{
@@ -195,9 +195,9 @@ var _ = Describe("Integration", func() {
 				}),
 			})
 			response = scc.Invoke(fakeStub)
-			Expect(response.Status).To(Equal(int32(200)))
+			Expect(response.GetStatus()).To(Equal(int32(200)))
 			chaincodeResult := &lb.QueryChaincodeDefinitionResult{}
-			err = proto.Unmarshal(response.Payload, chaincodeResult)
+			err = proto.Unmarshal(response.GetPayload(), chaincodeResult)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(chaincodeResult).To(ProtoEqual(&lb.QueryChaincodeDefinitionResult{
 				Sequence:            1,

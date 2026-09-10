@@ -105,8 +105,8 @@ func (ps PrincipalSet) UniqueSet() map[*msp.MSPPrincipal]int {
 			cls       int32
 			principal string
 		}{
-			cls:       int32(principal.PrincipalClassification),
-			principal: string(principal.Principal),
+			cls:       int32(principal.GetPrincipalClassification()),
+			principal: string(principal.GetPrincipal()),
 		}
 		histogram[key]++
 	}
@@ -191,7 +191,7 @@ func NewManagerImpl(path string, providers map[int32]Provider, root *cb.ConfigGr
 
 	managers := make(map[string]*ManagerImpl)
 
-	for groupName, group := range root.Groups {
+	for groupName, group := range root.GetGroups() {
 		managers[groupName], err = NewManagerImpl(path+PathSeparator+groupName, providers, group)
 		if err != nil {
 			return nil, err
@@ -199,28 +199,28 @@ func NewManagerImpl(path string, providers map[int32]Provider, root *cb.ConfigGr
 	}
 
 	policies := make(map[string]Policy)
-	for policyName, configPolicy := range root.Policies {
-		policy := configPolicy.Policy
+	for policyName, configPolicy := range root.GetPolicies() {
+		policy := configPolicy.GetPolicy()
 		if policy == nil {
 			return nil, fmt.Errorf("policy %s at path %s was nil", policyName, path)
 		}
 
 		var cPolicy Policy
 
-		if policy.Type == int32(cb.Policy_IMPLICIT_META) {
-			imp, err := NewImplicitMetaPolicy(policy.Value, managers)
+		if policy.GetType() == int32(cb.Policy_IMPLICIT_META) {
+			imp, err := NewImplicitMetaPolicy(policy.GetValue(), managers)
 			if err != nil {
 				return nil, errors.Wrapf(err, "implicit policy %s at path %s did not compile", policyName, path)
 			}
 			cPolicy = imp
 		} else {
-			provider, ok := providers[policy.Type]
+			provider, ok := providers[policy.GetType()]
 			if !ok {
-				return nil, fmt.Errorf("policy %s at path %s has unknown policy type: %v", policyName, path, policy.Type)
+				return nil, fmt.Errorf("policy %s at path %s has unknown policy type: %v", policyName, path, policy.GetType())
 			}
 
 			var err error
-			cPolicy, _, err = provider.NewPolicy(policy.Value)
+			cPolicy, _, err = provider.NewPolicy(policy.GetValue())
 			if err != nil {
 				return nil, errors.Wrapf(err, "policy %s at path %s did not compile", policyName, path)
 			}

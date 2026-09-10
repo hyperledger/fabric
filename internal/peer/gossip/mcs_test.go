@@ -92,7 +92,7 @@ func TestPKIidOfCert(t *testing.T) {
 	// Check that pkid is correctly computed
 	id, err := deserializersManager.Deserialize(peerIdentity)
 	require.NoError(t, err, "Failed getting validated identity from [% x]", peerIdentity)
-	idRaw := append([]byte(id.Mspid), id.IdBytes...)
+	idRaw := append([]byte(id.GetMspid()), id.GetIdBytes()...)
 	require.NoError(t, err, "Failed marshalling identity identifier [% x]: [%s]", peerIdentity, err)
 	h := sha256.New()
 	h.Write(idRaw)
@@ -357,16 +357,16 @@ func TestVerifyBlockBFT(t *testing.T) {
 	aliceSigner := &mocks.SignerSerializer{}
 	consenters := mockConsenters()
 	aliceID := protoutil.MarshalOrPanic(&pmsp.SerializedIdentity{
-		Mspid:   consenters[0].MspId,
-		IdBytes: consenters[0].Identity,
+		Mspid:   consenters[0].GetMspId(),
+		IdBytes: consenters[0].GetIdentity(),
 	})
 	bobID := protoutil.MarshalOrPanic(&pmsp.SerializedIdentity{
-		Mspid:   consenters[1].MspId,
-		IdBytes: consenters[1].Identity,
+		Mspid:   consenters[1].GetMspId(),
+		IdBytes: consenters[1].GetIdentity(),
 	})
 	charlieID := protoutil.MarshalOrPanic(&pmsp.SerializedIdentity{
-		Mspid:   consenters[2].MspId,
-		IdBytes: consenters[2].Identity,
+		Mspid:   consenters[2].GetMspId(),
+		IdBytes: consenters[2].GetIdentity(),
 	})
 	aliceSigner.SerializeReturns(aliceID, nil)
 	policyManagerGetter := &mocks.ChannelPolicyManagerGetterWithManager{
@@ -474,7 +474,7 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner *mocks.S
 	if len(dataHash) != 0 {
 		block.Header.DataHash = dataHash
 	} else {
-		block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+		block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 	}
 
 	// Add signer's signature to the block
@@ -489,7 +489,7 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner *mocks.S
 	// information required beyond the fact that the metadata item is signed.
 	blockSignatureValue := []byte(nil)
 
-	msg := util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header))
+	msg := util.ConcatenateBytes(blockSignatureValue, blockSignature.GetSignatureHeader(), protoutil.BlockHeaderBytes(block.GetHeader()))
 	localSigner.SignReturns(msg, nil)
 	blockSignature.Signature, err = localSigner.Sign(msg)
 	require.NoError(t, err, "Failed signing block")
@@ -517,7 +517,7 @@ func mockBlockBFT(t *testing.T, channel string, seqNum uint64, localSigner *mock
 	if len(dataHash) != 0 {
 		block.Header.DataHash = dataHash
 	} else {
-		block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+		block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 	}
 
 	ihdr := &common.IdentifierHeader{
@@ -532,7 +532,7 @@ func mockBlockBFT(t *testing.T, channel string, seqNum uint64, localSigner *mock
 	// information required beyond the fact that the metadata item is signed.
 	blockSignatureValue := []byte(nil)
 
-	msg := util.ConcatenateBytes(blockSignatureValue, blockSignature.IdentifierHeader, protoutil.BlockHeaderBytes(block.Header))
+	msg := util.ConcatenateBytes(blockSignatureValue, blockSignature.GetIdentifierHeader(), protoutil.BlockHeaderBytes(block.GetHeader()))
 	localSigner.SignReturns(msg, nil)
 	blockSignature.Signature, err = localSigner.Sign(msg)
 	require.NoError(t, err, "Failed signing block")

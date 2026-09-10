@@ -115,7 +115,7 @@ func TestSyncBuffer_PullBlock(t *testing.T) {
 			for {
 				blockOut := buff.PullBlock(j)
 				require.NotNil(t, blockOut)
-				require.Equal(t, j, blockOut.Header.Number)
+				require.Equal(t, j, blockOut.GetHeader().GetNumber())
 				j++
 				if j == lastBlock {
 					break

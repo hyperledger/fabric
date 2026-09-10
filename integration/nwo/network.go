@@ -1019,7 +1019,7 @@ func (n *Network) UpdateOrgAnchorPeers(o *Orderer, channelName, orgName string, 
 	Expect(peersInOrg).ToNot(BeEmpty())
 	currentConfig := GetConfig(n, peersInOrg[0], o, channelName)
 	updatedConfig := proto.Clone(currentConfig).(*common.Config)
-	orgConfigGroup := updatedConfig.ChannelGroup.Groups["Application"].GetGroups()[orgName]
+	orgConfigGroup := updatedConfig.GetChannelGroup().GetGroups()["Application"].GetGroups()[orgName]
 	Expect(orgConfigGroup).NotTo(BeNil())
 
 	updatedAnchorPeers := &pb.AnchorPeers{}

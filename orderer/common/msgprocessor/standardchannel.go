@@ -80,7 +80,7 @@ func CreateStandardChannelFilters(filterSupport channelconfig.Resources, config 
 
 // ClassifyMsg inspects the message to determine which type of processing is necessary
 func (s *StandardChannel) ClassifyMsg(chdr *cb.ChannelHeader) Classification {
-	switch chdr.Type {
+	switch chdr.GetType() {
 	case int32(cb.HeaderType_CONFIG_UPDATE):
 		return ConfigUpdateMsg
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
@@ -167,5 +167,5 @@ func (s *StandardChannel) ProcessConfigMsg(env *cb.Envelope) (config *cb.Envelop
 		return
 	}
 
-	return s.ProcessConfigUpdateMsg(configEnvelope.LastUpdate)
+	return s.ProcessConfigUpdateMsg(configEnvelope.GetLastUpdate())
 }

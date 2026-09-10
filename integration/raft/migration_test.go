@@ -125,7 +125,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			env := CreateBroadcastEnvelope(network, o1, "testchannel", []byte("foo"))
 			resp, err := ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 			block := FetchBlock(network, o1, 1, "testchannel")
 			Expect(block).NotTo(BeNil())
@@ -214,7 +214,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			env = CreateBroadcastEnvelope(network, o1, "testchannel", []byte("foo"))
 			resp, err = ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 			// check block was successfully committed in all orderers
 			assertBlockReceptionInAllOrderers(network.Orderers[1:], peer, network, "testchannel", currentBlockNumber)
@@ -552,14 +552,14 @@ var _ = Describe("ConsensusTypeMigration", func() {
 })
 
 func validateConsensusTypeValue(value *protosorderer.ConsensusType, cType string, state protosorderer.ConsensusType_State) {
-	Expect(value.Type).To(Equal(cType))
-	Expect(value.State).To(Equal(state))
+	Expect(value.GetType()).To(Equal(cType))
+	Expect(value.GetState()).To(Equal(state))
 }
 
 func extractOrdererConsensusType(config *common.Config) *protosorderer.ConsensusType {
 	var consensusTypeValue protosorderer.ConsensusType
-	consensusTypeConfigValue := config.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
-	err := proto.Unmarshal(consensusTypeConfigValue.Value, &consensusTypeValue)
+	consensusTypeConfigValue := config.GetChannelGroup().GetGroups()["Orderer"].GetValues()["ConsensusType"]
+	err := proto.Unmarshal(consensusTypeConfigValue.GetValue(), &consensusTypeValue)
 	Expect(err).NotTo(HaveOccurred())
 	return &consensusTypeValue
 }
@@ -571,7 +571,7 @@ func updateConfigWithConsensusType(
 	updatedConfig *common.Config,
 	consensusTypeValue *protosorderer.ConsensusType,
 ) {
-	if consensusTypeValue.Type != consensusType {
+	if consensusTypeValue.GetType() != consensusType {
 		consensusTypeValue.Metadata = consensusMetadata
 	}
 	consensusTypeValue.Type = consensusType
@@ -583,15 +583,15 @@ func updateConfigWithConsensusType(
 }
 
 func updateConfigWithBatchTimeout(updatedConfig *common.Config) {
-	batchTimeoutConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchTimeout"]
+	batchTimeoutConfigValue := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetValues()["BatchTimeout"]
 	batchTimeoutValue := new(protosorderer.BatchTimeout)
-	err := proto.Unmarshal(batchTimeoutConfigValue.Value, batchTimeoutValue)
+	err := proto.Unmarshal(batchTimeoutConfigValue.GetValue(), batchTimeoutValue)
 	Expect(err).NotTo(HaveOccurred())
-	toDur, err := time.ParseDuration(batchTimeoutValue.Timeout)
+	toDur, err := time.ParseDuration(batchTimeoutValue.GetTimeout())
 	Expect(err).NotTo(HaveOccurred())
 	toDur = toDur + time.Duration(100000000)
 	batchTimeoutValue.Timeout = toDur.String()
-	By(fmt.Sprintf("Increasing BatchTimeout to %s", batchTimeoutValue.Timeout))
+	By(fmt.Sprintf("Increasing BatchTimeout to %s", batchTimeoutValue.GetTimeout()))
 	updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchTimeout"] = &common.ConfigValue{
 		ModPolicy: "Admins",
 		Value:     protoutil.MarshalOrPanic(batchTimeoutValue),
@@ -737,7 +737,7 @@ func assertBlockCreation(network *nwo.Network, orderer *nwo.Orderer, peer *nwo.P
 	env := createBroadcastEnvelope(network, signer, channelID, []byte("hola"))
 	resp, err := ordererclient.Broadcast(network, orderer, env)
 	Expect(err).NotTo(HaveOccurred())
-	Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+	Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 	denv := createDeliverEnvelope(network, signer, blkNum, channelID)
 	blk, err := ordererclient.Deliver(network, orderer, denv)
@@ -750,8 +750,8 @@ func assertTxFailed(network *nwo.Network, orderer *nwo.Orderer, channelID string
 	env := createBroadcastEnvelope(network, signer, channelID, []byte("hola"))
 	resp, err := ordererclient.Broadcast(network, orderer, env)
 	Expect(err).NotTo(HaveOccurred())
-	Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))
-	Expect(resp.Info).To(Equal("normal transactions are rejected: maintenance mode"))
+	Expect(resp.GetStatus()).To(Equal(common.Status_SERVICE_UNAVAILABLE))
+	Expect(resp.GetInfo()).To(Equal("normal transactions are rejected: maintenance mode"))
 }
 
 func createBroadcastEnvelope(n *nwo.Network, signer *nwo.SigningIdentity, channel string, data []byte) *common.Envelope {
@@ -797,7 +797,7 @@ func updateBFTOrderersConfig(network *nwo.Network, config *common.Config) {
 		ConsenterMapping: computeConsenterMappings(network),
 	}
 
-	policies.EncodeBFTBlockVerificationPolicy(orderersVal.ConsenterMapping, config.ChannelGroup.Groups["Orderer"])
+	policies.EncodeBFTBlockVerificationPolicy(orderersVal.GetConsenterMapping(), config.GetChannelGroup().GetGroups()["Orderer"])
 
 	config.ChannelGroup.Groups["Orderer"].Values["Orderers"] = &common.ConfigValue{
 		Value:     protoutil.MarshalOrPanic(orderersVal),
@@ -810,9 +810,9 @@ func updateInvalidBFTOrderersConfig(network *nwo.Network, config *common.Config)
 		ConsenterMapping: computeConsenterMappings(network),
 	}
 
-	orderersVal.ConsenterMapping[0].Port = orderersVal.ConsenterMapping[0].Port + 1
+	orderersVal.ConsenterMapping[0].Port = orderersVal.GetConsenterMapping()[0].GetPort() + 1
 
-	policies.EncodeBFTBlockVerificationPolicy(orderersVal.ConsenterMapping, config.ChannelGroup.Groups["Orderer"])
+	policies.EncodeBFTBlockVerificationPolicy(orderersVal.GetConsenterMapping(), config.GetChannelGroup().GetGroups()["Orderer"])
 
 	config.ChannelGroup.Groups["Orderer"].Values["Orderers"] = &common.ConfigValue{
 		Value:     protoutil.MarshalOrPanic(orderersVal),

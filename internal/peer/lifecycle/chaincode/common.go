@@ -120,7 +120,7 @@ func createCollectionConfigPackage(collectionsConfigFile string) (*pb.Collection
 }
 
 func printResponseAsJSON(proposalResponse *pb.ProposalResponse, msg proto.Message, out io.Writer) error {
-	err := proto.Unmarshal(proposalResponse.Response.Payload, msg)
+	err := proto.Unmarshal(proposalResponse.GetResponse().GetPayload(), msg)
 	if err != nil {
 		return errors.Wrapf(err, "failed to unmarshal proposal response's response payload as type %T", msg)
 	}

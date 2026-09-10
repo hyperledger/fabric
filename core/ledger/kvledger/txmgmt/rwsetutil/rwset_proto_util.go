@@ -169,7 +169,7 @@ func TxRwSetFromProtoMsg(protoMsg *rwset.TxReadWriteSet) (*TxRwSet, error) {
 	txRwSet := &TxRwSet{}
 	var nsRwSet *NsRwSet
 	var err error
-	for _, nsRwSetProtoMsg := range protoMsg.NsRwset {
+	for _, nsRwSetProtoMsg := range protoMsg.GetNsRwset() {
 		if nsRwSet, err = nsRwSetFromProtoMsg(nsRwSetProtoMsg); err != nil {
 			return nil, err
 		}
@@ -196,13 +196,13 @@ func (nsRwSet *NsRwSet) toProtoMsg() (*rwset.NsReadWriteSet, error) {
 }
 
 func nsRwSetFromProtoMsg(protoMsg *rwset.NsReadWriteSet) (*NsRwSet, error) {
-	nsRwSet := &NsRwSet{NameSpace: protoMsg.Namespace, KvRwSet: &kvrwset.KVRWSet{}}
-	if err := proto.Unmarshal(protoMsg.Rwset, nsRwSet.KvRwSet); err != nil {
+	nsRwSet := &NsRwSet{NameSpace: protoMsg.GetNamespace(), KvRwSet: &kvrwset.KVRWSet{}}
+	if err := proto.Unmarshal(protoMsg.GetRwset(), nsRwSet.KvRwSet); err != nil {
 		return nil, err
 	}
 	var err error
 	var collHashedRwSet *CollHashedRwSet
-	for _, collHashedRwSetProtoMsg := range protoMsg.CollectionHashedRwset {
+	for _, collHashedRwSetProtoMsg := range protoMsg.GetCollectionHashedRwset() {
 		if collHashedRwSet, err = collHashedRwSetFromProtoMsg(collHashedRwSetProtoMsg); err != nil {
 			return nil, err
 		}
@@ -225,11 +225,11 @@ func (collHashedRwSet *CollHashedRwSet) toProtoMsg() (*rwset.CollectionHashedRea
 
 func collHashedRwSetFromProtoMsg(protoMsg *rwset.CollectionHashedReadWriteSet) (*CollHashedRwSet, error) {
 	colHashedRwSet := &CollHashedRwSet{
-		CollectionName: protoMsg.CollectionName,
-		PvtRwSetHash:   protoMsg.PvtRwsetHash,
+		CollectionName: protoMsg.GetCollectionName(),
+		PvtRwSetHash:   protoMsg.GetPvtRwsetHash(),
 		HashedRwSet:    &kvrwset.HashedRWSet{},
 	}
-	if err := proto.Unmarshal(protoMsg.HashedRwset, colHashedRwSet.HashedRwSet); err != nil {
+	if err := proto.Unmarshal(protoMsg.GetHashedRwset(), colHashedRwSet.HashedRwSet); err != nil {
 		return nil, err
 	}
 	return colHashedRwSet, nil
@@ -272,7 +272,7 @@ func TxPvtRwSetFromProtoMsg(protoMsg *rwset.TxPvtReadWriteSet) (*TxPvtRwSet, err
 	txPvtRwset := &TxPvtRwSet{}
 	var nsPvtRwSet *NsPvtRwSet
 	var err error
-	for _, nsRwSetProtoMsg := range protoMsg.NsPvtRwset {
+	for _, nsRwSetProtoMsg := range protoMsg.GetNsPvtRwset() {
 		if nsPvtRwSet, err = nsPvtRwSetFromProtoMsg(nsRwSetProtoMsg); err != nil {
 			return nil, err
 		}
@@ -295,8 +295,8 @@ func (nsPvtRwSet *NsPvtRwSet) toProtoMsg() (*rwset.NsPvtReadWriteSet, error) {
 }
 
 func nsPvtRwSetFromProtoMsg(protoMsg *rwset.NsPvtReadWriteSet) (*NsPvtRwSet, error) {
-	nsPvtRwSet := &NsPvtRwSet{NameSpace: protoMsg.Namespace}
-	for _, collPvtRwSetProtoMsg := range protoMsg.CollectionPvtRwset {
+	nsPvtRwSet := &NsPvtRwSet{NameSpace: protoMsg.GetNamespace()}
+	for _, collPvtRwSetProtoMsg := range protoMsg.GetCollectionPvtRwset() {
 		var err error
 		var collPvtRwSet *CollPvtRwSet
 		if collPvtRwSet, err = CollPvtRwSetFromProtoMsg(collPvtRwSetProtoMsg); err != nil {
@@ -317,8 +317,8 @@ func (collPvtRwSet *CollPvtRwSet) ToProtoMsg() (*rwset.CollectionPvtReadWriteSet
 }
 
 func CollPvtRwSetFromProtoMsg(protoMsg *rwset.CollectionPvtReadWriteSet) (*CollPvtRwSet, error) {
-	collPvtRwSet := &CollPvtRwSet{CollectionName: protoMsg.CollectionName, KvRwSet: &kvrwset.KVRWSet{}}
-	if err := proto.Unmarshal(protoMsg.Rwset, collPvtRwSet.KvRwSet); err != nil {
+	collPvtRwSet := &CollPvtRwSet{CollectionName: protoMsg.GetCollectionName(), KvRwSet: &kvrwset.KVRWSet{}}
+	if err := proto.Unmarshal(protoMsg.GetRwset(), collPvtRwSet.KvRwSet); err != nil {
 		return nil, err
 	}
 	return collPvtRwSet, nil
@@ -334,7 +334,7 @@ func NewVersion(protoVersion *kvrwset.Version) *version.Height {
 	if protoVersion == nil {
 		return nil
 	}
-	return version.NewHeight(protoVersion.BlockNum, protoVersion.TxNum)
+	return version.NewHeight(protoVersion.GetBlockNum(), protoVersion.GetTxNum())
 }
 
 func newProtoVersion(height *version.Height) *kvrwset.Version {
@@ -356,20 +356,20 @@ func newPvtKVWriteAndHash(key string, value []byte) (*kvrwset.KVWrite, *kvrwset.
 	kvWrite := newKVWrite(key, value)
 	var keyHash, valueHash []byte
 	keyHash = util.ComputeStringHash(key)
-	if !kvWrite.IsDelete {
+	if !kvWrite.GetIsDelete() {
 		valueHash = util.ComputeHash(value)
 	}
-	return kvWrite, &kvrwset.KVWriteHash{KeyHash: keyHash, IsDelete: kvWrite.IsDelete, ValueHash: valueHash}
+	return kvWrite, &kvrwset.KVWriteHash{KeyHash: keyHash, IsDelete: kvWrite.GetIsDelete(), ValueHash: valueHash}
 }
 
 // IsKVWriteDelete returns true if the kvWrite indicates a delete operation. See FAB-18386 for details.
 func IsKVWriteDelete(kvWrite *kvrwset.KVWrite) bool {
-	return kvWrite.IsDelete || len(kvWrite.Value) == 0
+	return kvWrite.GetIsDelete() || len(kvWrite.GetValue()) == 0
 }
 
 var hashOfZeroLengthByteArray = util.ComputeHash([]byte{})
 
 // IsKVWriteHashDelete returns true if the kvWriteHash indicates a delete operation. See FAB-18386 for details.
 func IsKVWriteHashDelete(kvWriteHash *kvrwset.KVWriteHash) bool {
-	return kvWriteHash.IsDelete || len(kvWriteHash.ValueHash) == 0 || bytes.Equal(hashOfZeroLengthByteArray, kvWriteHash.ValueHash)
+	return kvWriteHash.GetIsDelete() || len(kvWriteHash.GetValueHash()) == 0 || bytes.Equal(hashOfZeroLengthByteArray, kvWriteHash.GetValueHash())
 }

@@ -504,7 +504,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			By("Removing the added node from the channels")
 			nwo.UpdateConsenters(network, peer, network.Orderers[2], "testchannel1", func(orderers *common.Orderers) {
-				orderers.ConsenterMapping = orderers.ConsenterMapping[:4]
+				orderers.ConsenterMapping = orderers.GetConsenterMapping()[:4]
 			})
 			Eventually(ordererRunners[4].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Evicted in reconfiguration, shutting down channel=testchannel1"))
 
@@ -1226,7 +1226,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				Eventually(lastOrdererRunner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(fmt.Sprintf("Message from %d", 1+i)))
 				By(fmt.Sprintf("Removing the added node from the application channel (block %d)", 8+i))
 				nwo.UpdateConsenters(network, peer, lastOrderer, channel, func(orderers *common.Orderers) {
-					orderers.ConsenterMapping = orderers.ConsenterMapping[1:]
+					orderers.ConsenterMapping = orderers.GetConsenterMapping()[1:]
 				})
 
 				assertBlockReception(map[string]int{"testchannel1": 8 + i}, network.Orderers[7:], network)
@@ -1268,15 +1268,15 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			env := ordererclient.CreateBroadcastEnvelope(network, leader, channel, []byte("MESSAGE"))
 			resp, err := ordererclient.Broadcast(network, leader, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 			By("Sending TX with corrupted signature")
 			env = ordererclient.CreateBroadcastEnvelope(network, leader, channel, []byte("MESSAGE_2"))
 			env.Signature = []byte{1, 2, 3}
 			resp, err = ordererclient.Broadcast(network, leader, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_FORBIDDEN))
-			Expect(resp.Info).To(ContainSubstring("implicit policy evaluation failed - 0 sub-policies were satisfied"))
+			Expect(resp.GetStatus()).To(Equal(common.Status_FORBIDDEN))
+			Expect(resp.GetInfo()).To(ContainSubstring("implicit policy evaluation failed - 0 sub-policies were satisfied"))
 		})
 
 		It("smartbft batch size max bytes config change", func() {
@@ -1324,7 +1324,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			env := ordererclient.CreateBroadcastEnvelope(network, orderer1, channel, make([]byte, newAbsoluteMaxBytes+1))
 			resp, err := ordererclient.Broadcast(network, orderer1, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 			By("Changing the batch max bytes to 1MB")
 			updateBatchSize(network, peer, orderer1, channel,
@@ -1336,7 +1336,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			env = ordererclient.CreateBroadcastEnvelope(network, orderer1, channel, make([]byte, newAbsoluteMaxBytes+1))
 			resp, err = ordererclient.Broadcast(network, orderer1, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
+			Expect(resp.GetStatus()).To(Equal(common.Status_BAD_REQUEST))
 		})
 
 		It("smartbft reconfiguration prevents blacklisting", func() {
@@ -2069,9 +2069,9 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			newAbsoluteMaxBytes := 1_000_000
 			config := nwo.GetConfig(network, peer, orderer1, channel)
 			updatedConfig := proto.Clone(config).(*common.Config)
-			batchSizeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchSize"]
+			batchSizeConfigValue := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetValues()["BatchSize"]
 			batchSizeValue := &ordererProtos.BatchSize{}
-			Expect(proto.Unmarshal(batchSizeConfigValue.Value, batchSizeValue)).To(Succeed())
+			Expect(proto.Unmarshal(batchSizeConfigValue.GetValue(), batchSizeValue)).To(Succeed())
 			batchSizeValue.AbsoluteMaxBytes = uint32(newAbsoluteMaxBytes)
 			updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchSize"] = &common.ConfigValue{
 				ModPolicy: "Admins",
@@ -2100,7 +2100,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 					defer wg.Done()
 					resp, err := ordererclient.Broadcast(network, network.Orderers[ccid], ctxEnv)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+					Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 				}(i)
 			}
 			wg.Wait()
@@ -2387,7 +2387,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 					defer wg.Done()
 					resp, err := ordererclient.Broadcast(network, network.Orderers[i], env)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+					Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 				}()
 			}
 			wg.Wait()
@@ -2789,9 +2789,9 @@ func updateBatchSize(
 ) {
 	config := nwo.GetConfig(network, peer, orderer, channel)
 	updatedConfig := proto.Clone(config).(*common.Config)
-	batchSizeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchSize"]
+	batchSizeConfigValue := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetValues()["BatchSize"]
 	batchSizeValue := &ordererProtos.BatchSize{}
-	Expect(proto.Unmarshal(batchSizeConfigValue.Value, batchSizeValue)).To(Succeed())
+	Expect(proto.Unmarshal(batchSizeConfigValue.GetValue(), batchSizeValue)).To(Succeed())
 	batchSizeMutator(batchSizeValue)
 	updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchSize"] = &common.ConfigValue{
 		ModPolicy: "Admins",
@@ -2807,13 +2807,13 @@ func createPrePrepareRequest(
 	channel string,
 	viewId uint64,
 ) (*ordererProtos.StepRequest, *common.Block) {
-	block := protoutil.NewBlock(lastBlock.Header.Number+1, protoutil.BlockHeaderHash(lastBlock.Header))
+	block := protoutil.NewBlock(lastBlock.GetHeader().GetNumber()+1, protoutil.BlockHeaderHash(lastBlock.GetHeader()))
 	block.Data = &common.BlockData{
 		Data: [][]byte{
 			protoutil.MarshalOrPanic(env),
 		},
 	}
-	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 
 	metadata := protoutil.MarshalOrPanic(&protos.ViewMetadata{
 		ViewId:         viewId,
@@ -2824,14 +2824,14 @@ func createPrePrepareRequest(
 		Value: protoutil.MarshalOrPanic(&common.OrdererBlockMetadata{
 			ConsenterMetadata: metadata,
 			LastConfig: &common.LastConfig{
-				Index: lastConfigBlock.Header.Number,
+				Index: lastConfigBlock.GetHeader().GetNumber(),
 			},
 		}),
 	})
 
 	tuple := &smartbft.ByteBufferTuple{
-		A: protoutil.MarshalOrPanic(block.Data),
-		B: protoutil.MarshalOrPanic(block.Metadata),
+		A: protoutil.MarshalOrPanic(block.GetData()),
+		B: protoutil.MarshalOrPanic(block.GetMetadata()),
 	}
 
 	req := &ordererProtos.StepRequest{
@@ -2843,7 +2843,7 @@ func createPrePrepareRequest(
 							View: viewId,
 							Seq:  1,
 							Proposal: &protos.Proposal{
-								Header:               protoutil.BlockHeaderBytes(block.Header),
+								Header:               protoutil.BlockHeaderBytes(block.GetHeader()),
 								Payload:              tuple.ToBytes(),
 								Metadata:             metadata,
 								VerificationSequence: 0,

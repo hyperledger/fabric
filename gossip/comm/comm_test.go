@@ -247,8 +247,8 @@ func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator 
 	require.NoError(t, err, "%v", err)
 	msg, err = protoext.EnvelopeToGossipMessage(envelope)
 	require.NoError(t, err, "%v", err)
-	require.Equal(t, []byte(target), msg.GetConn().PkiId)
-	require.Equal(t, extractCertificateHashFromContext(stream.Context()), msg.GetConn().TlsCertHash)
+	require.Equal(t, []byte(target), msg.GetConn().GetPkiId())
+	require.Equal(t, extractCertificateHashFromContext(stream.Context()), msg.GetConn().GetTlsCertHash())
 	msg2Send := createGossipMsg()
 	nonce := uint64(r.Int())
 	msg2Send.Nonce = nonce
@@ -978,7 +978,7 @@ func TestSendBadEnvelope(t *testing.T) {
 
 	select {
 	case goodMsgReceived := <-inc:
-		require.Equal(t, goodMsg.Envelope.Payload, goodMsgReceived.GetSourceEnvelope().Payload)
+		require.Equal(t, goodMsg.Envelope.GetPayload(), goodMsgReceived.GetSourceEnvelope().GetPayload())
 	case <-time.After(time.Minute):
 		require.Fail(t, "Didn't receive message within a timely manner")
 		return

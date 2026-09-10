@@ -60,11 +60,11 @@ type currentUpdates struct {
 }
 
 func (c *currentUpdates) blockNum() uint64 {
-	return c.block.Header.Number
+	return c.block.GetHeader().GetNumber()
 }
 
 func (c *currentUpdates) maxTxNumber() uint64 {
-	return uint64(len(c.block.Data.Data)) - 1
+	return uint64(len(c.block.GetData().GetData())) - 1
 }
 
 func (c *currentUpdates) purgeAppInitiatedPvtKeys(keys map[privacyenabledstate.PvtdataCompositeKey]*version.Height) {
@@ -187,7 +187,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 	logger.Debug("lock acquired on oldBlockCommit for validating read set version against the committed version")
 
 	block := blockAndPvtdata.Block
-	logger.Debugf("Validating new block with num trans = [%d]", len(block.Data.Data))
+	logger.Debugf("Validating new block with num trans = [%d]", len(block.GetData().GetData()))
 	batch, appPurgeUpdates, txstatsInfo, err := txmgr.commitBatchPreparer.ValidateAndPrepareBatch(blockAndPvtdata, doMVCCValidation)
 	if err != nil {
 		txmgr.reset()
@@ -293,7 +293,7 @@ func (uniquePvtData uniquePvtDataMap) updateUsingBlockPvtdata(blockPvtData []*le
 }
 
 func (uniquePvtData uniquePvtDataMap) updateUsingTxPvtData(txPvtData *ledger.TxPvtData, ver *version.Height) error {
-	for _, nsPvtData := range txPvtData.WriteSet.NsPvtRwset {
+	for _, nsPvtData := range txPvtData.WriteSet.GetNsPvtRwset() {
 		if err := uniquePvtData.updateUsingNsPvtData(nsPvtData, ver); err != nil {
 			return err
 		}
@@ -302,8 +302,8 @@ func (uniquePvtData uniquePvtDataMap) updateUsingTxPvtData(txPvtData *ledger.TxP
 }
 
 func (uniquePvtData uniquePvtDataMap) updateUsingNsPvtData(nsPvtData *rwset.NsPvtReadWriteSet, ver *version.Height) error {
-	for _, collPvtData := range nsPvtData.CollectionPvtRwset {
-		if err := uniquePvtData.updateUsingCollPvtData(collPvtData, nsPvtData.Namespace, ver); err != nil {
+	for _, collPvtData := range nsPvtData.GetCollectionPvtRwset() {
+		if err := uniquePvtData.updateUsingCollPvtData(collPvtData, nsPvtData.GetNamespace(), ver); err != nil {
 			return err
 		}
 	} // for each coll
@@ -314,17 +314,17 @@ func (uniquePvtData uniquePvtDataMap) updateUsingCollPvtData(collPvtData *rwset.
 	ns string, ver *version.Height,
 ) error {
 	kvRWSet := &kvrwset.KVRWSet{}
-	if err := proto.Unmarshal(collPvtData.Rwset, kvRWSet); err != nil {
+	if err := proto.Unmarshal(collPvtData.GetRwset(), kvRWSet); err != nil {
 		return err
 	}
 
 	hashedCompositeKey := privacyenabledstate.HashedCompositeKey{
 		Namespace:      ns,
-		CollectionName: collPvtData.CollectionName,
+		CollectionName: collPvtData.GetCollectionName(),
 	}
 
-	for _, kvWrite := range kvRWSet.Writes { // for each kv pair
-		hashedCompositeKey.KeyHash = string(util.ComputeStringHash(kvWrite.Key))
+	for _, kvWrite := range kvRWSet.GetWrites() { // for each kv pair
+		hashedCompositeKey.KeyHash = string(util.ComputeStringHash(kvWrite.GetKey()))
 		uniquePvtData.updateUsingPvtWrite(kvWrite, hashedCompositeKey, ver)
 	} // for each kv pair
 
@@ -337,9 +337,9 @@ func (uniquePvtData uniquePvtDataMap) updateUsingPvtWrite(pvtWrite *kvrwset.KVWr
 	pvtData, ok := uniquePvtData[hashedCompositeKey]
 	if !ok || pvtData.Version.Compare(ver) < 0 {
 		uniquePvtData[hashedCompositeKey] = &privacyenabledstate.PvtKVWrite{
-			Key:      pvtWrite.Key,
+			Key:      pvtWrite.GetKey(),
 			IsDelete: rwsetutil.IsKVWriteDelete(pvtWrite),
-			Value:    pvtWrite.Value,
+			Value:    pvtWrite.GetValue(),
 			Version:  ver,
 		}
 	}
@@ -604,16 +604,16 @@ func (txmgr *LockBasedTxMgr) Name() string {
 // CommitLostBlock implements method in interface kvledger.Recoverer
 func (txmgr *LockBasedTxMgr) CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvtData) error {
 	block := blockAndPvtdata.Block
-	logger.Debugf("Constructing updateSet for the block %d", block.Header.Number)
+	logger.Debugf("Constructing updateSet for the block %d", block.GetHeader().GetNumber())
 	if _, _, _, err := txmgr.ValidateAndPrepare(blockAndPvtdata, false); err != nil {
 		return err
 	}
 
 	// log every 1000th block at Info level so that statedb rebuild progress can be tracked in production envs.
-	if block.Header.Number%1000 == 0 {
-		logger.Infof("Recommitting block [%d] to state database", block.Header.Number)
+	if block.GetHeader().GetNumber()%1000 == 0 {
+		logger.Infof("Recommitting block [%d] to state database", block.GetHeader().GetNumber())
 	} else {
-		logger.Debugf("Recommitting block [%d] to state database", block.Header.Number)
+		logger.Debugf("Recommitting block [%d] to state database", block.GetHeader().GetNumber())
 	}
 
 	return txmgr.Commit()

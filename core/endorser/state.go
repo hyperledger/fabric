@@ -65,7 +65,7 @@ func (sc *StateContext) GetTransientByTXID(txID string) ([]*rwset.TxPvtReadWrite
 		if res.PvtSimulationResultsWithConfig == nil {
 			continue
 		}
-		data = append(data, res.PvtSimulationResultsWithConfig.PvtRwset)
+		data = append(data, res.PvtSimulationResultsWithConfig.GetPvtRwset())
 	}
 	return data, nil
 }

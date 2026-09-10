@@ -1168,7 +1168,7 @@ func blockWithGroups(groups map[string]*cb.ConfigGroup, channelID string) *cb.Bl
 			}),
 		},
 	}
-	block.Header.DataHash, _ = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash, _ = protoutil.BlockDataHash(block.GetData())
 	protoutil.InitBlockMetadata(block)
 
 	return block

@@ -25,7 +25,7 @@ type SupportImpl struct {
 // package to local storage (i.e. the file system)
 func (s *SupportImpl) PutChaincodeToLocalStorage(ccpack ccprovider.CCPackage) error {
 	if err := ccpack.PutChaincodeToFS(); err != nil {
-		return errors.Errorf("error installing chaincode code %s:%s(%s)", ccpack.GetChaincodeData().Name, ccpack.GetChaincodeData().Version, err)
+		return errors.Errorf("error installing chaincode code %s:%s(%s)", ccpack.GetChaincodeData().GetName(), ccpack.GetChaincodeData().GetVersion(), err)
 	}
 
 	return nil
@@ -82,24 +82,24 @@ func (s *SupportImpl) CheckInstantiationPolicy(signedProp *pb.SignedProposal, ch
 	if err != nil {
 		return err
 	}
-	proposal, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
+	proposal, err := protoutil.UnmarshalProposal(signedProp.GetProposalBytes())
 	if err != nil {
 		return err
 	}
 	// get the signature header of the proposal
-	header, err := protoutil.UnmarshalHeader(proposal.Header)
+	header, err := protoutil.UnmarshalHeader(proposal.GetHeader())
 	if err != nil {
 		return err
 	}
-	shdr, err := protoutil.UnmarshalSignatureHeader(header.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(header.GetSignatureHeader())
 	if err != nil {
 		return err
 	}
 	// construct signed data we can evaluate the instantiation policy against
 	sd := []*protoutil.SignedData{{
-		Data:      signedProp.ProposalBytes,
-		Identity:  shdr.Creator,
-		Signature: signedProp.Signature,
+		Data:      signedProp.GetProposalBytes(),
+		Identity:  shdr.GetCreator(),
+		Signature: signedProp.GetSignature(),
 	}}
 	err = instPol.EvaluateSignedData(sd)
 	if err != nil {

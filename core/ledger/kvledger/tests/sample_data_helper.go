@@ -173,7 +173,7 @@ func (d *sampleDataHelper) verifyBlockAndPvtdataUsingSubmittedData(l *testLedger
 	lgrid := l.lgrid
 	submittedData := d.submittedData[lgrid]
 	for _, submittedBlk := range submittedData.Blocks {
-		blkNum := submittedBlk.Block.Header.Number
+		blkNum := submittedBlk.Block.GetHeader().GetNumber()
 		if blkNum != 8 {
 			l.verifyBlockAndPvtDataSameAs(blkNum, submittedBlk)
 		} else {

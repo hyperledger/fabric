@@ -23,5 +23,5 @@ func TestConsortiumConfig(t *testing.T) {
 	require.Equal(t, 0, len(orgs))
 
 	policy := cc.ChannelCreationPolicy()
-	require.EqualValues(t, cb.Policy_UNKNOWN, policy.Type, "Expected policy type to be UNKNOWN")
+	require.EqualValues(t, cb.Policy_UNKNOWN, policy.GetType(), "Expected policy type to be UNKNOWN")
 }

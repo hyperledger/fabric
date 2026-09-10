@@ -159,7 +159,7 @@ func (s *MockCCComm) Run(done <-chan struct{}) error {
 }
 
 func (s *MockCCComm) respond(msg *pb.ChaincodeMessage) error {
-	if msg != nil && msg.Type == pb.ChaincodeMessage_KEEPALIVE {
+	if msg != nil && msg.GetType() == pb.ChaincodeMessage_KEEPALIVE {
 		// if ping should be ponged, pong
 		if s.pong {
 			return s.Send(msg)
@@ -174,9 +174,9 @@ func (s *MockCCComm) respond(msg *pb.ChaincodeMessage) error {
 	if s.respIndex < len(s.respSet.Responses) {
 		mockResp := s.respSet.Responses[s.respIndex]
 		if mockResp.RecvMsg != nil {
-			if msg.Type != mockResp.RecvMsg.Type {
+			if msg.GetType() != mockResp.RecvMsg.GetType() {
 				if s.respSet.ErrorFunc != nil {
-					s.respSet.ErrorFunc(s.respIndex, fmt.Errorf("Invalid message expected %d received %d", int32(mockResp.RecvMsg.Type), int32(msg.Type)))
+					s.respSet.ErrorFunc(s.respIndex, fmt.Errorf("Invalid message expected %d received %d", int32(mockResp.RecvMsg.GetType()), int32(msg.GetType())))
 					s.respIndex = s.respIndex + 1
 					return nil
 				}

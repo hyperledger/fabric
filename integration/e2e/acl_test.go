@@ -474,7 +474,7 @@ func SetACLPolicy(network *nwo.Network, channel, policyName, policy string, orde
 func GetTxIDFromBlockFile(blockFile string) string {
 	block := nwo.UnmarshalBlockFromFile(blockFile)
 
-	txID, err := protoutil.GetOrComputeTxIDFromEnvelope(block.Data.Data[0])
+	txID, err := protoutil.GetOrComputeTxIDFromEnvelope(block.GetData().GetData()[0])
 	Expect(err).NotTo(HaveOccurred())
 
 	return txID

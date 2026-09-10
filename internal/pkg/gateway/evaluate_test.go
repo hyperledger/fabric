@@ -366,7 +366,7 @@ func TestEvaluate(t *testing.T) {
 
 			require.NoError(t, err)
 			// assert the result is the payload from the proposal response returned by the local endorser
-			require.Equal(t, []byte("mock_response"), response.Result.Payload, "Incorrect result")
+			require.Equal(t, []byte("mock_response"), response.GetResult().GetPayload(), "Incorrect result")
 
 			// check the correct endorsers (mock) were called with the right parameters
 			checkEndorsers(t, tt.expectedEndorsers, test)

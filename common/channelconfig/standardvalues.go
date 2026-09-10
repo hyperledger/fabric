@@ -21,8 +21,8 @@ func DeserializeProtoValuesFromGroup(group *cb.ConfigGroup, protosStructs ...any
 		logger.Panicf("This is a compile time bug only, the proto structures are somehow invalid: %s", err)
 	}
 
-	for key, value := range group.Values {
-		if _, err := sv.Deserialize(key, value.Value); err != nil {
+	for key, value := range group.GetValues() {
+		if _, err := sv.Deserialize(key, value.GetValue()); err != nil {
 			return err
 		}
 	}

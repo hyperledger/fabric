@@ -109,8 +109,8 @@ func (s *MSPMessageCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 	// idbytes is the low-level representation of an identity.
 	// it is supposed to be already in its minimal representation
 
-	mspIDRaw := []byte(sid.Mspid)
-	raw := append(mspIDRaw, sid.IdBytes...)
+	mspIDRaw := []byte(sid.GetMspid())
+	raw := append(mspIDRaw, sid.GetIdBytes()...)
 
 	// Hash
 	digest, err := s.hasher.Hash(raw, &bccsp.SHA256Opts{})
@@ -126,11 +126,11 @@ func (s *MSPMessageCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 // sequence number that the block's header contains.
 // else returns error
 func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum uint64, block *pcommon.Block) error {
-	if block.Header == nil {
+	if block.GetHeader() == nil {
 		return fmt.Errorf("Invalid Block on channel [%s]. Header must be different from nil.", chainID)
 	}
 
-	blockSeqNum := block.Header.Number
+	blockSeqNum := block.GetHeader().GetNumber()
 	if seqNum != blockSeqNum {
 		return fmt.Errorf("Claimed seqNum is [%d] but actual seqNum inside block is [%d]", seqNum, blockSeqNum)
 	}
@@ -138,7 +138,7 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 	// - Extract channelID and compare with chainID
 	channelID, err := protoutil.GetChannelIDFromBlock(block)
 	if err != nil {
-		return fmt.Errorf("Failed getting channel id from block with id [%d] on channel [%s]: [%s]", block.Header.Number, chainID, err)
+		return fmt.Errorf("Failed getting channel id from block with id [%d] on channel [%s]: [%s]", block.GetHeader().GetNumber(), chainID, err)
 	}
 
 	if channelID != string(chainID) {
@@ -146,18 +146,18 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 	}
 
 	// - Unmarshal medatada
-	if block.Metadata == nil || len(block.Metadata.Metadata) == 0 {
-		return fmt.Errorf("Block with id [%d] on channel [%s] does not have metadata. Block not valid.", block.Header.Number, chainID)
+	if block.GetMetadata() == nil || len(block.GetMetadata().GetMetadata()) == 0 {
+		return fmt.Errorf("Block with id [%d] on channel [%s] does not have metadata. Block not valid.", block.GetHeader().GetNumber(), chainID)
 	}
 
-	dataHash, err := protoutil.BlockDataHash(block.Data)
+	dataHash, err := protoutil.BlockDataHash(block.GetData())
 	if err != nil {
 		return err
 	}
 	// - Verify that Header.DataHash is equal to the hash of block.Data
 	// This is to ensure that the header is consistent with the data carried by this block
-	if !bytes.Equal(dataHash, block.Header.DataHash) {
-		return fmt.Errorf("Header.DataHash is different from Hash(block.Data) for block with id [%d] on channel [%s]", block.Header.Number, chainID)
+	if !bytes.Equal(dataHash, block.GetHeader().GetDataHash()) {
+		return fmt.Errorf("Header.DataHash is different from Hash(block.Data) for block with id [%d] on channel [%s]", block.GetHeader().GetNumber(), chainID)
 	}
 
 	return s.verifyHeaderAndMetadata(channelID, block)
@@ -189,7 +189,7 @@ func (s *MSPMessageCryptoService) verifyHeaderAndMetadata(channelID string, bloc
 	}
 
 	verifier := protoutil.BlockSignatureVerifier(bftEnabled, consenters, policy)
-	return verifier(block.Header, block.Metadata)
+	return verifier(block.GetHeader(), block.GetMetadata())
 }
 
 // VerifyBlockAttestation returns nil when the header matches the metadata signature. It assumed the block.Data is nil
@@ -199,13 +199,13 @@ func (s *MSPMessageCryptoService) VerifyBlockAttestation(chainID string, block *
 	if block == nil {
 		return fmt.Errorf("Invalid Block on channel [%s]. Block is nil.", chainID)
 	}
-	if block.Header == nil {
+	if block.GetHeader() == nil {
 		return fmt.Errorf("Invalid Block on channel [%s]. Header must be different from nil.", chainID)
 	}
 
 	// - Unmarshal medatada
-	if block.Metadata == nil || len(block.Metadata.Metadata) == 0 {
-		return fmt.Errorf("Block with id [%d] on channel [%s] does not have metadata. Block not valid.", block.Header.Number, chainID)
+	if block.GetMetadata() == nil || len(block.GetMetadata().GetMetadata()) == 0 {
+		return fmt.Errorf("Block with id [%d] on channel [%s] does not have metadata. Block not valid.", block.GetHeader().GetNumber(), chainID)
 	}
 
 	return s.verifyHeaderAndMetadata(chainID, block)

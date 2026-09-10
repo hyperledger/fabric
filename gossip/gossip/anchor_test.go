@@ -210,7 +210,7 @@ func TestAnchorPeer(t *testing.T) {
 		}
 		require.True(t, index > 0)
 		req := m.GetMemReq()
-		am, err := protoext.EnvelopeToGossipMessage(req.SelfInformation)
+		am, err := protoext.EnvelopeToGossipMessage(req.GetSelfInformation())
 		require.NoError(t, err)
 		require.NotEmpty(t, protoext.InternalEndpoint(am.GetSecretEnvelope()))
 		m.respond(memResp(m.Nonce, fmt.Sprintf("127.0.0.1:%d", port3)))
@@ -222,7 +222,7 @@ func TestAnchorPeer(t *testing.T) {
 		}
 		require.True(t, index > 0)
 		req := m.GetMemReq()
-		am, err := protoext.EnvelopeToGossipMessage(req.SelfInformation)
+		am, err := protoext.EnvelopeToGossipMessage(req.GetSelfInformation())
 		require.NoError(t, err)
 		require.Nil(t, am.GetSecretEnvelope())
 		m.respond(memResp(m.Nonce, fmt.Sprintf("127.0.0.1:%d", port4)))

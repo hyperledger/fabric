@@ -62,20 +62,20 @@ func FetchConfigBlock(n *Network, orderer *Orderer, channel string) *common.Bloc
 func GetConfig(n *Network, peer *Peer, orderer *Orderer, channel string) *common.Config {
 	configBlock := GetConfigBlock(n, peer, orderer, channel)
 	// unmarshal the envelope bytes
-	envelope, err := protoutil.GetEnvelopeFromBlock(configBlock.Data.Data[0])
+	envelope, err := protoutil.GetEnvelopeFromBlock(configBlock.GetData().GetData()[0])
 	Expect(err).NotTo(HaveOccurred())
 
 	// unmarshal the payload bytes
-	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+	payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
 	Expect(err).NotTo(HaveOccurred())
 
 	// unmarshal the config envelope bytes
 	configEnv := &common.ConfigEnvelope{}
-	err = proto.Unmarshal(payload.Data, configEnv)
+	err = proto.Unmarshal(payload.GetData(), configEnv)
 	Expect(err).NotTo(HaveOccurred())
 
 	// clone the config
-	return configEnv.Config
+	return configEnv.GetConfig()
 }
 
 // UpdateConfig computes, signs, and submits a configuration update and waits
@@ -183,7 +183,7 @@ func CurrentConfigBlockNumber(n *Network, peer *Peer, orderer *Orderer, channel 
 
 	configBlock := FetchConfigBlock(n, orderer, channel)
 
-	return configBlock.Header.Number
+	return configBlock.GetHeader().GetNumber()
 }
 
 // CurrentConfigBlockNumberFromPeer retrieves the block number from the header
@@ -201,7 +201,7 @@ func CurrentConfigBlockNumberFromPeer(n *Network, peer *Peer, channel, output st
 
 	configBlock := UnmarshalBlockFromFile(output)
 
-	return configBlock.Header.Number
+	return configBlock.GetHeader().GetNumber()
 }
 
 // UpdateOrdererConfig computes, signs, and submits a configuration update
@@ -315,12 +315,12 @@ func UpdateConsensusMetadata(network *Network, peer *Peer, orderer *Orderer, cha
 	config := GetConfig(network, peer, orderer, channel)
 	updatedConfig := proto.Clone(config).(*common.Config)
 
-	consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+	consensusTypeConfigValue := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetValues()["ConsensusType"]
 	consensusTypeValue := &protosorderer.ConsensusType{}
-	err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
+	err := proto.Unmarshal(consensusTypeConfigValue.GetValue(), consensusTypeValue)
 	Expect(err).NotTo(HaveOccurred())
 
-	consensusTypeValue.Metadata = mutateMetadata(consensusTypeValue.Metadata)
+	consensusTypeValue.Metadata = mutateMetadata(consensusTypeValue.GetMetadata())
 
 	updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
 		ModPolicy: "Admins",
@@ -335,13 +335,13 @@ func UpdateOrdererMSP(network *Network, peer *Peer, orderer *Orderer, channel, o
 	updatedConfig := proto.Clone(config).(*common.Config)
 
 	// Unpack the MSP config
-	rawMSPConfig := updatedConfig.ChannelGroup.Groups["Orderer"].Groups[orgID].Values["MSP"]
+	rawMSPConfig := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetGroups()[orgID].GetValues()["MSP"]
 	mspConfig := &msp.MSPConfig{}
-	err := proto.Unmarshal(rawMSPConfig.Value, mspConfig)
+	err := proto.Unmarshal(rawMSPConfig.GetValue(), mspConfig)
 	Expect(err).NotTo(HaveOccurred())
 
 	fabricConfig := &msp.FabricMSPConfig{}
-	err = proto.Unmarshal(mspConfig.Config, fabricConfig)
+	err = proto.Unmarshal(mspConfig.GetConfig(), fabricConfig)
 	Expect(err).NotTo(HaveOccurred())
 
 	// Mutate it as we are asked
@@ -359,15 +359,15 @@ func UpdateConsenters(network *Network, peer *Peer, orderer *Orderer, channel st
 
 	updatedConfig := proto.Clone(config).(*common.Config)
 
-	rawOrderers := updatedConfig.ChannelGroup.Groups["Orderer"].Values["Orderers"]
+	rawOrderers := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetValues()["Orderers"]
 
 	orderersVal := &common.Orderers{}
-	err := proto.Unmarshal(rawOrderers.Value, orderersVal)
+	err := proto.Unmarshal(rawOrderers.GetValue(), orderersVal)
 	Expect(err).NotTo(HaveOccurred())
 
 	f(orderersVal)
 
-	policies.EncodeBFTBlockVerificationPolicy(orderersVal.ConsenterMapping, updatedConfig.ChannelGroup.Groups["Orderer"])
+	policies.EncodeBFTBlockVerificationPolicy(orderersVal.GetConsenterMapping(), updatedConfig.GetChannelGroup().GetGroups()["Orderer"])
 
 	rawOrderers.Value, err = proto.Marshal(orderersVal)
 	Expect(err).NotTo(HaveOccurred())
@@ -382,7 +382,7 @@ func UpdateOrdererEndpoints(network *Network, peer *Peer, orderer *Orderer, chan
 	config := GetConfig(network, peer, orderer, channel)
 	updatedConfig := proto.Clone(config).(*common.Config)
 
-	ordererGrp := updatedConfig.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
+	ordererGrp := updatedConfig.GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetGroups()
 	// Get the first orderer org config
 	var firstOrdererConfig *common.ConfigGroup
 	for _, grp := range ordererGrp {

@@ -232,9 +232,9 @@ func checkEqualCollsUpdates(t *testing.T, expected, actual map[string][]*kvrwset
 
 func checkQueryExecutor(t *testing.T, qe ledger.SimpleQueryExecutor, namespace string, expectedResults []*queryresult.KV) {
 	for _, kv := range expectedResults {
-		val, err := qe.GetState(namespace, kv.Key)
+		val, err := qe.GetState(namespace, kv.GetKey())
 		require.NoError(t, err)
-		require.Equal(t, kv.Value, val)
+		require.Equal(t, kv.GetValue(), val)
 	}
 
 	itr, err := qe.GetStateRangeScanIterator(namespace, "", "")

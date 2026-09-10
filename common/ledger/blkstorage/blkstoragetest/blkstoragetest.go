@@ -62,9 +62,9 @@ func BootstrapBlockstoreFromSnapshot(t *testing.T, ledgerName string, blocks []*
 
 	lastBlockInSnapshot := blocks[len(blocks)-1]
 	snapshotInfo := &blkstorage.SnapshotInfo{
-		LastBlockHash:     protoutil.BlockHeaderHash(lastBlockInSnapshot.Header),
-		LastBlockNum:      lastBlockInSnapshot.Header.Number,
-		PreviousBlockHash: lastBlockInSnapshot.Header.PreviousHash,
+		LastBlockHash:     protoutil.BlockHeaderHash(lastBlockInSnapshot.GetHeader()),
+		LastBlockNum:      lastBlockInSnapshot.GetHeader().GetNumber(),
+		PreviousBlockHash: lastBlockInSnapshot.GetHeader().GetPreviousHash(),
 	}
 
 	err = provider.ImportFromSnapshot(ledgerName, snapshotDir, snapshotInfo)

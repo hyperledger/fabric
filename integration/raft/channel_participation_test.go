@@ -247,7 +247,7 @@ var _ = Describe("ChannelParticipation", func() {
 			env := ordererclient.CreateBroadcastEnvelope(network, peer, "participation-trophy", []byte("hello"))
 			resp, err := ordererclient.Broadcast(network, orderer1, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
+			Expect(resp.GetStatus()).To(Equal(common.Status_BAD_REQUEST))
 
 			By("listing all channels for orderer1")
 			cl = nwo.List(network, orderer1)
@@ -943,7 +943,7 @@ func broadcastTransactionFunc(n *nwo.Network, o *nwo.Orderer, env *common.Envelo
 	return func() common.Status {
 		resp, err := ordererclient.Broadcast(n, o, env)
 		Expect(err).NotTo(HaveOccurred())
-		return resp.Status
+		return resp.GetStatus()
 	}
 }
 
@@ -1080,7 +1080,7 @@ func createJoinBlockDefineSystemChannel(channelID string) *common.Block {
 			}),
 		},
 	}
-	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 	protoutil.InitBlockMetadata(block)
 
 	return block

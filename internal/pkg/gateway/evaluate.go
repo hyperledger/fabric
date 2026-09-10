@@ -64,7 +64,7 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 			pr, err := endorser.client.ProcessProposal(ctx, signedProposal)
 			code, message, retry, remove := responseStatus(pr, err)
 			if code == codes.OK {
-				response = pr.Response
+				response = pr.GetResponse()
 				// Prefer result from proposal response as Response.Payload is not required to be transaction result
 				if result, err := getResultFromProposalResponse(pr); err == nil {
 					response.Payload = result
@@ -151,7 +151,7 @@ func getChannelAndChaincodeFromSignedProposal(signedProposal *peer.SignedProposa
 		return "", "", false, fmt.Errorf("no chaincode name is provided, channel id [%s]", channelHeader.GetChannelId())
 	}
 
-	return channelHeader.GetChannelId(), spec.GetChaincodeSpec().GetChaincodeId().GetName(), len(payload.TransientMap) > 0, nil
+	return channelHeader.GetChannelId(), spec.GetChaincodeSpec().GetChaincodeId().GetName(), len(payload.GetTransientMap()) > 0, nil
 }
 
 func getResultFromProposalResponse(proposalResponse *peer.ProposalResponse) ([]byte, error) {

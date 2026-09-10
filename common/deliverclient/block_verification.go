@@ -73,7 +73,7 @@ func NewBlockVerificationAssistant(configBlock *common.Block, lastBlock *common.
 	if configBlock == nil {
 		return nil, errors.Errorf("config block is nil")
 	}
-	if configBlock.Header == nil {
+	if configBlock.GetHeader() == nil {
 		return nil, errors.Errorf("config block header is nil")
 	}
 	if !protoutil.IsConfigBlock(configBlock) {
@@ -83,46 +83,46 @@ func NewBlockVerificationAssistant(configBlock *common.Block, lastBlock *common.
 	if err != nil {
 		return nil, errors.WithMessage(err, "error getting config index from config block")
 	}
-	if configIndex != configBlock.Header.Number {
-		return nil, errors.Errorf("config block number [%d] is different than its own config index [%d]", configBlock.Header.Number, configIndex)
+	if configIndex != configBlock.GetHeader().GetNumber() {
+		return nil, errors.Errorf("config block number [%d] is different than its own config index [%d]", configBlock.GetHeader().GetNumber(), configIndex)
 	}
 
 	if lastBlock == nil {
 		return nil, errors.New("last block is nil")
 	}
-	if lastBlock.Header == nil {
+	if lastBlock.GetHeader() == nil {
 		return nil, errors.New("last verified block header is nil")
 	}
-	if lastBlock.Header.Number < configBlock.Header.Number {
-		return nil, errors.Errorf("last verified block number [%d] is smaller than the config block number [%d]", lastBlock.Header.Number, configBlock.Header.Number)
+	if lastBlock.GetHeader().GetNumber() < configBlock.GetHeader().GetNumber() {
+		return nil, errors.Errorf("last verified block number [%d] is smaller than the config block number [%d]", lastBlock.GetHeader().GetNumber(), configBlock.GetHeader().GetNumber())
 	}
 	lastBlockConfigIndex, err := protoutil.GetLastConfigIndexFromBlock(lastBlock)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error getting config index from last verified block")
 	}
-	if lastBlockConfigIndex != configBlock.Header.Number {
-		return nil, errors.Errorf("last verified block [%d] config index [%d] is different than the config block number [%d]", lastBlock.Header.Number, lastBlockConfigIndex, configBlock.Header.Number)
+	if lastBlockConfigIndex != configBlock.GetHeader().GetNumber() {
+		return nil, errors.Errorf("last verified block [%d] config index [%d] is different than the config block number [%d]", lastBlock.GetHeader().GetNumber(), lastBlockConfigIndex, configBlock.GetHeader().GetNumber())
 	}
 
 	configTx, err := protoutil.ExtractEnvelope(configBlock, 0)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error extracting envelope")
 	}
-	payload, err := protoutil.UnmarshalPayload(configTx.Payload)
+	payload, err := protoutil.UnmarshalPayload(configTx.GetPayload())
 	if err != nil {
 		return nil, errors.WithMessage(err, "error umarshaling envelope to payload")
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return nil, errors.New("missing channel header")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, errors.WithMessage(err, "error unmarshalling channel header")
 	}
 
-	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	if err != nil {
 		return nil, errors.WithMessage(err, "error umarshaling config envelope from payload data")
 	}
@@ -140,9 +140,9 @@ func NewBlockVerificationAssistant(configBlock *common.Block, lastBlock *common.
 		channelID:           chdr.GetChannelId(),
 		verifierAssembler:   bva,
 		sigVerifierFunc:     verifierFunc,
-		configBlockHeader:   configBlock.Header,
-		lastBlockHeader:     lastBlock.Header,
-		lastBlockHeaderHash: protoutil.BlockHeaderHash(lastBlock.Header),
+		configBlockHeader:   configBlock.GetHeader(),
+		lastBlockHeader:     lastBlock.GetHeader(),
+		lastBlockHeaderHash: protoutil.BlockHeaderHash(lastBlock.GetHeader()),
 		logger:              lg,
 	}
 
@@ -203,16 +203,16 @@ func (a *BlockVerificationAssistant) UpdateConfig(configBlock *common.Block) err
 		return errors.WithMessage(err, "error extracting envelope")
 	}
 
-	payload, err := protoutil.UnmarshalPayload(configTx.Payload)
+	payload, err := protoutil.UnmarshalPayload(configTx.GetPayload())
 	if err != nil {
 		return errors.WithMessage(err, "error unmarshalling envelope to payload")
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return errors.New("missing channel header")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return errors.WithMessage(err, "error unmarshalling channel header")
 	}
@@ -221,7 +221,7 @@ func (a *BlockVerificationAssistant) UpdateConfig(configBlock *common.Block) err
 		return errors.Errorf("config block channel ID [%s] does not match expected: [%s]", chdr.GetChannelId(), a.channelID)
 	}
 
-	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	if err != nil {
 		return errors.WithMessage(err, "error unmarshalling config envelope from payload data")
 	}
@@ -231,9 +231,9 @@ func (a *BlockVerificationAssistant) UpdateConfig(configBlock *common.Block) err
 		return errors.WithMessage(err, "error creating verifier function")
 	}
 
-	a.configBlockHeader = configBlock.Header
-	a.lastBlockHeader = configBlock.Header
-	a.lastBlockHeaderHash = protoutil.BlockHeaderHash(configBlock.Header)
+	a.configBlockHeader = configBlock.GetHeader()
+	a.lastBlockHeader = configBlock.GetHeader()
+	a.lastBlockHeaderHash = protoutil.BlockHeaderHash(configBlock.GetHeader())
 	a.sigVerifierFunc = verifierFunc
 
 	return nil
@@ -249,25 +249,25 @@ func (a *BlockVerificationAssistant) VerifyBlock(block *common.Block) error {
 		return err
 	}
 
-	dataHash, err := protoutil.BlockDataHash(block.Data)
+	dataHash, err := protoutil.BlockDataHash(block.GetData())
 	if err != nil {
-		return errors.Wrapf(err, "failed to verify transactions are well formed for block with id [%d] on channel [%s]", block.Header.Number, a.channelID)
+		return errors.Wrapf(err, "failed to verify transactions are well formed for block with id [%d] on channel [%s]", block.GetHeader().GetNumber(), a.channelID)
 	}
 
 	// Verify that Header.DataHash is equal to the hash of block.Data
 	// This is to ensure that the header is consistent with the data carried by this block
-	if !bytes.Equal(dataHash, block.Header.DataHash) {
+	if !bytes.Equal(dataHash, block.GetHeader().GetDataHash()) {
 		return errors.Errorf("Header.DataHash is different from Hash(block.Data) for block with id [%d] on channel [%s]; Header: %s, Data: %s",
-			block.Header.Number, a.channelID, hex.EncodeToString(block.Header.DataHash), hex.EncodeToString(dataHash))
+			block.GetHeader().GetNumber(), a.channelID, hex.EncodeToString(block.GetHeader().GetDataHash()), hex.EncodeToString(dataHash))
 	}
 
-	err = a.sigVerifierFunc(block.Header, block.Metadata)
+	err = a.sigVerifierFunc(block.GetHeader(), block.GetMetadata())
 	if err != nil {
 		return err
 	}
 
-	a.lastBlockHeader = block.Header
-	a.lastBlockHeaderHash = protoutil.BlockHeaderHash(block.Header)
+	a.lastBlockHeader = block.GetHeader()
+	a.lastBlockHeaderHash = protoutil.BlockHeaderHash(block.GetHeader())
 
 	return nil
 }
@@ -284,10 +284,10 @@ func (a *BlockVerificationAssistant) VerifyBlockAttestation(block *common.Block)
 		return err
 	}
 
-	err := a.sigVerifierFunc(block.Header, block.Metadata)
+	err := a.sigVerifierFunc(block.GetHeader(), block.GetMetadata())
 	if err == nil {
-		a.lastBlockHeader = block.Header
-		a.lastBlockHeaderHash = protoutil.BlockHeaderHash(block.Header)
+		a.lastBlockHeader = block.GetHeader()
+		a.lastBlockHeaderHash = protoutil.BlockHeaderHash(block.GetHeader())
 	}
 
 	return err
@@ -296,13 +296,13 @@ func (a *BlockVerificationAssistant) VerifyBlockAttestation(block *common.Block)
 // UpdateBlockHeader saves the last block header that was verified and handled successfully.
 // This must be called after VerifyBlock and VerifyBlockAttestation and successfully handling the block.
 func (a *BlockVerificationAssistant) UpdateBlockHeader(block *common.Block) {
-	a.lastBlockHeader = block.Header
-	a.lastBlockHeaderHash = protoutil.BlockHeaderHash(block.Header)
+	a.lastBlockHeader = block.GetHeader()
+	a.lastBlockHeaderHash = protoutil.BlockHeaderHash(block.GetHeader())
 }
 
 func (a *BlockVerificationAssistant) verifyMetadata(block *common.Block) error {
-	if block.Metadata == nil || len(block.Metadata.Metadata) < len(common.BlockMetadataIndex_name) {
-		return errors.Errorf("block with id [%d] on channel [%s] does not have metadata or contains too few entries", block.Header.Number, a.channelID)
+	if block.GetMetadata() == nil || len(block.GetMetadata().GetMetadata()) < len(common.BlockMetadataIndex_name) {
+		return errors.Errorf("block with id [%d] on channel [%s] does not have metadata or contains too few entries", block.GetHeader().GetNumber(), a.channelID)
 	}
 
 	return nil
@@ -312,19 +312,19 @@ func (a *BlockVerificationAssistant) verifyHeader(block *common.Block) error {
 	if block == nil {
 		return errors.Errorf("block must be different from nil, channel=%s", a.channelID)
 	}
-	if block.Header == nil {
+	if block.GetHeader() == nil {
 		return errors.Errorf("invalid block, header must be different from nil, channel=%s", a.channelID)
 	}
 
-	expectedBlockNum := a.lastBlockHeader.Number + 1
-	if expectedBlockNum != block.Header.Number {
-		return errors.Errorf("expected block number is [%d] but actual block number inside block is [%d]", expectedBlockNum, block.Header.Number)
+	expectedBlockNum := a.lastBlockHeader.GetNumber() + 1
+	if expectedBlockNum != block.GetHeader().GetNumber() {
+		return errors.Errorf("expected block number is [%d] but actual block number inside block is [%d]", expectedBlockNum, block.GetHeader().GetNumber())
 	}
 
 	if len(a.lastBlockHeaderHash) != 0 {
-		if !bytes.Equal(block.Header.PreviousHash, a.lastBlockHeaderHash) {
+		if !bytes.Equal(block.GetHeader().GetPreviousHash(), a.lastBlockHeaderHash) {
 			return errors.Errorf("Header.PreviousHash of block [%d] is different from Hash(block.Header) of previous block, on channel [%s], received: %s, expected: %s",
-				block.Header.Number, a.channelID, hex.EncodeToString(block.Header.PreviousHash), hex.EncodeToString(a.lastBlockHeaderHash))
+				block.GetHeader().GetNumber(), a.channelID, hex.EncodeToString(block.GetHeader().GetPreviousHash()), hex.EncodeToString(a.lastBlockHeaderHash))
 		}
 	}
 	return nil

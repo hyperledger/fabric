@@ -21,27 +21,27 @@ func TestFactory(t *testing.T) {
 
 	t.Run("test for transaction id", func(t *testing.T) {
 		configEnv, _ := protoutil.ExtractEnvelope(block, 0)
-		configEnvPayload, _ := protoutil.UnmarshalPayload(configEnv.Payload)
-		configEnvPayloadChannelHeader, _ := protoutil.UnmarshalChannelHeader(configEnvPayload.GetHeader().ChannelHeader)
-		require.NotEmpty(t, configEnvPayloadChannelHeader.TxId, "tx_id of configuration transaction should not be empty")
+		configEnvPayload, _ := protoutil.UnmarshalPayload(configEnv.GetPayload())
+		configEnvPayloadChannelHeader, _ := protoutil.UnmarshalChannelHeader(configEnvPayload.GetHeader().GetChannelHeader())
+		require.NotEmpty(t, configEnvPayloadChannelHeader.GetTxId(), "tx_id of configuration transaction should not be empty")
 	})
 	t.Run("test for last config in SIGNATURES field", func(t *testing.T) {
 		metadata := &cb.Metadata{}
-		err := proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES], metadata)
+		err := proto.Unmarshal(block.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_SIGNATURES], metadata)
 		require.NoError(t, err)
 		ordererBlockMetadata := &cb.OrdererBlockMetadata{}
-		err = proto.Unmarshal(metadata.Value, ordererBlockMetadata)
+		err = proto.Unmarshal(metadata.GetValue(), ordererBlockMetadata)
 		require.NoError(t, err)
-		require.NotNil(t, ordererBlockMetadata.LastConfig)
-		require.Equal(t, uint64(0), ordererBlockMetadata.LastConfig.Index)
+		require.NotNil(t, ordererBlockMetadata.GetLastConfig())
+		require.Equal(t, uint64(0), ordererBlockMetadata.GetLastConfig().GetIndex())
 	})
 	t.Run("test for last config in LAST_CONFIG field", func(t *testing.T) {
 		metadata := &cb.Metadata{}
-		err := proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG], metadata)
+		err := proto.Unmarshal(block.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_LAST_CONFIG], metadata)
 		require.NoError(t, err)
 		lastConfig := &cb.LastConfig{}
-		err = proto.Unmarshal(metadata.Value, lastConfig)
+		err = proto.Unmarshal(metadata.GetValue(), lastConfig)
 		require.NoError(t, err)
-		require.Equal(t, uint64(0), lastConfig.Index)
+		require.Equal(t, uint64(0), lastConfig.GetIndex())
 	})
 }

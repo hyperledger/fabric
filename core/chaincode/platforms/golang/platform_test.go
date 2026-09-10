@@ -153,7 +153,7 @@ func TestValidateCodePackage(t *testing.T) {
 		require.NoError(t, err, "failed to generate fake cds")
 
 		platform := &Platform{}
-		err = platform.ValidateCodePackage(cds.CodePackage)
+		err = platform.ValidateCodePackage(cds.GetCodePackage())
 		if tt.successExpected {
 			require.NoError(t, err, "expected success for path: %s, file: %s", tt.path, tt.file)
 		} else {

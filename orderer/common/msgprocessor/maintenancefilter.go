@@ -65,7 +65,7 @@ func (mf *MaintenanceFilter) Apply(message *cb.Envelope) error {
 	}
 
 	logger.Debugw("Going to inspect maintenance mode transition rules",
-		"ConsensusState", ordererConf.ConsensusState(), "channel", chanHdr.ChannelId)
+		"ConsensusState", ordererConf.ConsensusState(), "channel", chanHdr.GetChannelId())
 	err = mf.inspect(configEnvelope, ordererConf)
 	if err != nil {
 		return errors.Wrap(err, "config transaction inspection failed")
@@ -77,11 +77,11 @@ func (mf *MaintenanceFilter) Apply(message *cb.Envelope) error {
 // inspect checks whether the next orderer config, extracted from the incoming configEnvelope, respects the
 // transition rules of consensus-type migration using maintenance-mode.
 func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererConfig channelconfig.Orderer) error {
-	if configEnvelope.LastUpdate == nil {
+	if configEnvelope.GetLastUpdate() == nil {
 		return errors.Errorf("updated config does not include a config update")
 	}
 
-	bundle, err := channelconfig.NewBundle(mf.support.ChannelID(), configEnvelope.Config, mf.bccsp)
+	bundle, err := channelconfig.NewBundle(mf.support.ChannelID(), configEnvelope.GetConfig(), mf.bccsp)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse config")
 	}
@@ -166,39 +166,39 @@ func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererC
 // ensureConsensusTypeChangeOnly checks that the only change is the Channel/Orderer group, and within that,
 // only to the ConsensusType value.
 func (mf *MaintenanceFilter) ensureConsensusTypeChangeOnly(configEnvelope *cb.ConfigEnvelope) error {
-	configUpdateEnv, err := protoutil.EnvelopeToConfigUpdate(configEnvelope.LastUpdate)
+	configUpdateEnv, err := protoutil.EnvelopeToConfigUpdate(configEnvelope.GetLastUpdate())
 	if err != nil {
 		return errors.Wrap(err, "envelope to config update unmarshalling error")
 	}
 
-	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.GetConfigUpdate())
 	if err != nil {
 		return errors.Wrap(err, "config update unmarshalling error")
 	}
 
-	if len(configUpdate.WriteSet.Groups) == 0 {
+	if len(configUpdate.GetWriteSet().GetGroups()) == 0 {
 		return errors.New("config update contains no changes")
 	}
 
-	if len(configUpdate.WriteSet.Values) > 0 {
+	if len(configUpdate.GetWriteSet().GetValues()) > 0 {
 		return errors.Errorf("config update contains changes to values in group %s", channelconfig.ChannelGroupKey)
 	}
 
-	if len(configUpdate.WriteSet.Groups) > 1 {
+	if len(configUpdate.GetWriteSet().GetGroups()) > 1 {
 		return errors.New("config update contains changes to more than one group")
 	}
 
-	if ordGroup, ok1 := configUpdate.WriteSet.Groups[channelconfig.OrdererGroupKey]; ok1 {
-		if len(ordGroup.Groups) > 0 {
+	if ordGroup, ok1 := configUpdate.GetWriteSet().GetGroups()[channelconfig.OrdererGroupKey]; ok1 {
+		if len(ordGroup.GetGroups()) > 0 {
 			return errors.Errorf("config update contains changes to groups within the %s group",
 				channelconfig.OrdererGroupKey)
 		}
 
-		if _, ok2 := ordGroup.Values[channelconfig.ConsensusTypeKey]; !ok2 {
+		if _, ok2 := ordGroup.GetValues()[channelconfig.ConsensusTypeKey]; !ok2 {
 			return errors.Errorf("config update does not contain the %s value", channelconfig.ConsensusTypeKey)
 		}
 
-		if len(ordGroup.Values) > 1 {
+		if len(ordGroup.GetValues()) > 1 {
 			return errors.Errorf("config update contain more then just the %s value in the %s group",
 				channelconfig.ConsensusTypeKey, channelconfig.OrdererGroupKey)
 		}
@@ -229,9 +229,9 @@ func validateBFTConsenterMapping(currentOrdererConfig channelconfig.Orderer, nex
 	for _, raftConsenter := range raftConsenters {
 		flag := false
 		for _, bftConsenter := range bftConsenters {
-			if raftConsenter.Port == bftConsenter.Port && raftConsenter.Host == bftConsenter.Host &&
-				bytes.Equal(raftConsenter.ServerTlsCert, bftConsenter.ServerTlsCert) &&
-				bytes.Equal(raftConsenter.ClientTlsCert, bftConsenter.ClientTlsCert) {
+			if raftConsenter.GetPort() == bftConsenter.GetPort() && raftConsenter.GetHost() == bftConsenter.GetHost() &&
+				bytes.Equal(raftConsenter.GetServerTlsCert(), bftConsenter.GetServerTlsCert()) &&
+				bytes.Equal(raftConsenter.GetClientTlsCert(), bftConsenter.GetClientTlsCert()) {
 				flag = true
 				break
 			}

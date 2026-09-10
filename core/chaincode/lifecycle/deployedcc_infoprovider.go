@@ -62,7 +62,7 @@ func (vc *ValidatorCommitter) UpdatedChaincodes(stateUpdates map[string][]*kvrws
 	lifecycleUpdates := stateUpdates[LifecycleNamespace]
 
 	for _, kvWrite := range lifecycleUpdates {
-		matches := SequenceMatcher.FindStringSubmatch(kvWrite.Key)
+		matches := SequenceMatcher.FindStringSubmatch(kvWrite.GetKey())
 		if len(matches) != 2 {
 			continue
 		}
@@ -93,8 +93,8 @@ func (vc *ValidatorCommitter) ChaincodeInfo(channelName, chaincodeName string, q
 
 	return &ledger.DeployedChaincodeInfo{
 		Name:                        chaincodeName,
-		Version:                     definedChaincode.EndorsementInfo.Version,
-		Hash:                        util.ComputeSHA256([]byte(chaincodeName + ":" + definedChaincode.EndorsementInfo.Version)),
+		Version:                     definedChaincode.EndorsementInfo.GetVersion(),
+		Hash:                        util.ComputeSHA256([]byte(chaincodeName + ":" + definedChaincode.EndorsementInfo.GetVersion())),
 		ExplicitCollectionConfigPkg: definedChaincode.Collections,
 		IsLegacy:                    false,
 	}, nil
@@ -158,7 +158,7 @@ func (vc *ValidatorCommitter) AllCollectionsConfigPkg(channelName, chaincodeName
 
 	var combinedColls []*pb.CollectionConfig
 	if explicitCollectionConfigPkg != nil {
-		combinedColls = append(combinedColls, explicitCollectionConfigPkg.Config...)
+		combinedColls = append(combinedColls, explicitCollectionConfigPkg.GetConfig()...)
 	}
 	for _, implicitColl := range implicitCollections {
 		c := &pb.CollectionConfig{}
@@ -191,9 +191,9 @@ func (vc *ValidatorCommitter) CollectionInfo(channelName, chaincodeName, collect
 	}
 
 	if definedChaincode.Collections != nil {
-		for _, conf := range definedChaincode.Collections.Config {
+		for _, conf := range definedChaincode.Collections.GetConfig() {
 			staticCollConfig := conf.GetStaticCollectionConfig()
-			if staticCollConfig != nil && staticCollConfig.Name == collectionName {
+			if staticCollConfig != nil && staticCollConfig.GetName() == collectionName {
 				return staticCollConfig, nil
 			}
 		}
@@ -335,7 +335,7 @@ func (vc *ValidatorCommitter) ValidationInfo(channelID, chaincodeName string, qe
 		return "vscc", b, nil, nil
 	}
 
-	return definedChaincode.ValidationInfo.ValidationPlugin, definedChaincode.ValidationInfo.ValidationParameter, nil, nil
+	return definedChaincode.ValidationInfo.GetValidationPlugin(), definedChaincode.ValidationInfo.GetValidationParameter(), nil, nil
 }
 
 // CollectionValidationInfo returns information about collections to the validation component
@@ -361,14 +361,14 @@ func (vc *ValidatorCommitter) CollectionValidationInfo(channelID, chaincodeName,
 	}
 
 	if definedChaincode.Collections != nil {
-		for _, conf := range definedChaincode.Collections.Config {
+		for _, conf := range definedChaincode.Collections.GetConfig() {
 			staticCollConfig := conf.GetStaticCollectionConfig()
-			if staticCollConfig != nil && staticCollConfig.Name == collectionName {
-				if staticCollConfig.EndorsementPolicy != nil {
-					return protoutil.MarshalOrPanic(staticCollConfig.EndorsementPolicy), nil, nil
+			if staticCollConfig != nil && staticCollConfig.GetName() == collectionName {
+				if staticCollConfig.GetEndorsementPolicy() != nil {
+					return protoutil.MarshalOrPanic(staticCollConfig.GetEndorsementPolicy()), nil, nil
 				}
 				// default to chaincode endorsement policy
-				return definedChaincode.ValidationInfo.ValidationParameter, nil, nil
+				return definedChaincode.ValidationInfo.GetValidationParameter(), nil, nil
 			}
 		}
 	}

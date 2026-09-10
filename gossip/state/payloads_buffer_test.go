@@ -93,7 +93,7 @@ func TestPayloadsBufferImpl_Ready(t *testing.T) {
 	select {
 	case <-fin:
 		payload := buffer.Pop()
-		require.Equal(t, payload.SeqNum, uint64(1))
+		require.Equal(t, payload.GetSeqNum(), uint64(1))
 	case <-time.After(500 * time.Millisecond):
 		t.Fail()
 	}

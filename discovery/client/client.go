@@ -93,7 +93,7 @@ func (req *Request) AddEndorsersQuery(interests ...*peer.ChaincodeInterest) (*Re
 	})
 	var invocationChains []InvocationChain
 	for _, interest := range interests {
-		invocationChains = append(invocationChains, interest.Chaincodes)
+		invocationChains = append(invocationChains, interest.GetChaincodes())
 	}
 	req.addChaincodeQueryMapping(invocationChains)
 	req.addQueryMapping(protoext.ChaincodeQueryType, ch)
@@ -182,7 +182,7 @@ func (c *Client) Send(ctx context.Context, req *Request, auth *discovery.AuthInf
 	if err != nil {
 		return nil, errors.Wrap(err, "discovery service refused our Request")
 	}
-	if n := len(resp.Results); n != req.lastIndex {
+	if n := len(resp.GetResults()); n != req.lastIndex {
 		return nil, errors.Errorf("Sent %d queries but received %d responses back", req.lastIndex, n)
 	}
 	return req.computeResponse(resp)
@@ -365,7 +365,7 @@ func (resp response) mapConfig(channel2index map[string]int, r *discovery.Respon
 	for ch, index := range channel2index {
 		config, err := protoext.ResponseConfigAt(r, index)
 		if config == nil && err == nil {
-			return errors.Errorf("expected QueryResult of either ConfigResult or Error but got %v instead", r.Results[index])
+			return errors.Errorf("expected QueryResult of either ConfigResult or Error but got %v instead", r.GetResults()[index])
 		}
 		key := key{
 			queryType: protoext.ConfigQueryType,
@@ -373,7 +373,7 @@ func (resp response) mapConfig(channel2index map[string]int, r *discovery.Respon
 		}
 
 		if err != nil {
-			resp[key] = errors.New(err.Content)
+			resp[key] = errors.New(err.GetContent())
 			continue
 		}
 
@@ -386,7 +386,7 @@ func (resp response) mapPeerMembership(key2Index map[string]int, r *discovery.Re
 	for k, index := range key2Index {
 		membersRes, err := protoext.ResponseMembershipAt(r, index)
 		if membersRes == nil && err == nil {
-			return errors.Errorf("expected QueryResult of either PeerMembershipResult or Error but got %v instead", r.Results[index])
+			return errors.Errorf("expected QueryResult of either PeerMembershipResult or Error but got %v instead", r.GetResults()[index])
 		}
 
 		key := key{
@@ -395,7 +395,7 @@ func (resp response) mapPeerMembership(key2Index map[string]int, r *discovery.Re
 		}
 
 		if err != nil {
-			resp[key] = errors.New(err.Content)
+			resp[key] = errors.New(err.GetContent())
 			continue
 		}
 
@@ -411,15 +411,15 @@ func (resp response) mapPeerMembership(key2Index map[string]int, r *discovery.Re
 
 func peersForChannel(membersRes *discovery.PeerMembershipResult, qt protoext.QueryType) ([]*Peer, error) {
 	var peers []*Peer
-	for org, peersOfCurrentOrg := range membersRes.PeersByOrg {
-		for _, peer := range peersOfCurrentOrg.Peers {
-			aliveMsg, err := gprotoext.EnvelopeToGossipMessage(peer.MembershipInfo)
+	for org, peersOfCurrentOrg := range membersRes.GetPeersByOrg() {
+		for _, peer := range peersOfCurrentOrg.GetPeers() {
+			aliveMsg, err := gprotoext.EnvelopeToGossipMessage(peer.GetMembershipInfo())
 			if err != nil {
 				return nil, errors.Wrap(err, "failed unmarshalling alive message")
 			}
 			var stateInfoMsg *gprotoext.SignedGossipMessage
 			if isStateInfoExpected(qt) {
-				stateInfoMsg, err = gprotoext.EnvelopeToGossipMessage(peer.StateInfo)
+				stateInfoMsg, err = gprotoext.EnvelopeToGossipMessage(peer.GetStateInfo())
 				if err != nil {
 					return nil, errors.Wrap(err, "failed unmarshalling stateInfo message")
 				}
@@ -432,7 +432,7 @@ func peersForChannel(membersRes *discovery.PeerMembershipResult, qt protoext.Que
 			}
 			peers = append(peers, &Peer{
 				MSPID:            org,
-				Identity:         peer.Identity,
+				Identity:         peer.GetIdentity(),
 				AliveMessage:     aliveMsg,
 				StateInfoMessage: stateInfoMsg,
 			})
@@ -453,7 +453,7 @@ func (resp response) mapEndorsers(
 	for ch, index := range channel2index {
 		ccQueryRes, err := protoext.ResponseEndorsersAt(r, index)
 		if ccQueryRes == nil && err == nil {
-			return errors.Errorf("expected QueryResult of either ChaincodeQueryResult or Error but got %v instead", r.Results[index])
+			return errors.Errorf("expected QueryResult of either ChaincodeQueryResult or Error but got %v instead", r.GetResults()[index])
 		}
 
 		if err != nil {
@@ -461,7 +461,7 @@ func (resp response) mapEndorsers(
 				queryType: protoext.ChaincodeQueryType,
 				k:         ch,
 			}
-			resp[key] = errors.New(err.Content)
+			resp[key] = errors.New(err.GetContent())
 			continue
 		}
 
@@ -473,13 +473,13 @@ func (resp response) mapEndorsers(
 }
 
 func (resp response) mapEndorsersOfChannel(ccRs *discovery.ChaincodeQueryResult, channel string, invocationChain []InvocationChain) error {
-	if len(ccRs.Content) < len(invocationChain) {
-		return errors.Errorf("expected %d endorsement descriptors but got only %d", len(invocationChain), len(ccRs.Content))
+	if len(ccRs.GetContent()) < len(invocationChain) {
+		return errors.Errorf("expected %d endorsement descriptors but got only %d", len(invocationChain), len(ccRs.GetContent()))
 	}
-	for i, desc := range ccRs.Content {
-		expectedCCName := invocationChain[i][0].Name
-		if desc.Chaincode != expectedCCName {
-			return errors.Errorf("expected chaincode %s but got endorsement descriptor for %s", expectedCCName, desc.Chaincode)
+	for i, desc := range ccRs.GetContent() {
+		expectedCCName := invocationChain[i][0].GetName()
+		if desc.GetChaincode() != expectedCCName {
+			return errors.Errorf("expected chaincode %s but got endorsement descriptor for %s", expectedCCName, desc.GetChaincode())
 		}
 		key := key{
 			queryType:       protoext.ChaincodeQueryType,
@@ -502,21 +502,21 @@ func (resp response) createEndorsementDescriptor(desc *discovery.EndorsementDesc
 		layouts:           []map[string]int{},
 		endorsersByGroups: make(map[string][]*Peer),
 	}
-	for _, l := range desc.Layouts {
+	for _, l := range desc.GetLayouts() {
 		currentLayout := make(map[string]int)
 		descriptor.layouts = append(descriptor.layouts, currentLayout)
-		for grp, count := range l.QuantitiesByGroup {
-			if _, exists := desc.EndorsersByGroups[grp]; !exists {
+		for grp, count := range l.GetQuantitiesByGroup() {
+			if _, exists := desc.GetEndorsersByGroups()[grp]; !exists {
 				return nil, errors.Errorf("group %s isn't mapped to endorsers, but exists in a layout", grp)
 			}
 			currentLayout[grp] = int(count)
 		}
 	}
 
-	for grp, peers := range desc.EndorsersByGroups {
+	for grp, peers := range desc.GetEndorsersByGroups() {
 		var endorsers []*Peer
-		for _, p := range peers.Peers {
-			peer, err := endorser(p, desc.Chaincode, channel)
+		for _, p := range peers.GetPeers() {
+			peer, err := endorser(p, desc.GetChaincode(), channel)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed creating endorser object")
 			}
@@ -529,14 +529,14 @@ func (resp response) createEndorsementDescriptor(desc *discovery.EndorsementDesc
 }
 
 func endorser(peer *discovery.Peer, chaincode, channel string) (*Peer, error) {
-	if peer.MembershipInfo == nil || peer.StateInfo == nil {
+	if peer.GetMembershipInfo() == nil || peer.GetStateInfo() == nil {
 		return nil, errors.Errorf("received empty envelope(s) for endorsers for chaincode %s, channel %s", chaincode, channel)
 	}
-	aliveMsg, err := gprotoext.EnvelopeToGossipMessage(peer.MembershipInfo)
+	aliveMsg, err := gprotoext.EnvelopeToGossipMessage(peer.GetMembershipInfo())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed unmarshalling gossip envelope to alive message")
 	}
-	stateInfMsg, err := gprotoext.EnvelopeToGossipMessage(peer.StateInfo)
+	stateInfMsg, err := gprotoext.EnvelopeToGossipMessage(peer.GetStateInfo())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed unmarshalling gossip envelope to state info message")
 	}
@@ -547,14 +547,14 @@ func endorser(peer *discovery.Peer, chaincode, channel string) (*Peer, error) {
 		return nil, errors.Wrap(err, "failed validating stateInfo message")
 	}
 	sID := &msp.SerializedIdentity{}
-	if err := proto.Unmarshal(peer.Identity, sID); err != nil {
+	if err := proto.Unmarshal(peer.GetIdentity(), sID); err != nil {
 		return nil, errors.Wrap(err, "failed unmarshalling peer's identity")
 	}
 	return &Peer{
-		Identity:         peer.Identity,
+		Identity:         peer.GetIdentity(),
 		StateInfoMessage: stateInfMsg,
 		AliveMessage:     aliveMsg,
-		MSPID:            sID.Mspid,
+		MSPID:            sID.GetMspid(),
 	}, nil
 }
 
@@ -576,11 +576,11 @@ func validateAliveMessage(message *gprotoext.SignedGossipMessage) error {
 	if am == nil {
 		return errors.New("message isn't an alive message")
 	}
-	m := am.Membership
+	m := am.GetMembership()
 	if m == nil {
 		return errors.New("membership is empty")
 	}
-	if am.Timestamp == nil {
+	if am.GetTimestamp() == nil {
 		return errors.New("timestamp is nil")
 	}
 	return nil
@@ -591,10 +591,10 @@ func validateStateInfoMessage(message *gprotoext.SignedGossipMessage) error {
 	if si == nil {
 		return errors.New("message isn't a stateInfo message")
 	}
-	if si.Timestamp == nil {
+	if si.GetTimestamp() == nil {
 		return errors.New("timestamp is nil")
 	}
-	if si.Properties == nil {
+	if si.GetProperties() == nil {
 		return errors.New("properties is nil")
 	}
 	return nil
@@ -608,7 +608,7 @@ func validateInterests(interests ...*peer.ChaincodeInterest) error {
 		if interest == nil {
 			return errors.New("chaincode interest is nil")
 		}
-		if err := InvocationChain(interest.Chaincodes).ValidateInvocationChain(); err != nil {
+		if err := InvocationChain(interest.GetChaincodes()).ValidateInvocationChain(); err != nil {
 			return err
 		}
 	}
@@ -630,7 +630,7 @@ func (ic InvocationChain) ValidateInvocationChain() error {
 		return errors.New("invocation chain should not be empty")
 	}
 	for _, cc := range ic {
-		if cc.Name == "" {
+		if cc.GetName() == "" {
 			return errors.New("chaincode name should not be empty")
 		}
 	}

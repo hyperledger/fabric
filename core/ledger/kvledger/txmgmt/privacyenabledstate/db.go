@@ -400,12 +400,12 @@ func extractCollectionNames(chaincodeDefinition *cceventmgmt.ChaincodeDefinition
 	collectionConfigs := chaincodeDefinition.CollectionConfigs
 	collectionConfigsMap := make(map[string]bool)
 	if collectionConfigs != nil {
-		for _, config := range collectionConfigs.Config {
+		for _, config := range collectionConfigs.GetConfig() {
 			sConfig := config.GetStaticCollectionConfig()
 			if sConfig == nil {
 				continue
 			}
-			collectionConfigsMap[sConfig.Name] = true
+			collectionConfigsMap[sConfig.GetName()] = true
 		}
 	}
 	return collectionConfigsMap

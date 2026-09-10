@@ -525,17 +525,17 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 
 	// prepare the trimmed pvtrwset manually - retain only "ns-1/coll-1" and "ns-2/coll-2"
 	expectedSimulationRes := samplePvtSimResWithConfig
-	expectedSimulationRes.GetPvtRwset().NsPvtRwset[0].CollectionPvtRwset = expectedSimulationRes.GetPvtRwset().NsPvtRwset[0].CollectionPvtRwset[0:1]
-	expectedSimulationRes.GetPvtRwset().NsPvtRwset[1].CollectionPvtRwset = expectedSimulationRes.GetPvtRwset().NsPvtRwset[1].CollectionPvtRwset[1:]
-	expectedSimulationRes.CollectionConfigs, err = trimPvtCollectionConfigs(expectedSimulationRes.CollectionConfigs, filter)
+	expectedSimulationRes.GetPvtRwset().NsPvtRwset[0].CollectionPvtRwset = expectedSimulationRes.GetPvtRwset().GetNsPvtRwset()[0].GetCollectionPvtRwset()[0:1]
+	expectedSimulationRes.GetPvtRwset().NsPvtRwset[1].CollectionPvtRwset = expectedSimulationRes.GetPvtRwset().GetNsPvtRwset()[1].GetCollectionPvtRwset()[1:]
+	expectedSimulationRes.CollectionConfigs, err = trimPvtCollectionConfigs(expectedSimulationRes.GetCollectionConfigs(), filter)
 	require.NoError(t, err)
 	for ns, colName := range map[string]string{"ns-1": "coll-1", "ns-2": "coll-2"} {
-		config := expectedSimulationRes.CollectionConfigs[ns]
+		config := expectedSimulationRes.GetCollectionConfigs()[ns]
 		require.NotNil(t, config)
-		ns1Config := config.Config
+		ns1Config := config.GetConfig()
 		require.Equal(t, len(ns1Config), 1)
 		ns1ColConfig := ns1Config[0].GetStaticCollectionConfig()
-		require.NotNil(t, ns1ColConfig.Name, colName)
+		require.NotNil(t, ns1ColConfig.GetName(), colName)
 	}
 
 	var expectedRes []*EndorserPvtSimulationResults

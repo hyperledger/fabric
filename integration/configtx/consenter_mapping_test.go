@@ -34,11 +34,11 @@ var _ = Describe("ConfigTx ConsenterMapping", func() {
 		// check the config transaction in the genesis block contains the ConsenterMapping
 		// get the genesis block
 		configBlock := nwo.UnmarshalBlockFromFile(network.OutputBlockPath("testchannel"))
-		envelope, err := protoutil.GetEnvelopeFromBlock(configBlock.Data.Data[0])
+		envelope, err := protoutil.GetEnvelopeFromBlock(configBlock.GetData().GetData()[0])
 		Expect(err).NotTo(HaveOccurred())
 
 		// unmarshal the payload bytes
-		payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+		payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
 		Expect(err).NotTo(HaveOccurred())
 
 		// unmarshal the config envelope bytes

@@ -26,7 +26,7 @@ var (
 
 func TestAssembler(t *testing.T) {
 	lastBlock := makeNonConfigBlock(19, 10)
-	lastHash := protoutil.BlockHeaderHash(lastBlock.Header)
+	lastHash := protoutil.BlockHeaderHash(lastBlock.GetHeader())
 	lastConfigBlock := makeConfigBlock(10)
 
 	ledger := &mocks.Ledger{}
@@ -161,7 +161,7 @@ func makeConfigBlock(seq uint64) *common.Block {
 func proposalFromRequests(verificationSeq, seq, lastConfigSeq uint64, lastBlockHash, metadata []byte, requests ...[]byte) types.Proposal {
 	block := protoutil.NewBlock(seq, nil)
 	block.Data = &common.BlockData{Data: requests}
-	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 	block.Header.PreviousHash = lastBlockHash
 	block.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.Metadata{
 		Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: lastConfigSeq}),
@@ -177,12 +177,12 @@ func proposalFromRequests(verificationSeq, seq, lastConfigSeq uint64, lastBlockH
 	})
 
 	tuple := &smartbft.ByteBufferTuple{
-		A: protoutil.MarshalOrPanic(block.Data),
-		B: protoutil.MarshalOrPanic(block.Metadata),
+		A: protoutil.MarshalOrPanic(block.GetData()),
+		B: protoutil.MarshalOrPanic(block.GetMetadata()),
 	}
 
 	return types.Proposal{
-		Header:               protoutil.BlockHeaderBytes(block.Header),
+		Header:               protoutil.BlockHeaderBytes(block.GetHeader()),
 		Payload:              tuple.ToBytes(),
 		Metadata:             metadata,
 		VerificationSequence: int64(verificationSeq),

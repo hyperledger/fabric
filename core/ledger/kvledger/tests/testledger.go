@@ -69,7 +69,7 @@ func (env *env) createTestLedgerFromSnapshot(snapshotDir string) *testLedger {
 		env.t,
 		func() bool {
 			status := env.ledgerMgr.JoinBySnapshotStatus()
-			return !status.InProgress && status.BootstrappingSnapshotDir == ""
+			return !status.GetInProgress() && status.GetBootstrappingSnapshotDir() == ""
 		},
 		time.Minute,
 		100*time.Microsecond,
@@ -128,7 +128,7 @@ func (l *testLedger) commitPvtDataOfOldBlocks(blocksPvtData []*ledger.Reconciled
 func (l *testLedger) generateSnapshot() string {
 	bcInfo, err := l.lgr.GetBlockchainInfo()
 	require.NoError(l.t, err)
-	blockNum := bcInfo.Height - 1
+	blockNum := bcInfo.GetHeight() - 1
 	require.NoError(l.t, l.lgr.SubmitSnapshotRequest(blockNum))
 	require.Eventually(
 		l.t,

@@ -182,10 +182,10 @@ func (bprs *blockAndPrivateDataResponseSender) getPrivateData(
 		return nil, errors.New("wrong chain type")
 	}
 
-	pvtData, err := channel.Ledger().GetPvtDataByNum(block.Header.Number, nil)
+	pvtData, err := channel.Ledger().GetPvtDataByNum(block.GetHeader().GetNumber(), nil)
 	if err != nil {
-		logger.Errorf("Error getting private data by block number %d on channel %s", block.Header.Number, channelID)
-		return nil, errors.Wrapf(err, "error getting private data by block number %d", block.Header.Number)
+		logger.Errorf("Error getting private data by block number %d on channel %s", block.GetHeader().GetNumber(), channelID)
+		return nil, errors.Wrapf(err, "error getting private data by block number %d", block.GetHeader().GetNumber())
 	}
 
 	seqs2Namespaces := aggregatedCollections(make(map[seqAndDataModel]map[string][]*rwset.CollectionPvtReadWriteSet))
@@ -202,23 +202,23 @@ func (bprs *blockAndPrivateDataResponseSender) getPrivateData(
 
 	// check policy for each collection and add the collection if passing the policy requirement
 	for _, item := range pvtData {
-		logger.Debugf("Got private data for block number %d, tx sequence %d", block.Header.Number, item.SeqInBlock)
+		logger.Debugf("Got private data for block number %d, tx sequence %d", block.GetHeader().GetNumber(), item.SeqInBlock)
 		if item.WriteSet == nil {
 			continue
 		}
-		for _, ns := range item.WriteSet.NsPvtRwset {
-			for _, col := range ns.CollectionPvtRwset {
-				logger.Debugf("Checking policy for namespace %s, collection %s", ns.Namespace, col.CollectionName)
+		for _, ns := range item.WriteSet.GetNsPvtRwset() {
+			for _, col := range ns.GetCollectionPvtRwset() {
+				logger.Debugf("Checking policy for namespace %s, collection %s", ns.GetNamespace(), col.GetCollectionName())
 
-				eligible, err := bprs.CollectionPolicyChecker.CheckCollectionPolicy(block.Header.Number,
-					ns.Namespace, col.CollectionName, configHistoryRetriever, identityDeserializer, signedData)
+				eligible, err := bprs.CollectionPolicyChecker.CheckCollectionPolicy(block.GetHeader().GetNumber(),
+					ns.GetNamespace(), col.GetCollectionName(), configHistoryRetriever, identityDeserializer, signedData)
 				if err != nil {
 					return nil, err
 				}
 
 				if eligible {
-					logger.Debugf("Adding private data for namespace %s, collection %s", ns.Namespace, col.CollectionName)
-					seqs2Namespaces.addCollection(item.SeqInBlock, item.WriteSet.DataModel, ns.Namespace, col)
+					logger.Debugf("Adding private data for namespace %s, collection %s", ns.GetNamespace(), col.GetCollectionName())
+					seqs2Namespaces.addCollection(item.SeqInBlock, item.WriteSet.GetDataModel(), ns.GetNamespace(), col)
 				}
 			}
 		}
@@ -286,16 +286,16 @@ func (s *DeliverServer) DeliverWithPrivateData(srv peer.Deliver_DeliverWithPriva
 
 func toFilteredBlock(block *common.Block) (*peer.FilteredBlock, error) {
 	filteredBlock := &peer.FilteredBlock{
-		Number: block.Header.Number,
+		Number: block.GetHeader().GetNumber(),
 	}
 
-	txsFltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-	for txIndex, ebytes := range block.Data.Data {
+	txsFltr := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	for txIndex, ebytes := range block.GetData().GetData() {
 		var env *common.Envelope
 		var err error
 
 		if ebytes == nil {
-			logger.Debugf("got nil data bytes for tx index %d, block num %d", txIndex, block.Header.Number)
+			logger.Debugf("got nil data bytes for tx index %d, block num %d", txIndex, block.GetHeader().GetNumber())
 			continue
 		}
 
@@ -306,35 +306,35 @@ func toFilteredBlock(block *common.Block) (*peer.FilteredBlock, error) {
 		}
 
 		// get the payload from the envelope
-		payload, err := protoutil.UnmarshalPayload(env.Payload)
+		payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 		if err != nil {
 			return nil, errors.WithMessage(err, "could not extract payload from envelope")
 		}
 
-		if payload.Header == nil {
-			logger.Debugf("transaction payload header is nil, %d, block num %d", txIndex, block.Header.Number)
+		if payload.GetHeader() == nil {
+			logger.Debugf("transaction payload header is nil, %d, block num %d", txIndex, block.GetHeader().GetNumber())
 			continue
 		}
-		chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 		if err != nil {
 			return nil, err
 		}
 
-		filteredBlock.ChannelId = chdr.ChannelId
+		filteredBlock.ChannelId = chdr.GetChannelId()
 
 		filteredTransaction := &peer.FilteredTransaction{
-			Txid:             chdr.TxId,
-			Type:             common.HeaderType(chdr.Type),
+			Txid:             chdr.GetTxId(),
+			Type:             common.HeaderType(chdr.GetType()),
 			TxValidationCode: txsFltr.Flag(txIndex),
 		}
 
-		if filteredTransaction.Type == common.HeaderType_ENDORSER_TRANSACTION {
-			tx, err := protoutil.UnmarshalTransaction(payload.Data)
+		if filteredTransaction.GetType() == common.HeaderType_ENDORSER_TRANSACTION {
+			tx, err := protoutil.UnmarshalTransaction(payload.GetData())
 			if err != nil {
 				return nil, errors.WithMessage(err, "error unmarshal transaction payload for block event")
 			}
 
-			filteredTransaction.Data, err = transactionActions(tx.Actions).toFilteredActions()
+			filteredTransaction.Data, err = transactionActions(tx.GetActions()).toFilteredActions()
 			if err != nil {
 				logger.Error(err.Error())
 				return nil, err
@@ -350,26 +350,26 @@ func toFilteredBlock(block *common.Block) (*peer.FilteredBlock, error) {
 func (ta transactionActions) toFilteredActions() (*peer.FilteredTransaction_TransactionActions, error) {
 	transactionActions := &peer.FilteredTransactionActions{}
 	for _, action := range ta {
-		chaincodeActionPayload, err := protoutil.UnmarshalChaincodeActionPayload(action.Payload)
+		chaincodeActionPayload, err := protoutil.UnmarshalChaincodeActionPayload(action.GetPayload())
 		if err != nil {
 			return nil, errors.WithMessage(err, "error unmarshal transaction action payload for block event")
 		}
 
-		if chaincodeActionPayload.Action == nil {
+		if chaincodeActionPayload.GetAction() == nil {
 			logger.Debugf("chaincode action, the payload action is nil, skipping")
 			continue
 		}
-		propRespPayload, err := protoutil.UnmarshalProposalResponsePayload(chaincodeActionPayload.Action.ProposalResponsePayload)
+		propRespPayload, err := protoutil.UnmarshalProposalResponsePayload(chaincodeActionPayload.GetAction().GetProposalResponsePayload())
 		if err != nil {
 			return nil, errors.WithMessage(err, "error unmarshal proposal response payload for block event")
 		}
 
-		caPayload, err := protoutil.UnmarshalChaincodeAction(propRespPayload.Extension)
+		caPayload, err := protoutil.UnmarshalChaincodeAction(propRespPayload.GetExtension())
 		if err != nil {
 			return nil, errors.WithMessage(err, "error unmarshal chaincode action for block event")
 		}
 
-		ccEvent, err := protoutil.UnmarshalChaincodeEvents(caPayload.Events)
+		ccEvent, err := protoutil.UnmarshalChaincodeEvents(caPayload.GetEvents())
 		if err != nil {
 			return nil, errors.WithMessage(err, "error unmarshal chaincode event for block event")
 		}
@@ -377,9 +377,9 @@ func (ta transactionActions) toFilteredActions() (*peer.FilteredTransaction_Tran
 		if ccEvent.GetChaincodeId() != "" {
 			filteredAction := &peer.FilteredChaincodeAction{
 				ChaincodeEvent: &peer.ChaincodeEvent{
-					TxId:        ccEvent.TxId,
-					ChaincodeId: ccEvent.ChaincodeId,
-					EventName:   ccEvent.EventName,
+					TxId:        ccEvent.GetTxId(),
+					ChaincodeId: ccEvent.GetChaincodeId(),
+					EventName:   ccEvent.GetEventName(),
 				},
 			}
 			transactionActions.ChaincodeActions = append(transactionActions.ChaincodeActions, filteredAction)
@@ -477,7 +477,7 @@ func (cs *collPolicyChecker) CheckCollectionPolicy(
 		return false, errors.Errorf("no collection config was found for collection %s for chaincode %s", collName, ccName)
 	}
 
-	if !staticCollConfig.MemberOnlyRead {
+	if !staticCollConfig.GetMemberOnlyRead() {
 		return true, nil
 	}
 
@@ -485,7 +485,7 @@ func (cs *collPolicyChecker) CheckCollectionPolicy(
 	collAP := &privdata.SimpleCollection{}
 	err = collAP.Setup(staticCollConfig, deserializer)
 	if err != nil {
-		return false, errors.WithMessagef(err, "error setting up collection  %s", staticCollConfig.Name)
+		return false, errors.WithMessagef(err, "error setting up collection  %s", staticCollConfig.GetName())
 	}
 	logger.Debugf("got collection access policy")
 
@@ -500,10 +500,10 @@ func (cs *collPolicyChecker) CheckCollectionPolicy(
 }
 
 func extractStaticCollectionConfig(configPackage *peer.CollectionConfigPackage, collectionName string) *peer.StaticCollectionConfig {
-	for _, config := range configPackage.Config {
-		switch cconf := config.Payload.(type) {
+	for _, config := range configPackage.GetConfig() {
+		switch cconf := config.GetPayload().(type) {
 		case *peer.CollectionConfig_StaticCollectionConfig:
-			if cconf.StaticCollectionConfig.Name == collectionName {
+			if cconf.StaticCollectionConfig.GetName() == collectionName {
 				return cconf.StaticCollectionConfig
 			}
 		default:

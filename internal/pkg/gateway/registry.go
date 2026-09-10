@@ -445,8 +445,8 @@ func (reg *registry) config(channel string) ([]*endpointConfig, error) {
 			tlsRootCerts = append(tlsRootCerts, mspInfo.GetTlsRootCerts()...)
 			tlsRootCerts = append(tlsRootCerts, mspInfo.GetTlsIntermediateCerts()...)
 		}
-		for _, ep := range eps.Endpoint {
-			address := fmt.Sprintf("%s:%d", ep.Host, ep.Port)
+		for _, ep := range eps.GetEndpoint() {
+			address := fmt.Sprintf("%s:%d", ep.GetHost(), ep.GetPort())
 			channelOrderers = append(channelOrderers, &endpointConfig{address: address, mspid: mspid, tlsRootCerts: tlsRootCerts})
 		}
 	}

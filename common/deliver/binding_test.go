@@ -55,7 +55,7 @@ func TestBindingInspector(t *testing.T) {
 		if err != nil {
 			return nil
 		}
-		return ch.TlsCertHash
+		return ch.GetTlsCertHash()
 	}
 	srv := newInspectingServer(lis, NewBindingInspector(true, extract))
 	go srv.Start()

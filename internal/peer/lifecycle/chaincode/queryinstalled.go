@@ -119,12 +119,12 @@ func (i *InstalledQuerier) Query() error {
 		return errors.New("received nil proposal response")
 	}
 
-	if proposalResponse.Response == nil {
+	if proposalResponse.GetResponse() == nil {
 		return errors.New("received proposal response with nil response")
 	}
 
-	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("query failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+	if proposalResponse.GetResponse().GetStatus() != int32(cb.Status_SUCCESS) {
+		return errors.Errorf("query failed with status: %d - %s", proposalResponse.GetResponse().GetStatus(), proposalResponse.GetResponse().GetMessage())
 	}
 
 	if strings.ToLower(i.Input.OutputFormat) == "json" {
@@ -137,13 +137,13 @@ func (i *InstalledQuerier) Query() error {
 // from the server.
 func (i *InstalledQuerier) printResponse(proposalResponse *pb.ProposalResponse) error {
 	qicr := &lb.QueryInstalledChaincodesResult{}
-	err := proto.Unmarshal(proposalResponse.Response.Payload, qicr)
+	err := proto.Unmarshal(proposalResponse.GetResponse().GetPayload(), qicr)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
 	fmt.Fprintln(i.Writer, "Installed chaincodes on peer:")
-	for _, chaincode := range qicr.InstalledChaincodes {
-		fmt.Fprintf(i.Writer, "Package ID: %s, Label: %s\n", chaincode.PackageId, chaincode.Label)
+	for _, chaincode := range qicr.GetInstalledChaincodes() {
+		fmt.Fprintf(i.Writer, "Package ID: %s, Label: %s\n", chaincode.GetPackageId(), chaincode.GetLabel())
 	}
 	return nil
 }

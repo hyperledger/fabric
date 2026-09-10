@@ -41,7 +41,7 @@ type Assembler struct {
 func (a *Assembler) AssembleProposal(metadata []byte, requests [][]byte) (nextProp types.Proposal) {
 	rtc := a.RuntimeConfig.Load().(RuntimeConfig)
 
-	lastConfigBlockNum := rtc.LastConfigBlock.Header.Number
+	lastConfigBlockNum := rtc.LastConfigBlock.GetHeader().GetNumber()
 	lastBlock := rtc.LastBlock
 
 	if len(requests) == 0 {
@@ -49,12 +49,12 @@ func (a *Assembler) AssembleProposal(metadata []byte, requests [][]byte) (nextPr
 	}
 	batchedRequests := singleConfigTxOrSeveralNonConfigTx(requests, a.Logger)
 
-	block := protoutil.NewBlock(lastBlock.Header.Number+1, protoutil.BlockHeaderHash(lastBlock.Header))
+	block := protoutil.NewBlock(lastBlock.GetHeader().GetNumber()+1, protoutil.BlockHeaderHash(lastBlock.GetHeader()))
 	block.Data = &cb.BlockData{Data: batchedRequests}
-	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 
 	if protoutil.IsConfigBlock(block) {
-		lastConfigBlockNum = block.Header.Number
+		lastConfigBlockNum = block.GetHeader().GetNumber()
 	}
 
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&cb.Metadata{
@@ -70,12 +70,12 @@ func (a *Assembler) AssembleProposal(metadata []byte, requests [][]byte) (nextPr
 	})
 
 	tuple := &ByteBufferTuple{
-		A: protoutil.MarshalOrPanic(block.Data),
-		B: protoutil.MarshalOrPanic(block.Metadata),
+		A: protoutil.MarshalOrPanic(block.GetData()),
+		B: protoutil.MarshalOrPanic(block.GetMetadata()),
 	}
 
 	prop := types.Proposal{
-		Header:               protoutil.BlockHeaderBytes(block.Header),
+		Header:               protoutil.BlockHeaderBytes(block.GetHeader()),
 		Payload:              tuple.ToBytes(),
 		Metadata:             metadata,
 		VerificationSequence: int64(a.VerificationSeq()),

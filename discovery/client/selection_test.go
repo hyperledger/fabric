@@ -25,8 +25,8 @@ func TestShuffle(t *testing.T) {
 
 	isHeightAscending := func(endorsers Endorsers) bool {
 		for i := 0; i < len(endorsers)-1; i++ {
-			currHeight := endorsers[i].StateInfoMessage.GetStateInfo().Properties.LedgerHeight
-			nextHeight := endorsers[i+1].StateInfoMessage.GetStateInfo().Properties.LedgerHeight
+			currHeight := endorsers[i].StateInfoMessage.GetStateInfo().GetProperties().GetLedgerHeight()
+			nextHeight := endorsers[i+1].StateInfoMessage.GetStateInfo().GetProperties().GetLedgerHeight()
 			if currHeight > nextHeight {
 				return false
 			}
@@ -49,7 +49,7 @@ func TestExclusionAndPriority(t *testing.T) {
 	}
 
 	excludeFirst := selectionFunc(func(p Peer) bool {
-		return p.AliveMessage.GetAliveMsg().Timestamp.SeqNum == uint64(1)
+		return p.AliveMessage.GetAliveMsg().GetTimestamp().GetSeqNum() == uint64(1)
 	})
 
 	givenPeers := Endorsers{newPeer(3), newPeer(5), newPeer(1), newPeer(4), newPeer(2), newPeer(3)}
@@ -166,7 +166,7 @@ func stateInfoWithHeight(h uint64) *protoext.SignedGossipMessage {
 func heights(endorsers Endorsers) []int {
 	var res []int
 	for _, e := range endorsers {
-		res = append(res, int(e.StateInfoMessage.GetStateInfo().Properties.LedgerHeight))
+		res = append(res, int(e.StateInfoMessage.GetStateInfo().GetProperties().GetLedgerHeight()))
 	}
 	return res
 }

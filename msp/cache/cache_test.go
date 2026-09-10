@@ -277,7 +277,7 @@ func TestSatisfiesPrincipal(t *testing.T) {
 	// Check the cache
 	identifier := mockIdentity.GetIdentifier()
 	identityKey := identifier.Mspid + ":" + identifier.Id
-	principalKey := string(mockMSPPrincipal.PrincipalClassification) + string(mockMSPPrincipal.Principal)
+	principalKey := string(mockMSPPrincipal.GetPrincipalClassification()) + string(mockMSPPrincipal.GetPrincipal())
 	key := identityKey + principalKey
 	v, ok := i.(*cachedMSP).satisfiesPrincipalCache.get(key)
 	require.True(t, ok)
@@ -300,7 +300,7 @@ func TestSatisfiesPrincipal(t *testing.T) {
 	// Check the cache
 	identifier = mockIdentity.GetIdentifier()
 	identityKey = identifier.Mspid + ":" + identifier.Id
-	principalKey = string(mockMSPPrincipal.PrincipalClassification) + string(mockMSPPrincipal.Principal)
+	principalKey = string(mockMSPPrincipal.GetPrincipalClassification()) + string(mockMSPPrincipal.GetPrincipal())
 	key = identityKey + principalKey
 	v, ok = i.(*cachedMSP).satisfiesPrincipalCache.get(key)
 	require.True(t, ok)

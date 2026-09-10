@@ -62,15 +62,15 @@ func TestCreateBlock(t *testing.T) {
 		{Payload: []byte("some other bytes")},
 	})
 
-	dataHash := protoutil.ComputeBlockDataHash(block.Data)
+	dataHash := protoutil.ComputeBlockDataHash(block.GetData())
 	protoutil.BlockHeaderHash(&cb.BlockHeader{
-		Number:       block.Header.Number,
+		Number:       block.GetHeader().GetNumber(),
 		DataHash:     dataHash[:],
-		PreviousHash: protoutil.BlockHeaderHash(seedBlock.Header),
+		PreviousHash: protoutil.BlockHeaderHash(seedBlock.GetHeader()),
 	})
-	require.Equal(t, seedBlock.Header.Number+1, block.Header.Number)
-	require.Equal(t, dataHash[:], block.Header.DataHash)
-	require.Equal(t, protoutil.BlockHeaderHash(seedBlock.Header), block.Header.PreviousHash)
+	require.Equal(t, seedBlock.GetHeader().GetNumber()+1, block.GetHeader().GetNumber())
+	require.Equal(t, dataHash[:], block.GetHeader().GetDataHash())
+	require.Equal(t, protoutil.BlockHeaderHash(seedBlock.GetHeader()), block.GetHeader().GetPreviousHash())
 }
 
 func TestBlockSignature(t *testing.T) {
@@ -91,7 +91,7 @@ func TestBlockSignature(t *testing.T) {
 			ConfigTXValidator: &mocks.ConfigTXValidator{},
 			ReadWriter:        l,
 		},
-		lastBlock: protoutil.NewBlock(1, protoutil.BlockHeaderHash(lastBlock.Header)),
+		lastBlock: protoutil.NewBlock(1, protoutil.BlockHeaderHash(lastBlock.GetHeader())),
 	}
 
 	consensusMetadata := []byte("bar")
@@ -109,8 +109,8 @@ func TestBlockSignature(t *testing.T) {
 		ConsenterMetadata: protoutil.MarshalOrPanic(&cb.Metadata{Value: consensusMetadata}),
 	})
 
-	require.Equal(t, expectedMetadataValue, md.Value, "Value contains the consensus metadata and the last config")
-	require.NotNil(t, md.Signatures, "Should have signature")
+	require.Equal(t, expectedMetadataValue, md.GetValue(), "Value contains the consensus metadata and the last config")
+	require.NotNil(t, md.GetSignatures(), "Should have signature")
 }
 
 func TestBlockLastConfig(t *testing.T) {
@@ -135,8 +135,8 @@ func TestBlockLastConfig(t *testing.T) {
 	require.Equal(t, newConfigSeq, bw.lastConfigSeq)
 
 	md := protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_LAST_CONFIG)
-	require.NotNil(t, md.Value, "Value not be empty in this case")
-	require.Nil(t, md.Signatures, "Should not have signature")
+	require.NotNil(t, md.GetValue(), "Value not be empty in this case")
+	require.Nil(t, md.GetSignatures(), "Should not have signature")
 
 	lc := protoutil.GetLastConfigIndexFromBlockOrPanic(block)
 	require.Equal(t, newBlockNum, lc)
@@ -279,7 +279,7 @@ func TestGoodWriteConfig(t *testing.T) {
 		})
 
 	ctx := makeConfigTxFull("testchannelid", 1)
-	block := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
+	block := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.GetHeader()))
 	block.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata := []byte("foo")
 	bw.WriteConfigBlock(block, consenterMetadata)
@@ -288,13 +288,13 @@ func TestGoodWriteConfig(t *testing.T) {
 	bw.committingBlock.Lock()
 	bw.committingBlock.Unlock() //lint:ignore SA2001 syncpoint
 
-	cBlock := blockledger.GetBlock(l, block.Header.Number)
-	require.Equal(t, block.Header, cBlock.Header)
-	require.Equal(t, block.Data, cBlock.Data)
+	cBlock := blockledger.GetBlock(l, block.GetHeader().GetNumber())
+	require.Equal(t, block.GetHeader(), cBlock.GetHeader())
+	require.Equal(t, block.GetData(), cBlock.GetData())
 
 	omd, err := protoutil.GetConsenterMetadataFromBlock(block)
 	require.NoError(t, err)
-	require.Equal(t, consenterMetadata, omd.Value)
+	require.Equal(t, consenterMetadata, omd.GetValue())
 }
 
 func TestWriteConfigSynchronously(t *testing.T) {
@@ -323,19 +323,19 @@ func TestWriteConfigSynchronously(t *testing.T) {
 		})
 
 	ctx := makeConfigTxFull("testchannelid", 1)
-	block := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
+	block := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.GetHeader()))
 	block.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata := []byte("foo")
 	bw.WriteConfigBlock(block, consenterMetadata)
 
-	cBlock, err := blockledger.GetBlockByNumber(l, block.Header.Number)
+	cBlock, err := blockledger.GetBlockByNumber(l, block.GetHeader().GetNumber())
 	require.Nil(t, err)
-	require.Equal(t, block.Header, cBlock.Header)
-	require.Equal(t, block.Data, cBlock.Data)
+	require.Equal(t, block.GetHeader(), cBlock.GetHeader())
+	require.Equal(t, block.GetData(), cBlock.GetData())
 
 	omd, err := protoutil.GetConsenterMetadataFromBlock(block)
 	require.NoError(t, err)
-	require.Equal(t, consenterMetadata, omd.Value)
+	require.Equal(t, consenterMetadata, omd.GetValue())
 }
 
 func TestMigrationWriteConfig(t *testing.T) {
@@ -365,7 +365,7 @@ func TestMigrationWriteConfig(t *testing.T) {
 		})
 
 	ctx := makeConfigTxMig("testchannelid", 1)
-	block := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
+	block := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.GetHeader()))
 	block.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata := []byte("foo")
 
@@ -375,12 +375,12 @@ func TestMigrationWriteConfig(t *testing.T) {
 	bw.committingBlock.Lock()
 	bw.committingBlock.Unlock() //lint:ignore SA2001 syncpoint
 
-	cBlock := blockledger.GetBlock(l, block.Header.Number)
-	require.Equal(t, block.Header, cBlock.Header)
-	require.Equal(t, block.Data, cBlock.Data)
+	cBlock := blockledger.GetBlock(l, block.GetHeader().GetNumber())
+	require.Equal(t, block.GetHeader(), cBlock.GetHeader())
+	require.Equal(t, block.GetData(), cBlock.GetData())
 
 	omd := protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
-	require.Equal(t, []byte(nil), omd.Value)
+	require.Equal(t, []byte(nil), omd.GetValue())
 }
 
 func TestRaceWriteConfig(t *testing.T) {
@@ -408,13 +408,13 @@ func TestRaceWriteConfig(t *testing.T) {
 		})
 
 	ctx := makeConfigTxFull("testchannelid", 1)
-	block1 := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
+	block1 := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.GetHeader()))
 	block1.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata1 := []byte("foo")
 	mockValidator.SequenceReturnsOnCall(1, 1)
 
 	ctx = makeConfigTxFull("testchannelid", 1)
-	block2 := protoutil.NewBlock(2, protoutil.BlockHeaderHash(block1.Header))
+	block2 := protoutil.NewBlock(2, protoutil.BlockHeaderHash(block1.GetHeader()))
 	block2.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata2 := []byte("bar")
 	mockValidator.SequenceReturnsOnCall(2, 2)
@@ -426,21 +426,21 @@ func TestRaceWriteConfig(t *testing.T) {
 	bw.committingBlock.Lock()
 	bw.committingBlock.Unlock() //lint:ignore SA2001 syncpoint
 
-	cBlock := blockledger.GetBlock(l, block1.Header.Number)
-	require.Equal(t, block1.Header, cBlock.Header)
-	require.Equal(t, block1.Data, cBlock.Data)
-	expectedLastConfigBlockNumber := block1.Header.Number
+	cBlock := blockledger.GetBlock(l, block1.GetHeader().GetNumber())
+	require.Equal(t, block1.GetHeader(), cBlock.GetHeader())
+	require.Equal(t, block1.GetData(), cBlock.GetData())
+	expectedLastConfigBlockNumber := block1.GetHeader().GetNumber()
 	testLastConfigBlockNumber(t, block1, expectedLastConfigBlockNumber)
 
-	cBlock = blockledger.GetBlock(l, block2.Header.Number)
-	require.Equal(t, block2.Header, cBlock.Header)
-	require.Equal(t, block2.Data, cBlock.Data)
-	expectedLastConfigBlockNumber = block2.Header.Number
+	cBlock = blockledger.GetBlock(l, block2.GetHeader().GetNumber())
+	require.Equal(t, block2.GetHeader(), cBlock.GetHeader())
+	require.Equal(t, block2.GetData(), cBlock.GetData())
+	expectedLastConfigBlockNumber = block2.GetHeader().GetNumber()
 	testLastConfigBlockNumber(t, block2, expectedLastConfigBlockNumber)
 
 	omd, err := protoutil.GetConsenterMetadataFromBlock(block1)
 	require.NoError(t, err)
-	require.Equal(t, consenterMetadata1, omd.Value)
+	require.Equal(t, consenterMetadata1, omd.GetValue())
 }
 
 func TestRaceWriteBlocks(t *testing.T) {
@@ -468,19 +468,19 @@ func TestRaceWriteBlocks(t *testing.T) {
 		})
 
 	ctx := makeConfigTxFull("testchannelid", 1)
-	block1 := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
+	block1 := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.GetHeader()))
 	block1.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata1 := []byte("foo")
 	mockValidator.SequenceReturnsOnCall(1, 1)
 
 	ctx = makeConfigTxFull("testchannelid", 1)
-	block2 := protoutil.NewBlock(2, protoutil.BlockHeaderHash(block1.Header))
+	block2 := protoutil.NewBlock(2, protoutil.BlockHeaderHash(block1.GetHeader()))
 	block2.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata2 := []byte("bar")
 	mockValidator.SequenceReturnsOnCall(2, 2)
 
 	ctx = makeConfigTxFull("testchannelid", 1)
-	block3 := protoutil.NewBlock(3, protoutil.BlockHeaderHash(block2.Header))
+	block3 := protoutil.NewBlock(3, protoutil.BlockHeaderHash(block2.GetHeader()))
 	block3.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata3 := []byte("3")
 	mockValidator.SequenceReturnsOnCall(3, 3)
@@ -489,41 +489,41 @@ func TestRaceWriteBlocks(t *testing.T) {
 	bw.WriteBlock(block2, consenterMetadata2)
 	bw.WriteConfigBlock(block3, consenterMetadata3)
 
-	cBlock, err := blockledger.GetBlockByNumber(l, block1.Header.Number)
+	cBlock, err := blockledger.GetBlockByNumber(l, block1.GetHeader().GetNumber())
 	require.Nil(t, err)
-	require.Equal(t, block1.Header, cBlock.Header)
-	require.Equal(t, block1.Data, cBlock.Data)
+	require.Equal(t, block1.GetHeader(), cBlock.GetHeader())
+	require.Equal(t, block1.GetData(), cBlock.GetData())
 
-	cBlock, err = blockledger.GetBlockByNumber(l, block2.Header.Number)
+	cBlock, err = blockledger.GetBlockByNumber(l, block2.GetHeader().GetNumber())
 	require.Nil(t, err)
-	require.Equal(t, block2.Header, cBlock.Header)
-	require.Equal(t, block2.Data, cBlock.Data)
+	require.Equal(t, block2.GetHeader(), cBlock.GetHeader())
+	require.Equal(t, block2.GetData(), cBlock.GetData())
 
-	cBlock, err = blockledger.GetBlockByNumber(l, block3.Header.Number)
+	cBlock, err = blockledger.GetBlockByNumber(l, block3.GetHeader().GetNumber())
 	require.Nil(t, err)
-	require.Equal(t, block3.Header, cBlock.Header)
-	require.Equal(t, block3.Data, cBlock.Data)
+	require.Equal(t, block3.GetHeader(), cBlock.GetHeader())
+	require.Equal(t, block3.GetData(), cBlock.GetData())
 
-	expectedLastConfigBlockNumber := block3.Header.Number
+	expectedLastConfigBlockNumber := block3.GetHeader().GetNumber()
 	testLastConfigBlockNumber(t, block3, expectedLastConfigBlockNumber)
 }
 
 func testLastConfigBlockNumber(t *testing.T, block *cb.Block, expectedBlockNumber uint64) {
 	metadata := &cb.Metadata{}
-	err := proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES], metadata)
+	err := proto.Unmarshal(block.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_SIGNATURES], metadata)
 	require.NoError(t, err, "Block should carry SIGNATURES metadata item")
 	obm := &cb.OrdererBlockMetadata{}
-	err = proto.Unmarshal(metadata.Value, obm)
+	err = proto.Unmarshal(metadata.GetValue(), obm)
 	require.NoError(t, err, "Block SIGNATURES should carry OrdererBlockMetadata")
-	require.Equal(t, expectedBlockNumber, obm.LastConfig.Index, "SIGNATURES value should point to last config block")
+	require.Equal(t, expectedBlockNumber, obm.GetLastConfig().GetIndex(), "SIGNATURES value should point to last config block")
 
 	metadata = &cb.Metadata{}
-	err = proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG], metadata)
+	err = proto.Unmarshal(block.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_LAST_CONFIG], metadata)
 	require.NoError(t, err, "Block should carry LAST_CONFIG metadata item")
 	lastConfig := &cb.LastConfig{}
-	err = proto.Unmarshal(metadata.Value, lastConfig)
+	err = proto.Unmarshal(metadata.GetValue(), lastConfig)
 	require.NoError(t, err, "LAST_CONFIG metadata item should carry last config value")
-	require.Equal(t, expectedBlockNumber, lastConfig.Index, "LAST_CONFIG value should point to last config block")
+	require.Equal(t, expectedBlockNumber, lastConfig.GetIndex(), "LAST_CONFIG value should point to last config block")
 }
 
 func testPanic(f func()) (didPanic bool, message any) {

@@ -66,7 +66,7 @@ func newIdentity(cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) (Identity,
 	// Compute identity identifier
 
 	// Use the hash of the identity's certificate as id in the IdentityIdentifier
-	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.IdentityIdentifierHashFunction)
+	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.GetIdentityIdentifierHashFunction())
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed getting hash function options")
 	}
@@ -177,7 +177,7 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 	// but golang requires the hash for ecdsa and requires
 	// the full message for ed25519
 	if id.cert.PublicKeyAlgorithm != x509.Ed25519 {
-		hashOpt, err := id.getHashOpt(id.msp.cryptoConfig.SignatureHashFamily)
+		hashOpt, err := id.getHashOpt(id.msp.cryptoConfig.GetSignatureHashFamily())
 		if err != nil {
 			return errors.WithMessage(err, "failed getting hash function options")
 		}
@@ -269,7 +269,7 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 	// but golang requires the hash for ecdsa and requires
 	// the full message for ed25519
 	if id.identity.cert.PublicKeyAlgorithm != x509.Ed25519 {
-		hashOpt, err := id.getHashOpt(id.msp.cryptoConfig.SignatureHashFamily)
+		hashOpt, err := id.getHashOpt(id.msp.cryptoConfig.GetSignatureHashFamily())
 		if err != nil {
 			return nil, errors.WithMessage(err, "failed getting hash function options")
 		}

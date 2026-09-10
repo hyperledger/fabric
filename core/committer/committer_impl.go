@@ -79,7 +79,7 @@ func (lc *LedgerCommitter) LedgerHeight() (uint64, error) {
 		return 0, err
 	}
 
-	return info.Height, nil
+	return info.GetHeight(), nil
 }
 
 func (lc *LedgerCommitter) GetCurrentBlockHash() ([]byte, error) {
@@ -89,7 +89,7 @@ func (lc *LedgerCommitter) GetCurrentBlockHash() ([]byte, error) {
 		return nil, err
 	}
 
-	return info.CurrentBlockHash, nil
+	return info.GetCurrentBlockHash(), nil
 }
 
 // DoesPvtDataInfoExistInLedger returns true if the ledger has pvtdata info

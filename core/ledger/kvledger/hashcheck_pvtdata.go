@@ -62,11 +62,11 @@ func extractValidPvtDataForBlock(
 		finalNsWrites := []*rwset.NsPvtReadWriteSet{}
 
 		for _, nsPvtdata := range txPvtdata.WriteSet.GetNsPvtRwset() { // Ns Loop
-			ns := nsPvtdata.Namespace
+			ns := nsPvtdata.GetNamespace()
 			finalCollsWrites := []*rwset.CollectionPvtReadWriteSet{}
 
 			for _, collPvtdata := range nsPvtdata.GetCollectionPvtRwset() { // coll loop
-				coll := collPvtdata.CollectionName
+				coll := collPvtdata.GetCollectionName()
 				var kvHashes map[string][]byte
 				var pvtWSHashFromBlock []byte
 				var err error
@@ -120,7 +120,7 @@ func extractValidPvtDataForBlock(
 			&ledger.TxPvtData{
 				SeqInBlock: txNum,
 				WriteSet: &rwset.TxPvtReadWriteSet{
-					DataModel:  txPvtdata.WriteSet.DataModel,
+					DataModel:  txPvtdata.WriteSet.GetDataModel(),
 					NsPvtRwset: finalNsWrites,
 				},
 			},
@@ -140,7 +140,7 @@ func validateAndRemovePurgedKeys(
 	collWSHashFromBlock []byte,
 	ns string, blkNum, txNum uint64,
 ) (*rwset.CollectionPvtReadWriteSet, error) {
-	coll := collPvtProto.CollectionName
+	coll := collPvtProto.GetCollectionName()
 	trimmedKVHashes, err := pvtdataStore.RemoveAppInitiatedPurgesUsingReconMarker(
 		kvHashes, ns, coll, blkNum, txNum,
 	)
@@ -162,7 +162,7 @@ func validateAndRemovePurgedKeys(
 		logSkippedCollection(ns, coll, blkNum, txNum, "Error during unmarshalling of collection proto")
 		return nil, nil
 	}
-	pvtKVs := collPvtWS.KvRwSet.Writes
+	pvtKVs := collPvtWS.KvRwSet.GetWrites()
 
 	// No key purge is observed by this peer as well as by sending peer (as yet!) so checking hash of collection writeset is enough,
 	// provided block is available
@@ -170,7 +170,7 @@ func validateAndRemovePurgedKeys(
 		len(trimmedKVHashes) == len(kvHashes) &&
 		len(pvtKVs) == len(kvHashes) {
 
-		if !bytes.Equal(util.ComputeSHA256(collPvtProto.Rwset), collWSHashFromBlock) {
+		if !bytes.Equal(util.ComputeSHA256(collPvtProto.GetRwset()), collWSHashFromBlock) {
 			logSkippedCollection(ns, coll, blkNum, txNum, "Hash mismatched")
 			return nil, nil
 		}
@@ -191,12 +191,12 @@ func validateAndRemovePurgedKeys(
 
 	finalPvtKVs := []*kvrwset.KVWrite{}
 	for _, kv := range pvtKVs {
-		keyHash := string(util.ComputeSHA256([]byte(kv.Key)))
+		keyHash := string(util.ComputeSHA256([]byte(kv.GetKey())))
 		expectedValueHash, ok := trimmedKVHashes[keyHash]
 		if !ok {
 			continue
 		}
-		if !bytes.Equal(expectedValueHash, util.ComputeSHA256(kv.Value)) {
+		if !bytes.Equal(expectedValueHash, util.ComputeSHA256(kv.GetValue())) {
 			logSkippedCollection(ns, coll, blkNum, txNum, "Hash mismatched")
 			return nil, nil
 		}
@@ -234,8 +234,8 @@ func retrieveCollKVHashes(txRWSet *rwsetutil.TxRwSet, ns, coll string) map[strin
 			}
 
 			kvHashses := map[string][]byte{}
-			for _, h := range collHahsedRWSet.HashedRwSet.HashedWrites {
-				kvHashses[string(h.KeyHash)] = h.ValueHash
+			for _, h := range collHahsedRWSet.HashedRwSet.GetHashedWrites() {
+				kvHashses[string(h.GetKeyHash())] = h.GetValueHash()
 			}
 			return kvHashses
 		}
@@ -256,7 +256,7 @@ func retrieveRwsetForTx(blkNum uint64, txNum uint64, blockStore *blkstorage.Bloc
 		return nil, err
 	}
 	txRWSet := &rwsetutil.TxRwSet{}
-	if err := txRWSet.FromProtoBytes(responsePayload.Results); err != nil {
+	if err := txRWSet.FromProtoBytes(responsePayload.GetResults()); err != nil {
 		return nil, err
 	}
 	return txRWSet, nil

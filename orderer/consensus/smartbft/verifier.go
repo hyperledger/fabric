@@ -127,12 +127,12 @@ func (v *Verifier) RequestsFromProposal(proposal types.Proposal) []types.Request
 		return []types.RequestInfo{}
 	}
 
-	if block.Data == nil {
+	if block.GetData() == nil {
 		return []types.RequestInfo{}
 	}
 
 	var res []types.RequestInfo
-	for _, txn := range block.Data.Data {
+	for _, txn := range block.GetData().GetData() {
 		req := v.ReqInspector.RequestID(txn)
 		res = append(res, req)
 	}
@@ -165,30 +165,30 @@ func (v *Verifier) verifyRequest(rawRequest []byte, noConfigAllowed bool) (types
 	}
 
 	err = v.AccessController.Evaluate([]*protoutil.SignedData{
-		{Identity: req.sigHdr.Creator, Data: req.envelope.Payload, Signature: req.envelope.Signature},
+		{Identity: req.sigHdr.GetCreator(), Data: req.envelope.GetPayload(), Signature: req.envelope.GetSignature()},
 	})
 	if err != nil {
 		return types.RequestInfo{}, errors.Wrap(err, "access denied")
 	}
 
-	if noConfigAllowed && req.chHdr.Type != int32(cb.HeaderType_ENDORSER_TRANSACTION) {
+	if noConfigAllowed && req.chHdr.GetType() != int32(cb.HeaderType_ENDORSER_TRANSACTION) {
 		return types.RequestInfo{}, errors.Errorf("only endorser transactions can be sent with other transactions")
 	}
 
-	if req.chHdr.ChannelId != v.Channel {
-		return types.RequestInfo{}, errors.Errorf("request is for channel %s but expected channel %s", req.chHdr.ChannelId, v.Channel)
+	if req.chHdr.GetChannelId() != v.Channel {
+		return types.RequestInfo{}, errors.Errorf("request is for channel %s but expected channel %s", req.chHdr.GetChannelId(), v.Channel)
 	}
 
-	switch req.chHdr.Type {
+	switch req.chHdr.GetType() {
 	case int32(cb.HeaderType_CONFIG):
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
 		return types.RequestInfo{}, fmt.Errorf("orderer transactions are not supported in v3")
 	case int32(cb.HeaderType_ENDORSER_TRANSACTION):
 	default:
-		return types.RequestInfo{}, errors.Errorf("transaction of type %s is not allowed to be included in blocks", cb.HeaderType_name[req.chHdr.Type])
+		return types.RequestInfo{}, errors.Errorf("transaction of type %s is not allowed to be included in blocks", cb.HeaderType_name[req.chHdr.GetType()])
 	}
 
-	if req.chHdr.Type == int32(cb.HeaderType_CONFIG) {
+	if req.chHdr.GetType() == int32(cb.HeaderType_CONFIG) {
 		err = v.ConfigValidator.ValidateConfig(req.envelope)
 		if err != nil {
 			v.Logger.Errorf("Error verifying config update: %v", err)
@@ -243,16 +243,16 @@ func (v *Verifier) VerificationSequence() uint64 {
 }
 
 func verifyHashChainAndDataHash(block *cb.Block, prevHeaderHash string) error {
-	thisHdrHashOfPrevHdr := hex.EncodeToString(block.Header.PreviousHash)
+	thisHdrHashOfPrevHdr := hex.EncodeToString(block.GetHeader().GetPreviousHash())
 	if prevHeaderHash != thisHdrHashOfPrevHdr {
 		return errors.Errorf("previous header hash is %s but expected %s", thisHdrHashOfPrevHdr, prevHeaderHash)
 	}
 
-	dataHash, err := protoutil.BlockDataHash(block.Data)
+	dataHash, err := protoutil.BlockDataHash(block.GetData())
 	if err != nil {
 		return err
 	}
-	dataHashString := hex.EncodeToString(block.Header.DataHash)
+	dataHashString := hex.EncodeToString(block.GetHeader().GetDataHash())
 
 	actualHashOfData := hex.EncodeToString(dataHash)
 	if dataHashString != actualHashOfData {
@@ -262,11 +262,11 @@ func verifyHashChainAndDataHash(block *cb.Block, prevHeaderHash string) error {
 }
 
 func (v *Verifier) verifyBlockDataAndMetadata(block *cb.Block, metadata []byte) ([]types.RequestInfo, error) {
-	if block.Data == nil || len(block.Data.Data) == 0 {
+	if block.GetData() == nil || len(block.GetData().GetData()) == 0 {
 		return nil, errors.New("empty block data")
 	}
 
-	if block.Metadata == nil || len(block.Metadata.Metadata) < len(cb.BlockMetadataIndex_name) {
+	if block.GetMetadata() == nil || len(block.GetMetadata().GetMetadata()) < len(cb.BlockMetadataIndex_name) {
 		return nil, errors.New("block metadata is either missing or contains too few entries")
 	}
 
@@ -275,14 +275,14 @@ func (v *Verifier) verifyBlockDataAndMetadata(block *cb.Block, metadata []byte) 
 		return nil, err
 	}
 	ordererMetadataFromSignature := &cb.OrdererBlockMetadata{}
-	if err := proto.Unmarshal(signatureMetadata.Value, ordererMetadataFromSignature); err != nil {
+	if err := proto.Unmarshal(signatureMetadata.GetValue(), ordererMetadataFromSignature); err != nil {
 		return nil, errors.Wrap(err, "failed unmarshaling OrdererBlockMetadata")
 	}
 
 	// Ensure the view metadata in the block signature and in the proposal are the same
 
 	metadataInBlock := &smartbftprotos.ViewMetadata{}
-	if err := proto.Unmarshal(ordererMetadataFromSignature.ConsenterMetadata, metadataInBlock); err != nil {
+	if err := proto.Unmarshal(ordererMetadataFromSignature.GetConsenterMetadata(), metadataInBlock); err != nil {
 		return nil, errors.Wrap(err, "failed unmarshaling smartbft metadata from block")
 	}
 
@@ -300,19 +300,19 @@ func (v *Verifier) verifyBlockDataAndMetadata(block *cb.Block, metadata []byte) 
 	}
 
 	rtc := v.RuntimeConfig.Load().(RuntimeConfig)
-	lastConfig := rtc.LastConfigBlock.Header.Number
+	lastConfig := rtc.LastConfigBlock.GetHeader().GetNumber()
 
 	if protoutil.IsConfigBlock(block) {
-		lastConfig = block.Header.Number
+		lastConfig = block.GetHeader().GetNumber()
 	}
 
 	// Verify last config
-	if ordererMetadataFromSignature.LastConfig == nil {
+	if ordererMetadataFromSignature.GetLastConfig() == nil {
 		return nil, errors.Errorf("last config is nil")
 	}
 
-	if ordererMetadataFromSignature.LastConfig.Index != lastConfig {
-		return nil, errors.Errorf("last config in block orderer metadata points to %d but our persisted last config is %d", ordererMetadataFromSignature.LastConfig.Index, lastConfig)
+	if ordererMetadataFromSignature.GetLastConfig().GetIndex() != lastConfig {
+		return nil, errors.Errorf("last config in block orderer metadata points to %d but our persisted last config is %d", ordererMetadataFromSignature.GetLastConfig().GetIndex(), lastConfig)
 	}
 
 	rawLastConfig, err := protoutil.GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIG)
@@ -320,14 +320,14 @@ func (v *Verifier) verifyBlockDataAndMetadata(block *cb.Block, metadata []byte) 
 		return nil, err
 	}
 	lastConf := &cb.LastConfig{}
-	if err := proto.Unmarshal(rawLastConfig.Value, lastConf); err != nil {
+	if err := proto.Unmarshal(rawLastConfig.GetValue(), lastConf); err != nil {
 		return nil, err
 	}
-	if lastConf.Index != lastConfig {
-		return nil, errors.Errorf("last config in block metadata points to %d but our persisted last config is %d", ordererMetadataFromSignature.LastConfig.Index, lastConfig)
+	if lastConf.GetIndex() != lastConfig {
+		return nil, errors.Errorf("last config in block metadata points to %d but our persisted last config is %d", ordererMetadataFromSignature.GetLastConfig().GetIndex(), lastConfig)
 	}
 
-	return validateTransactions(block.Data.Data, v.verifyRequest)
+	return validateTransactions(block.GetData().GetData(), v.verifyRequest)
 }
 
 func validateTransactions(blockData [][]byte, verifyReq requestVerifier) ([]types.RequestInfo, error) {
@@ -393,9 +393,9 @@ func (v *Verifier) verifySignatureIsBoundToProposal(sig *Signature, identityID u
 	if err := proto.Unmarshal(sig.IdentifierHeader, sigHdr); err != nil {
 		return errors.Wrap(err, "malformed signature header")
 	}
-	if identityID != uint64(sigHdr.Identifier) {
+	if identityID != uint64(sigHdr.GetIdentifier()) {
 		v.Logger.Warnf("Expected identity %d but got %d", identityID,
-			sigHdr.Identifier)
+			sigHdr.GetIdentifier())
 		return errors.Errorf("identity in signature header does not match expected identity")
 	}
 
@@ -405,9 +405,9 @@ func (v *Verifier) verifySignatureIsBoundToProposal(sig *Signature, identityID u
 		return errors.Wrap(err, "malformed orderer metadata in signature")
 	}
 
-	if !bytes.Equal(ordererMD.ConsenterMetadata, prop.Metadata) {
+	if !bytes.Equal(ordererMD.GetConsenterMetadata(), prop.Metadata) {
 		v.Logger.Warnf("Expected consenter metadata %s but got %s in proposal",
-			base64.StdEncoding.EncodeToString(ordererMD.ConsenterMetadata), base64.StdEncoding.EncodeToString(prop.Metadata))
+			base64.StdEncoding.EncodeToString(ordererMD.GetConsenterMetadata()), base64.StdEncoding.EncodeToString(prop.Metadata))
 		return errors.Errorf("consenter metadata in OrdererBlockMetadata doesn't match proposal")
 	}
 
@@ -418,18 +418,18 @@ func (v *Verifier) verifySignatureIsBoundToProposal(sig *Signature, identityID u
 	}
 
 	// Ensure Metadata slice is of the right size
-	if len(block.Metadata.Metadata) != len(cb.BlockMetadataIndex_name) {
+	if len(block.GetMetadata().GetMetadata()) != len(cb.BlockMetadataIndex_name) {
 		return errors.Errorf("block metadata is of size %d but should be of size %d",
-			len(block.Metadata.Metadata), len(cb.BlockMetadataIndex_name))
+			len(block.GetMetadata().GetMetadata()), len(cb.BlockMetadataIndex_name))
 	}
 
 	signatureMetadata := &cb.Metadata{}
-	if err := proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES], signatureMetadata); err != nil {
+	if err := proto.Unmarshal(block.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_SIGNATURES], signatureMetadata); err != nil {
 		return errors.Wrap(err, "malformed signature metadata")
 	}
 
 	ordererMDFromBlock := &cb.OrdererBlockMetadata{}
-	if err := proto.Unmarshal(signatureMetadata.Value, ordererMDFromBlock); err != nil {
+	if err := proto.Unmarshal(signatureMetadata.GetValue(), ordererMDFromBlock); err != nil {
 		return errors.Wrap(err, "malformed orderer metadata in block")
 	}
 

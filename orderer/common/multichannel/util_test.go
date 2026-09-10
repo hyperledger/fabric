@@ -163,7 +163,7 @@ func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.Co
 		panic(err)
 	}
 	configTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, mockCrypto(), &cb.ConfigEnvelope{
-		Config:     &cb.Config{Sequence: 1, ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
+		Config:     &cb.Config{Sequence: 1, ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.GetConfigUpdate()).GetWriteSet()},
 		LastUpdate: configUpdateTx,
 	},
 		msgVersion, epoch)

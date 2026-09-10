@@ -167,26 +167,26 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 // NewBundleFromEnvelope wraps the NewBundle function, extracting the needed
 // information from a full configtx
 func NewBundleFromEnvelope(env *cb.Envelope, bccsp bccsp.BCCSP) (*Bundle, error) {
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal payload from envelope")
 	}
 
-	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal config envelope from payload")
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return nil, errors.Errorf("envelope header cannot be nil")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal channel header")
 	}
 
-	return NewBundle(chdr.ChannelId, configEnvelope.Config, bccsp)
+	return NewBundle(chdr.GetChannelId(), configEnvelope.GetConfig(), bccsp)
 }
 
 // NewBundle creates a new immutable bundle of configuration
@@ -195,7 +195,7 @@ func NewBundle(channelID string, config *cb.Config, bccsp bccsp.BCCSP) (*Bundle,
 		return nil, err
 	}
 
-	channelConfig, err := NewChannelConfig(config.ChannelGroup, bccsp)
+	channelConfig, err := NewChannelConfig(config.GetChannelGroup(), bccsp)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing channelconfig failed")
 	}
@@ -213,7 +213,7 @@ func NewBundle(channelID string, config *cb.Config, bccsp bccsp.BCCSP) (*Bundle,
 		}
 	}
 
-	policyManager, err := policies.NewManagerImpl(RootGroupKey, policyProviderMap, config.ChannelGroup)
+	policyManager, err := policies.NewManagerImpl(RootGroupKey, policyProviderMap, config.GetChannelGroup())
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing policymanager failed")
 	}
@@ -235,18 +235,18 @@ func preValidate(config *cb.Config) error {
 		return errors.New("channelconfig Config cannot be nil")
 	}
 
-	if config.ChannelGroup == nil {
+	if config.GetChannelGroup() == nil {
 		return errors.New("config must contain a channel group")
 	}
 
-	if og, ok := config.ChannelGroup.Groups[OrdererGroupKey]; ok {
-		if _, ok := og.Values[CapabilitiesKey]; !ok {
-			if _, ok := config.ChannelGroup.Values[CapabilitiesKey]; ok {
+	if og, ok := config.GetChannelGroup().GetGroups()[OrdererGroupKey]; ok {
+		if _, ok := og.GetValues()[CapabilitiesKey]; !ok {
+			if _, ok := config.GetChannelGroup().GetValues()[CapabilitiesKey]; ok {
 				return errors.New("cannot enable channel capabilities without orderer support first")
 			}
 
-			if ag, ok := config.ChannelGroup.Groups[ApplicationGroupKey]; ok {
-				if _, ok := ag.Values[CapabilitiesKey]; ok {
+			if ag, ok := config.GetChannelGroup().GetGroups()[ApplicationGroupKey]; ok {
+				if _, ok := ag.GetValues()[CapabilitiesKey]; ok {
 					return errors.New("cannot enable application capabilities without orderer support first")
 				}
 			}

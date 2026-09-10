@@ -348,7 +348,7 @@ var _ = Describe("Deliver", func() {
 
 			Expect(fakeBlockReader.IteratorCallCount()).To(Equal(1))
 			startPosition := fakeBlockReader.IteratorArgsForCall(0)
-			Expect(startPosition).To(ProtoEqual(seekInfo.Start))
+			Expect(startPosition).To(ProtoEqual(seekInfo.GetStart()))
 		})
 
 		Context("when multiple blocks are requested", func() {
@@ -545,7 +545,7 @@ var _ = Describe("Deliver", func() {
 				}
 
 				for _, b := range cachedBlocks {
-					Expect(b.Data).ToNot(BeNil())
+					Expect(b.GetData()).ToNot(BeNil())
 				}
 			})
 		})
@@ -611,7 +611,7 @@ var _ = Describe("Deliver", func() {
 							Metadata: &cb.BlockMetadata{Metadata: [][]byte{{3}, {4}}},
 						}
 						Expect(b).To(ProtoEqual(blk))
-						Expect(b.Data.Data).NotTo(BeNil())
+						Expect(b.GetData().GetData()).NotTo(BeNil())
 					}
 				}
 			})

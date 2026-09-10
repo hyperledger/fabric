@@ -1455,7 +1455,7 @@ func getCollectionPvtReadWriteSet(rws rwSet) []*rwset.CollectionPvtReadWriteSet 
 	}
 
 	sort.Slice(colPvtRwSet, func(i, j int) bool {
-		return colPvtRwSet[i].CollectionName < colPvtRwSet[j].CollectionName
+		return colPvtRwSet[i].GetCollectionName() < colPvtRwSet[j].GetCollectionName()
 	})
 
 	return colPvtRwSet
@@ -1463,9 +1463,9 @@ func getCollectionPvtReadWriteSet(rws rwSet) []*rwset.CollectionPvtReadWriteSet 
 
 func sortBlockPvtdata(blockPvtdata *ledger.BlockPvtdata) *ledger.BlockPvtdata {
 	for _, pvtdata := range blockPvtdata.PvtData {
-		for _, ws := range pvtdata.WriteSet.NsPvtRwset {
-			sort.Slice(ws.CollectionPvtRwset, func(i, j int) bool {
-				return ws.CollectionPvtRwset[i].CollectionName < ws.CollectionPvtRwset[j].CollectionName
+		for _, ws := range pvtdata.WriteSet.GetNsPvtRwset() {
+			sort.Slice(ws.GetCollectionPvtRwset(), func(i, j int) bool {
+				return ws.GetCollectionPvtRwset()[i].GetCollectionName() < ws.GetCollectionPvtRwset()[j].GetCollectionName()
 			})
 		}
 	}

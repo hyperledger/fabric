@@ -73,7 +73,7 @@ func (p *CommitBatchPreparer) ValidateAndPrepareBatch(blockAndPvtdata *ledger.Bl
 	doMVCCValidation bool,
 ) (*privacyenabledstate.UpdateBatch, []*AppInitiatedPurgeUpdate, []*TxStatInfo, error) {
 	blk := blockAndPvtdata.Block
-	logger.Debugf("ValidateAndPrepareBatch() for block number = [%d]", blk.Header.Number)
+	logger.Debugf("ValidateAndPrepareBatch() for block number = [%d]", blk.GetHeader().GetNumber())
 	var internalBlock *block
 	var txsStatInfo []*TxStatInfo
 	var pubAndHashUpdates *publicAndHashUpdates
@@ -108,7 +108,7 @@ func (p *CommitBatchPreparer) ValidateAndPrepareBatch(blockAndPvtdata *ledger.Bl
 	postprocessProtoBlock(blk, internalBlock)
 	logger.Debug("ValidateAndPrepareBatch() complete")
 
-	txsFilter := txflags.ValidationFlags(blk.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := txflags.ValidationFlags(blk.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	for i := range txsFilter {
 		txsStatInfo[i].ValidationCode = txsFilter.Flag(i)
 	}
@@ -175,13 +175,13 @@ func validatePvtdata(tx *transaction, pvtdata *ledger.TxPvtData) error {
 		return nil
 	}
 
-	for _, nsPvtdata := range pvtdata.WriteSet.NsPvtRwset {
-		for _, collPvtdata := range nsPvtdata.CollectionPvtRwset {
-			collPvtdataHash := util.ComputeHash(collPvtdata.Rwset)
-			hashInPubdata := tx.retrieveHash(nsPvtdata.Namespace, collPvtdata.CollectionName)
+	for _, nsPvtdata := range pvtdata.WriteSet.GetNsPvtRwset() {
+		for _, collPvtdata := range nsPvtdata.GetCollectionPvtRwset() {
+			collPvtdataHash := util.ComputeHash(collPvtdata.GetRwset())
+			hashInPubdata := tx.retrieveHash(nsPvtdata.GetNamespace(), collPvtdata.GetCollectionName())
 			if !bytes.Equal(collPvtdataHash, hashInPubdata) {
 				return errors.Errorf(`hash of pvt data for collection [%s:%s] does not match with the corresponding hash in the public data. public hash = [%#v], pvt data hash = [%#v]`,
-					nsPvtdata.Namespace, collPvtdata.CollectionName, hashInPubdata, collPvtdataHash)
+					nsPvtdata.GetNamespace(), collPvtdata.GetCollectionName(), hashInPubdata, collPvtdataHash)
 			}
 		}
 	}
@@ -195,11 +195,11 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 	blk *common.Block, doMVCCValidation bool,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 ) (*block, []*TxStatInfo, error) {
-	b := &block{num: blk.Header.Number}
+	b := &block{num: blk.GetHeader().GetNumber()}
 	txsStatInfo := []*TxStatInfo{}
 	// Committer validator has already set validation flags based on well formed tran checks
-	txsFilter := txflags.ValidationFlags(blk.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-	for txIndex, envBytes := range blk.Data.Data {
+	txsFilter := txflags.ValidationFlags(blk.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	for txIndex, envBytes := range blk.GetData().GetData() {
 		var env *common.Envelope
 		var chdr *common.ChannelHeader
 		var payload *common.Payload
@@ -207,8 +207,8 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 		txStatInfo := &TxStatInfo{TxType: -1}
 		txsStatInfo = append(txsStatInfo, txStatInfo)
 		if env, err = protoutil.GetEnvelopeFromBlock(envBytes); err == nil {
-			if payload, err = protoutil.UnmarshalPayload(env.Payload); err == nil {
-				chdr, err = protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+			if payload, err = protoutil.UnmarshalPayload(env.GetPayload()); err == nil {
+				chdr, err = protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 			}
 		}
 		txStatInfo.TxIDFromChannelHeader = chdr.GetTxId()
@@ -216,7 +216,7 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 			// Skipping invalid transaction
 			logger.Warningf("Channel [%s]: Block [%d] Transaction index [%d] TxId [%s]"+
 				" marked as invalid by committer. Reason code [%s]",
-				chdr.GetChannelId(), blk.Header.Number, txIndex, chdr.GetTxId(),
+				chdr.GetChannelId(), blk.GetHeader().GetNumber(), txIndex, chdr.GetTxId(),
 				txsFilter.Flag(txIndex).String())
 			continue
 		}
@@ -226,7 +226,7 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 
 		var txRWSet *rwsetutil.TxRwSet
 		var containsPostOrderWrites bool
-		txType := common.HeaderType(chdr.Type)
+		txType := common.HeaderType(chdr.GetType())
 		logger.Debugf("txType=%s", txType)
 		txStatInfo.TxType = txType
 		if txType == common.HeaderType_ENDORSER_TRANSACTION {
@@ -236,17 +236,17 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_NIL_TXACTION)
 				continue
 			}
-			txStatInfo.ChaincodeID = respPayload.ChaincodeId
-			txStatInfo.ChaincodeEventData = respPayload.Events
+			txStatInfo.ChaincodeID = respPayload.GetChaincodeId()
+			txStatInfo.ChaincodeEventData = respPayload.GetEvents()
 			txRWSet = &rwsetutil.TxRwSet{}
-			if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
+			if err = txRWSet.FromProtoBytes(respPayload.GetResults()); err != nil {
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
 				continue
 			}
 		} else {
 			rwsetProto, err := processNonEndorserTx(
 				env,
-				chdr.TxId,
+				chdr.GetTxId(),
 				txType,
 				postOrderSimulatorProvider,
 				!doMVCCValidation,
@@ -271,13 +271,13 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 			if err := validateWriteset(txRWSet, validateKVFunc); err != nil {
 				logger.Warningf("Channel [%s]: Block [%d] Transaction index [%d] TxId [%s]"+
 					" marked as invalid. Reason code [%s]",
-					chdr.GetChannelId(), blk.Header.Number, txIndex, chdr.GetTxId(), peer.TxValidationCode_INVALID_WRITESET)
+					chdr.GetChannelId(), blk.GetHeader().GetNumber(), txIndex, chdr.GetTxId(), peer.TxValidationCode_INVALID_WRITESET)
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_WRITESET)
 				continue
 			}
 			b.txs = append(b.txs, &transaction{
 				indexInBlock:            txIndex,
-				id:                      chdr.TxId,
+				id:                      chdr.GetTxId(),
 				rwset:                   txRWSet,
 				containsPostOrderWrites: containsPostOrderWrites,
 			})
@@ -323,8 +323,8 @@ func validateWriteset(txRWSet *rwsetutil.TxRwSet, validateKVFunc func(key string
 		if pubWriteset == nil {
 			continue
 		}
-		for _, kvwrite := range pubWriteset.Writes {
-			if err := validateKVFunc(kvwrite.Key, kvwrite.Value); err != nil {
+		for _, kvwrite := range pubWriteset.GetWrites() {
+			if err := validateKVFunc(kvwrite.GetKey(), kvwrite.GetValue()); err != nil {
 				return err
 			}
 		}
@@ -334,7 +334,7 @@ func validateWriteset(txRWSet *rwsetutil.TxRwSet, validateKVFunc func(key string
 
 // postprocessProtoBlock updates the proto block's validation flags (in metadata) by the results of validation process
 func postprocessProtoBlock(blk *common.Block, validatedBlock *block) {
-	txsFilter := txflags.ValidationFlags(blk.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := txflags.ValidationFlags(blk.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	for _, tx := range validatedBlock.txs {
 		txsFilter.SetFlag(tx.indexInBlock, tx.validationCode)
 	}
@@ -344,11 +344,11 @@ func postprocessProtoBlock(blk *common.Block, validatedBlock *block) {
 func addPvtRWSetToPvtUpdateBatch(pvtRWSet *rwsetutil.TxPvtRwSet, pvtUpdateBatch *privacyenabledstate.PvtUpdateBatch, ver *version.Height) {
 	for _, ns := range pvtRWSet.NsPvtRwSet {
 		for _, coll := range ns.CollPvtRwSets {
-			for _, kvwrite := range coll.KvRwSet.Writes {
+			for _, kvwrite := range coll.KvRwSet.GetWrites() {
 				if !rwsetutil.IsKVWriteDelete(kvwrite) {
-					pvtUpdateBatch.Put(ns.NameSpace, coll.CollectionName, kvwrite.Key, kvwrite.Value, ver)
+					pvtUpdateBatch.Put(ns.NameSpace, coll.CollectionName, kvwrite.GetKey(), kvwrite.GetValue(), ver)
 				} else {
-					pvtUpdateBatch.Delete(ns.NameSpace, coll.CollectionName, kvwrite.Key, ver)
+					pvtUpdateBatch.Delete(ns.NameSpace, coll.CollectionName, kvwrite.GetKey(), ver)
 				}
 			}
 		}
@@ -404,8 +404,8 @@ type metadataUpdates map[collKey]bool
 func addEntriesToMetadataUpdates(metadataUpdates metadataUpdates, pvtRWSet *rwsetutil.TxPvtRwSet) {
 	for _, ns := range pvtRWSet.NsPvtRwSet {
 		for _, coll := range ns.CollPvtRwSets {
-			for _, metadataWrite := range coll.KvRwSet.MetadataWrites {
-				ns, coll, key := ns.NameSpace, coll.CollectionName, metadataWrite.Key
+			for _, metadataWrite := range coll.KvRwSet.GetMetadataWrites() {
+				ns, coll, key := ns.NameSpace, coll.CollectionName, metadataWrite.GetKey()
 				metadataUpdates[collKey{ns, coll, key}] = true
 			}
 		}

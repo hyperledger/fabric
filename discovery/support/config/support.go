@@ -65,17 +65,17 @@ func (s *DiscoverySupport) Config(channel string) (*discovery.ConfigResult, erro
 		Msps:     make(map[string]*msp.FabricMSPConfig),
 		Orderers: make(map[string]*discovery.Endpoints),
 	}
-	ordererGrp := config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
-	appGrp := config.ChannelGroup.Groups[channelconfig.ApplicationGroupKey].Groups
+	ordererGrp := config.GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetGroups()
+	appGrp := config.GetChannelGroup().GetGroups()[channelconfig.ApplicationGroupKey].GetGroups()
 
 	var globalEndpoints []string
-	globalOrderers := config.ChannelGroup.Values[channelconfig.OrdererAddressesKey]
+	globalOrderers := config.GetChannelGroup().GetValues()[channelconfig.OrdererAddressesKey]
 	if globalOrderers != nil {
 		ordererAddressesConfig := &common.OrdererAddresses{}
-		if err := proto.Unmarshal(globalOrderers.Value, ordererAddressesConfig); err != nil {
+		if err := proto.Unmarshal(globalOrderers.GetValue(), ordererAddressesConfig); err != nil {
 			return nil, errors.Wrap(err, "failed unmarshalling orderer addresses")
 		}
-		globalEndpoints = ordererAddressesConfig.Addresses
+		globalEndpoints = ordererAddressesConfig.GetAddresses()
 	}
 
 	ordererEndpoints, err := computeOrdererEndpoints(ordererGrp, globalEndpoints)
@@ -84,7 +84,7 @@ func (s *DiscoverySupport) Config(channel string) (*discovery.ConfigResult, erro
 	}
 	res.Orderers = ordererEndpoints
 
-	if err := appendMSPConfigs(ordererGrp, appGrp, res.Msps); err != nil {
+	if err := appendMSPConfigs(ordererGrp, appGrp, res.GetMsps()); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return res, nil
@@ -144,33 +144,33 @@ func perOrgEndpointsByMSPID(ordererGrp map[string]*common.ConfigGroup) (map[stri
 
 	for name, group := range ordererGrp {
 		mspConfig := &msp.MSPConfig{}
-		if err := proto.Unmarshal(group.Values[channelconfig.MSPKey].Value, mspConfig); err != nil {
+		if err := proto.Unmarshal(group.GetValues()[channelconfig.MSPKey].GetValue(), mspConfig); err != nil {
 			return nil, errors.Wrap(err, "failed parsing MSPConfig")
 		}
 		// Skip non fabric MSPs, as they don't carry useful information for service discovery.
 		// An idemix MSP shouldn't appear inside an orderer group, but this isn't a fatal error
 		// for the discovery service and we can just ignore it.
-		if mspConfig.Type != int32(mspconstants.FABRIC) {
-			logger.Error("Orderer group", name, "is not a FABRIC MSP, but is of type", mspConfig.Type)
+		if mspConfig.GetType() != int32(mspconstants.FABRIC) {
+			logger.Error("Orderer group", name, "is not a FABRIC MSP, but is of type", mspConfig.GetType())
 			continue
 		}
 
 		fabricConfig := &msp.FabricMSPConfig{}
-		if err := proto.Unmarshal(mspConfig.Config, fabricConfig); err != nil {
+		if err := proto.Unmarshal(mspConfig.GetConfig(), fabricConfig); err != nil {
 			return nil, errors.Wrap(err, "failed marshaling FabricMSPConfig")
 		}
 
 		// Initialize an empty MSP to address mapping.
-		res[fabricConfig.Name] = nil
+		res[fabricConfig.GetName()] = nil
 
 		// If the key has a corresponding value, it should unmarshal successfully.
-		if perOrgAddresses := group.Values[channelconfig.EndpointsKey]; perOrgAddresses != nil {
+		if perOrgAddresses := group.GetValues()[channelconfig.EndpointsKey]; perOrgAddresses != nil {
 			ordererEndpoints := &common.OrdererAddresses{}
-			if err := proto.Unmarshal(perOrgAddresses.Value, ordererEndpoints); err != nil {
+			if err := proto.Unmarshal(perOrgAddresses.GetValue(), ordererEndpoints); err != nil {
 				return nil, errors.Wrap(err, "failed unmarshalling orderer addresses")
 			}
 			// Override the mapping because this orderer org config contains org-specific endpoints.
-			res[fabricConfig.Name] = ordererEndpoints.Addresses
+			res[fabricConfig.GetName()] = ordererEndpoints.GetAddresses()
 		}
 	}
 
@@ -204,21 +204,21 @@ func appendMSPConfigs(ordererGrp, appGrp map[string]*common.ConfigGroup, output 
 	for _, group := range []map[string]*common.ConfigGroup{ordererGrp, appGrp} {
 		for _, grp := range group {
 			mspConfig := &msp.MSPConfig{}
-			if err := proto.Unmarshal(grp.Values[channelconfig.MSPKey].Value, mspConfig); err != nil {
+			if err := proto.Unmarshal(grp.GetValues()[channelconfig.MSPKey].GetValue(), mspConfig); err != nil {
 				return errors.Wrap(err, "failed parsing MSPConfig")
 			}
 			// Skip non fabric MSPs, as they don't carry useful information for service discovery
-			if mspConfig.Type != int32(mspconstants.FABRIC) {
+			if mspConfig.GetType() != int32(mspconstants.FABRIC) {
 				continue
 			}
 			fabricConfig := &msp.FabricMSPConfig{}
-			if err := proto.Unmarshal(mspConfig.Config, fabricConfig); err != nil {
+			if err := proto.Unmarshal(mspConfig.GetConfig(), fabricConfig); err != nil {
 				return errors.Wrap(err, "failed marshaling FabricMSPConfig")
 			}
-			if _, exists := output[fabricConfig.Name]; exists {
+			if _, exists := output[fabricConfig.GetName()]; exists {
 				continue
 			}
-			output[fabricConfig.Name] = fabricConfig
+			output[fabricConfig.GetName()] = fabricConfig
 		}
 	}
 
@@ -226,10 +226,10 @@ func appendMSPConfigs(ordererGrp, appGrp map[string]*common.ConfigGroup, output 
 }
 
 func ValidateConfig(c *common.Config) error {
-	if c.ChannelGroup == nil {
+	if c.GetChannelGroup() == nil {
 		return errors.New("field Config.ChannelGroup is nil")
 	}
-	grps := c.ChannelGroup.Groups
+	grps := c.GetChannelGroup().GetGroups()
 	if grps == nil {
 		return errors.New("field Config.ChannelGroup.Groups is nil")
 	}

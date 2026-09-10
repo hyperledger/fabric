@@ -152,7 +152,7 @@ func submitCheckEndorsingOrgsTransaction(ctx context.Context, client gateway.Gat
 	result := chaincodeAction.GetResponse()
 
 	expectedPayload := "Peer mspid OK"
-	Expect(string(result.Payload)).To(Equal(expectedPayload))
+	Expect(string(result.GetPayload())).To(Equal(expectedPayload))
 	expectedResult := &peer.Response{
 		Status:  200,
 		Message: "",

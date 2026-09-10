@@ -75,7 +75,7 @@ func newBlockGenerator(lgr ledger.PeerLedger, t *testing.T) *blkGenerator {
 	require := require.New(t)
 	info, err := lgr.GetBlockchainInfo()
 	require.NoError(err)
-	return &blkGenerator{info.Height - 1, info.CurrentBlockHash, require}
+	return &blkGenerator{info.GetHeight() - 1, info.GetCurrentBlockHash(), require}
 }
 
 // nextBlockAndPvtdata cuts the next block
@@ -90,9 +90,9 @@ func (g *blkGenerator) nextBlockAndPvtdata(trans []*txAndPvtdata, missingPvtData
 			blockPvtdata[seq] = &ledger.TxPvtData{SeqInBlock: seq, WriteSet: tran.Pvtws}
 		}
 	}
-	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 	g.lastNum++
-	g.lastHash = protoutil.BlockHeaderHash(block.Header)
+	g.lastHash = protoutil.BlockHeaderHash(block.GetHeader())
 	setBlockFlagsToValid(block)
 	return &ledger.BlockAndPvtData{
 		Block: block, PvtData: blockPvtdata,

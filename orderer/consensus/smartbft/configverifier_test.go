@@ -28,9 +28,9 @@ import (
 
 func TestValidateConfig(t *testing.T) {
 	configBlockEnvelope := makeConfigTx("mychannel")
-	configBlockEnvelopePayload := protoutil.UnmarshalPayloadOrPanic(configBlockEnvelope.Payload)
+	configBlockEnvelopePayload := protoutil.UnmarshalPayloadOrPanic(configBlockEnvelope.GetPayload())
 	configEnvelope := &common.ConfigEnvelope{}
-	err := proto.Unmarshal(configBlockEnvelopePayload.Data, configEnvelope)
+	err := proto.Unmarshal(configBlockEnvelopePayload.GetData(), configEnvelope)
 	assert.NoError(t, err)
 
 	lateConfigEnvelope := proto.Clone(configEnvelope).(*common.ConfigEnvelope)
@@ -96,7 +96,7 @@ func TestValidateConfig(t *testing.T) {
 			mutateEnvelope: func(env *common.Envelope) {
 				env.Payload = protoutil.MarshalOrPanic(&common.Payload{
 					Header: &common.Header{
-						ChannelHeader: configBlockEnvelopePayload.Header.ChannelHeader,
+						ChannelHeader: configBlockEnvelopePayload.GetHeader().GetChannelHeader(),
 					},
 					Data: []byte{1, 2, 3},
 				})
@@ -109,7 +109,7 @@ func TestValidateConfig(t *testing.T) {
 			envelope: configBlockEnvelope,
 			mutateEnvelope: func(env *common.Envelope) {
 				env.Payload = protoutil.MarshalOrPanic(&common.Payload{
-					Header: configBlockEnvelopePayload.Header,
+					Header: configBlockEnvelopePayload.GetHeader(),
 					Data:   []byte{1, 2, 3},
 				})
 			},
@@ -121,7 +121,7 @@ func TestValidateConfig(t *testing.T) {
 			envelope: configBlockEnvelope,
 			mutateEnvelope: func(env *common.Envelope) {
 				env.Payload = protoutil.MarshalOrPanic(&common.Payload{
-					Header: configBlockEnvelopePayload.Header,
+					Header: configBlockEnvelopePayload.GetHeader(),
 					Data:   protoutil.MarshalOrPanic(&common.ConfigEnvelope{}),
 				})
 			},
@@ -133,7 +133,7 @@ func TestValidateConfig(t *testing.T) {
 			envelope: configBlockEnvelope,
 			mutateEnvelope: func(env *common.Envelope) {
 				env.Payload = protoutil.MarshalOrPanic(&common.Payload{
-					Header: configBlockEnvelopePayload.Header,
+					Header: configBlockEnvelopePayload.GetHeader(),
 					Data:   protoutil.MarshalOrPanic(&common.ConfigEnvelope{}),
 				})
 			},
@@ -145,7 +145,7 @@ func TestValidateConfig(t *testing.T) {
 			envelope: configBlockEnvelope,
 			mutateEnvelope: func(env *common.Envelope) {
 				env.Payload = protoutil.MarshalOrPanic(&common.Payload{
-					Header: configBlockEnvelopePayload.Header,
+					Header: configBlockEnvelopePayload.GetHeader(),
 					Data: protoutil.MarshalOrPanic(&common.ConfigEnvelope{
 						LastUpdate: &common.Envelope{
 							Payload: protoutil.MarshalOrPanic(&common.Payload{
@@ -166,7 +166,7 @@ func TestValidateConfig(t *testing.T) {
 			envelope: configBlockEnvelope,
 			mutateEnvelope: func(env *common.Envelope) {
 				env.Payload = protoutil.MarshalOrPanic(&common.Payload{
-					Header: configBlockEnvelopePayload.Header,
+					Header: configBlockEnvelopePayload.GetHeader(),
 					Data: protoutil.MarshalOrPanic(&common.ConfigEnvelope{
 						LastUpdate: &common.Envelope{
 							Payload: []byte{1, 2, 3},
@@ -183,7 +183,7 @@ func TestValidateConfig(t *testing.T) {
 			envelope: configBlockEnvelope,
 			mutateEnvelope: func(env *common.Envelope) {
 				env.Payload = protoutil.MarshalOrPanic(&common.Payload{
-					Header: configBlockEnvelopePayload.Header,
+					Header: configBlockEnvelopePayload.GetHeader(),
 					Data: protoutil.MarshalOrPanic(&common.ConfigEnvelope{
 						LastUpdate: &common.Envelope{
 							Payload: protoutil.MarshalOrPanic(&common.Payload{}),
@@ -200,7 +200,7 @@ func TestValidateConfig(t *testing.T) {
 			envelope: configBlockEnvelope,
 			mutateEnvelope: func(env *common.Envelope) {
 				env.Payload = protoutil.MarshalOrPanic(&common.Payload{
-					Header: configBlockEnvelopePayload.Header,
+					Header: configBlockEnvelopePayload.GetHeader(),
 					Data: protoutil.MarshalOrPanic(&common.ConfigEnvelope{
 						LastUpdate: &common.Envelope{
 							Payload: protoutil.MarshalOrPanic(&common.Payload{
@@ -300,7 +300,7 @@ func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *commo
 		panic(err)
 	}
 	configTx, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG, chainID, signer, &common.ConfigEnvelope{
-		Config:     &common.Config{Sequence: 1, ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
+		Config:     &common.Config{Sequence: 1, ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.GetConfigUpdate()).GetWriteSet()},
 		LastUpdate: configUpdateTx,
 	},
 		0, 0)

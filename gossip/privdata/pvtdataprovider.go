@@ -282,13 +282,13 @@ func (pdp *PvtdataProvider) populateFromCache(pvtdata rwsetByKeys, pvtdataRetrie
 			pdp.logger.Warningf("Found extra data in prefetched at sequence [%d]. Skipping.", txPvtdata.SeqInBlock)
 			continue
 		}
-		for _, ns := range txPvtdata.WriteSet.NsPvtRwset {
-			for _, col := range ns.CollectionPvtRwset {
+		for _, ns := range txPvtdata.WriteSet.GetNsPvtRwset() {
+			for _, col := range ns.GetCollectionPvtRwset() {
 				key := rwSetKey{
 					txID:       txID,
 					seqInBlock: txPvtdata.SeqInBlock,
-					collection: col.CollectionName,
-					namespace:  ns.Namespace,
+					collection: col.GetCollectionName(),
+					namespace:  ns.GetNamespace(),
 				}
 				// skip if key not originally missing
 				if _, missing := pvtdataRetrievalInfo.remainingEligibleMissingKeys[key]; !missing {
@@ -296,9 +296,9 @@ func (pdp *PvtdataProvider) populateFromCache(pvtdata rwsetByKeys, pvtdataRetrie
 					continue
 				}
 
-				if bytes.Equal(pvtdataRetrievalInfo.expectedHashes[key], commonutil.ComputeSHA256(col.Rwset)) {
+				if bytes.Equal(pvtdataRetrievalInfo.expectedHashes[key], commonutil.ComputeSHA256(col.GetRwset())) {
 					// populate the pvtdata with the RW set from the cache
-					pvtdata[key] = col.Rwset
+					pvtdata[key] = col.GetRwset()
 				} else {
 					// the private data was present in the cache but the hash of writeset did not match with what is present in block.
 					// Most likely scenarios for this are when either the sending peer is bootstrapped from a snapshot or it has purged some
@@ -344,29 +344,29 @@ func (pdp *PvtdataProvider) populateFromTransientStore(pvtdata rwsetByKeys, pvtd
 			}
 			simRes := res.PvtSimulationResultsWithConfig
 			// simRes.PvtRwset will be nil if the transient store contains an entry for the txid but the entry does not contain the data for the collection
-			if simRes.PvtRwset == nil {
+			if simRes.GetPvtRwset() == nil {
 				pdp.logger.Debugf("The PvtRwset of PvtSimulationResultsWithConfig for txID [%s] is nil. Skipping.", k.txID)
 				continue
 			}
-			for _, ns := range simRes.PvtRwset.NsPvtRwset {
-				for _, col := range ns.CollectionPvtRwset {
+			for _, ns := range simRes.GetPvtRwset().GetNsPvtRwset() {
+				for _, col := range ns.GetCollectionPvtRwset() {
 					key := rwSetKey{
 						txID:       k.txID,
 						seqInBlock: k.seqInBlock,
-						collection: col.CollectionName,
-						namespace:  ns.Namespace,
+						collection: col.GetCollectionName(),
+						namespace:  ns.GetNamespace(),
 					}
 					// skip if not missing
 					if _, missing := pvtdataRetrievalInfo.remainingEligibleMissingKeys[key]; !missing {
 						continue
 					}
 
-					if !bytes.Equal(pvtdataRetrievalInfo.expectedHashes[key], commonutil.ComputeSHA256(col.Rwset)) {
+					if !bytes.Equal(pvtdataRetrievalInfo.expectedHashes[key], commonutil.ComputeSHA256(col.GetRwset())) {
 						continue
 					}
 					// populate the pvtdata with the RW set from the transient store
 					pdp.logger.Debugf("Found private data for key %v in transient store", key)
-					pvtdata[key] = col.Rwset
+					pvtdata[key] = col.GetRwset()
 					// remove key from missing
 					delete(pvtdataRetrievalInfo.remainingEligibleMissingKeys, key)
 				} // iterating over all collections
@@ -411,13 +411,13 @@ func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, pvtdata
 
 	// Iterate over data fetched from remote peers
 	for _, element := range fetchedData.AvailableElements {
-		dig := element.Digest
-		for _, rws := range element.Payload {
+		dig := element.GetDigest()
+		for _, rws := range element.GetPayload() {
 			key := rwSetKey{
-				txID:       dig.TxId,
-				namespace:  dig.Namespace,
-				collection: dig.Collection,
-				seqInBlock: dig.SeqInBlock,
+				txID:       dig.GetTxId(),
+				namespace:  dig.GetNamespace(),
+				collection: dig.GetCollection(),
+				seqInBlock: dig.GetSeqInBlock(),
 			}
 			// skip if not missing
 			if _, missing := pvtdataRetrievalInfo.remainingEligibleMissingKeys[key]; !missing {
@@ -447,10 +447,10 @@ func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, pvtdata
 	for _, dig := range fetchedData.PurgedElements {
 		// delete purged key from missing keys
 		for missingPvtRWKey := range pvtdataRetrievalInfo.remainingEligibleMissingKeys {
-			if missingPvtRWKey.namespace == dig.Namespace &&
-				missingPvtRWKey.collection == dig.Collection &&
-				missingPvtRWKey.seqInBlock == dig.SeqInBlock &&
-				missingPvtRWKey.txID == dig.TxId {
+			if missingPvtRWKey.namespace == dig.GetNamespace() &&
+				missingPvtRWKey.collection == dig.GetCollection() &&
+				missingPvtRWKey.seqInBlock == dig.GetSeqInBlock() &&
+				missingPvtRWKey.txID == dig.GetTxId() {
 				delete(pvtdataRetrievalInfo.remainingEligibleMissingKeys, missingPvtRWKey)
 				pdp.logger.Warningf("Missing key because was purged or will soon be purged, "+
 					"continue block commit without [%+v] in private rwset", missingPvtRWKey)
@@ -591,13 +591,13 @@ func endorsersFromEligibleOrgs(ns string, col string, endorsers []*peer.Endorsem
 	var res []*peer.Endorsement
 	for _, e := range endorsers {
 		sID := &msp.SerializedIdentity{}
-		err := proto.Unmarshal(e.Endorser, sID)
+		err := proto.Unmarshal(e.GetEndorser(), sID)
 		if err != nil {
 			logger.Warning("Failed unmarshalling endorser:", err)
 			continue
 		}
-		if _, ok := orgs[sID.Mspid]; !ok {
-			logger.Debug(sID.Mspid, "isn't among the collection's orgs:", orgs, "for namespace", ns, ",collection", col)
+		if _, ok := orgs[sID.GetMspid()]; !ok {
+			logger.Debug(sID.GetMspid(), "isn't among the collection's orgs:", orgs, "for namespace", ns, ",collection", col)
 			continue
 		}
 		res = append(res, e)

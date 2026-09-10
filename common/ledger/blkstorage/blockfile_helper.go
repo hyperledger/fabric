@@ -71,7 +71,7 @@ func constructBlockfilesInfo(rootDir string) (*blockfilesInfo, error) {
 			logger.Errorf("Error deserializing last block: %s. Block bytes length: %d", err, len(lastBlockBytes))
 			return nil, err
 		}
-		lastBlockNumber = lastBlock.Header.Number
+		lastBlockNumber = lastBlock.GetHeader().GetNumber()
 	}
 
 	blkfilesInfo := &blockfilesInfo{
@@ -128,7 +128,7 @@ func retrieveFirstBlockNumFromFile(rootDir string, fileNum int) (uint64, error) 
 	if err != nil {
 		return 0, err
 	}
-	return blockInfo.blockHeader.Number, nil
+	return blockInfo.blockHeader.GetNumber(), nil
 }
 
 func retrieveLastFileSuffix(rootDir string) (int, error) {

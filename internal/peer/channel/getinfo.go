@@ -68,12 +68,12 @@ func (cc *endorserClient) getBlockChainInfo() (*cb.BlockchainInfo, error) {
 		return nil, errors.WithMessage(err, "failed sending proposal")
 	}
 
-	if proposalResp.Response == nil || proposalResp.Response.Status != http.StatusOK {
-		return nil, errors.Errorf("received bad response, status %d: %s", proposalResp.Response.Status, proposalResp.Response.Message)
+	if proposalResp.GetResponse() == nil || proposalResp.GetResponse().GetStatus() != http.StatusOK {
+		return nil, errors.Errorf("received bad response, status %d: %s", proposalResp.GetResponse().GetStatus(), proposalResp.GetResponse().GetMessage())
 	}
 
 	blockChainInfo := &cb.BlockchainInfo{}
-	err = proto.Unmarshal(proposalResp.Response.Payload, blockChainInfo)
+	err = proto.Unmarshal(proposalResp.GetResponse().GetPayload(), blockChainInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot read qscc response")
 	}

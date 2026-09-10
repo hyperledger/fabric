@@ -227,7 +227,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount())
 		require.Equal(t, 11, ledgerResources.AppendCallCount())
 		for i := uint64(0); i <= joinNum; i++ {
-			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
@@ -235,7 +235,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		setup()
 		mockClusterConsenter.IsChannelMemberCalls(amIReallyInChannel)
 		localBlockchain.fill(joinNum / 2) // A gap between the ledger and the join block
-		require.True(t, joinBlockAppRaft.Header.Number > ledgerResources.Height())
+		require.True(t, joinBlockAppRaft.GetHeader().GetNumber() > ledgerResources.Height())
 		require.True(t, ledgerResources.Height() > 0)
 
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
@@ -263,7 +263,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount())
 		require.Equal(t, 6, ledgerResources.AppendCallCount())
 		for i := uint64(0); i <= joinNum; i++ {
-			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 
@@ -278,7 +278,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		mockClusterConsenter.IsChannelMemberCalls(amIReallyInChannel)
 		localBlockchain.fill(joinNum)
 		localBlockchain.appendConfig(1) // No gap between the ledger and the join block
-		require.True(t, joinBlockAppRaft.Header.Number < ledgerResources.Height())
+		require.True(t, joinBlockAppRaft.GetHeader().GetNumber() < ledgerResources.Height())
 
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
@@ -338,7 +338,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount())
 		require.Equal(t, 11, ledgerResources.AppendCallCount())
 		for i := uint64(0); i <= joinNum; i++ {
-			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 		require.Equal(t, 50, timeAfterCount.AfterCallCount())
@@ -375,7 +375,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		require.Equal(t, 10, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(10), ledgerResources.Height())
 		for i := range joinNum {
-			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
@@ -439,7 +439,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.Equal(t, 10, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(21), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
-			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
@@ -480,7 +480,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.Equal(t, 40, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(51), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
-			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
@@ -538,7 +538,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.Equal(t, 40, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(51), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
-			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
 		require.True(t, puller.HeightsByEndpointsCallCount() >= 30)
@@ -588,7 +588,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.Equal(t, 50, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(61), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
-			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
@@ -665,7 +665,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.Equal(t, 50, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(61), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
-			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
@@ -736,7 +736,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		require.Equal(t, 21, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(21), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
-			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
@@ -777,7 +777,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		require.Equal(t, 51, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(51), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
-			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
@@ -829,7 +829,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		require.Equal(t, 55, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(61), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
-			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
@@ -906,7 +906,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		require.Equal(t, 61, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(61), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
-			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
@@ -954,17 +954,17 @@ func (mbc *memoryBlockChain) fill(numBlocks uint64) {
 
 	for i := height; i < height+numBlocks; i++ {
 		if i > 0 {
-			prevHash = protoutil.BlockHeaderHash(mbc.chain[i-1].Header)
+			prevHash = protoutil.BlockHeaderHash(mbc.chain[i-1].GetHeader())
 		}
 
 		var block *common.Block
 		if i == 0 {
 			block = makeConfigBlock(i, prevHash, 0)
-			block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+			block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 		} else {
 			block = protoutil.NewBlock(i, prevHash)
 			block.Data.Data = [][]byte{{uint8(i)}, {uint8(i)}}
-			block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+			block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 			protoutil.CopyBlockMetadata(mbc.chain[i-1], block)
 		}
 
@@ -977,8 +977,8 @@ func (mbc *memoryBlockChain) appendConfig(isMember uint8) {
 	defer mbc.lock.Unlock()
 
 	h := uint64(len(mbc.chain))
-	configBlock := makeConfigBlock(h, protoutil.BlockHeaderHash(mbc.chain[h-1].Header), isMember)
-	configBlock.Header.DataHash = protoutil.ComputeBlockDataHash(configBlock.Data)
+	configBlock := makeConfigBlock(h, protoutil.BlockHeaderHash(mbc.chain[h-1].GetHeader()), isMember)
+	configBlock.Header.DataHash = protoutil.ComputeBlockDataHash(configBlock.GetData())
 	mbc.chain = append(mbc.chain, configBlock)
 }
 
@@ -990,11 +990,11 @@ func amIReallyInChannel(configBlock *common.Block) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	payload := protoutil.UnmarshalPayloadOrPanic(env.Payload)
-	if len(payload.Data) == 0 {
+	payload := protoutil.UnmarshalPayloadOrPanic(env.GetPayload())
+	if len(payload.GetData()) == 0 {
 		return false, errors.New("empty data")
 	}
-	if payload.Data[0] > 0 {
+	if payload.GetData()[0] > 0 {
 		return true, nil
 	}
 	return false, nil
@@ -1014,7 +1014,7 @@ func makeConfigBlock(num uint64, prevHash []byte, isMember uint8) *common.Block 
 		),
 	}
 	block.Data.Data = append(block.Data.Data, protoutil.MarshalOrPanic(env))
-	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 
 	protoutil.InitBlockMetadata(block)
 	obm := &common.OrdererBlockMetadata{LastConfig: &common.LastConfig{Index: num}}

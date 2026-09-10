@@ -112,7 +112,7 @@ func (hr *BFTHeaderReceiver) DeliverHeaders() {
 			return
 
 		case *orderer.DeliverResponse_Block:
-			blockNum := t.Block.Header.Number
+			blockNum := t.Block.GetHeader().GetNumber()
 
 			if !protoutil.IsConfigBlock(t.Block) { // normal blocks with block.Data==nil
 				err := hr.updatableBlockVerifier.VerifyBlockAttestation(t.Block)
@@ -204,7 +204,7 @@ func (hr *BFTHeaderReceiver) LastBlockNum() (uint64, time.Time, error) {
 		return 0, time.Time{}, errors.New("not found")
 	}
 
-	return hr.lastHeader.Header.Number, hr.lastHeaderTime, nil
+	return hr.lastHeader.GetHeader().GetNumber(), hr.lastHeaderTime, nil
 }
 
 // LastBlock returns the last block which was verified

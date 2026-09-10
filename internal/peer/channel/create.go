@@ -84,39 +84,39 @@ func createChannelFromConfigTx(configTxFileName string) (*cb.Envelope, error) {
 }
 
 func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope, signer identity.SignerSerializer) (*cb.Envelope, error) {
-	payload, err := protoutil.UnmarshalPayload(envConfigUpdate.Payload)
+	payload, err := protoutil.UnmarshalPayload(envConfigUpdate.GetPayload())
 	if err != nil {
 		return nil, InvalidCreateTx("bad payload")
 	}
 
-	if payload.Header == nil || payload.Header.ChannelHeader == nil {
+	if payload.GetHeader() == nil || payload.Header.ChannelHeader == nil {
 		return nil, InvalidCreateTx("bad header")
 	}
 
-	ch, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	ch, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, InvalidCreateTx("could not unmarshall channel header")
 	}
 
-	if ch.Type != int32(cb.HeaderType_CONFIG_UPDATE) {
+	if ch.GetType() != int32(cb.HeaderType_CONFIG_UPDATE) {
 		return nil, InvalidCreateTx("bad type")
 	}
 
-	if ch.ChannelId == "" {
+	if ch.GetChannelId() == "" {
 		return nil, InvalidCreateTx("empty channel id")
 	}
 
 	// Specifying the chainID on the CLI is usually redundant, as a hack, set it
 	// here if it has not been set explicitly
 	if channelID == "" {
-		channelID = ch.ChannelId
+		channelID = ch.GetChannelId()
 	}
 
-	if ch.ChannelId != channelID {
-		return nil, InvalidCreateTx(fmt.Sprintf("mismatched channel ID %s != %s", ch.ChannelId, channelID))
+	if ch.GetChannelId() != channelID {
+		return nil, InvalidCreateTx(fmt.Sprintf("mismatched channel ID %s != %s", ch.GetChannelId(), channelID))
 	}
 
-	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(payload.Data)
+	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(payload.GetData())
 	if err != nil {
 		return nil, InvalidCreateTx("Bad config update env")
 	}
@@ -130,7 +130,7 @@ func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope, signer identity.Si
 		SignatureHeader: protoutil.MarshalOrPanic(sigHeader),
 	}
 
-	configSig.Signature, err = signer.Sign(util.ConcatenateBytes(configSig.SignatureHeader, configUpdateEnv.ConfigUpdate))
+	configSig.Signature, err = signer.Sign(util.ConcatenateBytes(configSig.GetSignatureHeader(), configUpdateEnv.GetConfigUpdate()))
 	if err != nil {
 		return nil, err
 	}

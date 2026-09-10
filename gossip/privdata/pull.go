@@ -157,7 +157,7 @@ func (p *puller) createResponse(message protoext.ReceivedMessage) []*protosgossi
 
 	msg := message.GetGossipMessage()
 	// group all digest by block number
-	block2dig := groupDigestsByBlockNum(msg.GetPrivateReq().Digests)
+	block2dig := groupDigestsByBlockNum(msg.GetPrivateReq().GetDigests())
 
 	for blockNum, digests := range block2dig {
 		start := time.Now()
@@ -180,7 +180,7 @@ func (p *puller) createResponse(message protoext.ReceivedMessage) []*protosgossi
 func groupDigestsByBlockNum(digests []*protosgossip.PvtDataDigest) map[uint64][]*protosgossip.PvtDataDigest {
 	results := make(map[uint64][]*protosgossip.PvtDataDigest)
 	for _, dig := range digests {
-		results[dig.BlockSeq] = append(results[dig.BlockSeq], dig)
+		results[dig.GetBlockSeq()] = append(results[dig.GetBlockSeq()], dig)
 	}
 	return results
 }
@@ -188,12 +188,12 @@ func groupDigestsByBlockNum(digests []*protosgossip.PvtDataDigest) map[uint64][]
 func (p *puller) handleResponse(message protoext.ReceivedMessage) {
 	msg := message.GetGossipMessage().GetPrivateRes()
 	p.logger.Debug("Got", msg, "from", message.GetConnectionInfo().Endpoint)
-	for _, el := range msg.Elements {
-		if el.Digest == nil {
+	for _, el := range msg.GetElements() {
+		if el.GetDigest() == nil {
 			p.logger.Warning("Got nil digest from", message.GetConnectionInfo().Endpoint, "aborting")
 			return
 		}
-		hash, err := hashDigest(el.Digest)
+		hash, err := hashDigest(el.GetDigest())
 		if err != nil {
 			p.logger.Warning("Failed hashing digest from", message.GetConnectionInfo().Endpoint, "aborting")
 			return
@@ -296,16 +296,16 @@ func (p *puller) fetchPrivateData(dig2Filter digestToFilterMapping) (*privdataco
 		subscriptions := p.scatterRequests(peer2digests)
 		responses := p.gatherResponses(subscriptions)
 		for _, resp := range responses {
-			if len(resp.Payload) == 0 {
-				p.logger.Debug("Got empty response for", resp.Digest)
+			if len(resp.GetPayload()) == 0 {
+				p.logger.Debug("Got empty response for", resp.GetDigest())
 				continue
 			}
 			delete(dig2Filter, privdatacommon.DigKey{
-				TxId:       resp.Digest.TxId,
-				BlockSeq:   resp.Digest.BlockSeq,
-				SeqInBlock: resp.Digest.SeqInBlock,
-				Namespace:  resp.Digest.Namespace,
-				Collection: resp.Digest.Collection,
+				TxId:       resp.GetDigest().GetTxId(),
+				BlockSeq:   resp.GetDigest().GetBlockSeq(),
+				SeqInBlock: resp.GetDigest().GetSeqInBlock(),
+				Namespace:  resp.GetDigest().GetNamespace(),
+				Collection: resp.GetDigest().GetCollection(),
 			})
 			itemsLeftToCollect--
 		}
@@ -358,7 +358,7 @@ func (p *puller) scatterRequests(peersDigestMapping peer2Digests) []util.Subscri
 		}
 
 		// Subscribe to all digests prior to sending them
-		for _, dig := range msg.GetPrivateReq().Digests {
+		for _, dig := range msg.GetPrivateReq().GetDigests() {
 			hash, err := hashDigest(dig)
 			if err != nil {
 				// Shouldn't happen as we just built this message ourselves
@@ -368,7 +368,7 @@ func (p *puller) scatterRequests(peersDigestMapping peer2Digests) []util.Subscri
 			sub := p.pubSub.Subscribe(hash, responseWaitTime)
 			subscriptions = append(subscriptions, sub)
 		}
-		p.logger.Debug("Sending", peer.endpoint, "request", msg.GetPrivateReq().Digests)
+		p.logger.Debug("Sending", peer.endpoint, "request", msg.GetPrivateReq().GetDigests())
 		p.Send(msg, peer.AsRemotePeer())
 	}
 	return subscriptions
@@ -473,7 +473,7 @@ func (p *puller) computeFilters(dig2src dig2sources) (digestToFilterMapping, err
 		sources := sources
 		endorserPeer, err := p.PeerFilter(common.ChannelID(p.channel), func(peerSignature api.PeerSignature) bool {
 			for _, endorsement := range sources {
-				if bytes.Equal(endorsement.Endorser, peerSignature.PeerIdentity) {
+				if bytes.Equal(endorsement.GetEndorser(), peerSignature.PeerIdentity) {
 					return true
 				}
 			}
@@ -499,7 +499,7 @@ func (p *puller) computeReconciliationFilters(dig2collectionConfig privdatacommo
 			return nil, err
 		}
 
-		originalConfigFilter, err := p.cs.AccessFilter(p.channel, originalCollectionConfig.MemberOrgsPolicy)
+		originalConfigFilter, err := p.cs.AccessFilter(p.channel, originalCollectionConfig.GetMemberOrgsPolicy())
 		if err != nil {
 			return nil, err
 		}
@@ -606,7 +606,7 @@ func (p *puller) purgedFilter(dig privdatacommon.DigKey) (filter.RoutingFilter, 
 		}
 		// handle overflow
 		expirationSeqNum := addWithOverflow(dig.BlockSeq, colPersistConfig.BlockToLive())
-		peerLedgerHeightWithMargin := addWithOverflow(peer.Properties.LedgerHeight, p.btlPullMargin)
+		peerLedgerHeightWithMargin := addWithOverflow(peer.Properties.GetLedgerHeight(), p.btlPullMargin)
 
 		isPurged := peerLedgerHeightWithMargin >= expirationSeqNum
 		if isPurged {

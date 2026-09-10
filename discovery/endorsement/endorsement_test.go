@@ -51,11 +51,11 @@ var pkiID2MSPID = map[string]string{
 func TestPeersForEndorsement(t *testing.T) {
 	extractPeers := func(desc *discoveryprotos.EndorsementDescriptor) map[string]struct{} {
 		res := map[string]struct{}{}
-		for _, endorsers := range desc.EndorsersByGroups {
-			for _, p := range endorsers.Peers {
-				res[string(p.Identity)] = struct{}{}
-				require.Equal(t, string(p.Identity), string(p.MembershipInfo.Payload))
-				require.Equal(t, string(p.Identity), string(p.StateInfo.Payload))
+		for _, endorsers := range desc.GetEndorsersByGroups() {
+			for _, p := range endorsers.GetPeers() {
+				res[string(p.GetIdentity())] = struct{}{}
+				require.Equal(t, string(p.GetIdentity()), string(p.GetMembershipInfo().GetPayload()))
+				require.Equal(t, string(p.GetIdentity()), string(p.GetStateInfo().GetPayload()))
 			}
 		}
 		return res
@@ -159,8 +159,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, desc)
-		require.Len(t, desc.Layouts, 1)
-		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Len(t, desc.GetLayouts(), 1)
+		require.Len(t, desc.GetLayouts()[0].GetQuantitiesByGroup(), 2)
 		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p0"): {},
 			peerIdentityString("p6"): {},
@@ -192,9 +192,9 @@ func TestPeersForEndorsement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, desc)
-		require.Len(t, desc.Layouts, 2)
-		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
-		require.Len(t, desc.Layouts[1].QuantitiesByGroup, 1)
+		require.Len(t, desc.GetLayouts(), 2)
+		require.Len(t, desc.GetLayouts()[0].GetQuantitiesByGroup(), 2)
+		require.Len(t, desc.GetLayouts()[1].GetQuantitiesByGroup(), 1)
 		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p0"):  {},
 			peerIdentityString("p6"):  {},
@@ -305,8 +305,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, desc)
-		require.Len(t, desc.Layouts, 1)
-		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 1)
+		require.Len(t, desc.GetLayouts(), 1)
+		require.Len(t, desc.GetLayouts()[0].GetQuantitiesByGroup(), 1)
 		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p12"): {},
 		}, extractPeers(desc))
@@ -373,8 +373,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, desc)
-		require.Len(t, desc.Layouts, 1)
-		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 4)
+		require.Len(t, desc.GetLayouts(), 1)
+		require.Len(t, desc.GetLayouts()[0].GetQuantitiesByGroup(), 4)
 		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p4"):  {},
 			peerIdentityString("p6"):  {},
@@ -439,8 +439,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, desc)
-		require.Len(t, desc.Layouts, 1)
-		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Len(t, desc.GetLayouts(), 1)
+		require.Len(t, desc.GetLayouts()[0].GetQuantitiesByGroup(), 2)
 		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p0"): {},
 			peerIdentityString("p1"): {},
@@ -489,8 +489,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, desc)
-		require.Len(t, desc.Layouts, 1)
-		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Len(t, desc.GetLayouts(), 1)
+		require.Len(t, desc.GetLayouts()[0].GetQuantitiesByGroup(), 2)
 		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p6"):  {},
 			peerIdentityString("p12"): {},
@@ -542,8 +542,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, desc)
-		require.Len(t, desc.Layouts, 1)
-		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Len(t, desc.GetLayouts(), 1)
+		require.Len(t, desc.GetLayouts()[0].GetQuantitiesByGroup(), 2)
 		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p0"): {},
 			peerIdentityString("p6"): {},
@@ -595,8 +595,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, desc)
-		require.Len(t, desc.Layouts, 1)
-		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Len(t, desc.GetLayouts(), 1)
+		require.Len(t, desc.GetLayouts()[0].GetQuantitiesByGroup(), 2)
 		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p6"):  {},
 			peerIdentityString("p10"): {},
@@ -648,9 +648,9 @@ func TestPeersForEndorsement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, desc)
-		require.Len(t, desc.Layouts, 2)
-		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 3)
-		require.Len(t, desc.Layouts[1].QuantitiesByGroup, 3)
+		require.Len(t, desc.GetLayouts(), 2)
+		require.Len(t, desc.GetLayouts()[0].GetQuantitiesByGroup(), 3)
+		require.Len(t, desc.GetLayouts()[1].GetQuantitiesByGroup(), 3)
 		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p0"):  {},
 			peerIdentityString("p2"):  {},
@@ -662,12 +662,12 @@ func TestPeersForEndorsement(t *testing.T) {
 
 		// Ensure org 12 (and no other org) is found in both layouts
 		var intersectionSize int
-		for g1 := range desc.Layouts[0].QuantitiesByGroup {
-			for g2 := range desc.Layouts[1].QuantitiesByGroup {
+		for g1 := range desc.GetLayouts()[0].GetQuantitiesByGroup() {
+			for g2 := range desc.GetLayouts()[1].GetQuantitiesByGroup() {
 				if g1 == g2 {
 					require.Equal(t, intersectionSize, 0)
 					intersectionSize++
-					require.Equal(t, peerIdentityString("p12"), string(desc.EndorsersByGroups[g1].Peers[0].Identity))
+					require.Equal(t, peerIdentityString("p12"), string(desc.GetEndorsersByGroups()[g1].GetPeers()[0].GetIdentity()))
 				}
 			}
 		}
@@ -722,8 +722,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, desc)
-		require.Len(t, desc.Layouts, 2)
-		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 3)
+		require.Len(t, desc.GetLayouts(), 2)
+		require.Len(t, desc.GetLayouts()[0].GetQuantitiesByGroup(), 3)
 		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p0"):  {},
 			peerIdentityString("p2"):  {},
@@ -733,10 +733,10 @@ func TestPeersForEndorsement(t *testing.T) {
 
 		// Ensure orgs 2, 6 are found in both layouts
 		intersection := make(map[string]struct{})
-		for g1 := range desc.Layouts[0].QuantitiesByGroup {
-			for g2 := range desc.Layouts[1].QuantitiesByGroup {
+		for g1 := range desc.GetLayouts()[0].GetQuantitiesByGroup() {
+			for g2 := range desc.GetLayouts()[1].GetQuantitiesByGroup() {
 				if g1 == g2 {
-					intersection[string(desc.EndorsersByGroups[g1].Peers[0].Identity)] = struct{}{}
+					intersection[string(desc.GetEndorsersByGroups()[g1].GetPeers()[0].GetIdentity())] = struct{}{}
 				}
 			}
 		}
@@ -838,8 +838,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, desc)
-		require.Len(t, desc.Layouts, 1)
-		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Len(t, desc.GetLayouts(), 1)
+		require.Len(t, desc.GetLayouts()[0].GetQuantitiesByGroup(), 2)
 		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p2"): {},
 			peerIdentityString("p6"): {},
@@ -896,8 +896,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, desc)
-		require.Len(t, desc.Layouts, 1)
-		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Len(t, desc.GetLayouts(), 1)
+		require.Len(t, desc.GetLayouts()[0].GetQuantitiesByGroup(), 2)
 		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p0"): {},
 			peerIdentityString("p2"): {},
@@ -930,8 +930,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, desc)
-		require.Len(t, desc.Layouts, 1)
-		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Len(t, desc.GetLayouts(), 1)
+		require.Len(t, desc.GetLayouts()[0].GetQuantitiesByGroup(), 2)
 		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p0"): {},
 			peerIdentityString("p6"): {},
@@ -1322,9 +1322,9 @@ func (pe *principalEvaluatorMock) SatisfiesPrincipal(_ string, identity []byte, 
 	if err := proto.Unmarshal(identity, sId); err != nil {
 		return err
 	}
-	if principal.PrincipalClassification == msp.MSPPrincipal_IDENTITY {
+	if principal.GetPrincipalClassification() == msp.MSPPrincipal_IDENTITY {
 		identityPrincipal := &msp.SerializedIdentity{}
-		if err := proto.Unmarshal(principal.Principal, identityPrincipal); err != nil {
+		if err := proto.Unmarshal(principal.GetPrincipal(), identityPrincipal); err != nil {
 			return err
 		}
 		if proto.Equal(sId, identityPrincipal) {
@@ -1334,10 +1334,10 @@ func (pe *principalEvaluatorMock) SatisfiesPrincipal(_ string, identity []byte, 
 	}
 	// Else, it's either an OU type or a role type, so we only classify by MSP ID
 	peerRole := &msp.MSPRole{}
-	if err := proto.Unmarshal(principal.Principal, peerRole); err != nil {
+	if err := proto.Unmarshal(principal.GetPrincipal(), peerRole); err != nil {
 		return err
 	}
-	if peerRole.MspIdentifier == sId.Mspid {
+	if peerRole.GetMspIdentifier() == sId.GetMspid() {
 		return nil
 	}
 	return errors.New("bingo")

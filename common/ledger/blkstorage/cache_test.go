@@ -167,5 +167,5 @@ func assertWasCached(t *testing.T, exists bool, block *common.Block, expectedSeq
 	}
 	require.True(t, exists)
 	require.NotNil(t, block)
-	require.Equal(t, expectedSeq, block.Header.Number)
+	require.Equal(t, expectedSeq, block.GetHeader().GetNumber())
 }

@@ -129,7 +129,7 @@ func (pit PeerIdentityType) String() string {
 		return fmt.Sprintf("non SerializedIdentity: %s", base64Representation)
 	}
 
-	bl, _ := pem.Decode(sID.IdBytes)
+	bl, _ := pem.Decode(sID.GetIdBytes())
 	if bl == nil {
 		return fmt.Sprintf("non PEM encoded identity: %s", base64Representation)
 	}
@@ -139,7 +139,7 @@ func (pit PeerIdentityType) String() string {
 		return fmt.Sprintf("non x509 identity: %s", base64Representation)
 	}
 	m := make(map[string]any)
-	m["MSP"] = sID.Mspid
+	m["MSP"] = sID.GetMspid()
 	s := cert.Subject
 	m["CN"] = s.CommonName
 	m["OU"] = s.OrganizationalUnit

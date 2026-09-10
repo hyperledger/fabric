@@ -129,12 +129,12 @@ func (a *ApprovedQuerier) Query() error {
 		return errors.New("received nil proposal response")
 	}
 
-	if proposalResponse.Response == nil {
+	if proposalResponse.GetResponse() == nil {
 		return errors.New("received proposal response with nil response")
 	}
 
-	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("query failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+	if proposalResponse.GetResponse().GetStatus() != int32(cb.Status_SUCCESS) {
+		return errors.Errorf("query failed with status: %d - %s", proposalResponse.GetResponse().GetStatus(), proposalResponse.GetResponse().GetMessage())
 	}
 
 	if strings.ToLower(a.Input.OutputFormat) == "json" {
@@ -155,7 +155,7 @@ func (a *ApprovedQuerier) printResponseAsJSON(proposalResponse *pb.ProposalRespo
 func (a *ApprovedQuerier) printResponse(proposalResponse *pb.ProposalResponse) error {
 	if a.Input.Name != "" {
 		result := &lb.QueryApprovedChaincodeDefinitionResult{}
-		if err := proto.Unmarshal(proposalResponse.Response.Payload, result); err != nil {
+		if err := proto.Unmarshal(proposalResponse.GetResponse().GetPayload(), result); err != nil {
 			return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 		}
 		fmt.Fprintf(a.Writer, "Approved chaincode definition for chaincode '%s' on channel '%s':\n", a.Input.Name, a.Input.ChannelID)
@@ -165,13 +165,13 @@ func (a *ApprovedQuerier) printResponse(proposalResponse *pb.ProposalResponse) e
 	}
 
 	result := &lb.QueryApprovedChaincodeDefinitionsResult{}
-	if err := proto.Unmarshal(proposalResponse.Response.Payload, result); err != nil {
+	if err := proto.Unmarshal(proposalResponse.GetResponse().GetPayload(), result); err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
 	fmt.Fprintf(a.Writer, "Approved chaincode definitions on channel '%s':\n", a.Input.ChannelID)
 
-	for _, acd := range result.ApprovedChaincodeDefinitions {
-		fmt.Fprintf(a.Writer, "name: %s, ", acd.Name)
+	for _, acd := range result.GetApprovedChaincodeDefinitions() {
+		fmt.Fprintf(a.Writer, "name: %s, ", acd.GetName())
 		a.printSingleApprovedChaincodeDefinition(acd)
 		fmt.Fprintf(a.Writer, "\n")
 	}
@@ -190,9 +190,9 @@ type ApprovedChaincodeDefinition interface {
 func (a *ApprovedQuerier) printSingleApprovedChaincodeDefinition(acd ApprovedChaincodeDefinition) {
 	var packageID string
 	if acd.GetSource() != nil {
-		switch source := acd.GetSource().Type.(type) {
+		switch source := acd.GetSource().GetType().(type) {
 		case *lb.ChaincodeSource_LocalPackage:
-			packageID = source.LocalPackage.PackageId
+			packageID = source.LocalPackage.GetPackageId()
 		case *lb.ChaincodeSource_Unavailable_:
 		}
 	}

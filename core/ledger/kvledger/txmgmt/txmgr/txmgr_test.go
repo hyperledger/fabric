@@ -89,7 +89,7 @@ func TestTxSimulatorGetResults(t *testing.T) {
 	// get simulation results and verify that this contains rwset only for one namespace
 	simulationResults1, err := simulator.GetTxSimulationResults()
 	require.NoError(t, err)
-	require.Len(t, simulationResults1.PubSimulationResults.NsRwset, 1)
+	require.Len(t, simulationResults1.PubSimulationResults.GetNsRwset(), 1)
 	// verify the Private Read has been captured
 	expectedPrivateReads := ledger.PrivateReads{}
 	expectedPrivateReads.Add("ns1", "coll1")
@@ -425,8 +425,8 @@ func testIterator(t *testing.T, env testEnv, numKeys int, startKeyNum int, endKe
 			break
 		}
 		keyNum := begin + count
-		k := kv.(*queryresult.KV).Key
-		v := kv.(*queryresult.KV).Value
+		k := kv.(*queryresult.KV).GetKey()
+		v := kv.(*queryresult.KV).GetValue()
 		t.Logf("Retrieved k=%s, v=%s at count=%d start=%s end=%s", k, v, count, startKey, endKey)
 		require.Equal(t, createTestKey(keyNum), k)
 		require.Equal(t, createTestValue(keyNum), v)
@@ -496,7 +496,7 @@ func testItrWithoutClose(t *testing.T, itr ledger.QueryResultsIterator, expected
 		queryResult, err := itr.Next()
 		require.NoError(t, err, "An unexpected error was thrown during iterator Next()")
 		vkv := queryResult.(*queryresult.KV)
-		key := vkv.Key
+		key := vkv.GetKey()
 		require.Equal(t, expectedKey, key)
 	}
 	queryResult, err := itr.Next()
@@ -541,9 +541,9 @@ func testIteratorWithDeletes(t *testing.T, env testEnv) {
 	itr, _ := queryExecuter.GetStateRangeScanIterator(cID, createTestKey(3), createTestKey(6))
 	defer itr.Close()
 	kv, _ := itr.Next()
-	require.Equal(t, createTestKey(3), kv.(*queryresult.KV).Key)
+	require.Equal(t, createTestKey(3), kv.(*queryresult.KV).GetKey())
 	kv, _ = itr.Next()
-	require.Equal(t, createTestKey(5), kv.(*queryresult.KV).Key)
+	require.Equal(t, createTestKey(5), kv.(*queryresult.KV).GetKey())
 }
 
 func TestTxValidationWithItr(t *testing.T) {
@@ -737,7 +737,7 @@ func testExecuteQuery(t *testing.T, env testEnv) {
 		}
 		// Unmarshal the document to Asset structure
 		assetResp := &Asset{}
-		require.NoError(t, json.Unmarshal(queryRecord.(*queryresult.KV).Value, &assetResp))
+		require.NoError(t, json.Unmarshal(queryRecord.(*queryresult.KV).GetValue(), &assetResp))
 		// Verify the owner retrieved matches
 		require.Equal(t, "bob", assetResp.Owner)
 		counter++
@@ -801,7 +801,7 @@ func testExecutePaginatedQuery(t *testing.T, env testEnv) {
 		}
 		// Unmarshal the document to Asset structure
 		assetResp := &Asset{}
-		require.NoError(t, json.Unmarshal(queryRecord.(*queryresult.KV).Value, &assetResp))
+		require.NoError(t, json.Unmarshal(queryRecord.(*queryresult.KV).GetValue(), &assetResp))
 		// Verify the owner retrieved matches
 		require.Equal(t, "bob", assetResp.Owner)
 		counter++
@@ -821,7 +821,7 @@ func testExecutePaginatedQuery(t *testing.T, env testEnv) {
 		}
 		// Unmarshal the document to Asset structure
 		assetResp := &Asset{}
-		require.NoError(t, json.Unmarshal(queryRecord.(*queryresult.KV).Value, &assetResp))
+		require.NoError(t, json.Unmarshal(queryRecord.(*queryresult.KV).GetValue(), &assetResp))
 		// Verify the owner retrieved matches
 		require.Equal(t, "bob", assetResp.Owner)
 		counter++
@@ -1357,7 +1357,7 @@ func TestDeleteOnCursor(t *testing.T) {
 		kv, err := itr2.Next()
 		require.NoError(t, err)
 		require.NotNil(t, kv)
-		key := kv.(*queryresult.KV).Key
+		key := kv.(*queryresult.KV).GetKey()
 		require.NoError(t, s2.DeleteState(cID, key))
 	}
 	itr2.Close()
@@ -1371,7 +1371,7 @@ func TestDeleteOnCursor(t *testing.T) {
 	kv, err := itr3.Next()
 	require.NoError(t, err)
 	require.NotNil(t, kv)
-	key := kv.(*queryresult.KV).Key
+	key := kv.(*queryresult.KV).GetKey()
 	require.Equal(t, "key_005", key)
 	itr3.Close()
 	s3.Done()

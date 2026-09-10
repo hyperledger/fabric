@@ -36,21 +36,21 @@ type MockOrderer struct {
 }
 
 func (mo *MockOrderer) parseEnvelope(ctx context.Context, envelope *cb.Envelope) (*cb.Payload, *cb.ChannelHeader, *cb.SignatureHeader, error) {
-	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+	payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return nil, nil, nil, errors.New("envelope has no header")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	shdr, err := protoutil.UnmarshalSignatureHeader(payload.Header.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(payload.GetHeader().GetSignatureHeader())
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -124,32 +124,32 @@ func (mo *MockOrderer) deliverBlocks(
 	}
 
 	seekInfo := &ab.SeekInfo{}
-	if err = proto.Unmarshal(payload.Data, seekInfo); err != nil {
-		mo.logger.Warningf("[channel: %s] Received a signed deliver request from %s with malformed seekInfo payload: %s", chdr.ChannelId, addr, err)
+	if err = proto.Unmarshal(payload.GetData(), seekInfo); err != nil {
+		mo.logger.Warningf("[channel: %s] Received a signed deliver request from %s with malformed seekInfo payload: %s", chdr.GetChannelId(), addr, err)
 		return cb.Status_BAD_REQUEST, nil
 	}
 
-	if seekInfo.Start == nil || seekInfo.Stop == nil {
-		mo.logger.Warningf("[channel: %s] Received seekInfo message from %s with missing start or stop %+v, %+v", chdr.ChannelId, addr, seekInfo.Start, seekInfo.Stop)
+	if seekInfo.GetStart() == nil || seekInfo.GetStop() == nil {
+		mo.logger.Warningf("[channel: %s] Received seekInfo message from %s with missing start or stop %+v, %+v", chdr.GetChannelId(), addr, seekInfo.GetStart(), seekInfo.GetStop())
 		return cb.Status_BAD_REQUEST, nil
 	}
 
-	mo.logger.Infof("[channel: %s address: %s] Received seekInfo %+v [start: %v] [stop: %v] from %s", chdr.ChannelId, mo.address, seekInfo, seekInfo.Start, seekInfo.Stop, addr)
+	mo.logger.Infof("[channel: %s address: %s] Received seekInfo %+v [start: %v] [stop: %v] from %s", chdr.GetChannelId(), mo.address, seekInfo, seekInfo.GetStart(), seekInfo.GetStop(), addr)
 
 	ledgerLastIdx := uint64(len(mo.ledgerArray) - 1)
 	var startIdx uint64
 
-	switch start := seekInfo.Start.Type.(type) {
+	switch start := seekInfo.GetStart().GetType().(type) {
 	case *ab.SeekPosition_Oldest:
 		startIdx = uint64(1)
 	case *ab.SeekPosition_Newest:
 		startIdx = ledgerLastIdx
 	case *ab.SeekPosition_Specified:
-		startIdx = start.Specified.Number
+		startIdx = start.Specified.GetNumber()
 	}
 
 	var stopIdx uint64
-	switch stop := seekInfo.Stop.Type.(type) {
+	switch stop := seekInfo.GetStop().GetType().(type) {
 	case *ab.SeekPosition_Oldest:
 		stopIdx = startIdx
 	case *ab.SeekPosition_Newest:
@@ -159,19 +159,19 @@ func (mo *MockOrderer) deliverBlocks(
 		// sent when only one is expected
 		stopIdx = ledgerLastIdx
 	case *ab.SeekPosition_Specified:
-		stopIdx = stop.Specified.Number
+		stopIdx = stop.Specified.GetNumber()
 	}
 
 	if stopIdx < startIdx {
-		mo.logger.Warningf("[channel: %s] Received invalid seekInfo message from %s: start number %d greater than stop number %d", chdr.ChannelId, addr, startIdx, stopIdx)
+		mo.logger.Warningf("[channel: %s] Received invalid seekInfo message from %s: start number %d greater than stop number %d", chdr.GetChannelId(), addr, startIdx, stopIdx)
 		return cb.Status_BAD_REQUEST, nil
 	}
 
 	ledgerIdx := startIdx
 	for {
-		if seekInfo.Behavior == ab.SeekInfo_FAIL_IF_NOT_READY {
+		if seekInfo.GetBehavior() == ab.SeekInfo_FAIL_IF_NOT_READY {
 			if ledgerIdx > ledgerLastIdx {
-				mo.logger.Warningf("[channel: %s] Block %d not found, block number greater than chain length bounds", chdr.ChannelId, ledgerIdx)
+				mo.logger.Warningf("[channel: %s] Block %d not found, block number greater than chain length bounds", chdr.GetChannelId(), ledgerIdx)
 				return cb.Status_NOT_FOUND, nil
 			}
 		}
@@ -191,7 +191,7 @@ func (mo *MockOrderer) deliverBlocks(
 			}
 			block = mo.ledgerArray[ledgerIdx]
 			status = cb.Status_SUCCESS
-			mo.logger.Infof("### <%s> extracted block number %d ; ledgerIdx is %d", mo.address, block.Header.Number, ledgerIdx)
+			mo.logger.Infof("### <%s> extracted block number %d ; ledgerIdx is %d", mo.address, block.GetHeader().GetNumber(), ledgerIdx)
 			ledgerIdx++
 			close(iterCh)
 		}()
@@ -205,21 +205,21 @@ func (mo *MockOrderer) deliverBlocks(
 		}
 
 		if status != cb.Status_SUCCESS {
-			mo.logger.Warningf("[channel: %s] Error reading from channel, cause was: %v", chdr.ChannelId, status)
+			mo.logger.Warningf("[channel: %s] Error reading from channel, cause was: %v", chdr.GetChannelId(), status)
 			return status, nil
 		}
 
 		block2send := &cb.Block{
-			Header:   block.Header,
-			Metadata: block.Metadata,
-			Data:     block.Data,
+			Header:   block.GetHeader(),
+			Metadata: block.GetMetadata(),
+			Data:     block.GetData(),
 		}
 
-		if seekInfo.ContentType == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
-			mo.logger.Infof("asked for header block from [%s]; block num [%d]", mo.address, block2send.Header.Number)
+		if seekInfo.GetContentType() == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
+			mo.logger.Infof("asked for header block from [%s]; block num [%d]", mo.address, block2send.GetHeader().GetNumber())
 			block2send.Data = nil
 		} else {
-			mo.logger.Infof("asked for data block from [%s]; block num [%d]", mo.address, block2send.Header.Number)
+			mo.logger.Infof("asked for data block from [%s]; block num [%d]", mo.address, block2send.GetHeader().GetNumber())
 			if mo.censorDataMode && mo.sentCount >= mo.censorAfter {
 				mo.logger.Infof("censoring blocks from [%s], stopping to respond...", mo.address)
 				mo.StopDelivery = true
@@ -233,18 +233,18 @@ func (mo *MockOrderer) deliverBlocks(
 
 		err = server.Send(blockResponse)
 		if err != nil {
-			mo.logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.ChannelId, addr, err)
+			mo.logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.GetChannelId(), addr, err)
 			return cb.Status_INTERNAL_SERVER_ERROR, err
 		}
 		mo.sentCount += 1
-		mo.logger.Warningf("[channel: %s, orderer: %s] Sent to %s block number %d", mo.address, chdr.ChannelId, addr, block2send.Header.Number)
+		mo.logger.Warningf("[channel: %s, orderer: %s] Sent to %s block number %d", mo.address, chdr.GetChannelId(), addr, block2send.GetHeader().GetNumber())
 
-		if stopIdx == block.Header.Number {
+		if stopIdx == block.GetHeader().GetNumber() {
 			break
 		}
 	}
 
-	mo.logger.Infof("[channel: %s] Done delivering to %s for (%p)", chdr.ChannelId, addr, seekInfo)
+	mo.logger.Infof("[channel: %s] Done delivering to %s for (%p)", chdr.GetChannelId(), addr, seekInfo)
 
 	return cb.Status_SUCCESS, nil
 }

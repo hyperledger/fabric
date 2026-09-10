@@ -420,7 +420,7 @@ func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) erro
 		if err != nil {
 			return err
 		}
-		rev := string(cv.AdditionalInfo)
+		rev := string(cv.GetAdditionalInfo())
 		committedDataCache.setVerAndRev(ns, key, vv.Version, rev)
 	}
 
@@ -1115,15 +1115,15 @@ func constructCacheValue(v *statedb.VersionedValue, rev string) *CacheValue {
 }
 
 func constructVersionedValue(cv *CacheValue) (*statedb.VersionedValue, error) {
-	height, _, err := version.NewHeightFromBytes(cv.Version)
+	height, _, err := version.NewHeightFromBytes(cv.GetVersion())
 	if err != nil {
 		return nil, err
 	}
 
 	return &statedb.VersionedValue{
-		Value:    cv.Value,
+		Value:    cv.GetValue(),
 		Version:  height,
-		Metadata: cv.Metadata,
+		Metadata: cv.GetMetadata(),
 	}, nil
 }
 

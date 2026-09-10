@@ -311,7 +311,7 @@ func (mock *ramLedger) CommitLegacy(blockAndPvtdata *ledger.BlockAndPvtData, com
 	defer mock.Unlock()
 
 	if blockAndPvtdata != nil && blockAndPvtdata.Block != nil {
-		mock.ledger[blockAndPvtdata.Block.Header.Number] = blockAndPvtdata
+		mock.ledger[blockAndPvtdata.Block.GetHeader().GetNumber()] = blockAndPvtdata
 		return nil
 	}
 	return errors.New("invalid input parameters for block and private data param")
@@ -323,9 +323,9 @@ func (mock *ramLedger) GetBlockchainInfo() (*pcomm.BlockchainInfo, error) {
 
 	currentBlock := mock.ledger[uint64(len(mock.ledger)-1)].Block
 	return &pcomm.BlockchainInfo{
-		Height:            currentBlock.Header.Number + 1,
-		CurrentBlockHash:  protoutil.BlockHeaderHash(currentBlock.Header),
-		PreviousBlockHash: currentBlock.Header.PreviousHash,
+		Height:            currentBlock.GetHeader().GetNumber() + 1,
+		CurrentBlockHash:  protoutil.BlockHeaderHash(currentBlock.GetHeader()),
+		PreviousBlockHash: currentBlock.GetHeader().GetPreviousHash(),
 	}, nil
 }
 
@@ -612,7 +612,7 @@ func TestLargeBlockGap(t *testing.T) {
 	mc := &mockCommitter{Mock: &mock.Mock{}}
 	blocksPassedToLedger := make(chan uint64, 200)
 	mc.On("CommitLegacy", mock.Anything).Run(func(arg mock.Arguments) {
-		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
+		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).GetHeader().GetNumber()
 	})
 	msgsFromPeer := make(chan protoext.ReceivedMessage)
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
@@ -636,14 +636,14 @@ func TestLargeBlockGap(t *testing.T) {
 		req := msg.GetStateRequest()
 		// Construct a skeleton for the response
 		res := &proto.GossipMessage{
-			Nonce:   msg.Nonce,
+			Nonce:   msg.GetNonce(),
 			Channel: []byte("testchannelid"),
 			Content: &proto.GossipMessage_StateResponse{
 				StateResponse: &proto.RemoteStateResponse{},
 			},
 		}
 		// Populate the response with payloads according to what the peer asked
-		for seq := req.StartSeqNum; seq <= req.EndSeqNum; seq++ {
+		for seq := req.GetStartSeqNum(); seq <= req.GetEndSeqNum(); seq++ {
 			rawblock := protoutil.NewBlock(seq, []byte{})
 			b, _ := pb.Marshal(rawblock)
 			payload := &proto.Payload{
@@ -684,7 +684,7 @@ func TestOverPopulation(t *testing.T) {
 	mc := &mockCommitter{Mock: &mock.Mock{}}
 	blocksPassedToLedger := make(chan uint64, 10)
 	mc.On("CommitLegacy", mock.Anything).Run(func(arg mock.Arguments) {
-		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
+		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).GetHeader().GetNumber()
 	})
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
 	mc.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
@@ -747,7 +747,7 @@ func TestBlockingEnqueue(t *testing.T) {
 	mc := &mockCommitter{Mock: &mock.Mock{}}
 	blocksPassedToLedger := make(chan uint64, 10)
 	mc.On("CommitLegacy", mock.Anything).Run(func(arg mock.Arguments) {
-		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
+		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).GetHeader().GetNumber()
 	})
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
 	mc.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
@@ -798,7 +798,7 @@ func TestBlockingEnqueue(t *testing.T) {
 		m.On("LedgerHeight", mock.Anything).Return(receivedBlock, nil)
 		m.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 		m.On("CommitLegacy", mock.Anything).Run(func(arg mock.Arguments) {
-			blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
+			blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).GetHeader().GetNumber()
 		})
 		mc.Lock()
 		mc.Mock = m
@@ -951,7 +951,7 @@ func TestGossipReception(t *testing.T) {
 	receivedChan := make(chan struct{})
 	mc.On("CommitLegacy", mock.Anything).Run(func(arguments mock.Arguments) {
 		block := arguments.Get(0).(*pcomm.Block)
-		require.Equal(t, uint64(1), block.Header.Number)
+		require.Equal(t, uint64(1), block.GetHeader().GetNumber())
 		receivedChan <- struct{}{}
 	})
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
@@ -1525,31 +1525,31 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 	assertion.Equal(response.GetGossipMessage().Nonce, uint64(1))
 	// Payload should not need be nil
 	assertion.NotNil(stateResponse)
-	assertion.NotNil(stateResponse.Payloads)
+	assertion.NotNil(stateResponse.GetPayloads())
 	// Exactly two messages expected
-	assertion.Equal(len(stateResponse.Payloads), 2)
+	assertion.Equal(len(stateResponse.GetPayloads()), 2)
 
 	// Assert we have all data and it's same as we expected it
-	for _, each := range stateResponse.Payloads {
+	for _, each := range stateResponse.GetPayloads() {
 		block := &pcomm.Block{}
-		err := pb.Unmarshal(each.Data, block)
+		err := pb.Unmarshal(each.GetData(), block)
 		assertion.NoError(err)
 
-		assertion.NotNil(block.Header)
+		assertion.NotNil(block.GetHeader())
 
-		testBlock, ok := data[block.Header.Number]
+		testBlock, ok := data[block.GetHeader().GetNumber()]
 		assertion.True(ok)
 
-		for i, d := range testBlock.block.Data.Data {
-			assertion.True(bytes.Equal(d, block.Data.Data[i]))
+		for i, d := range testBlock.block.GetData().GetData() {
+			assertion.True(bytes.Equal(d, block.GetData().GetData()[i]))
 		}
 
 		for i, p := range testBlock.pvtData {
 			pvtDataPayload := &proto.PvtDataPayload{}
-			err := pb.Unmarshal(each.PrivateData[i], pvtDataPayload)
+			err := pb.Unmarshal(each.GetPrivateData()[i], pvtDataPayload)
 			assertion.NoError(err)
 			pvtRWSet := &rwset.TxPvtReadWriteSet{}
-			err = pb.Unmarshal(pvtDataPayload.Payload, pvtRWSet)
+			err = pb.Unmarshal(pvtDataPayload.GetPayload(), pvtRWSet)
 			assertion.NoError(err)
 			assertion.True(pb.Equal(p.WriteSet, pvtRWSet))
 		}

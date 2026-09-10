@@ -68,8 +68,8 @@ func TestMarkStorageForDelete(t *testing.T) {
 	delete := PendingDeleteStorageList{}
 	err = proto.Unmarshal(val, &delete)
 	require.NoError(t, err)
-	require.NotNil(t, delete.List)
-	require.Contains(t, delete.List, ledgerID)
+	require.NotNil(t, delete.GetList())
+	require.Contains(t, delete.GetList(), ledgerID)
 }
 
 func TestMultipleStoragesMarkedForDeletion(t *testing.T) {
@@ -88,37 +88,37 @@ func TestMultipleStoragesMarkedForDeletion(t *testing.T) {
 	// Delete list is empty to start.
 	dl, err := sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 0, len(dl.List))
+	require.Equal(t, 0, len(dl.GetList()))
 
 	// mark a deletion
 	require.NoError(t, sp.markStorageForDelete(doomed1))
 	dl, err = sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 1, len(dl.List))
-	require.Contains(t, dl.List, doomed1)
+	require.Equal(t, 1, len(dl.GetList()))
+	require.Contains(t, dl.GetList(), doomed1)
 
 	// mark it again - it should not contain duplicate entries
 	require.NoError(t, sp.markStorageForDelete(doomed1))
 	dl, err = sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 1, len(dl.List))
-	require.Contains(t, dl.List, doomed1)
+	require.Equal(t, 1, len(dl.GetList()))
+	require.Contains(t, dl.GetList(), doomed1)
 
 	// add multiple entries
 	require.NoError(t, sp.markStorageForDelete(doomed2))
 	dl, err = sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 2, len(dl.List))
-	require.Contains(t, dl.List, doomed1)
-	require.Contains(t, dl.List, doomed2)
+	require.Equal(t, 2, len(dl.GetList()))
+	require.Contains(t, dl.GetList(), doomed1)
+	require.Contains(t, dl.GetList(), doomed2)
 
 	require.NoError(t, sp.markStorageForDelete(doomed3))
 	dl, err = sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 3, len(dl.List))
-	require.Contains(t, dl.List, doomed1)
-	require.Contains(t, dl.List, doomed2)
-	require.Contains(t, dl.List, doomed3)
+	require.Equal(t, 3, len(dl.GetList()))
+	require.Contains(t, dl.GetList(), doomed1)
+	require.Contains(t, dl.GetList(), doomed2)
+	require.Contains(t, dl.GetList(), doomed3)
 }
 
 func TestUnmarkDeletionTag(t *testing.T) {
@@ -137,7 +137,7 @@ func TestUnmarkDeletionTag(t *testing.T) {
 	// Delete list is empty to start.
 	dl, err := sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 0, len(dl.List))
+	require.Equal(t, 0, len(dl.GetList()))
 
 	// doom some transient storage entries
 	require.NoError(t, sp.markStorageForDelete(doomed1))
@@ -146,20 +146,20 @@ func TestUnmarkDeletionTag(t *testing.T) {
 
 	dl, err = sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 3, len(dl.List))
-	require.Contains(t, dl.List, doomed1)
-	require.Contains(t, dl.List, doomed2)
-	require.Contains(t, dl.List, doomed3)
+	require.Equal(t, 3, len(dl.GetList()))
+	require.Contains(t, dl.GetList(), doomed1)
+	require.Contains(t, dl.GetList(), doomed2)
+	require.Contains(t, dl.GetList(), doomed3)
 
 	// clear out the doomed flag for one of the storage
 	require.NoError(t, sp.clearStorageDeletionStatus(doomed2))
 
 	dl, err = sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 2, len(dl.List))
-	require.Contains(t, dl.List, doomed1)
-	require.NotContains(t, dl.List, doomed2)
-	require.Contains(t, dl.List, doomed3)
+	require.Equal(t, 2, len(dl.GetList()))
+	require.Contains(t, dl.GetList(), doomed1)
+	require.NotContains(t, dl.GetList(), doomed2)
+	require.Contains(t, dl.GetList(), doomed3)
 }
 
 func TestClearDeletionTagNotPresent(t *testing.T) {
@@ -179,7 +179,7 @@ func TestClearDeletionTagNotPresent(t *testing.T) {
 	// Delete list is empty to start.
 	dl, err := sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 0, len(dl.List))
+	require.Equal(t, 0, len(dl.GetList()))
 
 	// Check the boundary case of removing an invalid ledger from an empty set.
 	require.NoError(t, sp.clearStorageDeletionStatus(invalid))
@@ -191,24 +191,24 @@ func TestClearDeletionTagNotPresent(t *testing.T) {
 
 	dl, err = sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 3, len(dl.List))
-	require.Contains(t, dl.List, doomed1)
-	require.Contains(t, dl.List, doomed2)
-	require.Contains(t, dl.List, doomed3)
+	require.Equal(t, 3, len(dl.GetList()))
+	require.Contains(t, dl.GetList(), doomed1)
+	require.Contains(t, dl.GetList(), doomed2)
+	require.Contains(t, dl.GetList(), doomed3)
 
 	// Try again to clear the deletion flag for an invalid ledger.
-	require.NotContains(t, dl.List, invalid)
+	require.NotContains(t, dl.GetList(), invalid)
 	require.NoError(t, sp.clearStorageDeletionStatus(invalid))
 
 	dl, err = sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 3, len(dl.List))
-	require.Contains(t, dl.List, doomed1)
-	require.Contains(t, dl.List, doomed2)
-	require.Contains(t, dl.List, doomed3)
+	require.Equal(t, 3, len(dl.GetList()))
+	require.Contains(t, dl.GetList(), doomed1)
+	require.Contains(t, dl.GetList(), doomed2)
+	require.Contains(t, dl.GetList(), doomed3)
 
 	// Invalid should not have been doomed.
-	require.NotContains(t, dl.List, invalid)
+	require.NotContains(t, dl.GetList(), invalid)
 }
 
 func TestProcessPendingStorageDeletions(t *testing.T) {
@@ -228,10 +228,10 @@ func TestProcessPendingStorageDeletions(t *testing.T) {
 
 	dl, err := sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 3, len(dl.List))
-	require.Contains(t, dl.List, doomed1)
-	require.Contains(t, dl.List, doomed2)
-	require.Contains(t, dl.List, doomed3)
+	require.Equal(t, 3, len(dl.GetList()))
+	require.Contains(t, dl.GetList(), doomed1)
+	require.Contains(t, dl.GetList(), doomed2)
+	require.Contains(t, dl.GetList(), doomed3)
 
 	// process the pending deletions
 	err = sp.processPendingStorageDeletions()
@@ -240,7 +240,7 @@ func TestProcessPendingStorageDeletions(t *testing.T) {
 	// storages are no longer pending deletion
 	dl, err = sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 0, len(dl.List))
+	require.Equal(t, 0, len(dl.GetList()))
 }
 
 // Drop a storage without access to a provider.
@@ -380,8 +380,8 @@ func TestProviderRestartAfterFailedDeletionScrubsPendingDeletions(t *testing.T) 
 	require.NoError(t, sp.markStorageForDelete(ledgerID))
 	doomed, err := sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 1, len(doomed.List))
-	require.Contains(t, doomed.List, ledgerID)
+	require.Equal(t, 1, len(doomed.GetList()))
+	require.Contains(t, doomed.GetList(), ledgerID)
 
 	// close and re-open the provider.
 	env.storeProvider.Close()
@@ -394,7 +394,7 @@ func TestProviderRestartAfterFailedDeletionScrubsPendingDeletions(t *testing.T) 
 	// nothing tagged for deletion
 	doomed, err = sp.getStorageMarkedForDeletion()
 	require.NoError(t, err)
-	require.Equal(t, 0, len(doomed.List))
+	require.Equal(t, 0, len(doomed.GetList()))
 
 	// storage should be empty after re-opening
 	store, err := sp.OpenStore(ledgerID)

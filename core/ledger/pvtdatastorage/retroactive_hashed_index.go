@@ -161,17 +161,17 @@ func addHashedIndexEntriesInto(batch *leveldbhelper.UpdateBatch, dataKey *dataKe
 	if err != nil {
 		return err
 	}
-	for _, kvWrite := range collPvtRWSet.KvRwSet.Writes {
+	for _, kvWrite := range collPvtRWSet.KvRwSet.GetWrites() {
 		k := encodeHashedIndexKey(
 			&hashedIndexKey{
 				ns:         dataKey.ns,
 				coll:       dataKey.coll,
-				pvtkeyHash: util.ComputeStringHash(kvWrite.Key),
+				pvtkeyHash: util.ComputeStringHash(kvWrite.GetKey()),
 				blkNum:     dataKey.blkNum,
 				txNum:      dataKey.txNum,
 			},
 		)
-		batch.Put(k, []byte(kvWrite.Key))
+		batch.Put(k, []byte(kvWrite.GetKey()))
 	}
 	return nil
 }

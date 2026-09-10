@@ -28,7 +28,7 @@ func SanitizeIdentity(identity []byte) ([]byte, error) {
 		return nil, errors.Wrapf(err, "failed unmarshaling identity %s", string(identity))
 	}
 
-	finalPEM, err := SanitizeX509Cert(sID.IdBytes)
+	finalPEM, err := SanitizeX509Cert(sID.GetIdBytes())
 	if err != nil {
 		return nil, err
 	}

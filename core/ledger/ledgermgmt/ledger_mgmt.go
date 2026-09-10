@@ -107,8 +107,8 @@ func (m *LedgerMgr) CreateLedger(id string, genesisBlock *common.Block) (ledger.
 	m.creationLock.Lock()
 	defer m.creationLock.Unlock()
 
-	if m.joinBySnapshotStatus.InProgress {
-		return nil, errors.Errorf("a ledger is being created from a snapshot at %s. Call ledger creation again after it is done.", m.joinBySnapshotStatus.BootstrappingSnapshotDir)
+	if m.joinBySnapshotStatus.GetInProgress() {
+		return nil, errors.Errorf("a ledger is being created from a snapshot at %s. Call ledger creation again after it is done.", m.joinBySnapshotStatus.GetBootstrappingSnapshotDir())
 	}
 
 	m.lock.Lock()
@@ -182,8 +182,8 @@ func (m *LedgerMgr) createFromSnapshot(snapshotDir string) (ledger.PeerLedger, s
 func (m *LedgerMgr) setJoinBySnapshotStatus(snapshotDir string) error {
 	m.creationLock.Lock()
 	defer m.creationLock.Unlock()
-	if m.joinBySnapshotStatus.InProgress {
-		return errors.Errorf("a ledger is being created from a snapshot at %s. Call ledger creation again after it is done.", m.joinBySnapshotStatus.BootstrappingSnapshotDir)
+	if m.joinBySnapshotStatus.GetInProgress() {
+		return errors.Errorf("a ledger is being created from a snapshot at %s. Call ledger creation again after it is done.", m.joinBySnapshotStatus.GetBootstrappingSnapshotDir())
 	}
 	m.joinBySnapshotStatus.InProgress = true
 	m.joinBySnapshotStatus.BootstrappingSnapshotDir = snapshotDir
@@ -235,8 +235,8 @@ func (m *LedgerMgr) JoinBySnapshotStatus() *pb.JoinBySnapshotStatus {
 	defer m.creationLock.Unlock()
 	// return a copy of joinBySnapshotStatus to the caller
 	return &pb.JoinBySnapshotStatus{
-		InProgress:               m.joinBySnapshotStatus.InProgress,
-		BootstrappingSnapshotDir: m.joinBySnapshotStatus.BootstrappingSnapshotDir,
+		InProgress:               m.joinBySnapshotStatus.GetInProgress(),
+		BootstrappingSnapshotDir: m.joinBySnapshotStatus.GetBootstrappingSnapshotDir(),
 	}
 }
 

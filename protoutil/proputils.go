@@ -59,7 +59,7 @@ func CreateChaincodeProposalWithTxIDAndTransient(typ common.HeaderType, channelI
 // CreateChaincodeProposalWithTxIDNonceAndTransient creates a proposal from
 // given input
 func CreateChaincodeProposalWithTxIDNonceAndTransient(txid string, typ common.HeaderType, channelID string, cis *peer.ChaincodeInvocationSpec, nonce, creator []byte, transientMap map[string][]byte) (*peer.Proposal, string, error) {
-	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeId: cis.ChaincodeSpec.ChaincodeId}
+	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeId: cis.GetChaincodeSpec().GetChaincodeId()}
 	ccHdrExtBytes, err := proto.Marshal(ccHdrExt)
 	if err != nil {
 		return nil, "", errors.Wrap(err, "error marshaling ChaincodeHeaderExtension")
@@ -234,21 +234,21 @@ func GetActionFromEnvelope(envBytes []byte) (*peer.ChaincodeAction, error) {
 }
 
 func GetActionFromEnvelopeMsg(env *common.Envelope) (*peer.ChaincodeAction, error) {
-	payl, err := UnmarshalPayload(env.Payload)
+	payl, err := UnmarshalPayload(env.GetPayload())
 	if err != nil {
 		return nil, err
 	}
 
-	tx, err := UnmarshalTransaction(payl.Data)
+	tx, err := UnmarshalTransaction(payl.GetData())
 	if err != nil {
 		return nil, err
 	}
 
-	if len(tx.Actions) == 0 {
+	if len(tx.GetActions()) == 0 {
 		return nil, errors.New("at least one TransactionAction required")
 	}
 
-	_, respPayload, err := GetPayloads(tx.Actions[0])
+	_, respPayload, err := GetPayloads(tx.GetActions()[0])
 	return respPayload, err
 }
 
@@ -416,24 +416,24 @@ func InvokedChaincodeName(proposalBytes []byte) (string, error) {
 	}
 
 	proposalPayload := &peer.ChaincodeProposalPayload{}
-	err = proto.Unmarshal(proposal.Payload, proposalPayload)
+	err = proto.Unmarshal(proposal.GetPayload(), proposalPayload)
 	if err != nil {
 		return "", errors.WithMessage(err, "could not unmarshal chaincode proposal payload")
 	}
 
 	cis := &peer.ChaincodeInvocationSpec{}
-	err = proto.Unmarshal(proposalPayload.Input, cis)
+	err = proto.Unmarshal(proposalPayload.GetInput(), cis)
 	if err != nil {
 		return "", errors.WithMessage(err, "could not unmarshal chaincode invocation spec")
 	}
 
-	if cis.ChaincodeSpec == nil {
+	if cis.GetChaincodeSpec() == nil {
 		return "", errors.Errorf("chaincode spec is nil")
 	}
 
-	if cis.ChaincodeSpec.ChaincodeId == nil {
+	if cis.GetChaincodeSpec().GetChaincodeId() == nil {
 		return "", errors.Errorf("chaincode id is nil")
 	}
 
-	return cis.ChaincodeSpec.ChaincodeId.Name, nil
+	return cis.GetChaincodeSpec().GetChaincodeId().GetName(), nil
 }

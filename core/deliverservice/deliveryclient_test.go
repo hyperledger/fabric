@@ -431,8 +431,8 @@ func TestStop(t *testing.T) {
 // TODO this pattern repeats itself in several places. Make it common in the 'genesisconfig' package to easily create
 // Raft genesis blocks
 func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) {
-	for i, c := range confAppRaft.Orderer.EtcdRaft.Consenters {
-		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
+	for i, c := range confAppRaft.Orderer.EtcdRaft.GetConsenters() {
+		srvC, err := tlsCA.NewServerCertKeyPair(c.GetHost())
 		require.NoError(t, err)
 		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
 		err = os.WriteFile(srvP, srvC.Cert, 0o644)

@@ -134,11 +134,11 @@ func (f *fetcherMock) fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtData
 	uniqueEndorsements := make(map[string]any)
 	for _, endorsements := range dig2src {
 		for _, endorsement := range endorsements {
-			_, exists := f.expectedEndorsers[string(endorsement.Endorser)]
+			_, exists := f.expectedEndorsers[string(endorsement.GetEndorser())]
 			if !exists {
-				f.t.Fatalf("Encountered a non-expected endorser: %s", string(endorsement.Endorser))
+				f.t.Fatalf("Encountered a non-expected endorser: %s", string(endorsement.GetEndorser()))
 			}
-			uniqueEndorsements[string(endorsement.Endorser)] = struct{}{}
+			uniqueEndorsements[string(endorsement.GetEndorser())] = struct{}{}
 		}
 	}
 	require.True(f.t, digests(f.expectedDigests).Equal(dig2src.keys()))
@@ -499,12 +499,12 @@ func flattenTxPvtDataMap(pd ledger.TxPvtDataMap) map[uint64]map[rwsTriplet]struc
 	m := make(map[uint64]map[rwsTriplet]struct{})
 	for seqInBlock, namespaces := range pd {
 		triplets := make(map[rwsTriplet]struct{})
-		for _, namespace := range namespaces.WriteSet.NsPvtRwset {
-			for _, col := range namespace.CollectionPvtRwset {
+		for _, namespace := range namespaces.WriteSet.GetNsPvtRwset() {
+			for _, col := range namespace.GetCollectionPvtRwset() {
 				triplets[rwsTriplet{
-					namespace:  namespace.Namespace,
-					collection: col.CollectionName,
-					rwset:      hex.EncodeToString(col.Rwset),
+					namespace:  namespace.GetNamespace(),
+					collection: col.GetCollectionName(),
+					rwset:      hex.EncodeToString(col.GetRwset()),
 				}] = struct{}{}
 			}
 		}
@@ -700,9 +700,9 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		require.Len(t, privateDataPassed2Ledger, 1)
 		require.Equal(t, 0, int(privateDataPassed2Ledger[0].SeqInBlock))
 		// The private data passed to the ledger contains "ns1" and has 2 collections in it
-		require.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset, 1)
-		require.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].Namespace)
-		require.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 2)
+		require.Len(t, privateDataPassed2Ledger[0].WriteSet.GetNsPvtRwset(), 1)
+		require.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.GetNsPvtRwset()[0].GetNamespace())
+		require.Len(t, privateDataPassed2Ledger[0].WriteSet.GetNsPvtRwset()[0].GetCollectionPvtRwset(), 2)
 	}).Return(nil)
 	block = bf.withInvalidTxns(1).AddTxn("tx1", "ns1", hash, "c1", "c2").AddTxn("tx2", "ns2", hash, "c1").create()
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").create()
@@ -746,9 +746,9 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		require.Len(t, privateDataPassed2Ledger, 1)
 		require.Equal(t, 0, int(privateDataPassed2Ledger[0].SeqInBlock))
 		// The private data passed to the ledger contains "ns1" and has 2 collections in it
-		require.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset, 1)
-		require.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].Namespace)
-		require.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 2)
+		require.Len(t, privateDataPassed2Ledger[0].WriteSet.GetNsPvtRwset(), 1)
+		require.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.GetNsPvtRwset()[0].GetNamespace())
+		require.Len(t, privateDataPassed2Ledger[0].WriteSet.GetNsPvtRwset()[0].GetCollectionPvtRwset(), 2)
 
 		missingPrivateDataPassed2Ledger := blockAndPvtData.MissingPvtData
 		require.Len(t, missingPrivateDataPassed2Ledger, 1)
@@ -802,13 +802,13 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		require.Equal(t, 0, int(privateDataPassed2Ledger[0].SeqInBlock))
 		require.Equal(t, 1, int(privateDataPassed2Ledger[1].SeqInBlock))
 		// The private data passed to the ledger for tx1 contains "ns1" and has 2 collections in it
-		require.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset, 1)
-		require.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].Namespace)
-		require.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 2)
+		require.Len(t, privateDataPassed2Ledger[0].WriteSet.GetNsPvtRwset(), 1)
+		require.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.GetNsPvtRwset()[0].GetNamespace())
+		require.Len(t, privateDataPassed2Ledger[0].WriteSet.GetNsPvtRwset()[0].GetCollectionPvtRwset(), 2)
 		// The private data passed to the ledger for tx2 contains "ns2" and has 1 collection in it
-		require.Len(t, privateDataPassed2Ledger[1].WriteSet.NsPvtRwset, 1)
-		require.Equal(t, "ns2", privateDataPassed2Ledger[1].WriteSet.NsPvtRwset[0].Namespace)
-		require.Len(t, privateDataPassed2Ledger[1].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 1)
+		require.Len(t, privateDataPassed2Ledger[1].WriteSet.GetNsPvtRwset(), 1)
+		require.Equal(t, "ns2", privateDataPassed2Ledger[1].WriteSet.GetNsPvtRwset()[0].GetNamespace())
+		require.Len(t, privateDataPassed2Ledger[1].WriteSet.GetNsPvtRwset()[0].GetCollectionPvtRwset(), 1)
 
 		missingPrivateDataPassed2Ledger := blockAndPvtData.MissingPvtData
 		require.Len(t, missingPrivateDataPassed2Ledger, 0)

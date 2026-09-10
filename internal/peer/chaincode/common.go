@@ -109,38 +109,38 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 
 	if invoke {
 		logger.Debugf("ESCC invoke result: %v", proposalResp)
-		pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(proposalResp.Payload)
+		pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(proposalResp.GetPayload())
 		if err != nil {
 			return errors.WithMessage(err, "error while unmarshalling proposal response payload")
 		}
-		ca, err := protoutil.UnmarshalChaincodeAction(pRespPayload.Extension)
+		ca, err := protoutil.UnmarshalChaincodeAction(pRespPayload.GetExtension())
 		if err != nil {
 			return errors.WithMessage(err, "error while unmarshalling chaincode action")
 		}
-		if proposalResp.Endorsement == nil {
-			return errors.Errorf("endorsement failure during invoke. response: %v", proposalResp.Response)
+		if proposalResp.GetEndorsement() == nil {
+			return errors.Errorf("endorsement failure during invoke. response: %v", proposalResp.GetResponse())
 		}
-		logger.Infof("Chaincode invoke successful. result: %v", ca.Response)
+		logger.Infof("Chaincode invoke successful. result: %v", ca.GetResponse())
 	} else {
 		if proposalResp == nil {
 			return errors.New("error during query: received nil proposal response")
 		}
-		if proposalResp.Endorsement == nil {
-			return errors.Errorf("endorsement failure during query. response: %v", proposalResp.Response)
+		if proposalResp.GetEndorsement() == nil {
+			return errors.Errorf("endorsement failure during query. response: %v", proposalResp.GetResponse())
 		}
 
 		if chaincodeQueryRaw && chaincodeQueryHex {
 			return fmt.Errorf("options --raw (-r) and --hex (-x) are not compatible")
 		}
 		if chaincodeQueryRaw {
-			fmt.Println(proposalResp.Response.Payload)
+			fmt.Println(proposalResp.GetResponse().GetPayload())
 			return nil
 		}
 		if chaincodeQueryHex {
-			fmt.Printf("%x\n", proposalResp.Response.Payload)
+			fmt.Printf("%x\n", proposalResp.GetResponse().GetPayload())
 			return nil
 		}
-		fmt.Println(string(proposalResp.Response.Payload))
+		fmt.Println(string(proposalResp.GetResponse().GetPayload()))
 	}
 	return nil
 }
@@ -535,7 +535,7 @@ func ChaincodeInvokeOrQuery(
 
 	if invoke {
 		if proposalResp != nil {
-			if proposalResp.Response.Status >= shim.ERRORTHRESHOLD {
+			if proposalResp.GetResponse().GetStatus() >= shim.ERRORTHRESHOLD {
 				return proposalResp, nil
 			}
 			// assemble a signed transaction (it's an Envelope message)
@@ -729,14 +729,14 @@ func (dg *DeliverGroup) ClientWait(dc *DeliverClient) {
 			dg.setError(err)
 			return
 		}
-		switch r := resp.Type.(type) {
+		switch r := resp.GetType().(type) {
 		case *pb.DeliverResponse_FilteredBlock:
-			filteredTransactions := r.FilteredBlock.FilteredTransactions
+			filteredTransactions := r.FilteredBlock.GetFilteredTransactions()
 			for _, tx := range filteredTransactions {
-				if tx.Txid == dg.TxID {
-					logger.Infof("txid [%s] committed with status (%s) at %s", dg.TxID, tx.TxValidationCode, dc.Address)
-					if tx.TxValidationCode != pb.TxValidationCode_VALID {
-						err = errors.Errorf("transaction invalidated with status (%s)", tx.TxValidationCode)
+				if tx.GetTxid() == dg.TxID {
+					logger.Infof("txid [%s] committed with status (%s) at %s", dg.TxID, tx.GetTxValidationCode(), dc.Address)
+					if tx.GetTxValidationCode() != pb.TxValidationCode_VALID {
+						err = errors.Errorf("transaction invalidated with status (%s)", tx.GetTxValidationCode())
 						dg.setError(err)
 					}
 					return

@@ -30,7 +30,7 @@ type BlockVerifierAssembler struct {
 
 // VerifierFromConfig creates a BlockVerifier from the given configuration.
 func (bva *BlockVerifierAssembler) VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (protoutil.BlockVerifierFunc, error) {
-	bundle, err := channelconfig.NewBundle(channel, configuration.Config, bva.BCCSP)
+	bundle, err := channelconfig.NewBundle(channel, configuration.GetConfig(), bva.BCCSP)
 	if err != nil {
 		return createErrorFunc(err), err
 	}

@@ -45,24 +45,24 @@ func getMemberOrgs(identities []*mspp.MSPPrincipal, deserializer msp.IdentityDes
 
 	// get member org MSP IDs from the envelope
 	for _, principal := range identities {
-		switch principal.PrincipalClassification {
+		switch principal.GetPrincipalClassification() {
 		case mspp.MSPPrincipal_ROLE:
 			// Principal contains the msp role
 			mspRole := &mspp.MSPRole{}
-			err := proto.Unmarshal(principal.Principal, mspRole)
+			err := proto.Unmarshal(principal.GetPrincipal(), mspRole)
 			if err == nil {
-				memberOrgs[mspRole.MspIdentifier] = struct{}{}
+				memberOrgs[mspRole.GetMspIdentifier()] = struct{}{}
 			}
 		case mspp.MSPPrincipal_IDENTITY:
-			principalId, err := deserializer.DeserializeIdentity(principal.Principal)
+			principalId, err := deserializer.DeserializeIdentity(principal.GetPrincipal())
 			if err == nil {
 				memberOrgs[principalId.GetMSPIdentifier()] = struct{}{}
 			}
 		case mspp.MSPPrincipal_ORGANIZATION_UNIT:
 			OU := &mspp.OrganizationUnit{}
-			err := proto.Unmarshal(principal.Principal, OU)
+			err := proto.Unmarshal(principal.GetPrincipal(), OU)
 			if err == nil {
-				memberOrgs[OU.MspIdentifier] = struct{}{}
+				memberOrgs[OU.GetMspIdentifier()] = struct{}{}
 			}
 		}
 	}

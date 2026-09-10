@@ -96,7 +96,7 @@ func (l *kvLedger) generateSnapshot() error {
 	if err != nil {
 		return err
 	}
-	lastBlockNum := bcInfo.Height - 1
+	lastBlockNum := bcInfo.GetHeight() - 1
 	snapshotTempDir, err := os.MkdirTemp(
 		SnapshotsTempDirPath(snapshotsRootDir),
 		fmt.Sprintf("%s-%d-", l.ledgerID, lastBlockNum),
@@ -181,9 +181,9 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 	}
 	signableMetadata := &SnapshotSignableMetadata{
 		ChannelName:            l.ledgerID,
-		LastBlockNumber:        bcInfo.Height - 1,
-		LastBlockHashInHex:     hex.EncodeToString(bcInfo.CurrentBlockHash),
-		PreviousBlockHashInHex: hex.EncodeToString(bcInfo.PreviousBlockHash),
+		LastBlockNumber:        bcInfo.GetHeight() - 1,
+		LastBlockHashInHex:     hex.EncodeToString(bcInfo.GetCurrentBlockHash()),
+		PreviousBlockHashInHex: hex.EncodeToString(bcInfo.GetPreviousBlockHash()),
 		FilesAndHashes:         filesAndHashes,
 		StateDBType:            stateDBType,
 	}
@@ -427,9 +427,9 @@ func (c *mostRecentCollectionConfigFetcher) CollectionInfo(chaincodeName, collec
 		return nil, errors.WithMessage(err, "error while fetching most recent collection config")
 	}
 
-	for _, c := range explicitCollections.CollectionConfig.Config {
+	for _, c := range explicitCollections.CollectionConfig.GetConfig() {
 		stateCollectionConfig := c.GetStaticCollectionConfig()
-		if stateCollectionConfig.Name == collectionName {
+		if stateCollectionConfig.GetName() == collectionName {
 			return stateCollectionConfig, nil
 		}
 	}

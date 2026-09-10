@@ -68,7 +68,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 		defer provider.Close()
 
 		bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
-		gbHash := protoutil.BlockHeaderHash(gb.Header)
+		gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 		lgr, err := provider.CreateFromGenesisBlock(gb)
 		require.NoError(t, err)
 		defer lgr.Close()
@@ -90,7 +90,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 		require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: block1}, &ledger.CommitOptions{}))
 
 		bcInfo, _ = lgr.GetBlockchainInfo()
-		block1Hash := protoutil.BlockHeaderHash(block1.Header)
+		block1Hash := protoutil.BlockHeaderHash(block1.GetHeader())
 		require.True(t, proto.Equal(&common.BlockchainInfo{
 			Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash,
 		}, bcInfo))
@@ -107,7 +107,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 		require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: block2}, &ledger.CommitOptions{}))
 
 		bcInfo, _ = lgr.GetBlockchainInfo()
-		block2Hash := protoutil.BlockHeaderHash(block2.Header)
+		block2Hash := protoutil.BlockHeaderHash(block2.GetHeader())
 		require.True(t, proto.Equal(&common.BlockchainInfo{
 			Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash,
 		}, bcInfo))
@@ -125,14 +125,14 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 		require.True(t, proto.Equal(block1, b1))
 
 		// get the tran id from the 2nd block, then use it to test GetTransactionByID()
-		txEnvBytes2 := block1.Data.Data[0]
+		txEnvBytes2 := block1.GetData().GetData()[0]
 		txEnv2, err := protoutil.GetEnvelopeFromBlock(txEnvBytes2)
 		require.NoError(t, err, "Error upon GetEnvelopeFromBlock")
-		payload2, err := protoutil.UnmarshalPayload(txEnv2.Payload)
+		payload2, err := protoutil.UnmarshalPayload(txEnv2.GetPayload())
 		require.NoError(t, err, "Error upon GetPayload")
-		chdr, err := protoutil.UnmarshalChannelHeader(payload2.Header.ChannelHeader)
+		chdr, err := protoutil.UnmarshalChannelHeader(payload2.GetHeader().GetChannelHeader())
 		require.NoError(t, err, "Error upon GetChannelHeaderFromBytes")
-		txID2 := chdr.TxId
+		txID2 := chdr.GetTxId()
 
 		exists, err := lgr.TxIDExists(txID2)
 		require.NoError(t, err)
@@ -141,7 +141,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 		processedTran2, err := lgr.GetTransactionByID(txID2)
 		require.NoError(t, err, "Error upon GetTransactionByID")
 		// get the tran envelope from the retrieved ProcessedTransaction
-		retrievedTxEnv2 := processedTran2.TransactionEnvelope
+		retrievedTxEnv2 := processedTran2.GetTransactionEnvelope()
 		require.True(t, proto.Equal(txEnv2, retrievedTxEnv2))
 
 		//  get the tran id from the 2nd block, then use it to test GetBlockByTxID
@@ -182,7 +182,7 @@ func TestAddCommitHash(t *testing.T) {
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	lgr, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	defer lgr.Close()
@@ -234,7 +234,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	lgr, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	defer lgr.Close()
@@ -256,7 +256,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: block1}, &ledger.CommitOptions{}))
 
 	bcInfo, _ = lgr.GetBlockchainInfo()
-	block1Hash := protoutil.BlockHeaderHash(block1.Header)
+	block1Hash := protoutil.BlockHeaderHash(block1.GetHeader())
 	require.Equal(t, &common.BlockchainInfo{
 		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash,
 	}, bcInfo)
@@ -273,7 +273,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: block2}, &ledger.CommitOptions{}))
 
 	bcInfo, _ = lgr.GetBlockchainInfo()
-	block2Hash := protoutil.BlockHeaderHash(block2.Header)
+	block2Hash := protoutil.BlockHeaderHash(block2.GetHeader())
 	require.Equal(t, &common.BlockchainInfo{
 		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash,
 	}, bcInfo)
@@ -314,7 +314,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	require.NoError(t, err)
 	defer ledger1.Close()
 
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	checkBCSummaryForTest(
 		t, ledger1,
 		&bcSummary{
@@ -332,7 +332,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{
 				Height:            2,
-				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata1.Block.Header),
+				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata1.Block.GetHeader()),
 				PreviousBlockHash: gbHash,
 			},
 		},
@@ -356,8 +356,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{
 				Height:            3,
-				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata2.Block.Header),
-				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata1.Block.Header),
+				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata2.Block.GetHeader()),
+				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata1.Block.GetHeader()),
 			},
 
 			stateDBSavePoint: uint64(1),
@@ -418,8 +418,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{
 				Height:            4,
-				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
-				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata2.Block.Header),
+				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata3.Block.GetHeader()),
+				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata2.Block.GetHeader()),
 			},
 
 			stateDBSavePoint: uint64(3),
@@ -480,8 +480,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{
 				Height:            5,
-				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata4.Block.Header),
-				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
+				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata4.Block.GetHeader()),
+				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata3.Block.GetHeader()),
 			},
 
 			stateDBSavePoint: uint64(3),
@@ -526,7 +526,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	lgr, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	defer lgr.Close()
@@ -550,7 +550,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: block1}, &ledger.CommitOptions{}))
 
 	bcInfo, _ = lgr.GetBlockchainInfo()
-	block1Hash := protoutil.BlockHeaderHash(block1.Header)
+	block1Hash := protoutil.BlockHeaderHash(block1.GetHeader())
 	require.Equal(t, &common.BlockchainInfo{
 		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash,
 	}, bcInfo)
@@ -582,7 +582,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: block2}, &ledger.CommitOptions{}))
 
 	bcInfo, _ = lgr.GetBlockchainInfo()
-	block2Hash := protoutil.BlockHeaderHash(block2.Header)
+	block2Hash := protoutil.BlockHeaderHash(block2.GetHeader())
 	require.Equal(t, &common.BlockchainInfo{
 		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash,
 	}, bcInfo)
@@ -621,7 +621,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 			if kmod == nil {
 				break
 			}
-			retrievedValue = kmod.(*queryresult.KeyModification).Value
+			retrievedValue = kmod.(*queryresult.KeyModification).GetValue()
 			count++
 		}
 		require.Equal(t, 3, count)
@@ -639,7 +639,7 @@ func TestPvtDataAPIs(t *testing.T) {
 
 	ledgerID := "testLedger"
 	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	lgr, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	defer lgr.Close()
@@ -701,8 +701,8 @@ func TestPvtDataAPIs(t *testing.T) {
 	// two transactions should be present
 	require.Equal(t, 2, len(blockAndPvtdata.PvtData))
 	// both tran number 4 and 6 should have only one collection because of filter
-	require.Equal(t, 1, len(blockAndPvtdata.PvtData[4].WriteSet.NsPvtRwset))
-	require.Equal(t, 1, len(blockAndPvtdata.PvtData[6].WriteSet.NsPvtRwset))
+	require.Equal(t, 1, len(blockAndPvtdata.PvtData[4].WriteSet.GetNsPvtRwset()))
+	require.Equal(t, 1, len(blockAndPvtdata.PvtData[6].WriteSet.GetNsPvtRwset()))
 	// any other transaction entry should be nil
 	require.Nil(t, blockAndPvtdata.PvtData[2])
 
@@ -737,7 +737,7 @@ func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
 
 	ledgerID := "testLedger"
 	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	lgr, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	defer lgr.Close()
@@ -754,7 +754,7 @@ func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
 	for _, sampleDatum := range dataBeforeCrash {
 		require.NoError(t, lgr.(*kvLedger).commitToPvtAndBlockStore(sampleDatum, nil))
 	}
-	blockNumAtCrash := dataAtCrash.Block.Header.Number
+	blockNumAtCrash := dataAtCrash.Block.GetHeader().GetNumber()
 	var pvtdataAtCrash []*ledger.TxPvtData
 	for _, p := range dataAtCrash.PvtData {
 		pvtdataAtCrash = append(pvtdataAtCrash, p)
@@ -781,7 +781,7 @@ func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
 	testVerifyPvtData(t, lgr1, blockNumAtCrash, dataAtCrash.PvtData)
 	bcInfo, err = lgr.GetBlockchainInfo()
 	require.NoError(t, err)
-	require.Equal(t, blockNumAtCrash, bcInfo.Height)
+	require.Equal(t, blockNumAtCrash, bcInfo.GetHeight())
 
 	// we should be able to write the last block again
 	// to ensure that the pvtdataStore is not updated, we send a different pvtData for
@@ -808,7 +808,7 @@ func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
 	testVerifyPvtData(t, lgr1, blockNumAtCrash, expectedPvtData)
 	bcInfo, err = lgr1.GetBlockchainInfo()
 	require.NoError(t, err)
-	require.Equal(t, blockNumAtCrash+1, bcInfo.Height)
+	require.Equal(t, blockNumAtCrash+1, bcInfo.GetHeight())
 
 	isPvtStoreAhead, err = lgr1.(*kvLedger).isPvtDataStoreAheadOfBlockStore()
 	require.NoError(t, err)
@@ -837,7 +837,7 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 
 	ledgerID := "testLedger"
 	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	lgr, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	defer lgr.Close()
@@ -876,7 +876,7 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	// as both stores are at the same block height, isPvtstoreAheadOfBlockstore should be false
 	info, err := lgr1.GetBlockchainInfo()
 	require.NoError(t, err)
-	require.Equal(t, uint64(10), info.Height)
+	require.Equal(t, uint64(10), info.GetHeight())
 	pvtStoreHt, err := kvlgr.pvtdataStore.LastCommittedBlockHeight()
 	require.NoError(t, err)
 	require.Equal(t, uint64(10), pvtStoreHt)
@@ -888,7 +888,7 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	// Add the last block directly to the pvtdataStore but not to blockstore. This would make
 	// the pvtdatastore height greater than the block store height.
 	validTxPvtData, validTxMissingPvtData := constructPvtDataAndMissingData(lastBlkAndPvtData)
-	err = kvlgr.pvtdataStore.Commit(lastBlkAndPvtData.Block.Header.Number, validTxPvtData, validTxMissingPvtData, nil)
+	err = kvlgr.pvtdataStore.Commit(lastBlkAndPvtData.Block.GetHeader().GetNumber(), validTxPvtData, validTxMissingPvtData, nil)
 	require.NoError(t, err)
 
 	// close and reopen.
@@ -905,7 +905,7 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	// pvtdataStore should be ahead of blockstore
 	info, err = lgr2.GetBlockchainInfo()
 	require.NoError(t, err)
-	require.Equal(t, uint64(10), info.Height)
+	require.Equal(t, uint64(10), info.GetHeight())
 	pvtStoreHt, err = kvlgr.pvtdataStore.LastCommittedBlockHeight()
 	require.NoError(t, err)
 	require.Equal(t, uint64(11), pvtStoreHt)
@@ -917,7 +917,7 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	require.NoError(t, kvlgr.commitToPvtAndBlockStore(lastBlkAndPvtData, nil))
 	info, err = lgr2.GetBlockchainInfo()
 	require.NoError(t, err)
-	require.Equal(t, uint64(11), info.Height)
+	require.Equal(t, uint64(11), info.GetHeight())
 	pvtStoreHt, err = kvlgr.pvtdataStore.LastCommittedBlockHeight()
 	require.NoError(t, err)
 	require.Equal(t, uint64(11), pvtStoreHt)
@@ -935,7 +935,7 @@ func TestCommitToPvtAndBlockstoreError(t *testing.T) {
 
 	ledgerID := "testLedger"
 	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	lgr1, err := provider1.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	defer lgr1.Close()
@@ -1273,7 +1273,7 @@ func TestCommitNotificationsOnBlockCommit(t *testing.T) {
 	block := testutil.ConstructBlockFromBlockDetails(
 		t, &testutil.BlockDetails{
 			BlockNum:     1,
-			PreviousHash: protoutil.BlockHeaderHash(gb.Header),
+			PreviousHash: protoutil.BlockHeaderHash(gb.GetHeader()),
 			Txs: []*testutil.TxDetails{
 				{
 					Type:              common.HeaderType_ENDORSER_TRANSACTION,
@@ -1385,7 +1385,7 @@ func sampleDataWithPvtdataForSelectiveTx(t *testing.T, bg *testutil.BlockGenerat
 
 	// txNum 3, 5, 6 in block 2 has pvtdata but txNum 6 is invalid
 	blockAndpvtdata[2].PvtData = samplePvtData(t, []uint64{3, 5, 6})
-	txFilter := txflags.ValidationFlags(blockAndpvtdata[2].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txFilter := txflags.ValidationFlags(blockAndpvtdata[2].Block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	txFilter.SetFlag(6, peer.TxValidationCode_INVALID_WRITESET)
 	blockAndpvtdata[2].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txFilter
 
@@ -1397,7 +1397,7 @@ func sampleDataWithPvtdataForSelectiveTx(t *testing.T, bg *testutil.BlockGenerat
 	missingData.Add(4, "ns-4", "coll-4", true)
 	missingData.Add(5, "ns-5", "coll-5", true)
 	blockAndpvtdata[5].MissingPvtData = missingData
-	txFilter = blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER]
+	txFilter = blockAndpvtdata[5].Block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER]
 	txFilter.SetFlag(5, peer.TxValidationCode_INVALID_WRITESET)
 	blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txFilter
 
@@ -1550,7 +1550,7 @@ func checkHistoryDBForTest(t *testing.T, l ledger.PeerLedger, key string, expect
 		if kmod == nil {
 			break
 		}
-		retrievedValue := kmod.(*queryresult.KeyModification).Value
+		retrievedValue := kmod.(*queryresult.KeyModification).GetValue()
 		actualVals = append(actualVals, string(retrievedValue))
 	}
 	require.Equal(t, expectedVals, actualVals)

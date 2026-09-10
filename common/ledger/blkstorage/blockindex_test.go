@@ -117,7 +117,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 
 		// if index has been configured for an indexItem then the item should be indexed else not
 		// test 'retrieveBlockByHash'
-		block, err := blockfileMgr.retrieveBlockByHash(protoutil.BlockHeaderHash(blocks[0].Header))
+		block, err := blockfileMgr.retrieveBlockByHash(protoutil.BlockHeaderHash(blocks[0].GetHeader()))
 		if containsAttr(indexItems, IndexableAttrBlockHash) {
 			require.NoError(t, err, "Error while retrieving block by hash")
 			require.Equal(t, blocks[0], block)
@@ -135,12 +135,12 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 		}
 
 		// test 'retrieveTransactionByID'
-		txid, err := protoutil.GetOrComputeTxIDFromEnvelope(blocks[0].Data.Data[0])
+		txid, err := protoutil.GetOrComputeTxIDFromEnvelope(blocks[0].GetData().GetData()[0])
 		require.NoError(t, err)
 		txEnvelope, err := blockfileMgr.retrieveTransactionByID(txid)
 		if containsAttr(indexItems, IndexableAttrTxID) {
 			require.NoError(t, err, "Error while retrieving tx by id")
-			txEnvelopeBytes := blocks[0].Data.Data[0]
+			txEnvelopeBytes := blocks[0].GetData().GetData()[0]
 			txEnvelopeOrig, err := protoutil.GetEnvelopeFromBlock(txEnvelopeBytes)
 			require.NoError(t, err)
 			require.Equal(t, txEnvelopeOrig, txEnvelope)
@@ -149,7 +149,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 		}
 
 		// test txIDExists
-		txid, err = protoutil.GetOrComputeTxIDFromEnvelope(blocks[0].Data.Data[0])
+		txid, err = protoutil.GetOrComputeTxIDFromEnvelope(blocks[0].GetData().GetData()[0])
 		require.NoError(t, err)
 		exists, err := blockfileMgr.txIDExists(txid)
 		if containsAttr(indexItems, IndexableAttrTxID) {
@@ -163,7 +163,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 		txEnvelope2, err := blockfileMgr.retrieveTransactionByBlockNumTranNum(0, 0)
 		if containsAttr(indexItems, IndexableAttrBlockNumTranNum) {
 			require.NoError(t, err, "Error while retrieving tx by blockNum and tranNum")
-			txEnvelopeBytes2 := blocks[0].Data.Data[0]
+			txEnvelopeBytes2 := blocks[0].GetData().GetData()[0]
 			txEnvelopeOrig2, err2 := protoutil.GetEnvelopeFromBlock(txEnvelopeBytes2)
 			require.NoError(t, err2)
 			require.Equal(t, txEnvelopeOrig2, txEnvelope2)
@@ -172,7 +172,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 		}
 
 		// test 'retrieveBlockByTxID'
-		txid, err = protoutil.GetOrComputeTxIDFromEnvelope(blocks[0].Data.Data[0])
+		txid, err = protoutil.GetOrComputeTxIDFromEnvelope(blocks[0].GetData().GetData()[0])
 		require.NoError(t, err)
 		block, err = blockfileMgr.retrieveBlockByTxID(txid)
 		if containsAttr(indexItems, IndexableAttrTxID) {
@@ -183,9 +183,9 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 		}
 
 		for _, block := range blocks {
-			flags := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+			flags := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
-			for idx, d := range block.Data.Data {
+			for idx, d := range block.GetData().GetData() {
 				txid, err = protoutil.GetOrComputeTxIDFromEnvelope(d)
 				require.NoError(t, err)
 
@@ -195,7 +195,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 					require.NoError(t, err)
 					reasonFromFlags := flags.Flag(idx)
 					require.Equal(t, reasonFromFlags, reason)
-					require.Equal(t, block.Header.Number, blkNum)
+					require.Equal(t, block.GetHeader().GetNumber(), blkNum)
 				} else {
 					require.EqualError(t, err, "transaction IDs not maintained in index")
 				}
@@ -285,7 +285,7 @@ func TestExportUniqueTxIDs(t *testing.T) {
 	// add genesis block and test the exported bytes
 	bg, gb := testutil.NewBlockGenerator(t, "myChannel", false)
 	blkfileMgr.addBlock(gb)
-	configTxID, err := protoutil.GetOrComputeTxIDFromEnvelope(gb.Data.Data[0])
+	configTxID, err := protoutil.GetOrComputeTxIDFromEnvelope(gb.GetData().GetData()[0])
 	require.NoError(t, err)
 	fileHashes, err = blkfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)

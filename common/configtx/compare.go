@@ -46,11 +46,11 @@ func (cg comparable) equals(other comparable) bool {
 func (cg comparable) version() uint64 {
 	switch {
 	case cg.ConfigGroup != nil:
-		return cg.ConfigGroup.Version
+		return cg.ConfigGroup.GetVersion()
 	case cg.ConfigValue != nil:
-		return cg.ConfigValue.Version
+		return cg.ConfigValue.GetVersion()
 	case cg.ConfigPolicy != nil:
-		return cg.ConfigPolicy.Version
+		return cg.ConfigPolicy.GetVersion()
 	}
 
 	// Unreachable
@@ -60,11 +60,11 @@ func (cg comparable) version() uint64 {
 func (cg comparable) modPolicy() string {
 	switch {
 	case cg.ConfigGroup != nil:
-		return cg.ConfigGroup.ModPolicy
+		return cg.ConfigGroup.GetModPolicy()
 	case cg.ConfigValue != nil:
-		return cg.ConfigValue.ModPolicy
+		return cg.ConfigValue.GetModPolicy()
 	case cg.ConfigPolicy != nil:
-		return cg.ConfigPolicy.ModPolicy
+		return cg.ConfigPolicy.GetModPolicy()
 	}
 
 	// Unreachable
@@ -72,23 +72,23 @@ func (cg comparable) modPolicy() string {
 }
 
 func equalConfigValues(lhs, rhs *cb.ConfigValue) bool {
-	return lhs.Version == rhs.Version &&
-		lhs.ModPolicy == rhs.ModPolicy &&
-		bytes.Equal(lhs.Value, rhs.Value)
+	return lhs.GetVersion() == rhs.GetVersion() &&
+		lhs.GetModPolicy() == rhs.GetModPolicy() &&
+		bytes.Equal(lhs.GetValue(), rhs.GetValue())
 }
 
 func equalConfigPolicies(lhs, rhs *cb.ConfigPolicy) bool {
-	if lhs.Version != rhs.Version ||
-		lhs.ModPolicy != rhs.ModPolicy {
+	if lhs.GetVersion() != rhs.GetVersion() ||
+		lhs.GetModPolicy() != rhs.GetModPolicy() {
 		return false
 	}
 
-	if lhs.Policy == nil || rhs.Policy == nil {
-		return lhs.Policy == rhs.Policy
+	if lhs.GetPolicy() == nil || rhs.GetPolicy() == nil {
+		return lhs.GetPolicy() == rhs.GetPolicy()
 	}
 
-	return lhs.Policy.Type == rhs.Policy.Type &&
-		bytes.Equal(lhs.Policy.Value, rhs.Policy.Value)
+	return lhs.GetPolicy().GetType() == rhs.GetPolicy().GetType() &&
+		bytes.Equal(lhs.GetPolicy().GetValue(), rhs.GetPolicy().GetValue())
 }
 
 // The subset functions check if inner is a subset of outer
@@ -158,17 +158,17 @@ func subsetOfValues(inner, outer map[string]*cb.ConfigValue) bool {
 }
 
 func equalConfigGroup(lhs, rhs *cb.ConfigGroup) bool {
-	if lhs.Version != rhs.Version ||
-		lhs.ModPolicy != rhs.ModPolicy {
+	if lhs.GetVersion() != rhs.GetVersion() ||
+		lhs.GetModPolicy() != rhs.GetModPolicy() {
 		return false
 	}
 
-	if !subsetOfGroups(lhs.Groups, rhs.Groups) ||
-		!subsetOfGroups(rhs.Groups, lhs.Groups) ||
-		!subsetOfPolicies(lhs.Policies, rhs.Policies) ||
-		!subsetOfPolicies(rhs.Policies, lhs.Policies) ||
-		!subsetOfValues(lhs.Values, rhs.Values) ||
-		!subsetOfValues(rhs.Values, lhs.Values) {
+	if !subsetOfGroups(lhs.GetGroups(), rhs.GetGroups()) ||
+		!subsetOfGroups(rhs.GetGroups(), lhs.GetGroups()) ||
+		!subsetOfPolicies(lhs.GetPolicies(), rhs.GetPolicies()) ||
+		!subsetOfPolicies(rhs.GetPolicies(), lhs.GetPolicies()) ||
+		!subsetOfValues(lhs.GetValues(), rhs.GetValues()) ||
+		!subsetOfValues(rhs.GetValues(), lhs.GetValues()) {
 		return false
 	}
 

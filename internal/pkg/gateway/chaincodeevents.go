@@ -108,7 +108,7 @@ func chaincodeEventMatcher(request *gp.ChaincodeEventsRequest) func(event *peer.
 
 	return func(event *peer.ChaincodeEvent) bool {
 		if !passedPreviousTransaction {
-			if event.TxId == previousTransactionID {
+			if event.GetTxId() == previousTransactionID {
 				passedPreviousTransaction = true
 			}
 			return false

@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package pvtstatepurgemgmt
 
 func (pvtdataKeys *PvtdataKeys) addAll(toAdd *PvtdataKeys) {
-	for ns, colls := range toAdd.Map {
-		for coll, keysAndHashes := range colls.Map {
-			for _, k := range keysAndHashes.List {
-				pvtdataKeys.add(ns, coll, k.Key, k.Hash)
+	for ns, colls := range toAdd.GetMap() {
+		for coll, keysAndHashes := range colls.GetMap() {
+			for _, k := range keysAndHashes.GetList() {
+				pvtdataKeys.add(ns, coll, k.GetKey(), k.GetHash())
 			}
 		}
 	}
@@ -23,7 +23,7 @@ func (pvtdataKeys *PvtdataKeys) add(ns string, coll string, key string, keyhash 
 }
 
 func (pvtdataKeys *PvtdataKeys) getOrCreateCollections(ns string) *Collections {
-	colls, ok := pvtdataKeys.Map[ns]
+	colls, ok := pvtdataKeys.GetMap()[ns]
 	if !ok {
 		colls = newCollections()
 		pvtdataKeys.Map[ns] = colls
@@ -32,7 +32,7 @@ func (pvtdataKeys *PvtdataKeys) getOrCreateCollections(ns string) *Collections {
 }
 
 func (colls *Collections) getOrCreateKeysAndHashes(coll string) *KeysAndHashes {
-	keysAndHashes, ok := colls.Map[coll]
+	keysAndHashes, ok := colls.GetMap()[coll]
 	if !ok {
 		keysAndHashes = &KeysAndHashes{}
 		colls.Map[coll] = keysAndHashes

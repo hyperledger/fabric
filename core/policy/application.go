@@ -152,7 +152,7 @@ func (a *ApplicationPolicyEvaluator) Evaluate(policyBytes []byte, signatureSet [
 		return errors.Wrap(err, "failed to unmarshal ApplicationPolicy bytes")
 	}
 
-	switch policy := p.Type.(type) {
+	switch policy := p.GetType().(type) {
 	case *peer.ApplicationPolicy_SignaturePolicy:
 		return a.evaluateSignaturePolicy(policy.SignaturePolicy, signatureSet)
 	case *peer.ApplicationPolicy_ChannelConfigPolicyReference:

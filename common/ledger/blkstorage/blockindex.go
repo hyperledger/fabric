@@ -91,7 +91,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	txOffsets := blockIdxInfo.txOffsets
 	blkNum := blockIdxInfo.blockNum
 	blkHash := blockIdxInfo.blockHash
-	txsfltr := txflags.ValidationFlags(blockIdxInfo.metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(blockIdxInfo.metadata.GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	batch := index.db.NewUpdateBatch()
 	flpBytes := flp.marshal()
 
@@ -193,7 +193,7 @@ func (index *blockIndex) getTxLoc(txID string) (*fileLocPointer, error) {
 		return nil, err
 	}
 	txFLP := &fileLocPointer{}
-	if err = txFLP.unmarshal(v.TxLocation); err != nil {
+	if err = txFLP.unmarshal(v.GetTxLocation()); err != nil {
 		return nil, err
 	}
 	return txFLP, nil
@@ -205,7 +205,7 @@ func (index *blockIndex) getBlockLocByTxID(txID string) (*fileLocPointer, error)
 		return nil, err
 	}
 	blkFLP := &fileLocPointer{}
-	if err = blkFLP.unmarshal(v.BlkLocation); err != nil {
+	if err = blkFLP.unmarshal(v.GetBlkLocation()); err != nil {
 		return nil, err
 	}
 	return blkFLP, nil
@@ -216,7 +216,7 @@ func (index *blockIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidati
 	if err != nil {
 		return peer.TxValidationCode(-1), 0, err
 	}
-	return peer.TxValidationCode(v.TxValidationCode), blkNum, nil
+	return peer.TxValidationCode(v.GetTxValidationCode()), blkNum, nil
 }
 
 func (index *blockIndex) txIDExists(txID string) (bool, error) {

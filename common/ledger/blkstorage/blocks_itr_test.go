@@ -148,9 +148,9 @@ func iterateInBackground(t *testing.T, itr *blocksItr, quitAfterBlkNum uint64, w
 		if blk == nil {
 			return
 		}
-		blkNum := blk.(*common.Block).Header.Number
+		blkNum := blk.(*common.Block).GetHeader().GetNumber()
 		retrievedBlkNums = append(retrievedBlkNums, blkNum)
-		t.Logf("blk.Num=%d", blk.(*common.Block).Header.Number)
+		t.Logf("blk.Num=%d", blk.(*common.Block).GetHeader().GetNumber())
 		if blkNum == quitAfterBlkNum {
 			return
 		}

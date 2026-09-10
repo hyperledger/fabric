@@ -629,11 +629,11 @@ func (s *Store) removePurgedDataFromCollPvtRWset(k *dataKey, v *rwset.Collection
 	}
 
 	filterInKVWrites := []*kvrwset.KVWrite{}
-	for _, w := range collRWSet.KvRwSet.Writes {
+	for _, w := range collRWSet.KvRwSet.GetWrites() {
 		potentialPurgeMarker := encodePurgeMarkerKey(&purgeMarkerKey{
 			ns:         k.ns,
 			coll:       k.coll,
-			pvtkeyHash: util.ComputeStringHash(w.Key),
+			pvtkeyHash: util.ComputeStringHash(w.GetKey()),
 		})
 
 		encPurgeMarkerVal, err := s.db.Get(potentialPurgeMarker)
@@ -1026,9 +1026,9 @@ func (s *Store) processCollElgEvents() error {
 			logger.Errorf("This error is not expected %s", err)
 			continue
 		}
-		for ns, colls := range CollElgInfo.NsCollMap {
+		for ns, colls := range CollElgInfo.GetNsCollMap() {
 			var coll string
-			for _, coll = range colls.Entries {
+			for _, coll = range colls.GetEntries() {
 				logger.Infof("Converting missing data entries from ineligible to eligible for [ns=%s, coll=%s]", ns, coll)
 				startKey, endKey := createRangeScanKeysForInelgMissingData(blkNum, ns, coll)
 				collItr, err := s.db.GetIterator(startKey, endKey)
@@ -1247,12 +1247,12 @@ func (p *purgeUpdatesProcessor) process(hashedIndexKey, hashedIndexVal []byte) e
 	}
 
 	collWS := p.pvtWrites[string(dataKey)]
-	writes := collWS.KvRwSet.Writes
+	writes := collWS.KvRwSet.GetWrites()
 	for i, w := range writes {
 		// hashedIndexVal represents the raw private data key
-		if w.Key == string(hashedIndexVal) {
+		if w.GetKey() == string(hashedIndexVal) {
 			collWS.KvRwSet.Writes = append(writes[:i], writes[i+1:]...)
-			p.currentSize -= len(w.Key) + len(w.Value)
+			p.currentSize -= len(w.GetKey()) + len(w.GetValue())
 			break
 		}
 	}

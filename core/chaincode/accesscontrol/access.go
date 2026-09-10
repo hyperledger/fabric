@@ -58,18 +58,18 @@ func (ac *Authenticator) Generate(ccName string) (*CertAndPrivKeyPair, error) {
 }
 
 func (ac *Authenticator) authenticate(msg *pb.ChaincodeMessage, stream grpc.ServerStream) error {
-	if msg.Type != pb.ChaincodeMessage_REGISTER {
+	if msg.GetType() != pb.ChaincodeMessage_REGISTER {
 		logger.Warning("Got message", msg, "but expected a ChaincodeMessage_REGISTER message")
 		return errors.New("First message needs to be a register")
 	}
 
 	chaincodeID := &pb.ChaincodeID{}
-	err := proto.Unmarshal(msg.Payload, chaincodeID)
+	err := proto.Unmarshal(msg.GetPayload(), chaincodeID)
 	if err != nil {
 		logger.Warning("Failed unmarshalling message:", err)
 		return err
 	}
-	ccName := chaincodeID.Name
+	ccName := chaincodeID.GetName()
 	// Obtain certificate from stream
 	hash := extractCertificateHashFromContext(stream.Context())
 	if len(hash) == 0 {

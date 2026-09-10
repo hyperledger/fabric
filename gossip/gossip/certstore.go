@@ -52,8 +52,8 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 	puller.Add(selfIDMsg)
 	puller.RegisterMsgHook(pull.RequestMsgType, func(_ []string, msgs []*protoext.SignedGossipMessage, _ protoext.ReceivedMessage) {
 		for _, msg := range msgs {
-			pkiID := common.PKIidType(msg.GetPeerIdentity().PkiId)
-			cert := api.PeerIdentityType(msg.GetPeerIdentity().Cert)
+			pkiID := common.PKIidType(msg.GetPeerIdentity().GetPkiId())
+			cert := api.PeerIdentityType(msg.GetPeerIdentity().GetCert())
 			if err := certStore.idMapper.Put(pkiID, cert); err != nil {
 				certStore.logger.Warningf("Failed adding identity %v, reason %+v", cert, errors.WithStack(err))
 			}
@@ -64,7 +64,7 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 
 func (cs *certStore) handleMessage(msg protoext.ReceivedMessage) {
 	if update := msg.GetGossipMessage().GetDataUpdate(); update != nil {
-		for _, env := range update.Data {
+		for _, env := range update.GetData() {
 			m, err := protoext.EnvelopeToGossipMessage(env)
 			if err != nil {
 				cs.logger.Warningf("Data update contains an invalid message: %+v", errors.WithStack(err))
@@ -88,8 +88,8 @@ func (cs *certStore) validateIdentityMsg(msg *protoext.SignedGossipMessage) erro
 	if idMsg == nil {
 		return errors.Errorf("Identity empty: %+v", msg)
 	}
-	pkiID := idMsg.PkiId
-	cert := idMsg.Cert
+	pkiID := idMsg.GetPkiId()
+	cert := idMsg.GetCert()
 	calculatedPKIID := cs.mcs.GetPKIidOfCert(cert)
 	claimedPKIID := common.PKIidType(pkiID)
 	if !bytes.Equal(calculatedPKIID, claimedPKIID) {
@@ -105,7 +105,7 @@ func (cs *certStore) validateIdentityMsg(msg *protoext.SignedGossipMessage) erro
 		return errors.Wrap(err, "Failed verifying message")
 	}
 
-	return cs.mcs.ValidateIdentity(idMsg.Cert)
+	return cs.mcs.ValidateIdentity(idMsg.GetCert())
 }
 
 func (cs *certStore) createIdentityMessage() (*protoext.SignedGossipMessage, error) {

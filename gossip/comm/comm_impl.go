@@ -457,15 +457,15 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator, isProbe bool
 	}
 
 	c.logger.Debug("Received", receivedMsg, "from", remoteAddress)
-	err = c.idMapper.Put(receivedMsg.PkiId, receivedMsg.Identity)
+	err = c.idMapper.Put(receivedMsg.GetPkiId(), receivedMsg.GetIdentity())
 	if err != nil {
 		c.logger.Warningf("Identity store rejected %s : %v", remoteAddress, err)
 		return nil, err
 	}
 
 	connInfo := &protoext.ConnectionInfo{
-		ID:       receivedMsg.PkiId,
-		Identity: receivedMsg.Identity,
+		ID:       receivedMsg.GetPkiId(),
+		Identity: receivedMsg.GetIdentity(),
 		Endpoint: remoteAddress,
 		Auth: &protoext.AuthInfo{
 			Signature:  m.Signature,
@@ -477,8 +477,8 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator, isProbe bool
 	if useTLS {
 		// If the remote peer sent its TLS certificate, make sure it actually matches the TLS cert
 		// that the peer used.
-		if !bytes.Equal(remoteCertHash, receivedMsg.TlsCertHash) {
-			return nil, errors.Errorf("Expected %v in remote hash of TLS cert, but got %v", remoteCertHash, receivedMsg.TlsCertHash)
+		if !bytes.Equal(remoteCertHash, receivedMsg.GetTlsCertHash()) {
+			return nil, errors.Errorf("Expected %v in remote hash of TLS cert, but got %v", remoteCertHash, receivedMsg.GetTlsCertHash())
 		}
 	}
 	// Final step - verify the signature on the connection message itself
@@ -486,7 +486,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator, isProbe bool
 		pkiID := c.idMapper.GetPKIidOfCert(peerIdentity)
 		return c.idMapper.Verify(pkiID, signature, message)
 	}
-	err = m.Verify(receivedMsg.Identity, verifier)
+	err = m.Verify(receivedMsg.GetIdentity(), verifier)
 	if err != nil {
 		c.logger.Errorf("Failed verifying signature from %s : %v", remoteAddress, err)
 		return nil, err
@@ -494,7 +494,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator, isProbe bool
 
 	c.logger.Debug("Authenticated", remoteAddress)
 
-	if receivedMsg.Probe {
+	if receivedMsg.GetProbe() {
 		return connInfo, errProbe
 	}
 
@@ -544,8 +544,8 @@ func (c *commImpl) SendWithAck(msg *protoext.SignedGossipMessage, timeout time.D
 			if msg, isAck := msg.(*proto.Acknowledgement); !isAck {
 				return errors.Errorf("received a message of type %s, expected *proto.Acknowledgement", reflect.TypeFor[*proto.Acknowledgement]())
 			} else {
-				if msg.Error != "" {
-					return errors.New(msg.Error)
+				if msg.GetError() != "" {
+					return errors.New(msg.GetError())
 				}
 			}
 			return nil

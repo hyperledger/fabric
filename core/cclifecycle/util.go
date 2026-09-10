@@ -42,16 +42,16 @@ func DeployedChaincodes(q Query, filter ChaincodePredicate, loadCollections bool
 			Logger.Error("Failed extracting chaincode info about", cc, "from LSCC returned payload. Error:", err)
 			continue
 		}
-		if ccInfo.Name != cc {
-			Logger.Error("Chaincode", cc, "is listed in LSCC as", ccInfo.Name)
+		if ccInfo.GetName() != cc {
+			Logger.Error("Chaincode", cc, "is listed in LSCC as", ccInfo.GetName())
 			continue
 		}
 
 		instCC := chaincode.Metadata{
-			Name:    ccInfo.Name,
-			Version: ccInfo.Version,
-			Id:      ccInfo.Id,
-			Policy:  ccInfo.Policy,
+			Name:    ccInfo.GetName(),
+			Version: ccInfo.GetVersion(),
+			Id:      ccInfo.GetId(),
+			Policy:  ccInfo.GetPolicy(),
 		}
 
 		if !filter(instCC) {

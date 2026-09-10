@@ -326,11 +326,11 @@ func (p *Provider) Open(ledgerID string) (ledger.PeerLedger, error) {
 	if ledgerMetadata == nil {
 		return nil, errors.Errorf("cannot open ledger [%s], ledger does not exist", ledgerID)
 	}
-	if ledgerMetadata.Status != msgs.Status_ACTIVE {
-		return nil, errors.Errorf("cannot open ledger [%s], ledger status is [%s]", ledgerID, ledgerMetadata.Status)
+	if ledgerMetadata.GetStatus() != msgs.Status_ACTIVE {
+		return nil, errors.Errorf("cannot open ledger [%s], ledger status is [%s]", ledgerID, ledgerMetadata.GetStatus())
 	}
 
-	bootSnapshotMetadata, err := snapshotMetadataFromProto(ledgerMetadata.BootSnapshotMetadata)
+	bootSnapshotMetadata, err := snapshotMetadataFromProto(ledgerMetadata.GetBootSnapshotMetadata())
 	if err != nil {
 		return nil, err
 	}
@@ -451,20 +451,20 @@ func (p *Provider) deletePartialLedgers() error {
 		if err := proto.Unmarshal(itr.Value(), metadata); err != nil {
 			return errors.Wrapf(err, "error while unmarshalling metadata bytes for ledger [%s]", ledgerID)
 		}
-		if metadata.Status == msgs.Status_UNDER_CONSTRUCTION || metadata.Status == msgs.Status_UNDER_DELETION {
+		if metadata.GetStatus() == msgs.Status_UNDER_CONSTRUCTION || metadata.GetStatus() == msgs.Status_UNDER_DELETION {
 			logger.Infow(
 				"A partial ledger was identified at peer launch, indicating a peer stop/crash during creation or a failed channel unjoin.  The partial ledger wil be deleted.",
 				"ledgerID", ledgerID,
-				"Status", metadata.Status,
+				"Status", metadata.GetStatus(),
 			)
 			if err := p.runCleanup(ledgerID); err != nil {
 				logger.Errorw(
 					"Error while deleting a partially created ledger at start",
 					"ledgerID", ledgerID,
-					"Status", metadata.Status,
+					"Status", metadata.GetStatus(),
 					"error", err,
 				)
-				return errors.WithMessagef(err, "error while deleting a partially constructed ledger with status [%s] at start for ledger = [%s]", metadata.Status, ledgerID)
+				return errors.WithMessagef(err, "error while deleting a partially constructed ledger with status [%s] at start for ledger = [%s]", metadata.GetStatus(), ledgerID)
 			}
 		}
 	}
@@ -494,8 +494,8 @@ func snapshotMetadataFromProto(p *msgs.BootSnapshotMetadata) (*SnapshotMetadata,
 	}
 
 	m := &SnapshotMetadataJSONs{
-		signableMetadata:   p.SingableMetadata,
-		additionalMetadata: p.AdditionalMetadata,
+		signableMetadata:   p.GetSingableMetadata(),
+		additionalMetadata: p.GetAdditionalMetadata(),
 	}
 
 	return m.ToMetadata()
@@ -644,7 +644,7 @@ func (s *idStore) updateLedgerStatus(ledgerID string, newStatus msgs.Status) err
 		logger.Errorf("LedgerID [%s] does not exist", ledgerID)
 		return errors.Errorf("cannot update ledger status, ledger [%s] does not exist", ledgerID)
 	}
-	if metadata.Status == newStatus {
+	if metadata.GetStatus() == newStatus {
 		logger.Infof("Ledger [%s] is already in [%s] status, nothing to do", ledgerID, newStatus)
 		return nil
 	}
@@ -708,7 +708,7 @@ func (s *idStore) getLedgerIDs(filterIn map[msgs.Status]struct{}) ([]string, err
 			logger.Errorf("Error unmarshalling ledger metadata: %s", err)
 			return nil, errors.Wrapf(err, "error unmarshalling ledger metadata")
 		}
-		if _, ok := filterIn[metadata.Status]; ok {
+		if _, ok := filterIn[metadata.GetStatus()]; ok {
 			id := ledgerIDFromMetadataKey(itr.Key())
 			ids = append(ids, id)
 		}

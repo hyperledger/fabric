@@ -63,11 +63,11 @@ func (pvt *PvtDataCollections) Unmarshal(data [][]byte) error {
 			return err
 		}
 		pvtRWSet := &rwset.TxPvtReadWriteSet{}
-		if err := proto.Unmarshal(payload.Payload, pvtRWSet); err != nil {
+		if err := proto.Unmarshal(payload.GetPayload(), pvtRWSet); err != nil {
 			return err
 		}
 		*pvt = append(*pvt, &ledger.TxPvtData{
-			SeqInBlock: payload.TxSeqInBlock,
+			SeqInBlock: payload.GetTxSeqInBlock(),
 			WriteSet:   pvtRWSet,
 		})
 	}

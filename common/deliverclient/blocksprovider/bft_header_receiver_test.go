@@ -391,7 +391,7 @@ func prepareConfigBlock(seq uint64, goodSignature uint32) *orderer.DeliverRespon
 	}
 
 	block.Data = &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(env)}}
-	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 	fakeSignature(block, goodSignature)
 
 	return &orderer.DeliverResponse{
@@ -402,7 +402,7 @@ func prepareConfigBlock(seq uint64, goodSignature uint32) *orderer.DeliverRespon
 }
 
 func naiveBlockVerifier(signedBlock *common.Block) error {
-	sigArray := signedBlock.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES]
+	sigArray := signedBlock.GetMetadata().GetMetadata()[common.BlockMetadataIndex_SIGNATURES]
 	sig := string(sigArray)
 	if sig == "good" {
 		return nil

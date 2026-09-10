@@ -135,7 +135,7 @@ func (br *BlockReceiver) processMsg(msg *orderer.DeliverResponse) (uint64, *comm
 
 		return 0, nil, errors.Errorf("received bad status %v from orderer", t.Status)
 	case *orderer.DeliverResponse_Block:
-		blockNum := t.Block.Header.Number
+		blockNum := t.Block.GetHeader().GetNumber()
 
 		if err := br.updatableBlockVerifier.VerifyBlock(t.Block); err != nil {
 			return 0, nil, errors.WithMessagef(err, "block [%d] from orderer [%s] could not be verified", blockNum, br.endpoint.String())

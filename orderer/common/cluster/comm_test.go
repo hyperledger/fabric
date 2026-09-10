@@ -112,9 +112,9 @@ type mockChannelExtractor struct{}
 func (*mockChannelExtractor) TargetChannel(msg proto.Message) string {
 	switch req := msg.(type) {
 	case *orderer.ConsensusRequest:
-		return req.Channel
+		return req.GetChannel()
 	case *orderer.SubmitRequest:
-		return req.Channel
+		return req.GetChannel()
 	default:
 		return ""
 	}
@@ -341,7 +341,7 @@ func TestSendBigMessage(t *testing.T) {
 		Payload: make([]byte, msgSize),
 	}
 
-	_, err := rand.Read(bigMsg.Payload)
+	_, err := rand.Read(bigMsg.GetPayload())
 	require.NoError(t, err)
 
 	wrappedMsg := &orderer.StepRequest{
@@ -353,7 +353,7 @@ func TestSendBigMessage(t *testing.T) {
 	for _, node := range []*clusterNode{node2, node3, node4, node5} {
 		node.handler.On("OnConsensus", testChannel, node1.nodeInfo.ID, mock.Anything).Run(func(args mock.Arguments) {
 			msg := args.Get(2).(*orderer.ConsensusRequest)
-			require.Len(t, msg.Payload, msgSize)
+			require.Len(t, msg.GetPayload(), msgSize)
 			messageReceived.Done()
 		}).Return(nil)
 	}

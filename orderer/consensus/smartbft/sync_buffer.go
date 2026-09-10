@@ -31,7 +31,7 @@ func NewSyncBuffer(capacity uint) *SyncBuffer {
 
 // HandleBlock gives the block to the next stage of processing after fetching it from a remote orderer.
 func (sb *SyncBuffer) HandleBlock(channelID string, block *common.Block) error {
-	if block == nil || block.Header == nil {
+	if block == nil || block.GetHeader() == nil {
 		return errors.Errorf("empty block or block header, channel: %s", channelID)
 	}
 
@@ -48,7 +48,7 @@ func (sb *SyncBuffer) PullBlock(seq uint64) *common.Block {
 	for {
 		select {
 		case block = <-sb.blockCh:
-			if block == nil || block.Header == nil {
+			if block == nil || block.GetHeader() == nil {
 				return nil
 			}
 			if block.GetHeader().GetNumber() == seq {

@@ -50,7 +50,7 @@ func TestChainSupportBlock(t *testing.T) {
 	}
 
 	require.Nil(t, cs.Block(100))
-	require.Equal(t, uint64(99), cs.Block(99).Header.Number)
+	require.Equal(t, uint64(99), cs.Block(99).GetHeader().GetNumber())
 }
 
 type mutableResourcesMock struct {

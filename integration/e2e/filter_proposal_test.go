@@ -115,14 +115,14 @@ var _ = Describe("FilterProposalTimeWindow", func() {
 		rpcErr := status.Convert(err)
 		Expect(rpcErr.Message()).To(Equal("failed to collect enough transaction endorsements, see attached details for more info"))
 		Expect(len(rpcErr.Details())).To(BeNumerically(">", 0))
-		Expect(rpcErr.Details()[0].(*gateway.ErrorDetail).Message).To(ContainSubstring("request unauthorized due to incorrect timestamp"))
+		Expect(rpcErr.Details()[0].(*gateway.ErrorDetail).GetMessage()).To(ContainSubstring("request unauthorized due to incorrect timestamp"))
 
 		By("sub 30 minute")
 		err = endorser(network, timestamppb.New(time.Now().Add(-time.Minute*30)))
 		rpcErr = status.Convert(err)
 		Expect(rpcErr.Message()).To(Equal("failed to collect enough transaction endorsements, see attached details for more info"))
 		Expect(len(rpcErr.Details())).To(BeNumerically(">", 0))
-		Expect(rpcErr.Details()[0].(*gateway.ErrorDetail).Message).To(ContainSubstring("request unauthorized due to incorrect timestamp"))
+		Expect(rpcErr.Details()[0].(*gateway.ErrorDetail).GetMessage()).To(ContainSubstring("request unauthorized due to incorrect timestamp"))
 	})
 })
 
@@ -200,7 +200,7 @@ func getRandomNonce() ([]byte, error) {
 // createChaincodeProposalWithTxIDNonceAndTransient creates a proposal from
 // given input
 func createChaincodeProposalWithTxIDNonceAndTransient(txid string, typ common.HeaderType, channelID string, cis *peer.ChaincodeInvocationSpec, nonce, creator []byte, transientMap map[string][]byte, needTime *timestamppb.Timestamp) (*peer.Proposal, string, error) {
-	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeId: cis.ChaincodeSpec.ChaincodeId}
+	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeId: cis.GetChaincodeSpec().GetChaincodeId()}
 	ccHdrExtBytes, err := proto.Marshal(ccHdrExt)
 	if err != nil {
 		return nil, "", errors.Wrap(err, "error marshaling ChaincodeHeaderExtension")

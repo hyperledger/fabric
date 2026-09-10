@@ -62,7 +62,7 @@ func (p *LSCCBasedBTLPolicy) GetBTL(namespace string, collection string) (uint64
 		if collConfig == nil {
 			return 0, privdata.NoSuchCollectionError{Namespace: namespace, Collection: collection}
 		}
-		btlConfigured := collConfig.BlockToLive
+		btlConfigured := collConfig.GetBlockToLive()
 		if btlConfigured > 0 {
 			btl = btlConfigured
 		} else {

@@ -151,18 +151,18 @@ func addIndexEntriesToBeDeleted(batch *leveldbhelper.UpdateBatch, blockInfo *ser
 	}
 
 	if indexStore.isAttributeIndexed(IndexableAttrBlockNum) {
-		batch.Delete(constructBlockNumKey(blockInfo.blockHeader.Number))
+		batch.Delete(constructBlockNumKey(blockInfo.blockHeader.GetNumber()))
 	}
 
 	if indexStore.isAttributeIndexed(IndexableAttrBlockNumTranNum) {
 		for txIndex := range blockInfo.txOffsets {
-			batch.Delete(constructBlockNumTranNumKey(blockInfo.blockHeader.Number, uint64(txIndex)))
+			batch.Delete(constructBlockNumTranNumKey(blockInfo.blockHeader.GetNumber(), uint64(txIndex)))
 		}
 	}
 
 	if indexStore.isAttributeIndexed(IndexableAttrTxID) {
 		for i, txOffset := range blockInfo.txOffsets {
-			batch.Delete(constructTxIDKey(txOffset.txID, blockInfo.blockHeader.Number, uint64(i)))
+			batch.Delete(constructTxIDKey(txOffset.txID, blockInfo.blockHeader.GetNumber(), uint64(i)))
 		}
 	}
 	return nil
@@ -222,7 +222,7 @@ func calculateEndOffSet(ledgerDir string, targetBlkFileNum int, blockNum uint64)
 		if err != nil {
 			return 0, err
 		}
-		if blockInfo.blockHeader.Number == blockNum {
+		if blockInfo.blockHeader.GetNumber() == blockNum {
 			break
 		}
 	}

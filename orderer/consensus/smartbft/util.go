@@ -62,7 +62,7 @@ func (rtc RuntimeConfig) BlockCommitted(block *cb.Block, bccsp bccsp.BCCSP) (Run
 		BFTConfig:              rtc.BFTConfig,
 		id:                     rtc.id,
 		logger:                 rtc.logger,
-		LastCommittedBlockHash: hex.EncodeToString(protoutil.BlockHeaderHash(block.Header)),
+		LastCommittedBlockHash: hex.EncodeToString(protoutil.BlockHeaderHash(block.GetHeader())),
 		Nodes:                  rtc.Nodes,
 		ID2Identities:          rtc.ID2Identities,
 		RemoteNodes:            rtc.RemoteNodes,
@@ -88,7 +88,7 @@ func (rtc RuntimeConfig) configBlockCommitted(block *cb.Block, bccsp bccsp.BCCSP
 		isConfig:               true,
 		id:                     rtc.id,
 		logger:                 rtc.logger,
-		LastCommittedBlockHash: hex.EncodeToString(protoutil.BlockHeaderHash(block.Header)),
+		LastCommittedBlockHash: hex.EncodeToString(protoutil.BlockHeaderHash(block.GetHeader())),
 		Nodes:                  nodeConf.nodeIDs,
 		ID2Identities:          nodeConf.id2Identities,
 		RemoteNodes:            nodeConf.remoteNodes,
@@ -98,11 +98,11 @@ func (rtc RuntimeConfig) configBlockCommitted(block *cb.Block, bccsp bccsp.BCCSP
 }
 
 func configBlockToBFTConfig(selfID uint64, block *cb.Block, bccsp bccsp.BCCSP) (types.Configuration, error) {
-	if block == nil || block.Data == nil || len(block.Data.Data) == 0 {
+	if block == nil || block.GetData() == nil || len(block.GetData().GetData()) == 0 {
 		return types.Configuration{}, errors.New("empty block")
 	}
 
-	env, err := protoutil.UnmarshalEnvelope(block.Data.Data[0])
+	env, err := protoutil.UnmarshalEnvelope(block.GetData().GetData()[0])
 	if err != nil {
 		return types.Configuration{}, err
 	}
@@ -125,19 +125,19 @@ func configBlockToBFTConfig(selfID uint64, block *cb.Block, bccsp bccsp.BCCSP) (
 }
 
 func getViewMetadataFromBlock(block *cb.Block) (*smartbftprotos.ViewMetadata, error) {
-	if block.Header.Number == 0 {
+	if block.GetHeader().GetNumber() == 0 {
 		// Genesis block has no prior metadata so we just return an un-initialized metadata
 		return new(smartbftprotos.ViewMetadata), nil
 	}
 
 	signatureMetadata := protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_SIGNATURES)
 	ordererMD := &cb.OrdererBlockMetadata{}
-	if err := proto.Unmarshal(signatureMetadata.Value, ordererMD); err != nil {
+	if err := proto.Unmarshal(signatureMetadata.GetValue(), ordererMD); err != nil {
 		return nil, errors.Wrap(err, "failed unmarshalling OrdererBlockMetadata")
 	}
 
 	var viewMetadata smartbftprotos.ViewMetadata
-	if err := proto.Unmarshal(ordererMD.ConsenterMetadata, &viewMetadata); err != nil {
+	if err := proto.Unmarshal(ordererMD.GetConsenterMetadata(), &viewMetadata); err != nil {
 		return nil, err
 	}
 
@@ -158,7 +158,7 @@ type RequestInspector struct {
 
 func (ri *RequestInspector) requestIDFromSigHeader(sigHdr *cb.SignatureHeader) (types.RequestInfo, error) {
 	sID := &msp.SerializedIdentity{}
-	if err := proto.Unmarshal(sigHdr.Creator, sID); err != nil {
+	if err := proto.Unmarshal(sigHdr.GetCreator(), sID); err != nil {
 		return types.RequestInfo{}, errors.Wrap(err, "identity isn't an MSP Identity")
 	}
 
@@ -167,10 +167,10 @@ func (ri *RequestInspector) requestIDFromSigHeader(sigHdr *cb.SignatureHeader) (
 	}
 
 	var preimage []byte
-	preimage = append(preimage, sigHdr.Nonce...)
-	preimage = append(preimage, sigHdr.Creator...)
+	preimage = append(preimage, sigHdr.GetNonce()...)
+	preimage = append(preimage, sigHdr.GetCreator()...)
 	txID := sha256.Sum256(preimage)
-	clientID := sha256.Sum256(sigHdr.Creator)
+	clientID := sha256.Sum256(sigHdr.GetCreator())
 	return types.RequestInfo{
 		ID:       hex.EncodeToString(txID[:]),
 		ClientID: hex.EncodeToString(clientID[:]),
@@ -192,7 +192,7 @@ func (ri *RequestInspector) requestIDFromEnvelope(envelope *cb.Envelope) (types.
 	}
 
 	txID := sha256.Sum256(data)
-	clientID := sha256.Sum256(req.sigHdr.Creator)
+	clientID := sha256.Sum256(req.sigHdr.GetCreator())
 	return types.RequestInfo{
 		ID:       hex.EncodeToString(txID[:]),
 		ClientID: hex.EncodeToString(clientID[:]),
@@ -206,7 +206,7 @@ func (ri *RequestInspector) RequestID(rawReq []byte) types.RequestInfo {
 		return types.RequestInfo{}
 	}
 
-	if req.chHdr.Type == int32(cb.HeaderType_CONFIG) {
+	if req.chHdr.GetType() == int32(cb.HeaderType_CONFIG) {
 		configEnvelope := &cb.ConfigEnvelope{}
 		_, err = protoutil.UnmarshalEnvelopeOfType(req.envelope, cb.HeaderType_CONFIG, configEnvelope)
 		if err != nil {
@@ -214,7 +214,7 @@ func (ri *RequestInspector) RequestID(rawReq []byte) types.RequestInfo {
 			return types.RequestInfo{}
 		}
 
-		reqInfo, err := ri.requestIDFromEnvelope(configEnvelope.LastUpdate)
+		reqInfo, err := ri.requestIDFromEnvelope(configEnvelope.GetLastUpdate())
 		if err != nil {
 			ri.Logger.Errorf("can't get request ID: %s", err.Error())
 			return types.RequestInfo{}
@@ -249,24 +249,24 @@ func (ri *RequestInspector) unwrapReq(req []byte) (*request, error) {
 
 func (ri *RequestInspector) unwrapReqFromEnvelop(envelope *cb.Envelope) (*request, error) {
 	payload := &cb.Payload{}
-	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
+	if err := proto.Unmarshal(envelope.GetPayload(), payload); err != nil {
 		return nil, errors.Wrap(err, "failed unmarshalling payload")
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return nil, errors.Errorf("no header in payload")
 	}
 
 	sigHdr := &cb.SignatureHeader{}
-	if err := proto.Unmarshal(payload.Header.SignatureHeader, sigHdr); err != nil {
+	if err := proto.Unmarshal(payload.GetHeader().GetSignatureHeader(), sigHdr); err != nil {
 		return nil, err
 	}
 
-	if len(payload.Header.ChannelHeader) == 0 {
+	if len(payload.GetHeader().GetChannelHeader()) == 0 {
 		return nil, errors.New("no channel header in payload")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, errors.WithMessage(err, "error unmarshalling channel header")
 	}
@@ -281,7 +281,7 @@ func (ri *RequestInspector) unwrapReqFromEnvelop(envelope *cb.Envelope) (*reques
 // remoteNodesFromConfigBlock unmarshalls the node config from the block metadata
 func remoteNodesFromConfigBlock(block *cb.Block, logger *flogging.FabricLogger, bccsp bccsp.BCCSP) (*nodeConfig, error) {
 	env := &cb.Envelope{}
-	if err := proto.Unmarshal(block.Data.Data[0], env); err != nil {
+	if err := proto.Unmarshal(block.GetData().GetData()[0], env); err != nil {
 		return nil, errors.Wrap(err, "failed unmarshalling envelope of config block")
 	}
 	bundle, err := channelconfig.NewBundleFromEnvelope(env, bccsp)
@@ -309,22 +309,22 @@ func remoteNodesFromConfigBlock(block *cb.Block, logger *flogging.FabricLogger, 
 	id2Identies := map[uint64][]byte{}
 	for _, consenter := range oc.Consenters() {
 		sanitizedID, err := crypto.SanitizeIdentity(protoutil.MarshalOrPanic(&msp.SerializedIdentity{
-			IdBytes: consenter.Identity,
-			Mspid:   consenter.MspId,
+			IdBytes: consenter.GetIdentity(),
+			Mspid:   consenter.GetMspId(),
 		}))
 		if err != nil {
-			logger.Panicf("Failed to sanitize identity: %v [%s]", err, string(consenter.Identity))
+			logger.Panicf("Failed to sanitize identity: %v [%s]", err, string(consenter.GetIdentity()))
 		}
-		id2Identies[uint64(consenter.Id)] = sanitizedID
-		logger.Infof("%s %d ---> %s", bundle.ConfigtxValidator().ChannelID(), consenter.Id, string(consenter.Identity))
+		id2Identies[uint64(consenter.GetId())] = sanitizedID
+		logger.Infof("%s %d ---> %s", bundle.ConfigtxValidator().ChannelID(), consenter.GetId(), string(consenter.GetIdentity()))
 
-		nodeIDs = append(nodeIDs, uint64(consenter.Id))
+		nodeIDs = append(nodeIDs, uint64(consenter.GetId()))
 
-		serverCertAsDER, err := pemToDER(consenter.ServerTlsCert, uint64(consenter.Id), "server", logger)
+		serverCertAsDER, err := pemToDER(consenter.GetServerTlsCert(), uint64(consenter.GetId()), "server", logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		clientCertAsDER, err := pemToDER(consenter.ClientTlsCert, uint64(consenter.Id), "client", logger)
+		clientCertAsDER, err := pemToDER(consenter.GetClientTlsCert(), uint64(consenter.GetId()), "client", logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -338,24 +338,24 @@ func remoteNodesFromConfigBlock(block *cb.Block, logger *flogging.FabricLogger, 
 			}
 		}
 
-		nodeMSP, exists := channelMSPs[consenter.MspId]
+		nodeMSP, exists := channelMSPs[consenter.GetMspId()]
 		if !exists {
-			return nil, errors.Errorf("no MSP found for MSP with ID of %s", consenter.MspId)
+			return nil, errors.Errorf("no MSP found for MSP with ID of %s", consenter.GetMspId())
 		}
 
 		var rootCAs [][]byte
 		rootCAs = append(rootCAs, nodeMSP.GetTLSRootCerts()...)
 		rootCAs = append(rootCAs, nodeMSP.GetTLSIntermediateCerts()...)
 
-		sanitizedCert, err := crypto.SanitizeX509Cert(consenter.Identity)
+		sanitizedCert, err := crypto.SanitizeX509Cert(consenter.GetIdentity())
 		if err != nil {
 			return nil, err
 		}
 
 		remoteNodes = append(remoteNodes, cluster.RemoteNode{
 			NodeAddress: cluster.NodeAddress{
-				ID:       uint64(consenter.Id),
-				Endpoint: fmt.Sprintf("%s:%d", consenter.Host, consenter.Port),
+				ID:       uint64(consenter.GetId()),
+				Endpoint: fmt.Sprintf("%s:%d", consenter.GetHost(), consenter.GetPort()),
 			},
 
 			NodeCerts: cluster.NodeCerts{
@@ -414,7 +414,7 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *cb.Block) 
 	}
 
 	for _, consenter := range oc.Consenters() {
-		if bytes.Equal(conCert.ConsenterCertificate, consenter.ServerTlsCert) || bytes.Equal(conCert.ConsenterCertificate, consenter.ClientTlsCert) {
+		if bytes.Equal(conCert.ConsenterCertificate, consenter.GetServerTlsCert()) || bytes.Equal(conCert.ConsenterCertificate, consenter.GetClientTlsCert()) {
 			return nil
 		}
 	}
@@ -457,8 +457,8 @@ func createSmartBftConfig(ordererConfig channelconfig.Orderer) (*smartbft.Option
 		return nil, errors.Wrap(err, "failed to unmarshal consensus metadata")
 	}
 	batchSize := ordererConfig.BatchSize()
-	configOptions.RequestBatchMaxCount = uint64(batchSize.MaxMessageCount)
-	configOptions.RequestBatchMaxBytes = uint64(batchSize.AbsoluteMaxBytes)
+	configOptions.RequestBatchMaxCount = uint64(batchSize.GetMaxMessageCount())
+	configOptions.RequestBatchMaxBytes = uint64(batchSize.GetAbsoluteMaxBytes())
 	return configOptions, nil
 }
 

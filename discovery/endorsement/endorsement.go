@@ -98,7 +98,7 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(channelID common.ChannelID, i
 	}
 
 	return ea.computeEndorsementResponse(&context{
-		chaincode:           interest.Chaincodes[0].Name,
+		chaincode:           interest.GetChaincodes()[0].GetName(),
 		channel:             string(channelID),
 		principalsSets:      principalsSets,
 		channelMembersById:  channelMembersById,
@@ -115,7 +115,7 @@ func (ea *endorsementAnalyzer) PeersAuthorizedByCriteria(channelID common.Channe
 
 func (ea *endorsementAnalyzer) peersByCriteria(channelID common.ChannelID, interest *peer.ChaincodeInterest, excludePeersWithoutChaincode bool) (membersChaincodeMapping, error) {
 	peersOfChannel := ea.PeersOfChannel(channelID)
-	if interest == nil || len(interest.Chaincodes) == 0 {
+	if interest == nil || len(interest.GetChaincodes()) == 0 {
 		return membersChaincodeMapping{members: peersOfChannel}, nil
 	}
 	identities := ea.IdentityInfo()
@@ -201,9 +201,9 @@ func filterOutUnsatisfiedLayouts(endorsersByGroup map[string]*discovery.Peers, l
 	filteredLayouts := make([]*discovery.Layout, 0, len(layouts))
 	for _, layout := range layouts {
 		var layoutInvalid bool
-		for group, quantity := range layout.QuantitiesByGroup {
+		for group, quantity := range layout.GetQuantitiesByGroup() {
 			peerList := endorsersByGroup[group]
-			if peerList == nil || len(peerList.Peers) < int(quantity) {
+			if peerList == nil || len(peerList.GetPeers()) < int(quantity) {
 				layoutInvalid = true
 			}
 		}
@@ -218,14 +218,14 @@ func filterOutUnsatisfiedLayouts(endorsersByGroup map[string]*discovery.Peers, l
 func computeStateBasedPrincipalSets(chaincodes []*peer.ChaincodeCall, logger *flogging.FabricLogger) (inquire.ComparablePrincipalSets, error) {
 	var stateBasedCPS []inquire.ComparablePrincipalSets
 	for _, chaincode := range chaincodes {
-		if len(chaincode.KeyPolicies) == 0 {
+		if len(chaincode.GetKeyPolicies()) == 0 {
 			continue
 		}
 
 		logger.Debugf("Chaincode call to %s is satisfied by %d state based policies of %v",
-			chaincode.Name, len(chaincode.KeyPolicies), chaincode.KeyPolicies)
+			chaincode.GetName(), len(chaincode.GetKeyPolicies()), chaincode.GetKeyPolicies())
 
-		for _, stateBasedPolicy := range chaincode.KeyPolicies {
+		for _, stateBasedPolicy := range chaincode.GetKeyPolicies() {
 			var cmpsets inquire.ComparablePrincipalSets
 			stateBasedPolicy := inquire.NewInquireableSignaturePolicy(stateBasedPolicy)
 			for _, ps := range stateBasedPolicy.SatisfiedBy() {
@@ -261,27 +261,27 @@ func computeStateBasedPrincipalSets(chaincodes []*peer.ChaincodeCall, logger *fl
 func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, interest *peer.ChaincodeInterest) (policies.PrincipalSets, error) {
 	sessionLogger := logger.With("channel", string(channelID))
 	var inquireablePoliciesForChaincodeAndCollections []policies.InquireablePolicy
-	for _, chaincode := range interest.Chaincodes {
-		policies := ea.PoliciesByChaincode(string(channelID), chaincode.Name, chaincode.CollectionNames...)
+	for _, chaincode := range interest.GetChaincodes() {
+		policies := ea.PoliciesByChaincode(string(channelID), chaincode.GetName(), chaincode.GetCollectionNames()...)
 		if len(policies) == 0 {
 			sessionLogger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
 			return nil, errors.New("policy not found")
 		}
-		if chaincode.DisregardNamespacePolicy && len(chaincode.KeyPolicies) == 0 && len(policies) == 1 {
+		if chaincode.GetDisregardNamespacePolicy() && len(chaincode.GetKeyPolicies()) == 0 && len(policies) == 1 {
 			sessionLogger.Warnf("Client requested to disregard chaincode %s's policy, but it did not specify any "+
 				"collection policies or key policies. This is probably a bug in the client side code, as the client should"+
-				"either not specify DisregardNamespacePolicy, or specify at least one key policy or at least one collection policy", chaincode.Name)
+				"either not specify DisregardNamespacePolicy, or specify at least one key policy or at least one collection policy", chaincode.GetName())
 			return nil, errors.Errorf("requested to disregard chaincode %s's policy but key and collection policies are missing, either "+
-				"disable DisregardNamespacePolicy or specify at least one key policy or at least one collection policy", chaincode.Name)
+				"disable DisregardNamespacePolicy or specify at least one key policy or at least one collection policy", chaincode.GetName())
 		}
-		if chaincode.DisregardNamespacePolicy {
+		if chaincode.GetDisregardNamespacePolicy() {
 			if len(policies) == 1 {
 				sessionLogger.Debugf("Client requested to disregard the namespace policy for chaincode %s,"+
-					" and no collection policies are present", chaincode.Name)
+					" and no collection policies are present", chaincode.GetName())
 				continue
 			}
 			sessionLogger.Debugf("Client requested to disregard the namespace policy for chaincode %s,"+
-				" however there exist %d collection policies taken into account", chaincode.Name, len(policies)-1)
+				" however there exist %d collection policies taken into account", chaincode.GetName(), len(policies)-1)
 			policies = policies[1:]
 		}
 		inquireablePoliciesForChaincodeAndCollections = append(inquireablePoliciesForChaincodeAndCollections, policies...)
@@ -304,7 +304,7 @@ func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, 
 		cpss = append(cpss, cmpsets)
 	}
 
-	stateBasedCPS, err := computeStateBasedPrincipalSets(interest.Chaincodes, sessionLogger)
+	stateBasedCPS, err := computeStateBasedPrincipalSets(interest.GetChaincodes(), sessionLogger)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -342,28 +342,28 @@ func loadMetadataAndFilters(ctx metadataAndFilterContext) (*metadataAndColFilter
 	var metadata []*chaincode.Metadata
 	var filters []identityFilter
 
-	for _, chaincode := range ctx.interest.Chaincodes {
-		ccMD := ctx.fetch.Metadata(string(ctx.chainID), chaincode.Name, chaincode.CollectionNames...)
+	for _, chaincode := range ctx.interest.GetChaincodes() {
+		ccMD := ctx.fetch.Metadata(string(ctx.chainID), chaincode.GetName(), chaincode.GetCollectionNames()...)
 		if ccMD == nil {
-			return nil, errors.Errorf("No metadata was found for chaincode %s in channel %s", chaincode.Name, string(ctx.chainID))
+			return nil, errors.Errorf("No metadata was found for chaincode %s in channel %s", chaincode.GetName(), string(ctx.chainID))
 		}
 		metadata = append(metadata, ccMD)
-		if len(chaincode.CollectionNames) == 0 {
-			sessionLogger.Debugf("No collections for %s, skipping", chaincode.Name)
+		if len(chaincode.GetCollectionNames()) == 0 {
+			sessionLogger.Debugf("No collections for %s, skipping", chaincode.GetName())
 			continue
 		}
-		if chaincode.NoPrivateReads {
+		if chaincode.GetNoPrivateReads() {
 			sessionLogger.Debugf("No private reads, skipping")
 			continue
 		}
 		principalSetByCollections, err := principalsFromCollectionConfig(ccMD.CollectionsConfig)
 		if err != nil {
-			sessionLogger.Warningf("Failed initializing collection filter for chaincode %s: %v", chaincode.Name, err)
+			sessionLogger.Warningf("Failed initializing collection filter for chaincode %s: %v", chaincode.GetName(), err)
 			return nil, errors.WithStack(err)
 		}
 		filter, err := principalSetByCollections.toIdentityFilter(string(ctx.chainID), ctx.evaluator, chaincode)
 		if err != nil {
-			sessionLogger.Warningf("Failed computing collection principal sets for chaincode %s due to %v", chaincode.Name, err)
+			sessionLogger.Warningf("Failed computing collection principal sets for chaincode %s due to %v", chaincode.GetName(), err)
 			return nil, errors.WithStack(err)
 		}
 		filters = append(filters, filter)
@@ -483,7 +483,7 @@ func endorsersByGroup(criteria *peerMembershipCriteria) map[string]*discovery.Pe
 			})
 		}
 
-		if len(peerList.Peers) > 0 {
+		if len(peerList.GetPeers()) > 0 {
 			res[grp] = peerList
 		}
 	}
@@ -508,8 +508,8 @@ func computeLayouts(principalsSets []policies.PrincipalSet, principalGroups prin
 		// compute a mapping from the principal to repetitions in the set.
 		for principal, plurality := range principalSet.UniqueSet() {
 			key := principalKey{
-				cls:       int32(principal.PrincipalClassification),
-				principal: string(principal.Principal),
+				cls:       int32(principal.GetPrincipalClassification()),
+				principal: string(principal.GetPrincipal()),
 			}
 			// We map the principal to a group, which is an alias for the principal.
 			layout.QuantitiesByGroup[principalGroups.group(key)] = uint32(plurality)
@@ -517,7 +517,7 @@ func computeLayouts(principalsSets []policies.PrincipalSet, principalGroups prin
 		// Check that the layout can be satisfied with the current known peers
 		// This is done by iterating the current layout, and ensuring that
 		// each principal vertex is connected to at least <plurality> peer vertices.
-		if isLayoutSatisfied(layout.QuantitiesByGroup, satGraph) {
+		if isLayoutSatisfied(layout.GetQuantitiesByGroup(), satGraph) {
 			// If so, then add the layout to the layouts, since we have enough peers to satisfy the
 			// principal combination
 			layouts = append(layouts, layout)
@@ -582,8 +582,8 @@ func mapPrincipalsToGroups(principalsSets []policies.PrincipalSet) principalGrou
 	for _, principalSet := range principalsSets {
 		for _, principal := range principalSet {
 			totalPrincipals[principalKey{
-				principal: string(principal.Principal),
-				cls:       int32(principal.PrincipalClassification),
+				principal: string(principal.GetPrincipal()),
+				cls:       int32(principal.GetPrincipalClassification()),
 			}] = struct{}{}
 		}
 	}
@@ -644,7 +644,7 @@ type layouts []*discovery.Layout
 func (l layouts) groupsSet() map[string]struct{} {
 	m := make(map[string]struct{})
 	for _, layout := range l {
-		for grp := range layout.QuantitiesByGroup {
+		for grp := range layout.GetQuantitiesByGroup() {
 			m[grp] = struct{}{}
 		}
 	}
@@ -658,8 +658,8 @@ func peersWithChaincode(metadata ...*chaincode.Metadata) func(member gossipdisco
 		}
 		for _, ccMD := range metadata {
 			var found bool
-			for _, cc := range member.Properties.Chaincodes {
-				if cc.Name == ccMD.Name && cc.Version == ccMD.Version {
+			for _, cc := range member.Properties.GetChaincodes() {
+				if cc.GetName() == ccMD.Name && cc.GetVersion() == ccMD.Version {
 					found = true
 				}
 			}

@@ -90,8 +90,8 @@ func (s *Service) Discover(ctx context.Context, request *discovery.SignedRequest
 	}
 	logger.Debugf("Processing request from %s: %v", addr, req)
 	var res []*discovery.QueryResult
-	for _, q := range req.Queries {
-		res = append(res, s.processQuery(q, request, req.Authentication.ClientIdentity, addr))
+	for _, q := range req.GetQueries() {
+		res = append(res, s.processQuery(q, request, req.GetAuthentication().GetClientIdentity(), addr))
 	}
 	logger.Debugf("Returning to %s a response containing: %v", addr, res)
 	return &discovery.Response{
@@ -100,16 +100,16 @@ func (s *Service) Discover(ctx context.Context, request *discovery.SignedRequest
 }
 
 func (s *Service) processQuery(query *discovery.Query, request *discovery.SignedRequest, identity []byte, addr string) *discovery.QueryResult {
-	if query.Channel != "" && !s.ChannelExists(query.Channel) {
-		logger.Warning("got query for channel", query.Channel, "from", addr, "but it doesn't exist")
+	if query.GetChannel() != "" && !s.ChannelExists(query.GetChannel()) {
+		logger.Warning("got query for channel", query.GetChannel(), "from", addr, "but it doesn't exist")
 		return accessDenied
 	}
-	if err := s.auth.EligibleForService(query.Channel, protoutil.SignedData{
-		Data:      request.Payload,
-		Signature: request.Signature,
+	if err := s.auth.EligibleForService(query.GetChannel(), protoutil.SignedData{
+		Data:      request.GetPayload(),
+		Signature: request.GetSignature(),
 		Identity:  identity,
 	}); err != nil {
-		logger.Warning("got query for channel", query.Channel, "from", addr, "but it isn't eligible:", err)
+		logger.Warning("got query for channel", query.GetChannel(), "from", addr, "but it isn't eligible:", err)
 		return accessDenied
 	}
 	return s.dispatch(query)
@@ -118,7 +118,7 @@ func (s *Service) processQuery(query *discovery.Query, request *discovery.Signed
 func (s *Service) dispatch(q *discovery.Query) *discovery.QueryResult {
 	dispatchers := s.channelDispatchers
 	// Ensure local queries are routed only to channel-less dispatchers
-	if q.Channel == "" {
+	if q.GetChannel() == "" {
 		dispatchers = s.localDispatchers
 	}
 	dispatchQuery, exists := dispatchers[protoext.GetQueryType(q)]
@@ -133,8 +133,8 @@ func (s *Service) chaincodeQuery(q *discovery.Query) *discovery.QueryResult {
 		return wrapError(err)
 	}
 	var descriptors []*discovery.EndorsementDescriptor
-	for _, interest := range q.GetCcQuery().Interests {
-		desc, err := s.PeersForEndorsement(common2.ChannelID(q.Channel), interest)
+	for _, interest := range q.GetCcQuery().GetInterests() {
+		desc, err := s.PeersForEndorsement(common2.ChannelID(q.GetChannel()), interest)
 		if err != nil {
 			logger.Errorf("Failed constructing descriptor for chaincode %s: %v", interest, err)
 			return wrapError(errors.Errorf("failed constructing descriptor for %v", interest))
@@ -152,10 +152,10 @@ func (s *Service) chaincodeQuery(q *discovery.Query) *discovery.QueryResult {
 }
 
 func (s *Service) configQuery(q *discovery.Query) *discovery.QueryResult {
-	conf, err := s.Config(q.Channel)
+	conf, err := s.Config(q.GetChannel())
 	if err != nil {
-		logger.Errorf("Failed fetching config for channel %s: %v", q.Channel, err)
-		return wrapError(errors.Errorf("failed fetching config for channel %s", q.Channel))
+		logger.Errorf("Failed fetching config for channel %s: %v", q.GetChannel(), err)
+		return wrapError(errors.Errorf("failed fetching config for channel %s", q.GetChannel()))
 	}
 	return &discovery.QueryResult{
 		Result: &discovery.QueryResult_ConfigResult{
@@ -175,7 +175,7 @@ func wrapPeerResponse(peersByOrg map[string]*discovery.Peers) *discovery.QueryRe
 }
 
 func (s *Service) channelMembershipResponse(q *discovery.Query) *discovery.QueryResult {
-	chanPeers, err := s.PeersAuthorizedByCriteria(common2.ChannelID(q.Channel), q.GetPeerQuery().Filter)
+	chanPeers, err := s.PeersAuthorizedByCriteria(common2.ChannelID(q.GetChannel()), q.GetPeerQuery().GetFilter())
 	if err != nil {
 		return wrapError(err)
 	}
@@ -238,10 +238,10 @@ func validateStructure(ctx context.Context, request *discovery.SignedRequest, tl
 	if err != nil {
 		return nil, errors.Wrap(err, "failed parsing request")
 	}
-	if req.Authentication == nil {
+	if req.GetAuthentication() == nil {
 		return nil, errors.New("access denied, no authentication info in request")
 	}
-	if len(req.Authentication.ClientIdentity) == 0 {
+	if len(req.GetAuthentication().GetClientIdentity()) == 0 {
 		return nil, errors.New("access denied, client identity wasn't supplied")
 	}
 	if !tlsEnabled {
@@ -251,8 +251,8 @@ func validateStructure(ctx context.Context, request *discovery.SignedRequest, tl
 	if len(computedHash) == 0 {
 		return nil, errors.New("client didn't send a TLS certificate")
 	}
-	if !bytes.Equal(computedHash, req.Authentication.ClientTlsCertHash) {
-		claimed := hex.EncodeToString(req.Authentication.ClientTlsCertHash)
+	if !bytes.Equal(computedHash, req.GetAuthentication().GetClientTlsCertHash()) {
+		claimed := hex.EncodeToString(req.GetAuthentication().GetClientTlsCertHash())
 		logger.Warningf("client claimed TLS hash %s doesn't match computed TLS hash from gRPC stream %s", claimed, hex.EncodeToString(computedHash))
 		return nil, errors.New("client claimed TLS hash doesn't match computed TLS hash from gRPC stream")
 	}
@@ -260,18 +260,18 @@ func validateStructure(ctx context.Context, request *discovery.SignedRequest, tl
 }
 
 func validateCCQuery(ccQuery *discovery.ChaincodeQuery) error {
-	if len(ccQuery.Interests) == 0 {
+	if len(ccQuery.GetInterests()) == 0 {
 		return errors.New("chaincode query must have at least one chaincode interest")
 	}
-	for _, interest := range ccQuery.Interests {
+	for _, interest := range ccQuery.GetInterests() {
 		if interest == nil {
 			return errors.New("chaincode interest is nil")
 		}
-		if len(interest.Chaincodes) == 0 {
+		if len(interest.GetChaincodes()) == 0 {
 			return errors.New("chaincode interest must contain at least one chaincode")
 		}
-		for _, cc := range interest.Chaincodes {
-			if cc.Name == "" {
+		for _, cc := range interest.GetChaincodes() {
+			if cc.GetName() == "" {
 				return errors.New("chaincode name in interest cannot be empty")
 			}
 		}

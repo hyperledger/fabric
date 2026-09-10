@@ -71,12 +71,12 @@ func validateSignatureHeader(sHdr *common.SignatureHeader) error {
 	}
 
 	// ensure that there is a nonce
-	if len(sHdr.Nonce) == 0 {
+	if len(sHdr.GetNonce()) == 0 {
 		return errors.New("invalid nonce specified in the header")
 	}
 
 	// ensure that there is a creator
-	if len(sHdr.Creator) == 0 {
+	if len(sHdr.GetCreator()) == 0 {
 		return errors.New("invalid creator specified in the header")
 	}
 
@@ -91,15 +91,15 @@ func validateChannelHeader(cHdr *common.ChannelHeader) error {
 	}
 
 	// validate the header type
-	switch common.HeaderType(cHdr.Type) {
+	switch common.HeaderType(cHdr.GetType()) {
 	case common.HeaderType_ENDORSER_TRANSACTION:
 	case common.HeaderType_CONFIG_UPDATE:
 	case common.HeaderType_CONFIG:
 	default:
-		return errors.Errorf("invalid header type %s", common.HeaderType(cHdr.Type))
+		return errors.Errorf("invalid header type %s", common.HeaderType(cHdr.GetType()))
 	}
 
-	putilsLogger.Debugf("validateChannelHeader info: header type %d", common.HeaderType(cHdr.Type))
+	putilsLogger.Debugf("validateChannelHeader info: header type %d", common.HeaderType(cHdr.GetType()))
 
 	// TODO: validate channelID in cHdr.ChannelID
 
@@ -107,8 +107,8 @@ func validateChannelHeader(cHdr *common.ChannelHeader) error {
 	// Currently we enforce that Epoch is 0.
 	// TODO: This check will be modified once the Epoch management
 	// will be in place.
-	if cHdr.Epoch != 0 {
-		return errors.Errorf("invalid Epoch in ChannelHeader. Expected 0, got [%d]", cHdr.Epoch)
+	if cHdr.GetEpoch() != 0 {
+		return errors.Errorf("invalid Epoch in ChannelHeader. Expected 0, got [%d]", cHdr.GetEpoch())
 	}
 
 	// TODO: Validate version in cHdr.Version
@@ -122,12 +122,12 @@ func validateCommonHeader(hdr *common.Header) (*common.ChannelHeader, *common.Si
 		return nil, nil, errors.New("nil header")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(hdr.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(hdr.GetChannelHeader())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.GetSignatureHeader())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -186,20 +186,20 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 	// TODO: validate ChaincodeHeaderExtension
 
 	// hlf version 1 only supports a single action per transaction
-	if len(tx.Actions) != 1 {
-		return errors.Errorf("only one action per transaction is supported, tx contains %d", len(tx.Actions))
+	if len(tx.GetActions()) != 1 {
+		return errors.Errorf("only one action per transaction is supported, tx contains %d", len(tx.GetActions()))
 	}
 
-	putilsLogger.Debugf("validateEndorserTransaction info: there are %d actions", len(tx.Actions))
+	putilsLogger.Debugf("validateEndorserTransaction info: there are %d actions", len(tx.GetActions()))
 
-	for _, act := range tx.Actions {
+	for _, act := range tx.GetActions() {
 		// check for nil argument
 		if act == nil {
 			return errors.New("nil action")
 		}
 
 		// if the type is ENDORSER_TRANSACTION we unmarshal a SignatureHeader
-		sHdr, err := protoutil.UnmarshalSignatureHeader(act.Header)
+		sHdr, err := protoutil.UnmarshalSignatureHeader(act.GetHeader())
 		if err != nil {
 			return err
 		}
@@ -214,29 +214,29 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 		putilsLogger.Debugf("validateEndorserTransaction info: signature header is valid")
 
 		// if the type is ENDORSER_TRANSACTION we unmarshal a ChaincodeActionPayload
-		ccActionPayload, err := protoutil.UnmarshalChaincodeActionPayload(act.Payload)
+		ccActionPayload, err := protoutil.UnmarshalChaincodeActionPayload(act.GetPayload())
 		if err != nil {
 			return err
 		}
 
 		// extract the proposal response payload
-		prp, err := protoutil.UnmarshalProposalResponsePayload(ccActionPayload.Action.ProposalResponsePayload)
+		prp, err := protoutil.UnmarshalProposalResponsePayload(ccActionPayload.GetAction().GetProposalResponsePayload())
 		if err != nil {
 			return err
 		}
 
 		// build the original header by stitching together
 		// the common ChannelHeader and the per-action SignatureHeader
-		hdrOrig := &common.Header{ChannelHeader: hdr.ChannelHeader, SignatureHeader: act.Header}
+		hdrOrig := &common.Header{ChannelHeader: hdr.GetChannelHeader(), SignatureHeader: act.GetHeader()}
 
 		// compute proposalHash
-		pHash, err := protoutil.GetProposalHash2(hdrOrig, ccActionPayload.ChaincodeProposalPayload)
+		pHash, err := protoutil.GetProposalHash2(hdrOrig, ccActionPayload.GetChaincodeProposalPayload())
 		if err != nil {
 			return err
 		}
 
 		// ensure that the proposal hash matches
-		if !bytes.Equal(pHash, prp.ProposalHash) {
+		if !bytes.Equal(pHash, prp.GetProposalHash()) {
 			return errors.New("proposal hash does not match")
 		}
 	}
@@ -255,23 +255,23 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 	}
 
 	// get the payload from the envelope
-	payload, err := protoutil.UnmarshalPayload(e.Payload)
+	payload, err := protoutil.UnmarshalPayload(e.GetPayload())
 	if err != nil {
 		putilsLogger.Errorf("GetPayload returns err %s", err)
 		return nil, pb.TxValidationCode_BAD_PAYLOAD
 	}
 
-	putilsLogger.Debugf("Header is %s", payload.Header)
+	putilsLogger.Debugf("Header is %s", payload.GetHeader())
 
 	// validate the header
-	chdr, shdr, err := validateCommonHeader(payload.Header)
+	chdr, shdr, err := validateCommonHeader(payload.GetHeader())
 	if err != nil {
 		putilsLogger.Errorf("validateCommonHeader returns err %s", err)
 		return nil, pb.TxValidationCode_BAD_COMMON_HEADER
 	}
 
 	// validate the signature in the envelope
-	err = checkSignatureFromCreator(shdr.Creator, e.Signature, e.Payload, chdr.ChannelId, cryptoProvider)
+	err = checkSignatureFromCreator(shdr.GetCreator(), e.GetSignature(), e.GetPayload(), chdr.GetChannelId(), cryptoProvider)
 	if err != nil {
 		putilsLogger.Errorf("checkSignatureFromCreator returns err %s", err)
 		return nil, pb.TxValidationCode_BAD_CREATOR_SIGNATURE
@@ -280,22 +280,22 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 	// TODO: ensure that creator can transact with us (some ACLs?) which set of APIs is supposed to give us this info?
 
 	// continue the validation in a way that depends on the type specified in the header
-	switch common.HeaderType(chdr.Type) {
+	switch common.HeaderType(chdr.GetType()) {
 	case common.HeaderType_ENDORSER_TRANSACTION:
 		// Verify that the transaction ID has been computed properly.
 		// This check is needed to ensure that the lookup into the ledger
 		// for the same TxID catches duplicates.
 		err = protoutil.CheckTxID(
-			chdr.TxId,
-			shdr.Nonce,
-			shdr.Creator,
+			chdr.GetTxId(),
+			shdr.GetNonce(),
+			shdr.GetCreator(),
 		)
 		if err != nil {
 			putilsLogger.Errorf("CheckTxID returns err %s", err)
 			return nil, pb.TxValidationCode_BAD_PROPOSAL_TXID
 		}
 
-		err = validateEndorserTransaction(payload.Data, payload.Header)
+		err = validateEndorserTransaction(payload.GetData(), payload.GetHeader())
 		putilsLogger.Debugf("ValidateTransactionEnvelope returns err %s", err)
 
 		if err != nil {
@@ -307,7 +307,7 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 		// Config transactions have signatures inside which will be validated, especially at genesis there may be no creator or
 		// signature on the outermost envelope
 
-		err = validateConfigTransaction(payload.Data, payload.Header)
+		err = validateConfigTransaction(payload.GetData(), payload.GetHeader())
 		if err != nil {
 			putilsLogger.Errorf("validateConfigTransaction returns err %s", err)
 			return payload, pb.TxValidationCode_INVALID_CONFIG_TRANSACTION

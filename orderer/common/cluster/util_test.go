@@ -192,13 +192,13 @@ func TestVerifyBlockBFT(t *testing.T) {
 	require.NoError(t, err)
 
 	configTx := &common.Envelope{}
-	err = proto.Unmarshal(block.Data.Data[0], configTx)
+	err = proto.Unmarshal(block.GetData().GetData()[0], configTx)
 	require.NoError(t, err)
 
 	configTx.Signature = []byte{1, 2, 3}
 	block.Data.Data[0] = protoutil.MarshalOrPanic(configTx)
 	block.Header.Number = 2
-	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 
 	twoBlocks := createBlockChain(2, 3)
 	twoBlocks[0] = block
@@ -210,11 +210,11 @@ func TestVerifyBlockBFT(t *testing.T) {
 
 	err = cluster.VerifyBlocksBFT(twoBlocks, func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
 		firstBlockVerified = true
-		require.Equal(t, uint64(2), header.Number)
+		require.Equal(t, uint64(2), header.GetNumber())
 		return nil
 	}, func(block *common.Block) protoutil.BlockVerifierFunc {
 		return func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
-			require.Equal(t, uint64(3), header.Number)
+			require.Equal(t, uint64(3), header.GetNumber())
 			secondBlockVerified = true
 			return nil
 		}
@@ -304,7 +304,7 @@ func TestVerifyBlockHash(t *testing.T) {
 
 func assignHashes(blockchain []*common.Block) {
 	for i := 1; i < len(blockchain); i++ {
-		blockchain[i].Header.PreviousHash = protoutil.BlockHeaderHash(blockchain[i-1].Header)
+		blockchain[i].Header.PreviousHash = protoutil.BlockHeaderHash(blockchain[i-1].GetHeader())
 	}
 }
 
@@ -337,7 +337,7 @@ func createBlockChain(start, end uint64) []*common.Block {
 	var blockchain []*common.Block
 	for seq := start; seq <= end; seq++ {
 		block := newBlock(seq)
-		block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+		block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 		blockchain = append(blockchain, block)
 	}
 	assignHashes(blockchain)
@@ -349,9 +349,9 @@ func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, globalEndpoi
 	// Unwrap the layers until we reach the orderer addresses
 	env, err := protoutil.ExtractEnvelope(block, 0)
 	require.NoError(t, err)
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	require.NoError(t, err)
-	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	require.NoError(t, err)
 	// Replace the orderer addresses
 	confEnv.Config.ChannelGroup.Values[ordererAddresses.Key()] = &common.ConfigValue{
@@ -359,9 +359,9 @@ func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, globalEndpoi
 		ModPolicy: "/Channel/Orderer/Admins",
 	}
 	// Update the per org addresses
-	ordererGrps := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
+	ordererGrps := confEnv.GetConfig().GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetGroups()
 	for _, grp := range ordererGrps {
-		if grp.Values[channelconfig.EndpointsKey] == nil {
+		if grp.GetValues()[channelconfig.EndpointsKey] == nil {
 			continue
 		}
 		if orgEndpoint == "" {
@@ -383,9 +383,9 @@ func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, globalEndpoi
 func setChannelCapability(t *testing.T, block *common.Block, capabiliity string) {
 	env, err := protoutil.ExtractEnvelope(block, 0)
 	require.NoError(t, err)
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	require.NoError(t, err)
-	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	require.NoError(t, err)
 
 	// Replace the orderer addresses
@@ -709,11 +709,11 @@ func injectAdditionalTLSCAEndpointPair(t *testing.T, block *common.Block, endpoi
 	// Unwrap the layers until we reach the orderer addresses
 	env, err := protoutil.ExtractEnvelope(block, 0)
 	require.NoError(t, err)
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	require.NoError(t, err)
-	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	require.NoError(t, err)
-	ordererGrp := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
+	ordererGrp := confEnv.GetConfig().GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetGroups()
 	// Get the first orderer org config
 	var firstOrdererConfig *common.ConfigGroup
 	for _, grp := range ordererGrp {
@@ -725,11 +725,11 @@ func injectAdditionalTLSCAEndpointPair(t *testing.T, block *common.Block, endpoi
 	ordererGrp[orgName] = secondOrdererConfig
 	// Reach the FabricMSPConfig buried in it.
 	mspConfig := &msp.MSPConfig{}
-	err = proto.Unmarshal(secondOrdererConfig.Values[channelconfig.MSPKey].Value, mspConfig)
+	err = proto.Unmarshal(secondOrdererConfig.GetValues()[channelconfig.MSPKey].GetValue(), mspConfig)
 	require.NoError(t, err)
 
 	fabricConfig := &msp.FabricMSPConfig{}
-	err = proto.Unmarshal(mspConfig.Config, fabricConfig)
+	err = proto.Unmarshal(mspConfig.GetConfig(), fabricConfig)
 	require.NoError(t, err)
 
 	// Plant the given TLS CA in it.
@@ -742,7 +742,7 @@ func injectAdditionalTLSCAEndpointPair(t *testing.T, block *common.Block, endpoi
 	// Pack the MSP config back into the config
 	secondOrdererConfig.Values[channelconfig.MSPKey].Value = protoutil.MarshalOrPanic(&msp.MSPConfig{
 		Config: protoutil.MarshalOrPanic(fabricConfig),
-		Type:   mspConfig.Type,
+		Type:   mspConfig.GetType(),
 	})
 
 	// Inject the endpoint

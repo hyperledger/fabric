@@ -116,7 +116,7 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 		return shim.Error(fmt.Sprintf("Failed getting signed proposal from stub: [%s]", err))
 	}
 
-	name, err := protoutil.InvokedChaincodeName(sp.ProposalBytes)
+	name, err := protoutil.InvokedChaincodeName(sp.GetProposalBytes())
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to identify the called chaincode: %s", err))
 	}
@@ -162,10 +162,10 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) *pb.Re
 
 		// Initialize txsFilter if it does not yet exist. We can do this safely since
 		// it's the genesis block anyway
-		txsFilter := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+		txsFilter := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 		if len(txsFilter) == 0 {
 			// add array of validation code hardcoded to valid
-			txsFilter = txflags.NewWithValues(len(block.Data.Data), pb.TxValidationCode_VALID)
+			txsFilter = txflags.NewWithValues(len(block.GetData().GetData()), pb.TxValidationCode_VALID)
 			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 		}
 
@@ -225,11 +225,11 @@ func validateConfigBlock(block *common.Block, bccsp bccsp.BCCSP) error {
 		return errors.Errorf("Bad configuration envelope: %s", err)
 	}
 
-	if configEnv.Config == nil {
+	if configEnv.GetConfig() == nil {
 		return errors.New("Nil config envelope Config")
 	}
 
-	if configEnv.Config.ChannelGroup == nil {
+	if configEnv.GetConfig().GetChannelGroup() == nil {
 		return errors.New("Nil channel group")
 	}
 
@@ -237,7 +237,7 @@ func validateConfigBlock(block *common.Block, bccsp bccsp.BCCSP) error {
 		return errors.New("No channel configuration groups are available")
 	}
 
-	_, exists := configEnv.Config.ChannelGroup.Groups[channelconfig.ApplicationGroupKey]
+	_, exists := configEnv.GetConfig().GetChannelGroup().GetGroups()[channelconfig.ApplicationGroupKey]
 	if !exists {
 		return errors.Errorf("Invalid configuration block, missing %s "+
 			"configuration group", channelconfig.ApplicationGroupKey)

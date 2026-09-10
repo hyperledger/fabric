@@ -327,8 +327,8 @@ func (g *gossipInstance) tryForwardMessage(msg *protoext.SignedGossipMessage) {
 	aliveMsg := msg.GetAliveMsg()
 
 	forward := false
-	id := string(aliveMsg.Membership.PkiId)
-	seqNum := aliveMsg.Timestamp.SeqNum
+	id := string(aliveMsg.GetMembership().GetPkiId())
+	seqNum := aliveMsg.GetTimestamp().GetSeqNum()
 	if last, exists := g.comm.lastSeqs[id]; exists {
 		if last < seqNum {
 			g.comm.lastSeqs[id] = seqNum
@@ -554,7 +554,7 @@ func TestConnect(t *testing.T) {
 			inst := inst
 			msg := arguments.Get(1).(*protoext.SignedGossipMessage)
 			if req := msg.GetMemReq(); req != nil {
-				selfMsg, _ := protoext.EnvelopeToGossipMessage(req.SelfInformation)
+				selfMsg, _ := protoext.EnvelopeToGossipMessage(req.GetSelfInformation())
 				firstSentMemReqMsgs <- selfMsg
 				inst.comm.lock.Lock()
 				inst.comm.mock = nil
@@ -580,16 +580,16 @@ func TestConnect(t *testing.T) {
 
 	discInst := instances[rand.IntN(len(instances))].Discovery.(*gossipDiscoveryImpl)
 	mr, _ := discInst.createMembershipRequest(true)
-	am, _ := protoext.EnvelopeToGossipMessage(mr.GetMemReq().SelfInformation)
+	am, _ := protoext.EnvelopeToGossipMessage(mr.GetMemReq().GetSelfInformation())
 	require.NotNil(t, am.SecretEnvelope)
 	mr2, _ := discInst.createMembershipRequest(false)
-	am, _ = protoext.EnvelopeToGossipMessage(mr2.GetMemReq().SelfInformation)
+	am, _ = protoext.EnvelopeToGossipMessage(mr2.GetMemReq().GetSelfInformation())
 	require.Nil(t, am.SecretEnvelope)
 	stopInstances(t, instances)
 	require.Len(t, firstSentMemReqMsgs, 10)
 	close(firstSentMemReqMsgs)
 	for firstSentSelfMsg := range firstSentMemReqMsgs {
-		require.Nil(t, firstSentSelfMsg.Envelope.SecretEnvelope)
+		require.Nil(t, firstSentSelfMsg.Envelope.GetSecretEnvelope())
 	}
 }
 
@@ -631,7 +631,7 @@ func TestValidation(t *testing.T) {
 	var membershipResponseWithDeadPeers atomic.Value
 
 	recordMembershipRequest := func(req *protoext.SignedGossipMessage) {
-		msg, _ := protoext.EnvelopeToGossipMessage(req.GetMemReq().SelfInformation)
+		msg, _ := protoext.EnvelopeToGossipMessage(req.GetMemReq().GetSelfInformation())
 		membershipRequest.Store(req)
 		requestMessagesReceived <- msg
 	}
@@ -871,9 +871,9 @@ func TestSelf(t *testing.T) {
 	env := inst.Self().Envelope
 	sMsg, err := protoext.EnvelopeToGossipMessage(env)
 	require.NoError(t, err)
-	member := sMsg.GetAliveMsg().Membership
-	require.Equal(t, "localhost:13463", member.Endpoint)
-	require.Equal(t, []byte("localhost:13463"), member.PkiId)
+	member := sMsg.GetAliveMsg().GetMembership()
+	require.Equal(t, "localhost:13463", member.GetEndpoint())
+	require.Equal(t, []byte("localhost:13463"), member.GetPkiId())
 
 	require.Equal(t, "localhost:13463", inst.Self().Endpoint)
 	require.Equal(t, common.PKIidType("localhost:13463"), inst.Self().PKIid)
@@ -1129,7 +1129,7 @@ func discPolForPeer(selfPort int) DisclosurePolicy {
 		targetPortStr := strings.Split(remotePeer.Endpoint, ":")[1]
 		targetPort, _ := strconv.ParseInt(targetPortStr, 10, 64)
 		return func(msg *protoext.SignedGossipMessage) bool {
-				portOfAliveMsgStr := strings.Split(msg.GetAliveMsg().Membership.Endpoint, ":")[1]
+				portOfAliveMsgStr := strings.Split(msg.GetAliveMsg().GetMembership().GetEndpoint(), ":")[1]
 				portOfAliveMsg, _ := strconv.ParseInt(portOfAliveMsgStr, 10, 64)
 
 				if portOfAliveMsg < 8615 && targetPort < 8615 {
@@ -1275,7 +1275,7 @@ func TestMsgStoreExpiration(t *testing.T) {
 				}
 				for _, am := range downCastInst.msgStore.Get() {
 					m := am.(*protoext.SignedGossipMessage).GetAliveMsg()
-					if bytes.Equal(m.Membership.PkiId, downInst.discoveryImpl().self.PKIid) {
+					if bytes.Equal(m.GetMembership().GetPkiId(), downInst.discoveryImpl().self.PKIid) {
 						downCastInst.lock.RUnlock()
 						return false
 					}
@@ -1650,8 +1650,8 @@ func TestFilter(t *testing.T) {
 		}},
 	}
 	res := members.Filter(func(member NetworkMember) bool {
-		cc := member.Properties.Chaincodes[0]
-		return cc.Version == "2.0" && cc.Name == "cc"
+		cc := member.Properties.GetChaincodes()[0]
+		return cc.GetVersion() == "2.0" && cc.GetName() == "cc"
 	})
 	require.Equal(t, Members{members[1]}, res)
 }

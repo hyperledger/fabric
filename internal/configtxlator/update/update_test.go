@@ -64,23 +64,23 @@ func TestGroupModPolicyUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
-		Version:  original.Version,
+		Version:  original.GetVersion(),
 		Groups:   map[string]*cb.ConfigGroup{},
 		Policies: map[string]*cb.ConfigPolicy{},
 		Values:   map[string]*cb.ConfigValue{},
 	}
 
-	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.GetReadSet(), "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
-		Version:   original.Version + 1,
+		Version:   original.GetVersion() + 1,
 		Groups:    map[string]*cb.ConfigGroup{},
 		Policies:  map[string]*cb.ConfigPolicy{},
 		Values:    map[string]*cb.ConfigValue{},
-		ModPolicy: updated.ModPolicy,
+		ModPolicy: updated.GetModPolicy(),
 	}
 
-	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.GetWriteSet(), "Mismatched write set")
 }
 
 func TestGroupPolicyModification(t *testing.T) {
@@ -105,7 +105,7 @@ func TestGroupPolicyModification(t *testing.T) {
 	}
 	updated := &cb.ConfigGroup{
 		Policies: map[string]*cb.ConfigPolicy{
-			policy1Name: original.Policies[policy1Name],
+			policy1Name: original.GetPolicies()[policy1Name],
 			policy2Name: {
 				Policy: &cb.Policy{
 					Type: 9,
@@ -123,29 +123,29 @@ func TestGroupPolicyModification(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
-		Version:  original.Version,
+		Version:  original.GetVersion(),
 		Policies: map[string]*cb.ConfigPolicy{},
 		Values:   map[string]*cb.ConfigValue{},
 		Groups:   map[string]*cb.ConfigGroup{},
 	}
 
-	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.GetReadSet(), "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
-		Version: original.Version,
+		Version: original.GetVersion(),
 		Policies: map[string]*cb.ConfigPolicy{
 			policy2Name: {
 				Policy: &cb.Policy{
-					Type: updated.Policies[policy2Name].Policy.Type,
+					Type: updated.GetPolicies()[policy2Name].GetPolicy().GetType(),
 				},
-				Version: original.Policies[policy2Name].Version + 1,
+				Version: original.GetPolicies()[policy2Name].GetVersion() + 1,
 			},
 		},
 		Values: map[string]*cb.ConfigValue{},
 		Groups: map[string]*cb.ConfigGroup{},
 	}
 
-	require.True(t, proto.Equal(expectedWriteSet, cu.WriteSet), "Mismatched write set")
+	require.True(t, proto.Equal(expectedWriteSet, cu.GetWriteSet()), "Mismatched write set")
 }
 
 func TestGroupValueModification(t *testing.T) {
@@ -166,7 +166,7 @@ func TestGroupValueModification(t *testing.T) {
 	}
 	updated := &cb.ConfigGroup{
 		Values: map[string]*cb.ConfigValue{
-			value1Name: original.Values[value1Name],
+			value1Name: original.GetValues()[value1Name],
 			value2Name: {
 				Value: []byte("updatedValued2Value"),
 			},
@@ -182,27 +182,27 @@ func TestGroupValueModification(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
-		Version:  original.Version,
+		Version:  original.GetVersion(),
 		Values:   map[string]*cb.ConfigValue{},
 		Policies: map[string]*cb.ConfigPolicy{},
 		Groups:   map[string]*cb.ConfigGroup{},
 	}
 
-	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.GetReadSet(), "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
-		Version: original.Version,
+		Version: original.GetVersion(),
 		Values: map[string]*cb.ConfigValue{
 			value2Name: {
-				Value:   updated.Values[value2Name].Value,
-				Version: original.Values[value2Name].Version + 1,
+				Value:   updated.GetValues()[value2Name].GetValue(),
+				Version: original.GetValues()[value2Name].GetVersion() + 1,
 			},
 		},
 		Policies: map[string]*cb.ConfigPolicy{},
 		Groups:   map[string]*cb.ConfigGroup{},
 	}
 
-	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.GetWriteSet(), "Mismatched write set")
 }
 
 func TestGroupGroupsModification(t *testing.T) {
@@ -235,10 +235,10 @@ func TestGroupGroupsModification(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
-		Version: original.Version,
+		Version: original.GetVersion(),
 		Groups: map[string]*cb.ConfigGroup{
 			subGroupName: {
-				Version:  original.Groups[subGroupName].Version,
+				Version:  original.GetGroups()[subGroupName].GetVersion(),
 				Policies: map[string]*cb.ConfigPolicy{},
 				Values:   map[string]*cb.ConfigValue{},
 				Groups:   map[string]*cb.ConfigGroup{},
@@ -248,13 +248,13 @@ func TestGroupGroupsModification(t *testing.T) {
 		Values:   map[string]*cb.ConfigValue{},
 	}
 
-	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.GetReadSet(), "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
-		Version: original.Version,
+		Version: original.GetVersion(),
 		Groups: map[string]*cb.ConfigGroup{
 			subGroupName: {
-				Version:  original.Groups[subGroupName].Version + 1,
+				Version:  original.GetGroups()[subGroupName].GetVersion() + 1,
 				Groups:   map[string]*cb.ConfigGroup{},
 				Policies: map[string]*cb.ConfigPolicy{},
 				Values:   map[string]*cb.ConfigValue{},
@@ -264,7 +264,7 @@ func TestGroupGroupsModification(t *testing.T) {
 		Values:   map[string]*cb.ConfigValue{},
 	}
 
-	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.GetWriteSet(), "Mismatched write set")
 }
 
 func TestGroupValueAddition(t *testing.T) {
@@ -281,7 +281,7 @@ func TestGroupValueAddition(t *testing.T) {
 	}
 	updated := &cb.ConfigGroup{
 		Values: map[string]*cb.ConfigValue{
-			value1Name: original.Values[value1Name],
+			value1Name: original.GetValues()[value1Name],
 			value2Name: {
 				Version: 9,
 				Value:   []byte("newValue2"),
@@ -298,26 +298,26 @@ func TestGroupValueAddition(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
-		Version: original.Version,
+		Version: original.GetVersion(),
 		Values: map[string]*cb.ConfigValue{
 			value1Name: {
-				Version: original.Values[value1Name].Version,
+				Version: original.GetValues()[value1Name].GetVersion(),
 			},
 		},
 		Policies: map[string]*cb.ConfigPolicy{},
 		Groups:   map[string]*cb.ConfigGroup{},
 	}
 
-	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.GetReadSet(), "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
-		Version: original.Version + 1,
+		Version: original.GetVersion() + 1,
 		Values: map[string]*cb.ConfigValue{
 			value1Name: {
-				Version: original.Values[value1Name].Version,
+				Version: original.GetValues()[value1Name].GetVersion(),
 			},
 			value2Name: {
-				Value:   updated.Values[value2Name].Value,
+				Value:   updated.GetValues()[value2Name].GetValue(),
 				Version: 0,
 			},
 		},
@@ -325,7 +325,7 @@ func TestGroupValueAddition(t *testing.T) {
 		Groups:   map[string]*cb.ConfigGroup{},
 	}
 
-	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.GetWriteSet(), "Mismatched write set")
 }
 
 func TestGroupPolicySwap(t *testing.T) {
@@ -362,20 +362,20 @@ func TestGroupPolicySwap(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
-		Version:  original.Version,
+		Version:  original.GetVersion(),
 		Policies: map[string]*cb.ConfigPolicy{},
 		Values:   map[string]*cb.ConfigValue{},
 		Groups:   map[string]*cb.ConfigGroup{},
 	}
 
-	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.GetReadSet(), "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
-		Version: original.Version + 1,
+		Version: original.GetVersion() + 1,
 		Policies: map[string]*cb.ConfigPolicy{
 			policy2Name: {
 				Policy: &cb.Policy{
-					Type: updated.Policies[policy2Name].Policy.Type,
+					Type: updated.GetPolicies()[policy2Name].GetPolicy().GetType(),
 				},
 				Version: 0,
 			},
@@ -384,7 +384,7 @@ func TestGroupPolicySwap(t *testing.T) {
 		Groups: map[string]*cb.ConfigGroup{},
 	}
 
-	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.GetWriteSet(), "Mismatched write set")
 }
 
 func TestComplex(t *testing.T) {
@@ -447,27 +447,27 @@ func TestComplex(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
-		Version: original.Version,
+		Version: original.GetVersion(),
 		Policies: map[string]*cb.ConfigPolicy{
 			existingPolicyName: {
-				Version: original.Policies[existingPolicyName].Version,
+				Version: original.GetPolicies()[existingPolicyName].GetVersion(),
 			},
 		},
 		Values: map[string]*cb.ConfigValue{},
 		Groups: map[string]*cb.ConfigGroup{
 			existingGroup1Name: {
-				Version: original.Groups[existingGroup1Name].Version,
+				Version: original.GetGroups()[existingGroup1Name].GetVersion(),
 			},
 		},
 	}
 
-	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.GetReadSet(), "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
-		Version: original.Version + 1,
+		Version: original.GetVersion() + 1,
 		Policies: map[string]*cb.ConfigPolicy{
 			existingPolicyName: {
-				Version: original.Policies[existingPolicyName].Version,
+				Version: original.GetPolicies()[existingPolicyName].GetVersion(),
 			},
 			newPolicyName: {
 				Version: 0,
@@ -478,7 +478,7 @@ func TestComplex(t *testing.T) {
 		},
 		Groups: map[string]*cb.ConfigGroup{
 			existingGroup1Name: {
-				Version: original.Groups[existingGroup1Name].Version,
+				Version: original.GetGroups()[existingGroup1Name].GetVersion(),
 			},
 			newGroupName: {
 				Version: 0,
@@ -492,7 +492,7 @@ func TestComplex(t *testing.T) {
 		Values: map[string]*cb.ConfigValue{},
 	}
 
-	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.GetWriteSet(), "Mismatched write set")
 }
 
 func TestTwiceNestedModification(t *testing.T) {
@@ -537,7 +537,7 @@ func TestTwiceNestedModification(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
-		Version: original.Version,
+		Version: original.GetVersion(),
 		Groups: map[string]*cb.ConfigGroup{
 			subGroupName: {
 				Groups: map[string]*cb.ConfigGroup{
@@ -555,18 +555,18 @@ func TestTwiceNestedModification(t *testing.T) {
 		Values:   map[string]*cb.ConfigValue{},
 	}
 
-	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.GetReadSet(), "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
-		Version: original.Version,
+		Version: original.GetVersion(),
 		Groups: map[string]*cb.ConfigGroup{
 			subGroupName: {
 				Groups: map[string]*cb.ConfigGroup{
 					subSubGroupName: {
 						Values: map[string]*cb.ConfigValue{
 							valueName: {
-								Version:   original.Groups[subGroupName].Groups[subSubGroupName].Values[valueName].Version + 1,
-								ModPolicy: updated.Groups[subGroupName].Groups[subSubGroupName].Values[valueName].ModPolicy,
+								Version:   original.GetGroups()[subGroupName].GetGroups()[subSubGroupName].GetValues()[valueName].GetVersion() + 1,
+								ModPolicy: updated.GetGroups()[subGroupName].GetGroups()[subSubGroupName].GetValues()[valueName].GetModPolicy(),
 							},
 						},
 						Policies: map[string]*cb.ConfigPolicy{},
@@ -581,5 +581,5 @@ func TestTwiceNestedModification(t *testing.T) {
 		Values:   map[string]*cb.ConfigValue{},
 	}
 
-	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.GetWriteSet(), "Mismatched write set")
 }

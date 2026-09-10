@@ -89,7 +89,7 @@ func TestDispatchSubmit(t *testing.T) {
 
 	t.Run("Channel exists", func(t *testing.T) {
 		mr := &mocks.MessageReceiver{}
-		mr.On("HandleRequest", uint64(1), protoutil.MarshalOrPanic(expectedRequest.Payload)).Return(nil).Once()
+		mr.On("HandleRequest", uint64(1), protoutil.MarshalOrPanic(expectedRequest.GetPayload())).Return(nil).Once()
 
 		rg := &mocks.ReceiverGetter{}
 		rg.On("ReceiverByChain", "mychannel").Return(mr).Once()
@@ -99,7 +99,7 @@ func TestDispatchSubmit(t *testing.T) {
 		err := ingress.OnSubmit("mychannel", 1, expectedRequest)
 		assert.NoError(t, err)
 
-		mr.AssertCalled(t, "HandleRequest", uint64(1), protoutil.MarshalOrPanic(expectedRequest.Payload))
+		mr.AssertCalled(t, "HandleRequest", uint64(1), protoutil.MarshalOrPanic(expectedRequest.GetPayload()))
 	})
 
 	t.Run("Channel does not exist", func(t *testing.T) {

@@ -19,10 +19,10 @@ import (
 // the idRemap map tells us how to remap these integers given that merging two
 // policies implies deduplicating their principals
 func remap(sp *cb.SignaturePolicy, idRemap map[int]int) *cb.SignaturePolicy {
-	switch t := sp.Type.(type) {
+	switch t := sp.GetType().(type) {
 	case *cb.SignaturePolicy_NOutOf_:
 		rules := []*cb.SignaturePolicy{}
-		for _, rule := range t.NOutOf.Rules {
+		for _, rule := range t.NOutOf.GetRules() {
 			// here we call remap again - we're doing a
 			// depth-first traversal of this policy tree
 			rules = append(rules, remap(rule, idRemap))
@@ -31,7 +31,7 @@ func remap(sp *cb.SignaturePolicy, idRemap map[int]int) *cb.SignaturePolicy {
 		return &cb.SignaturePolicy{
 			Type: &cb.SignaturePolicy_NOutOf_{
 				NOutOf: &cb.SignaturePolicy_NOutOf{
-					N:     t.NOutOf.N,
+					N:     t.NOutOf.GetN(),
 					Rules: rules,
 				},
 			},
@@ -60,10 +60,10 @@ func remap(sp *cb.SignaturePolicy, idRemap map[int]int) *cb.SignaturePolicy {
 // whereas the second isn't
 func merge(this *cb.SignaturePolicyEnvelope, that *cb.SignaturePolicyEnvelope) {
 	// at first we build a map of principals in `this`
-	IDs := this.Identities
+	IDs := this.GetIdentities()
 	idMap := map[string]int{}
-	for i, id := range this.Identities {
-		str := id.PrincipalClassification.String() + string(id.Principal)
+	for i, id := range this.GetIdentities() {
+		str := id.GetPrincipalClassification().String() + string(id.GetPrincipal())
 		idMap[str] = i
 	}
 
@@ -74,8 +74,8 @@ func merge(this *cb.SignaturePolicyEnvelope, that *cb.SignaturePolicyEnvelope) {
 	// ensure that the references in `that` point to the
 	// correct principal
 	idRemap := map[int]int{}
-	for i, id := range that.Identities {
-		str := id.PrincipalClassification.String() + string(id.Principal)
+	for i, id := range that.GetIdentities() {
+		str := id.GetPrincipalClassification().String() + string(id.GetPrincipal())
 		if j, in := idMap[str]; in {
 			idRemap[i] = j
 		} else {
@@ -87,9 +87,9 @@ func merge(this *cb.SignaturePolicyEnvelope, that *cb.SignaturePolicyEnvelope) {
 
 	this.Identities = IDs
 
-	newEntry := remap(that.Rule, idRemap)
+	newEntry := remap(that.GetRule(), idRemap)
 
-	existingRules := this.Rule.Type.(*cb.SignaturePolicy_NOutOf_).NOutOf.Rules
+	existingRules := this.GetRule().GetType().(*cb.SignaturePolicy_NOutOf_).NOutOf.GetRules()
 	this.Rule.Type.(*cb.SignaturePolicy_NOutOf_).NOutOf.Rules = append(existingRules, newEntry)
 }
 

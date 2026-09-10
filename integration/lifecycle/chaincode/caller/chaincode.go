@@ -36,11 +36,11 @@ func (t *CC) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 
 	case "QUERYCALLEE":
 		response := stub.InvokeChaincode(args[0], [][]byte{[]byte("QUERY")}, args[1])
-		if response.Status >= 400 {
-			return shim.Error(response.Message)
+		if response.GetStatus() >= 400 {
+			return shim.Error(response.GetMessage())
 		}
 
-		return shim.Success(response.Payload)
+		return shim.Success(response.GetPayload())
 
 	case "QUERY":
 		val, err := stub.GetState("foo")

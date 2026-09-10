@@ -297,7 +297,7 @@ func TestBFTDeliverer_NoBlocks(t *testing.T) {
 	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	require.NoError(t, err)
 	seekInfo := &orderer.SeekInfo{}
-	err = proto.Unmarshal(payload.Data, seekInfo)
+	err = proto.Unmarshal(payload.GetData(), seekInfo)
 	require.NoError(t, err)
 	require.Equal(t, uint64(7), seekInfo.GetStart().GetSpecified().GetNumber())
 

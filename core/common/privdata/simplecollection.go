@@ -49,13 +49,13 @@ func (sc *SimpleCollection) MemberOrgs() map[string]struct{} {
 // RequiredPeerCount returns the minimum number of peers
 // required to send private data to
 func (sc *SimpleCollection) RequiredPeerCount() int {
-	return int(sc.conf.RequiredPeerCount)
+	return int(sc.conf.GetRequiredPeerCount())
 }
 
 // MaximumPeerCount returns the maximum number of peers
 // to which the private data will be sent
 func (sc *SimpleCollection) MaximumPeerCount() int {
-	return int(sc.conf.MaximumPeerCount)
+	return int(sc.conf.GetMaximumPeerCount())
 }
 
 // AccessFilter returns the member filter function that evaluates signed data
@@ -72,13 +72,13 @@ func (sc *SimpleCollection) AccessFilter() Filter {
 // IsMemberOnlyRead returns whether only collection member
 // has the read permission
 func (sc *SimpleCollection) IsMemberOnlyRead() bool {
-	return sc.conf.MemberOnlyRead
+	return sc.conf.GetMemberOnlyRead()
 }
 
 // IsMemberOnlyWrite returns whether only collection member
 // has the write permission
 func (sc *SimpleCollection) IsMemberOnlyWrite() bool {
-	return sc.conf.MemberOnlyWrite
+	return sc.conf.GetMemberOnlyWrite()
 }
 
 // Setup configures a simple collection object based on a given
@@ -106,7 +106,7 @@ func (sc *SimpleCollection) Setup(collectionConfig *peer.StaticCollectionConfig,
 	}
 
 	// get member org MSP IDs from the envelope, identities that fail to deserialize will not be returned
-	sc.memberOrgs = getMemberOrgs(accessPolicyEnvelope.Identities, deserializer)
+	sc.memberOrgs = getMemberOrgs(accessPolicyEnvelope.GetIdentities(), deserializer)
 
 	return nil
 }

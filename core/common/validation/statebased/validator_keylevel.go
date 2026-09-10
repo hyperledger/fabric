@@ -95,8 +95,8 @@ func (p *baseEvaluator) Evaluate(blockNum, txNum uint64, NsRwSets []*rwsetutil.N
 		// public writes
 		// we validate writes against key-level validation parameters
 		// if any are present or the chaincode-wide endorsement policy
-		for _, pubWrite := range nsRWSet.KvRwSet.Writes {
-			err := p.checkSBAndCCEP(ns, "", pubWrite.Key, blockNum, txNum, sd)
+		for _, pubWrite := range nsRWSet.KvRwSet.GetWrites() {
+			err := p.checkSBAndCCEP(ns, "", pubWrite.GetKey(), blockNum, txNum, sd)
 			if err != nil {
 				return err
 			}
@@ -104,8 +104,8 @@ func (p *baseEvaluator) Evaluate(blockNum, txNum uint64, NsRwSets []*rwsetutil.N
 		// public metadata writes
 		// we validate writes against key-level validation parameters
 		// if any are present or the chaincode-wide endorsement policy
-		for _, pubMdWrite := range nsRWSet.KvRwSet.MetadataWrites {
-			err := p.checkSBAndCCEP(ns, "", pubMdWrite.Key, blockNum, txNum, sd)
+		for _, pubMdWrite := range nsRWSet.KvRwSet.GetMetadataWrites() {
+			err := p.checkSBAndCCEP(ns, "", pubMdWrite.GetKey(), blockNum, txNum, sd)
 			if err != nil {
 				return err
 			}
@@ -115,8 +115,8 @@ func (p *baseEvaluator) Evaluate(blockNum, txNum uint64, NsRwSets []*rwsetutil.N
 		// if any are present or the chaincode-wide endorsement policy
 		for _, collRWSet := range nsRWSet.CollHashedRwSets {
 			coll := collRWSet.CollectionName
-			for _, hashedWrite := range collRWSet.HashedRwSet.HashedWrites {
-				key := string(hashedWrite.KeyHash)
+			for _, hashedWrite := range collRWSet.HashedRwSet.GetHashedWrites() {
+				key := string(hashedWrite.GetKeyHash())
 				err := p.checkSBAndCCEP(ns, coll, key, blockNum, txNum, sd)
 				if err != nil {
 					return err
@@ -128,8 +128,8 @@ func (p *baseEvaluator) Evaluate(blockNum, txNum uint64, NsRwSets []*rwsetutil.N
 		// if any are present or the chaincode-wide endorsement policy
 		for _, collRWSet := range nsRWSet.CollHashedRwSets {
 			coll := collRWSet.CollectionName
-			for _, hashedMdWrite := range collRWSet.HashedRwSet.MetadataWrites {
-				key := string(hashedMdWrite.KeyHash)
+			for _, hashedMdWrite := range collRWSet.HashedRwSet.GetMetadataWrites() {
+				key := string(hashedMdWrite.GetKeyHash())
 				err := p.checkSBAndCCEP(ns, coll, key, blockNum, txNum, sd)
 				if err != nil {
 					return err
@@ -188,45 +188,45 @@ func (klv *KeyLevelValidator) extractDependenciesForTx(blockNum, txNum uint64, e
 		return
 	}
 
-	payl, err := protoutil.UnmarshalPayload(env.Payload)
+	payl, err := protoutil.UnmarshalPayload(env.GetPayload())
 	if err != nil {
 		logger.Warningf("while executing GetPayload got error '%s', skipping tx at height (%d,%d)", err, blockNum, txNum)
 		return
 	}
 
-	tx, err := protoutil.UnmarshalTransaction(payl.Data)
+	tx, err := protoutil.UnmarshalTransaction(payl.GetData())
 	if err != nil {
 		logger.Warningf("while executing GetTransaction got error '%s', skipping tx at height (%d,%d)", err, blockNum, txNum)
 		return
 	}
 
-	cap, err := protoutil.UnmarshalChaincodeActionPayload(tx.Actions[0].Payload)
+	cap, err := protoutil.UnmarshalChaincodeActionPayload(tx.GetActions()[0].GetPayload())
 	if err != nil {
 		logger.Warningf("while executing GetChaincodeActionPayload got error '%s', skipping tx at height (%d,%d)", err, blockNum, txNum)
 		return
 	}
 
-	pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(cap.Action.ProposalResponsePayload)
+	pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(cap.GetAction().GetProposalResponsePayload())
 	if err != nil {
 		logger.Warningf("while executing GetProposalResponsePayload got error '%s', skipping tx at height (%d,%d)", err, blockNum, txNum)
 		return
 	}
 
-	respPayload, err := protoutil.UnmarshalChaincodeAction(pRespPayload.Extension)
+	respPayload, err := protoutil.UnmarshalChaincodeAction(pRespPayload.GetExtension())
 	if err != nil {
 		logger.Warningf("while executing GetChaincodeAction got error '%s', skipping tx at height (%d,%d)", err, blockNum, txNum)
 		return
 	}
 
-	klv.vpmgr.ExtractValidationParameterDependency(blockNum, txNum, respPayload.Results)
+	klv.vpmgr.ExtractValidationParameterDependency(blockNum, txNum, respPayload.GetResults())
 }
 
 // PreValidate implements the function of the StateBasedValidator interface
 func (klv *KeyLevelValidator) PreValidate(txNum uint64, block *common.Block) {
 	klv.blockDep.mutex.Lock()
-	if klv.blockDep.blockNum != block.Header.Number {
-		klv.blockDep.blockNum = block.Header.Number
-		klv.blockDep.txDepOnce = make([]sync.Once, len(block.Data.Data))
+	if klv.blockDep.blockNum != block.GetHeader().GetNumber() {
+		klv.blockDep.blockNum = block.GetHeader().GetNumber()
+		klv.blockDep.txDepOnce = make([]sync.Once, len(block.GetData().GetData()))
 	}
 	klv.blockDep.mutex.Unlock()
 
@@ -235,7 +235,7 @@ func (klv *KeyLevelValidator) PreValidate(txNum uint64, block *common.Block) {
 
 		klv.blockDep.txDepOnce[i].Do(
 			func() {
-				klv.extractDependenciesForTx(block.Header.Number, txPosition, block.Data.Data[txPosition])
+				klv.extractDependenciesForTx(block.GetHeader().GetNumber(), txPosition, block.GetData().GetData()[txPosition])
 			},
 		)
 	}
@@ -246,17 +246,17 @@ func (klv *KeyLevelValidator) Validate(cc string, blockNum, txNum uint64, rwsetB
 	// construct signature set
 	signatureSet := []*protoutil.SignedData{}
 	for _, endorsement := range endorsements {
-		data := make([]byte, len(prp)+len(endorsement.Endorser))
+		data := make([]byte, len(prp)+len(endorsement.GetEndorser()))
 		copy(data, prp)
-		copy(data[len(prp):], endorsement.Endorser)
+		copy(data[len(prp):], endorsement.GetEndorser())
 
 		signatureSet = append(signatureSet, &protoutil.SignedData{
 			// set the data that is signed; concatenation of proposal response bytes and endorser ID
 			Data: data,
 			// set the identity that signs the message: it's the endorser
-			Identity: endorsement.Endorser,
+			Identity: endorsement.GetEndorser(),
 			// set the signature
-			Signature: endorsement.Signature,
+			Signature: endorsement.GetSignature(),
 		})
 	}
 

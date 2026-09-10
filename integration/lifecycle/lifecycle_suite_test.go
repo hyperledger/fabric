@@ -203,16 +203,16 @@ func CommitTx(nw *nwo.Network, tx *pcommon.Envelope, peer *nwo.Peer, dc pb.Deliv
 		if err != nil {
 			return err
 		}
-		fb, ok := resp.Type.(*pb.DeliverResponse_FilteredBlock)
+		fb, ok := resp.GetType().(*pb.DeliverResponse_FilteredBlock)
 		if !ok {
-			return fmt.Errorf("unexpected filtered block, received %T", resp.Type)
+			return fmt.Errorf("unexpected filtered block, received %T", resp.GetType())
 		}
-		for _, tx := range fb.FilteredBlock.FilteredTransactions {
-			if tx.Txid != txid {
+		for _, tx := range fb.FilteredBlock.GetFilteredTransactions() {
+			if tx.GetTxid() != txid {
 				continue
 			}
-			if tx.TxValidationCode != pb.TxValidationCode_VALID {
-				return fmt.Errorf("transaction invalidated with status (%s)", tx.TxValidationCode)
+			if tx.GetTxValidationCode() != pb.TxValidationCode_VALID {
+				return fmt.Errorf("transaction invalidated with status (%s)", tx.GetTxValidationCode())
 			}
 			return nil
 		}

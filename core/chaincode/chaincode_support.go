@@ -178,25 +178,25 @@ func processChaincodeExecutionResult(txid, ccName string, resp *pb.ChaincodeMess
 		return nil, nil, errors.Errorf("nil response from transaction %s", txid)
 	}
 
-	if resp.ChaincodeEvent != nil {
+	if resp.GetChaincodeEvent() != nil {
 		resp.ChaincodeEvent.ChaincodeId = ccName
 		resp.ChaincodeEvent.TxId = txid
 	}
 
-	switch resp.Type {
+	switch resp.GetType() {
 	case pb.ChaincodeMessage_COMPLETED:
 		res := &pb.Response{}
-		err := proto.Unmarshal(resp.Payload, res)
+		err := proto.Unmarshal(resp.GetPayload(), res)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "failed to unmarshal response for transaction %s", txid)
 		}
-		return res, resp.ChaincodeEvent, nil
+		return res, resp.GetChaincodeEvent(), nil
 
 	case pb.ChaincodeMessage_ERROR:
-		return nil, resp.ChaincodeEvent, errors.Errorf("transaction returned with failure: %s", resp.Payload)
+		return nil, resp.GetChaincodeEvent(), errors.Errorf("transaction returned with failure: %s", resp.GetPayload())
 
 	default:
-		return nil, nil, errors.Errorf("unexpected response type %d for transaction %s", resp.Type, txid)
+		return nil, nil, errors.Errorf("unexpected response type %d for transaction %s", resp.GetType(), txid)
 	}
 }
 
@@ -242,7 +242,7 @@ func (cs *ChaincodeSupport) CheckInvocation(txParams *ccprovider.TransactionPara
 	// Note, IsInit is a new field for v2.0 and should only be set for invocations of non-legacy chaincodes.
 	// Any invocation of a legacy chaincode with IsInit set will fail.  This is desirable, as the old
 	// InstantiationPolicy contract enforces which users may call init.
-	if input.IsInit {
+	if input.GetIsInit() {
 		if !cii.EnforceInit {
 			return "", 0, errors.Errorf("chaincode '%s' does not require initialization but called as init", chaincodeName)
 		}
@@ -292,7 +292,7 @@ func (cs *ChaincodeSupport) execute(cctyp pb.ChaincodeMessage_Type, txParams *cc
 }
 
 func (cs *ChaincodeSupport) executeTimeout(namespace string, input *pb.ChaincodeInput) time.Duration {
-	operation := chaincodeOperation(input.Args)
+	operation := chaincodeOperation(input.GetArgs())
 	switch {
 	case namespace == "lscc" && operation == "install":
 		return maxDuration(cs.InstallTimeout, cs.ExecuteTimeout)

@@ -355,34 +355,34 @@ loop:
 		if ord.EtcdRaft == nil {
 			logger.Panicf("%s configuration missing", EtcdRaft)
 		}
-		if ord.EtcdRaft.Options == nil {
-			logger.Infof("Orderer.EtcdRaft.Options unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options)
-			ord.EtcdRaft.Options = genesisDefaults.Orderer.EtcdRaft.Options
+		if ord.EtcdRaft.GetOptions() == nil {
+			logger.Infof("Orderer.EtcdRaft.Options unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.GetOptions())
+			ord.EtcdRaft.Options = genesisDefaults.Orderer.EtcdRaft.GetOptions()
 		}
 	second_loop:
 		for {
 			switch {
-			case ord.EtcdRaft.Options.TickInterval == "":
-				logger.Infof("Orderer.EtcdRaft.Options.TickInterval unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.TickInterval)
-				ord.EtcdRaft.Options.TickInterval = genesisDefaults.Orderer.EtcdRaft.Options.TickInterval
+			case ord.EtcdRaft.GetOptions().GetTickInterval() == "":
+				logger.Infof("Orderer.EtcdRaft.Options.TickInterval unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.GetOptions().GetTickInterval())
+				ord.EtcdRaft.Options.TickInterval = genesisDefaults.Orderer.EtcdRaft.GetOptions().GetTickInterval()
 
-			case ord.EtcdRaft.Options.ElectionTick == 0:
-				logger.Infof("Orderer.EtcdRaft.Options.ElectionTick unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.ElectionTick)
-				ord.EtcdRaft.Options.ElectionTick = genesisDefaults.Orderer.EtcdRaft.Options.ElectionTick
+			case ord.EtcdRaft.GetOptions().GetElectionTick() == 0:
+				logger.Infof("Orderer.EtcdRaft.Options.ElectionTick unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.GetOptions().GetElectionTick())
+				ord.EtcdRaft.Options.ElectionTick = genesisDefaults.Orderer.EtcdRaft.GetOptions().GetElectionTick()
 
-			case ord.EtcdRaft.Options.HeartbeatTick == 0:
-				logger.Infof("Orderer.EtcdRaft.Options.HeartbeatTick unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.HeartbeatTick)
-				ord.EtcdRaft.Options.HeartbeatTick = genesisDefaults.Orderer.EtcdRaft.Options.HeartbeatTick
+			case ord.EtcdRaft.GetOptions().GetHeartbeatTick() == 0:
+				logger.Infof("Orderer.EtcdRaft.Options.HeartbeatTick unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.GetOptions().GetHeartbeatTick())
+				ord.EtcdRaft.Options.HeartbeatTick = genesisDefaults.Orderer.EtcdRaft.GetOptions().GetHeartbeatTick()
 
-			case ord.EtcdRaft.Options.MaxInflightBlocks == 0:
-				logger.Infof("Orderer.EtcdRaft.Options.MaxInflightBlocks unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.MaxInflightBlocks)
-				ord.EtcdRaft.Options.MaxInflightBlocks = genesisDefaults.Orderer.EtcdRaft.Options.MaxInflightBlocks
+			case ord.EtcdRaft.GetOptions().GetMaxInflightBlocks() == 0:
+				logger.Infof("Orderer.EtcdRaft.Options.MaxInflightBlocks unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.GetOptions().GetMaxInflightBlocks())
+				ord.EtcdRaft.Options.MaxInflightBlocks = genesisDefaults.Orderer.EtcdRaft.GetOptions().GetMaxInflightBlocks()
 
-			case ord.EtcdRaft.Options.SnapshotIntervalSize == 0:
-				logger.Infof("Orderer.EtcdRaft.Options.SnapshotIntervalSize unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.Options.SnapshotIntervalSize)
-				ord.EtcdRaft.Options.SnapshotIntervalSize = genesisDefaults.Orderer.EtcdRaft.Options.SnapshotIntervalSize
+			case ord.EtcdRaft.GetOptions().GetSnapshotIntervalSize() == 0:
+				logger.Infof("Orderer.EtcdRaft.Options.SnapshotIntervalSize unset, setting to %v", genesisDefaults.Orderer.EtcdRaft.GetOptions().GetSnapshotIntervalSize())
+				ord.EtcdRaft.Options.SnapshotIntervalSize = genesisDefaults.Orderer.EtcdRaft.GetOptions().GetSnapshotIntervalSize()
 
-			case len(ord.EtcdRaft.Consenters) == 0:
+			case len(ord.EtcdRaft.GetConsenters()) == 0:
 				logger.Panicf("%s configuration did not specify any consenter", EtcdRaft)
 
 			default:
@@ -390,20 +390,20 @@ loop:
 			}
 		}
 
-		if _, err := time.ParseDuration(ord.EtcdRaft.Options.TickInterval); err != nil {
-			logger.Panicf("Etcdraft TickInterval (%s) must be in time duration format", ord.EtcdRaft.Options.TickInterval)
+		if _, err := time.ParseDuration(ord.EtcdRaft.GetOptions().GetTickInterval()); err != nil {
+			logger.Panicf("Etcdraft TickInterval (%s) must be in time duration format", ord.EtcdRaft.GetOptions().GetTickInterval())
 		}
 
 		// validate the specified members for Options
-		if ord.EtcdRaft.Options.ElectionTick <= ord.EtcdRaft.Options.HeartbeatTick {
+		if ord.EtcdRaft.GetOptions().GetElectionTick() <= ord.EtcdRaft.GetOptions().GetHeartbeatTick() {
 			logger.Panicf("election tick must be greater than heartbeat tick")
 		}
 
 		for _, c := range ord.EtcdRaft.GetConsenters() {
-			if c.Host == "" {
+			if c.GetHost() == "" {
 				logger.Panicf("consenter info in %s configuration did not specify host", EtcdRaft)
 			}
-			if c.Port == 0 {
+			if c.GetPort() == 0 {
 				logger.Panicf("consenter info in %s configuration did not specify port", EtcdRaft)
 			}
 			if c.ClientTlsCert == nil {

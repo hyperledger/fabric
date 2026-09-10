@@ -32,21 +32,21 @@ func (f *expirationCheckFilter) Init(next peer.EndorserServer) {
 }
 
 func validateProposal(signedProp *peer.SignedProposal) error {
-	prop, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
+	prop, err := protoutil.UnmarshalProposal(signedProp.GetProposalBytes())
 	if err != nil {
 		return errors.Wrap(err, "failed parsing proposal")
 	}
 
-	hdr, err := protoutil.UnmarshalHeader(prop.Header)
+	hdr, err := protoutil.UnmarshalHeader(prop.GetHeader())
 	if err != nil {
 		return errors.Wrap(err, "failed parsing header")
 	}
 
-	sh, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
+	sh, err := protoutil.UnmarshalSignatureHeader(hdr.GetSignatureHeader())
 	if err != nil {
 		return errors.Wrap(err, "failed parsing signature header")
 	}
-	expirationTime := crypto.ExpiresAt(sh.Creator)
+	expirationTime := crypto.ExpiresAt(sh.GetCreator())
 	if !expirationTime.IsZero() && time.Now().After(expirationTime) {
 		return errors.New("proposal client identity expired")
 	}

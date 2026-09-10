@@ -142,7 +142,7 @@ func (s *Synchronizer) synchronize() (*types.Decision, error) {
 	}
 
 	s.Logger.Infof("Finished synchronizing with cluster, fetched %d blocks, starting from block [%d], up until and including block [%d]",
-		blocksFetched, startHeight, lastPulledBlock.Header.Number)
+		blocksFetched, startHeight, lastPulledBlock.GetHeader().GetNumber())
 
 	viewMetadata, lastConfigSqn := s.getViewMetadataLastConfigSqnFromBlock(lastPulledBlock)
 

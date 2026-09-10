@@ -89,7 +89,7 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 		bcInfo, _ := l.GetBlockchainInfo()
 		require.Equal(t, &common.BlockchainInfo{
 			Height:            1,
-			CurrentBlockHash:  protoutil.BlockHeaderHash(gb.Header),
+			CurrentBlockHash:  protoutil.BlockHeaderHash(gb.GetHeader()),
 			PreviousBlockHash: nil,
 			BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
 				LastBlockInSnapshot: 0,
@@ -108,7 +108,7 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 
 		ledgerCreated := func() bool {
 			status := ledgerMgr.JoinBySnapshotStatus()
-			return !status.InProgress && status.BootstrappingSnapshotDir == ""
+			return !status.GetInProgress() && status.GetBootstrappingSnapshotDir() == ""
 		}
 
 		require.Eventually(t, ledgerCreated, time.Minute, time.Second)
@@ -154,7 +154,7 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 		// wait until CreateFromSnapshot is done
 		ledgerCreated := func() bool {
 			status := ledgerMgr.JoinBySnapshotStatus()
-			return !status.InProgress && status.BootstrappingSnapshotDir == ""
+			return !status.GetInProgress() && status.GetBootstrappingSnapshotDir() == ""
 		}
 		require.Eventually(t, ledgerCreated, time.Minute, time.Second)
 
@@ -232,7 +232,7 @@ func TestConcurrentCreateLedgerFromSnapshot(t *testing.T) {
 	waitCh <- struct{}{}
 	ledgerCreated := func() bool {
 		status := ledgerMgr2.JoinBySnapshotStatus()
-		return !status.InProgress && status.BootstrappingSnapshotDir == ""
+		return !status.GetInProgress() && status.GetBootstrappingSnapshotDir() == ""
 	}
 	require.Eventually(t, ledgerCreated, time.Minute, time.Second)
 
@@ -251,7 +251,7 @@ func TestConcurrentCreateLedgerFromSnapshot(t *testing.T) {
 	// wait until ledger is created from snapshotDir2
 	ledgerCreated = func() bool {
 		status := ledgerMgr2.JoinBySnapshotStatus()
-		return !status.InProgress && status.BootstrappingSnapshotDir == ""
+		return !status.GetInProgress() && status.GetBootstrappingSnapshotDir() == ""
 	}
 	require.Eventually(t, ledgerCreated, time.Minute, time.Second)
 

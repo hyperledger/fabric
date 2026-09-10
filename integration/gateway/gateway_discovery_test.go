@@ -154,7 +154,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 		transaction, err := protoutil.UnmarshalTransaction(payload.GetData())
 		Expect(err).NotTo(HaveOccurred())
 		Expect(transaction.GetActions()).To(HaveLen(1))
-		action, err := protoutil.UnmarshalChaincodeActionPayload(transaction.Actions[0].GetPayload())
+		action, err := protoutil.UnmarshalChaincodeActionPayload(transaction.GetActions()[0].GetPayload())
 		Expect(err).NotTo(HaveOccurred())
 		endorsements := action.GetAction().GetEndorsements()
 
@@ -162,7 +162,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 		for _, endorsement := range endorsements {
 			id, err := protoutil.UnmarshalSerializedIdentity(endorsement.GetEndorser())
 			Expect(err).NotTo(HaveOccurred())
-			actualEndorsers = append(actualEndorsers, peerCerts[string(id.IdBytes)])
+			actualEndorsers = append(actualEndorsers, peerCerts[string(id.GetIdBytes())])
 		}
 
 		Expect(actualEndorsers).To(ConsistOf(expectedEndorsers))
@@ -204,7 +204,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		preparedTransaction := endorseResponse.GetPreparedTransaction()
-		preparedTransaction.Signature, err = signer.Sign(preparedTransaction.Payload)
+		preparedTransaction.Signature, err = signer.Sign(preparedTransaction.GetPayload())
 		Expect(err).NotTo(HaveOccurred())
 
 		if expectedEndorsers != nil {
@@ -240,7 +240,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 
 		statusResponse, err := gatewayClient.CommitStatus(ctx, signedStatusRequest)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(statusResponse.Result).To(Equal(peer.TxValidationCode_VALID))
+		Expect(statusResponse.GetResult()).To(Equal(peer.TxValidationCode_VALID))
 
 		chaincodeAction, err := protoutil.GetActionFromEnvelopeMsg(endorseResponse.GetPreparedTransaction())
 		Expect(err).NotTo(HaveOccurred())
@@ -356,7 +356,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			[]string{"priv"},
 			nil,
 		)
-		Expect(result.Payload).To(Equal([]byte("initial private value")))
+		Expect(result.GetPayload()).To(Equal([]byte("initial private value")))
 
 		// add org1 to SBE policy - requires endorsement from org2 peer (collection policy)
 		submitTransaction(
@@ -393,7 +393,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			nil,
 		)
 
-		Expect(result.Payload).To(Equal([]byte("updated private value")))
+		Expect(result.GetPayload()).To(Equal([]byte("updated private value")))
 	})
 
 	It("writing to public and private keys should combine the collection & chaincode policies", func() {
@@ -424,7 +424,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			[]string{"priv"},
 			nil,
 		)
-		Expect(result.Payload).To(Equal([]byte("initial value")))
+		Expect(result.GetPayload()).To(Equal([]byte("initial value")))
 
 		// check the public value was set
 		result = evaluateTransaction(
@@ -436,7 +436,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			[]string{"pub"},
 			nil,
 		)
-		Expect(result.Payload).To(Equal([]byte("initial value")))
+		Expect(result.GetPayload()).To(Equal([]byte("initial value")))
 	})
 
 	It("should combine chaincode and private SBE policies", func() {
@@ -491,7 +491,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			[]string{"priv"},
 			nil,
 		)
-		Expect(result.Payload).To(Equal([]byte("chaincode and SBE policies")))
+		Expect(result.GetPayload()).To(Equal([]byte("chaincode and SBE policies")))
 	})
 
 	It("should combine collection and public SBE policies", func() {
@@ -534,7 +534,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			[]string{"pub"},
 			nil,
 		)
-		Expect(result.Payload).To(Equal([]byte("collection and SBE policies")))
+		Expect(result.GetPayload()).To(Equal([]byte("collection and SBE policies")))
 	})
 
 	It("should endorse chaincode on org3 and also seek endorsement from another org for cc2cc call", func() {
@@ -565,7 +565,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			nil,
 		)
 
-		Expect(result.Payload).To(Equal([]byte("90")))
+		Expect(result.GetPayload()).To(Equal([]byte("90")))
 	})
 
 	It("reading private data should use the collection ownership policy, not signature policy", func() {

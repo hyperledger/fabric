@@ -76,7 +76,7 @@ type signingIdentity interface {
 func NewBlockGenerator(t *testing.T, ledgerID string, signTxs bool) (*BlockGenerator, *common.Block) {
 	gb, err := test.MakeGenesisBlock(ledgerID)
 	require.NoError(t, err)
-	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(len(gb.Data.Data), pb.TxValidationCode_VALID)
+	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(len(gb.GetData().GetData()), pb.TxValidationCode_VALID)
 	return &BlockGenerator{1, protoutil.BlockHeaderHash(gb.GetHeader()), signTxs, t}, gb
 }
 
@@ -84,7 +84,7 @@ func NewBlockGenerator(t *testing.T, ledgerID string, signTxs bool) (*BlockGener
 func (bg *BlockGenerator) NextBlock(simulationResults [][]byte) *common.Block {
 	block := ConstructBlock(bg.t, bg.blockNum, bg.previousHash, simulationResults, bg.signTxs)
 	bg.blockNum++
-	bg.previousHash = protoutil.BlockHeaderHash(block.Header)
+	bg.previousHash = protoutil.BlockHeaderHash(block.GetHeader())
 	return block
 }
 
@@ -96,7 +96,7 @@ func (bg *BlockGenerator) NextBlockWithTxid(simulationResults [][]byte, txids []
 	}
 	block := ConstructBlockWithTxid(bg.t, bg.blockNum, bg.previousHash, simulationResults, txids, bg.signTxs)
 	bg.blockNum++
-	bg.previousHash = protoutil.BlockHeaderHash(block.Header)
+	bg.previousHash = protoutil.BlockHeaderHash(block.GetHeader())
 	return block
 }
 
@@ -307,7 +307,7 @@ func NewBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *com
 		txEnvBytes, _ := proto.Marshal(env[i])
 		block.Data.Data = append(block.Data.Data, txEnvBytes)
 	}
-	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.GetData())
 	protoutil.InitBlockMetadata(block)
 
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(len(env), pb.TxValidationCode_VALID)
@@ -327,12 +327,12 @@ func constructBytesProposalResponsePayload(channelID string, ccid *pb.ChaincodeI
 		return nil, err
 	}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, pResponse, simulationResults, nil, ccid, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.GetHeader(), prop.GetPayload(), pResponse, simulationResults, nil, ccid, signer)
 	if err != nil {
 		return nil, err
 	}
 
-	return presp.Payload, nil
+	return presp.GetPayload(), nil
 }
 
 // ConstructSignedTxEnvWithDefaultSigner constructs a transaction envelope for tests with a default signer.
@@ -442,8 +442,8 @@ func ConstructSignedTxEnv(
 	}
 
 	presp, err := protoutil.CreateProposalResponse(
-		prop.Header,
-		prop.Payload,
+		prop.GetHeader(),
+		prop.GetPayload(),
 		pResponse,
 		simulationResults,
 		events,
@@ -462,18 +462,18 @@ func ConstructSignedTxEnv(
 }
 
 func SetTxID(t *testing.T, block *common.Block, txNum int, txID string) {
-	envelopeBytes := block.Data.Data[txNum]
+	envelopeBytes := block.GetData().GetData()[txNum]
 	envelope, err := protoutil.UnmarshalEnvelope(envelopeBytes)
 	if err != nil {
 		t.Fatalf("error unmarshalling envelope: %s", err)
 	}
 
-	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+	payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
 	if err != nil {
 		t.Fatalf("error getting payload from envelope: %s", err)
 	}
 
-	channelHeader, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	channelHeader, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		t.Fatalf("error unmarshalling channel header: %s", err)
 	}

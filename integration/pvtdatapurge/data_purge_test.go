@@ -413,20 +413,20 @@ func getPrivateDataKeys(client pb.Deliver_DeliverWithPrivateDataClient, ledgerHe
 		msg, err := client.Recv()
 		Expect(err).NotTo(HaveOccurred())
 
-		switch t := msg.Type.(type) {
+		switch t := msg.GetType().(type) {
 		case *pb.DeliverResponse_BlockAndPrivateData:
-			for _, txPvtRwset := range t.BlockAndPrivateData.PrivateDataMap {
+			for _, txPvtRwset := range t.BlockAndPrivateData.GetPrivateDataMap() {
 				if txPvtRwset == nil {
 					continue
 				}
 
-				for _, nsPvtRwset := range txPvtRwset.NsPvtRwset {
-					if nsPvtRwset.Namespace != "marblesp" {
+				for _, nsPvtRwset := range txPvtRwset.GetNsPvtRwset() {
+					if nsPvtRwset.GetNamespace() != "marblesp" {
 						continue
 					}
 
-					for _, col := range nsPvtRwset.CollectionPvtRwset {
-						Expect(col.CollectionName).Should(SatisfyAny(
+					for _, col := range nsPvtRwset.GetCollectionPvtRwset() {
+						Expect(col.GetCollectionName()).Should(SatisfyAny(
 							Equal("collectionMarbles"),
 							Equal("collectionMarblePrivateDetails"),
 						))
@@ -434,8 +434,8 @@ func getPrivateDataKeys(client pb.Deliver_DeliverWithPrivateDataClient, ledgerHe
 						kvRwset := kvrwset.KVRWSet{}
 						err := proto.Unmarshal(col.GetRwset(), &kvRwset)
 						Expect(err).NotTo(HaveOccurred())
-						for _, kvWrite := range kvRwset.Writes {
-							pvtKeys[kvWrite.Key] = struct{}{}
+						for _, kvWrite := range kvRwset.GetWrites() {
+							pvtKeys[kvWrite.GetKey()] = struct{}{}
 						}
 					}
 				}

@@ -797,8 +797,8 @@ func testSetup(certDir string, consensusClass string) (*common.Config, bccsp.BCC
 // TODO this pattern repeats itself in several places. Make it common in the 'genesisconfig' package to easily create
 // Raft genesis blocks
 func generateCertificates(confAppRaft *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) error {
-	for i, c := range confAppRaft.Orderer.EtcdRaft.Consenters {
-		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
+	for i, c := range confAppRaft.Orderer.EtcdRaft.GetConsenters() {
+		srvC, err := tlsCA.NewServerCertKeyPair(c.GetHost())
 		if err != nil {
 			return err
 		}

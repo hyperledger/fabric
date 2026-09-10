@@ -61,12 +61,12 @@ type ConfigBlockValidator struct {
 
 // ValidateConfig validates config from envelope
 func (cbv *ConfigBlockValidator) ValidateConfig(envelope *common.Envelope) error {
-	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+	payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
 	if err != nil {
 		return err
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return fmt.Errorf("no header was set")
 	}
 
@@ -74,20 +74,20 @@ func (cbv *ConfigBlockValidator) ValidateConfig(envelope *common.Envelope) error
 		return fmt.Errorf("no channel header was set")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return fmt.Errorf("channel header unmarshalling error: %s", err)
 	}
 
-	switch chdr.Type {
+	switch chdr.GetType() {
 	case int32(common.HeaderType_CONFIG):
 		configEnvelope := &common.ConfigEnvelope{}
-		if err = proto.Unmarshal(payload.Data, configEnvelope); err != nil {
+		if err = proto.Unmarshal(payload.GetData(), configEnvelope); err != nil {
 			return fmt.Errorf("data unmarshalling error: %s", err)
 		}
 		return cbv.verifyConfigUpdateMsg(envelope, configEnvelope, chdr)
 	default:
-		return errors.Errorf("unexpected envelope type %s", common.HeaderType_name[chdr.Type])
+		return errors.Errorf("unexpected envelope type %s", common.HeaderType_name[chdr.GetType()])
 	}
 }
 
@@ -96,37 +96,37 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *common.Config)
 		return fmt.Errorf("empty Config")
 	}
 
-	if conf.ChannelGroup == nil {
+	if conf.GetChannelGroup() == nil {
 		return fmt.Errorf("empty channel group")
 	}
 
-	if len(conf.ChannelGroup.Groups) == 0 {
+	if len(conf.GetChannelGroup().GetGroups()) == 0 {
 		return fmt.Errorf("no groups in channel group")
 	}
 
-	if conf.ChannelGroup.Groups["Orderer"] == nil {
+	if conf.GetChannelGroup().GetGroups()["Orderer"] == nil {
 		return fmt.Errorf("no 'Orderer' group in channel groups")
 	}
 
-	if len(conf.ChannelGroup.Groups["Orderer"].Values) == 0 {
+	if len(conf.GetChannelGroup().GetGroups()["Orderer"].GetValues()) == 0 {
 		return fmt.Errorf("no values in 'Orderer' group")
 	}
 
-	if conf.ChannelGroup.Groups["Orderer"].Values["Orderers"] == nil {
+	if conf.GetChannelGroup().GetGroups()["Orderer"].GetValues()["Orderers"] == nil {
 		return fmt.Errorf("no values in 'Orderer' group")
 	}
 
 	ords := &common.Orderers{}
-	if err := proto.Unmarshal(conf.ChannelGroup.Groups["Orderer"].Values["Orderers"].Value, ords); err != nil {
+	if err := proto.Unmarshal(conf.GetChannelGroup().GetGroups()["Orderer"].GetValues()["Orderers"].GetValue(), ords); err != nil {
 		return err
 	}
 
-	n := len(ords.ConsenterMapping)
+	n := len(ords.GetConsenterMapping())
 	f := (n - 1) / 3
 
 	var identities []*msp.MSPPrincipal
 	var pols []*common.SignaturePolicy
-	for i, consenter := range ords.ConsenterMapping {
+	for i, consenter := range ords.GetConsenterMapping() {
 		if consenter == nil {
 			return fmt.Errorf("consenter %d in the mapping is empty", i)
 		}
@@ -137,7 +137,7 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *common.Config)
 		})
 		identities = append(identities, &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_IDENTITY,
-			Principal:               protoutil.MarshalOrPanic(&msp.SerializedIdentity{Mspid: consenter.MspId, IdBytes: consenter.Identity}),
+			Principal:               protoutil.MarshalOrPanic(&msp.SerializedIdentity{Mspid: consenter.GetMspId(), IdBytes: consenter.GetIdentity()}),
 		})
 	}
 
@@ -152,37 +152,37 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *common.Config)
 		Value: protoutil.MarshalOrPanic(sp),
 	}
 
-	if len(conf.ChannelGroup.Groups["Orderer"].Policies) == 0 {
+	if len(conf.GetChannelGroup().GetGroups()["Orderer"].GetPolicies()) == 0 {
 		return fmt.Errorf("empty policies in 'Orderer' group")
 	}
 
-	if conf.ChannelGroup.Groups["Orderer"].Policies["BlockValidation"] == nil {
+	if conf.GetChannelGroup().GetGroups()["Orderer"].GetPolicies()["BlockValidation"] == nil {
 		return fmt.Errorf("block validation policy is not found in the policies of 'Orderer' group")
 	}
 
-	actualPolicy := conf.ChannelGroup.Groups["Orderer"].Policies["BlockValidation"].Policy
+	actualPolicy := conf.GetChannelGroup().GetGroups()["Orderer"].GetPolicies()["BlockValidation"].GetPolicy()
 
 	if !proto.Equal(expectedConfigPol, actualPolicy) {
 		return fmt.Errorf("block validation policy should be a signature policy: %v but it is %v instead", expectedConfigPol, actualPolicy)
 	}
 
-	consensusTypeConfigValue := conf.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+	consensusTypeConfigValue := conf.GetChannelGroup().GetGroups()["Orderer"].GetValues()["ConsensusType"]
 
 	if consensusTypeConfigValue == nil {
 		return fmt.Errorf("missing consensus type property in config")
 	}
 
 	consensusTypeValue := &protosorderer.ConsensusType{}
-	if err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue); err != nil {
+	if err := proto.Unmarshal(consensusTypeConfigValue.GetValue(), consensusTypeValue); err != nil {
 		return fmt.Errorf("invalid consensus type property in config: %v", err)
 	}
 
 	configOptions := &smartbft.Options{}
-	if err := proto.Unmarshal(consensusTypeValue.Metadata, configOptions); err != nil {
+	if err := proto.Unmarshal(consensusTypeValue.GetMetadata(), configOptions); err != nil {
 		return fmt.Errorf("invalid options encoded in consensus metadata: %v", err)
 	}
 
-	if configOptions.LeaderRotation == smartbft.Options_ROTATION_ON {
+	if configOptions.GetLeaderRotation() == smartbft.Options_ROTATION_ON {
 		return fmt.Errorf("leader rotation must be turned off for this version or be unspecified")
 	}
 
@@ -190,15 +190,15 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *common.Config)
 }
 
 func (cbv *ConfigBlockValidator) verifyConfigUpdateMsg(outEnv *common.Envelope, confEnv *common.ConfigEnvelope, chdr *common.ChannelHeader) error {
-	if confEnv == nil || confEnv.LastUpdate == nil || confEnv.Config == nil {
+	if confEnv == nil || confEnv.GetLastUpdate() == nil || confEnv.GetConfig() == nil {
 		return errors.New("invalid config envelope")
 	}
-	envPayload, err := protoutil.UnmarshalPayload(confEnv.LastUpdate.Payload)
+	envPayload, err := protoutil.UnmarshalPayload(confEnv.GetLastUpdate().GetPayload())
 	if err != nil {
 		return err
 	}
 
-	if envPayload.Header == nil {
+	if envPayload.GetHeader() == nil {
 		return errors.New("inner header is nil")
 	}
 
@@ -206,17 +206,17 @@ func (cbv *ConfigBlockValidator) verifyConfigUpdateMsg(outEnv *common.Envelope, 
 		return errors.New("inner channelheader is nil")
 	}
 
-	typ := common.HeaderType(chdr.Type)
+	typ := common.HeaderType(chdr.GetType())
 
-	cbv.Logger.Infof("Applying filters for config update of type %s to channel %s", typ, chdr.ChannelId)
+	cbv.Logger.Infof("Applying filters for config update of type %s to channel %s", typ, chdr.GetChannelId())
 
 	// First apply the filters on the outer envelope, regardless of the type of transaction it is.
-	if err := cbv.Filters.ApplyFilters(chdr.ChannelId, outEnv); err != nil {
+	if err := cbv.Filters.ApplyFilters(chdr.GetChannelId(), outEnv); err != nil {
 		return err
 	}
 
 	var expectedConfigEnv *common.ConfigEnvelope
-	channelID, err := protoutil.ChannelID(confEnv.LastUpdate)
+	channelID, err := protoutil.ChannelID(confEnv.GetLastUpdate())
 	if err != nil {
 		return errors.Errorf("error extracting channel ID from config update")
 	}
@@ -224,22 +224,22 @@ func (cbv *ConfigBlockValidator) verifyConfigUpdateMsg(outEnv *common.Envelope, 
 	if cbv.ValidatingChannel != channelID {
 		return errors.Errorf("transaction is aimed at channel %s but our channel is %s", channelID, cbv.ValidatingChannel)
 	} else {
-		expectedConfigEnv, err = cbv.ConfigUpdateProposer.ProposeConfigUpdate(chdr.ChannelId, confEnv.LastUpdate)
+		expectedConfigEnv, err = cbv.ConfigUpdateProposer.ProposeConfigUpdate(chdr.GetChannelId(), confEnv.GetLastUpdate())
 		if err != nil {
 			cbv.Logger.Errorf("Rejecting config proposal due to %v", err)
 			return err
 		}
 	}
 
-	if err := cbv.checkConsentersMatchPolicy(confEnv.Config); err != nil {
+	if err := cbv.checkConsentersMatchPolicy(confEnv.GetConfig()); err != nil {
 		return err
 	}
 
 	// Extract the Config from the result of ProposeConfigUpdate, and compare it
 	// with the pending config.
-	if proto.Equal(confEnv.Config, expectedConfigEnv.Config) {
+	if proto.Equal(confEnv.GetConfig(), expectedConfigEnv.GetConfig()) {
 		return nil
 	}
-	cbv.Logger.Errorf("Pending Config is %v, but it should be %v", confEnv.Config, expectedConfigEnv.Config)
+	cbv.Logger.Errorf("Pending Config is %v, but it should be %v", confEnv.GetConfig(), expectedConfigEnv.GetConfig())
 	return errors.Errorf("pending config does not match calculated expected config")
 }

@@ -57,25 +57,25 @@ func CreateNonce() ([]byte, error) {
 // UnmarshalEnvelopeOfType unmarshals an envelope of the specified type,
 // including unmarshalling the payload data
 func UnmarshalEnvelopeOfType(envelope *cb.Envelope, headerType cb.HeaderType, message proto.Message) (*cb.ChannelHeader, error) {
-	payload, err := UnmarshalPayload(envelope.Payload)
+	payload, err := UnmarshalPayload(envelope.GetPayload())
 	if err != nil {
 		return nil, err
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return nil, errors.New("envelope must have a Header")
 	}
 
-	chdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, err
 	}
 
-	if chdr.Type != int32(headerType) {
-		return nil, errors.Errorf("invalid type %s, expected %s", cb.HeaderType(chdr.Type), headerType)
+	if chdr.GetType() != int32(headerType) {
+		return nil, errors.Errorf("invalid type %s, expected %s", cb.HeaderType(chdr.GetType()), headerType)
 	}
 
-	err = proto.Unmarshal(payload.Data, message)
+	err = proto.Unmarshal(payload.GetData(), message)
 	err = errors.Wrapf(err, "error unmarshalling message for type %s", headerType)
 	return chdr, err
 }
@@ -93,15 +93,15 @@ func ExtractEnvelopeOrPanic(block *cb.Block, index int) *cb.Envelope {
 // ExtractEnvelope retrieves the requested envelope from a given block and
 // unmarshals it
 func ExtractEnvelope(block *cb.Block, index int) (*cb.Envelope, error) {
-	if block.Data == nil {
+	if block.GetData() == nil {
 		return nil, errors.New("block data is nil")
 	}
 
-	envelopeCount := len(block.Data.Data)
+	envelopeCount := len(block.GetData().GetData())
 	if index < 0 || index >= envelopeCount {
 		return nil, errors.New("envelope index out of bounds")
 	}
-	marshaledEnvelope := block.Data.Data[index]
+	marshaledEnvelope := block.GetData().GetData()[index]
 	envelope, err := GetEnvelopeFromBlock(marshaledEnvelope)
 	err = errors.WithMessagef(err, "block data does not carry an envelope at index %d", index)
 	return envelope, err
@@ -132,8 +132,8 @@ func MakeSignatureHeader(serializedCreatorCertChain []byte, nonce []byte) *cb.Si
 // and sets the TxId field in the channel header
 func SetTxID(channelHeader *cb.ChannelHeader, signatureHeader *cb.SignatureHeader) {
 	channelHeader.TxId = ComputeTxID(
-		signatureHeader.Nonce,
-		signatureHeader.Creator,
+		signatureHeader.GetNonce(),
+		signatureHeader.GetCreator(),
 	)
 }
 
@@ -192,11 +192,11 @@ func SignOrPanic(signer identity.Signer, msg []byte) []byte {
 // IsConfigBlock validates whenever given block contains configuration
 // update transaction
 func IsConfigBlock(block *cb.Block) bool {
-	if block.Data == nil {
+	if block.GetData() == nil {
 		return false
 	}
 
-	return HasConfigTx(block.Data)
+	return HasConfigTx(block.GetData())
 }
 
 func HasConfigTx(blockdata *cb.BlockData) bool {
@@ -204,31 +204,31 @@ func HasConfigTx(blockdata *cb.BlockData) bool {
 		return false
 	}
 
-	if len(blockdata.Data) != 1 {
+	if len(blockdata.GetData()) != 1 {
 		return false
 	}
 
-	marshaledEnvelope := blockdata.Data[0]
+	marshaledEnvelope := blockdata.GetData()[0]
 	envelope, err := GetEnvelopeFromBlock(marshaledEnvelope)
 	if err != nil {
 		return false
 	}
 
-	payload, err := UnmarshalPayload(envelope.Payload)
+	payload, err := UnmarshalPayload(envelope.GetPayload())
 	if err != nil {
 		return false
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return false
 	}
 
-	hdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	hdr, err := UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return false
 	}
 
-	return cb.HeaderType(hdr.Type) == cb.HeaderType_CONFIG
+	return cb.HeaderType(hdr.GetType()) == cb.HeaderType_CONFIG
 }
 
 // ChannelHeader returns the *cb.ChannelHeader for a given *cb.Envelope.
@@ -237,12 +237,12 @@ func ChannelHeader(env *cb.Envelope) (*cb.ChannelHeader, error) {
 		return nil, errors.New("Invalid envelope payload. can't be nil")
 	}
 
-	envPayload, err := UnmarshalPayload(env.Payload)
+	envPayload, err := UnmarshalPayload(env.GetPayload())
 	if err != nil {
 		return nil, err
 	}
 
-	if envPayload.Header == nil {
+	if envPayload.GetHeader() == nil {
 		return nil, errors.New("header not set")
 	}
 
@@ -250,7 +250,7 @@ func ChannelHeader(env *cb.Envelope) (*cb.ChannelHeader, error) {
 		return nil, errors.New("channel header not set")
 	}
 
-	chdr, err := UnmarshalChannelHeader(envPayload.Header.ChannelHeader)
+	chdr, err := UnmarshalChannelHeader(envPayload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, errors.WithMessage(err, "error unmarshalling channel header")
 	}
@@ -265,7 +265,7 @@ func ChannelID(env *cb.Envelope) (string, error) {
 		return "", errors.WithMessage(err, "error retrieving channel header")
 	}
 
-	return chdr.ChannelId, nil
+	return chdr.GetChannelId(), nil
 }
 
 // EnvelopeToConfigUpdate is used to extract a ConfigUpdateEnvelope from an envelope of
@@ -290,19 +290,19 @@ func getRandomNonce() ([]byte, error) {
 }
 
 func IsConfigTransaction(envelope *cb.Envelope) bool {
-	payload, err := UnmarshalPayload(envelope.Payload)
+	payload, err := UnmarshalPayload(envelope.GetPayload())
 	if err != nil {
 		return false
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return false
 	}
 
-	hdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	hdr, err := UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return false
 	}
 
-	return cb.HeaderType(hdr.Type) == cb.HeaderType_CONFIG || cb.HeaderType(hdr.Type) == cb.HeaderType_ORDERER_TRANSACTION
+	return cb.HeaderType(hdr.GetType()) == cb.HeaderType_CONFIG || cb.HeaderType(hdr.GetType()) == cb.HeaderType_ORDERER_TRANSACTION
 }

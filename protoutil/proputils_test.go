@@ -114,7 +114,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// get back the header
-	hdr, err := protoutil.UnmarshalHeader(prop.Header)
+	hdr, err := protoutil.UnmarshalHeader(prop.GetHeader())
 	if err != nil {
 		t.Fatalf("Could not extract the header from the proposal, err %s\n", err)
 	}
@@ -129,12 +129,12 @@ func TestProposal(t *testing.T) {
 		t.Fatalf("Could not unmarshal the header, err %s\n", err)
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(hdr.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(hdr.GetChannelHeader())
 	if err != nil {
 		t.Fatalf("Could not unmarshal channel header, err %s", err)
 	}
 
-	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.GetSignatureHeader())
 	if err != nil {
 		t.Fatalf("Could not unmarshal signature header, err %s", err)
 	}
@@ -145,51 +145,51 @@ func TestProposal(t *testing.T) {
 	}
 
 	// sanity check on header
-	if chdr.Type != int32(common.HeaderType_ENDORSER_TRANSACTION) ||
+	if chdr.GetType() != int32(common.HeaderType_ENDORSER_TRANSACTION) ||
 		shdr.Nonce == nil ||
-		string(shdr.Creator) != "creator" {
+		string(shdr.GetCreator()) != "creator" {
 		t.Fatalf("Invalid header after unmarshalling\n")
 		return
 	}
 
 	// get back the header extension
-	hdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(chdr.Extension)
+	hdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(chdr.GetExtension())
 	if err != nil {
 		t.Fatalf("Could not extract the header extensions from the proposal, err %s\n", err)
 		return
 	}
 
 	// sanity check on header extension
-	if string(hdrExt.ChaincodeId.Name) != "chaincode_name" {
+	if string(hdrExt.GetChaincodeId().GetName()) != "chaincode_name" {
 		t.Fatalf("Invalid header extension after unmarshalling\n")
 		return
 	}
 
-	cpp, err := protoutil.UnmarshalChaincodeProposalPayload(prop.Payload)
+	cpp, err := protoutil.UnmarshalChaincodeProposalPayload(prop.GetPayload())
 	if err != nil {
 		t.Fatalf("could not unmarshal proposal payload")
 	}
 
-	cis, err := protoutil.UnmarshalChaincodeInvocationSpec(cpp.Input)
+	cis, err := protoutil.UnmarshalChaincodeInvocationSpec(cpp.GetInput())
 	if err != nil {
 		t.Fatalf("could not unmarshal proposal chaincode invocation spec")
 	}
 
 	// sanity check on cis
-	if cis.ChaincodeSpec.Type != pb.ChaincodeSpec_GOLANG ||
-		cis.ChaincodeSpec.ChaincodeId.Name != "chaincode_name" ||
-		len(cis.ChaincodeSpec.Input.Args) != 2 ||
-		string(cis.ChaincodeSpec.Input.Args[0]) != "arg1" ||
-		string(cis.ChaincodeSpec.Input.Args[1]) != "arg2" {
+	if cis.GetChaincodeSpec().GetType() != pb.ChaincodeSpec_GOLANG ||
+		cis.GetChaincodeSpec().GetChaincodeId().GetName() != "chaincode_name" ||
+		len(cis.GetChaincodeSpec().GetInput().GetArgs()) != 2 ||
+		string(cis.GetChaincodeSpec().GetInput().GetArgs()[0]) != "arg1" ||
+		string(cis.GetChaincodeSpec().GetInput().GetArgs()[1]) != "arg2" {
 		t.Fatalf("Invalid chaincode invocation spec after unmarshalling\n")
 		return
 	}
 
-	if string(shdr.Creator) != "creator" {
-		t.Fatalf("Failed checking Creator field. Invalid value, expectext 'creator', got [%s]", string(shdr.Creator))
+	if string(shdr.GetCreator()) != "creator" {
+		t.Fatalf("Failed checking Creator field. Invalid value, expectext 'creator', got [%s]", string(shdr.GetCreator()))
 		return
 	}
-	value, ok := cpp.TransientMap["certx"]
+	value, ok := cpp.GetTransientMap()["certx"]
 	if !ok || string(value) != "transient" {
 		t.Fatalf("Failed checking Transient field. Invalid value, expectext 'transient', got [%s]", string(value))
 		return
@@ -273,26 +273,26 @@ func TestProposalResponse(t *testing.T) {
 	}
 
 	// get the ChaincodeAction message
-	act, err := protoutil.UnmarshalChaincodeAction(prp.Extension)
+	act, err := protoutil.UnmarshalChaincodeAction(prp.GetExtension())
 	if err != nil {
 		t.Fatalf("Failure while unmarshalling the ChaincodeAction")
 		return
 	}
 
 	// sanity check on the action
-	if string(act.Results) != "results" {
+	if string(act.GetResults()) != "results" {
 		t.Fatalf("Invalid actions after unmarshalling")
 		return
 	}
 
-	event, err := protoutil.UnmarshalChaincodeEvents(act.Events)
+	event, err := protoutil.UnmarshalChaincodeEvents(act.GetEvents())
 	if err != nil {
 		t.Fatalf("Failure while unmarshalling the ChainCodeEvents")
 		return
 	}
 
 	// sanity check on the event
-	if string(event.ChaincodeId) != "ccid" {
+	if string(event.GetChaincodeId()) != "ccid" {
 		t.Fatalf("Invalid actions after unmarshalling")
 		return
 	}
@@ -319,10 +319,10 @@ func TestProposalResponse(t *testing.T) {
 	}
 
 	// sanity check on pr
-	if prBack.Response.Status != 200 ||
-		string(prBack.Endorsement.Signature) != "signature" ||
-		string(prBack.Endorsement.Endorser) != "endorser" ||
-		!bytes.Equal(prBack.Payload, prpBytes) {
+	if prBack.GetResponse().GetStatus() != 200 ||
+		string(prBack.GetEndorsement().GetSignature()) != "signature" ||
+		string(prBack.GetEndorsement().GetEndorser()) != "endorser" ||
+		!bytes.Equal(prBack.GetPayload(), prpBytes) {
 		t.Fatalf("Invalid ProposalResponse after unmarshalling")
 		return
 	}
@@ -340,7 +340,7 @@ func TestEnvelope(t *testing.T) {
 	result := []byte("res")
 	ccid := &pb.ChaincodeID{Name: "foo", Version: "v1"}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, result, nil, ccid, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.GetHeader(), prop.GetPayload(), response, result, nil, ccid, signer)
 	if err != nil {
 		t.Fatalf("Could not create proposal response, err %s\n", err)
 		return
@@ -370,72 +370,72 @@ func TestEnvelope(t *testing.T) {
 		return
 	}
 
-	if act2.Response.Status != response.Status {
+	if act2.GetResponse().GetStatus() != response.GetStatus() {
 		t.Fatalf("response status don't match")
 		return
 	}
-	if !bytes.Equal(act2.Response.Payload, response.Payload) {
+	if !bytes.Equal(act2.GetResponse().GetPayload(), response.GetPayload()) {
 		t.Fatalf("response payload don't match")
 		return
 	}
 
-	if !bytes.Equal(act2.Results, result) {
+	if !bytes.Equal(act2.GetResults(), result) {
 		t.Fatalf("results don't match")
 		return
 	}
 
-	txpayl, err := protoutil.UnmarshalPayload(tx.Payload)
+	txpayl, err := protoutil.UnmarshalPayload(tx.GetPayload())
 	if err != nil {
 		t.Fatalf("Could not unmarshal payload, err %s\n", err)
 		return
 	}
 
-	tx2, err := protoutil.UnmarshalTransaction(txpayl.Data)
+	tx2, err := protoutil.UnmarshalTransaction(txpayl.GetData())
 	if err != nil {
 		t.Fatalf("Could not unmarshal Transaction, err %s\n", err)
 		return
 	}
 
-	sh, err := protoutil.UnmarshalSignatureHeader(tx2.Actions[0].Header)
+	sh, err := protoutil.UnmarshalSignatureHeader(tx2.GetActions()[0].GetHeader())
 	if err != nil {
 		t.Fatalf("Could not unmarshal SignatureHeader, err %s\n", err)
 		return
 	}
 
-	if !bytes.Equal(sh.Creator, signerSerialized) {
+	if !bytes.Equal(sh.GetCreator(), signerSerialized) {
 		t.Fatalf("creator does not match")
 		return
 	}
 
-	cap, err := protoutil.UnmarshalChaincodeActionPayload(tx2.Actions[0].Payload)
+	cap, err := protoutil.UnmarshalChaincodeActionPayload(tx2.GetActions()[0].GetPayload())
 	if err != nil {
 		t.Fatalf("Could not unmarshal ChaincodeActionPayload, err %s\n", err)
 		return
 	}
 	require.NotNil(t, cap)
 
-	prp, err := protoutil.UnmarshalProposalResponsePayload(cap.Action.ProposalResponsePayload)
+	prp, err := protoutil.UnmarshalProposalResponsePayload(cap.GetAction().GetProposalResponsePayload())
 	if err != nil {
 		t.Fatalf("Could not unmarshal ProposalResponsePayload, err %s\n", err)
 		return
 	}
 
-	ca, err := protoutil.UnmarshalChaincodeAction(prp.Extension)
+	ca, err := protoutil.UnmarshalChaincodeAction(prp.GetExtension())
 	if err != nil {
 		t.Fatalf("Could not unmarshal ChaincodeAction, err %s\n", err)
 		return
 	}
 
-	if ca.Response.Status != response.Status {
+	if ca.GetResponse().GetStatus() != response.GetStatus() {
 		t.Fatalf("response status don't match")
 		return
 	}
-	if !bytes.Equal(ca.Response.Payload, response.Payload) {
+	if !bytes.Equal(ca.GetResponse().GetPayload(), response.GetPayload()) {
 		t.Fatalf("response payload don't match")
 		return
 	}
 
-	if !bytes.Equal(ca.Results, result) {
+	if !bytes.Equal(ca.GetResults(), result) {
 		t.Fatalf("results don't match")
 		return
 	}

@@ -28,11 +28,11 @@ type txindexInfo struct {
 func serializeBlock(block *common.Block) ([]byte, *serializedBlockInfo) {
 	var buf []byte
 	info := &serializedBlockInfo{}
-	info.blockHeader = block.Header
-	info.metadata = block.Metadata
-	buf = addHeaderBytes(block.Header, buf)
-	info.txOffsets, buf = addDataBytesAndConstructTxIndexInfo(block.Data, buf)
-	buf = addMetadataBytes(block.Metadata, buf)
+	info.blockHeader = block.GetHeader()
+	info.metadata = block.GetMetadata()
+	buf = addHeaderBytes(block.GetHeader(), buf)
+	info.txOffsets, buf = addDataBytesAndConstructTxIndexInfo(block.GetData(), buf)
+	buf = addMetadataBytes(block.GetMetadata(), buf)
 	return buf, info
 }
 
@@ -73,17 +73,17 @@ func extractSerializedBlockInfo(serializedBlockBytes []byte) (*serializedBlockIn
 }
 
 func addHeaderBytes(blockHeader *common.BlockHeader, buf []byte) []byte {
-	buf = protowire.AppendVarint(buf, blockHeader.Number)
-	buf = protowire.AppendBytes(buf, blockHeader.DataHash)
-	buf = protowire.AppendBytes(buf, blockHeader.PreviousHash)
+	buf = protowire.AppendVarint(buf, blockHeader.GetNumber())
+	buf = protowire.AppendBytes(buf, blockHeader.GetDataHash())
+	buf = protowire.AppendBytes(buf, blockHeader.GetPreviousHash())
 	return buf
 }
 
 func addDataBytesAndConstructTxIndexInfo(blockData *common.BlockData, buf []byte) ([]*txindexInfo, []byte) {
 	var txOffsets []*txindexInfo
 
-	buf = protowire.AppendVarint(buf, uint64(len(blockData.Data)))
-	for _, txEnvelopeBytes := range blockData.Data {
+	buf = protowire.AppendVarint(buf, uint64(len(blockData.GetData())))
+	for _, txEnvelopeBytes := range blockData.GetData() {
 		offset := len(buf)
 		txid, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnvelopeBytes)
 		if err != nil {
@@ -100,13 +100,13 @@ func addDataBytesAndConstructTxIndexInfo(blockData *common.BlockData, buf []byte
 func addMetadataBytes(blockMetadata *common.BlockMetadata, buf []byte) []byte {
 	numItems := uint64(0)
 	if blockMetadata != nil {
-		numItems = uint64(len(blockMetadata.Metadata))
+		numItems = uint64(len(blockMetadata.GetMetadata()))
 	}
 	buf = protowire.AppendVarint(buf, numItems)
 	if blockMetadata == nil {
 		return buf
 	}
-	for _, b := range blockMetadata.Metadata {
+	for _, b := range blockMetadata.GetMetadata() {
 		buf = protowire.AppendBytes(buf, b)
 	}
 	return buf
@@ -124,7 +124,7 @@ func extractHeader(buf *buffer) (*common.BlockHeader, error) {
 	if header.PreviousHash, err = buf.DecodeRawBytes(false); err != nil {
 		return nil, errors.Wrap(err, "error decoding the previous hash")
 	}
-	if len(header.PreviousHash) == 0 {
+	if len(header.GetPreviousHash()) == 0 {
 		header.PreviousHash = nil
 	}
 	return header, nil

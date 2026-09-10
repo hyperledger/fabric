@@ -141,7 +141,7 @@ func (s *RPC) submitSent(start time.Time, to uint64, msg *orderer.SubmitRequest)
 }
 
 func (s *RPC) consensusSent(start time.Time, to uint64, msg *orderer.ConsensusRequest) {
-	s.Logger.Debugf("Sending msg of %d bytes (with metadata %d bytes) to %d on channel %s took %v", len(msg.Payload), len(msg.Metadata), to, s.Channel, time.Since(start))
+	s.Logger.Debugf("Sending msg of %d bytes (with metadata %d bytes) to %d on channel %s took %v", len(msg.GetPayload()), len(msg.GetMetadata()), to, s.Channel, time.Since(start))
 }
 
 // getOrCreateStream obtains a Submit stream for the given destination node
@@ -204,8 +204,8 @@ func (s *RPC) cleanCanceledStreams(operationType OperationType) {
 }
 
 func submitMsgLength(request *orderer.SubmitRequest) int {
-	if request.Payload == nil {
+	if request.GetPayload() == nil {
 		return 0
 	}
-	return len(request.Payload.Payload)
+	return len(request.GetPayload().GetPayload())
 }

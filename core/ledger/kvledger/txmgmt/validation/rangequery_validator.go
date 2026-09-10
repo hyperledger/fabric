@@ -48,17 +48,17 @@ func (v *rangeQueryResultsValidator) validate() (bool, error) {
 	for _, kvRead := range rqResults {
 		logger.Debugf("comparing kvRead=[%#v] to queryResponse=[%#v]", kvRead, result)
 		if result == nil {
-			logger.Debugf("Query response nil. Key [%s] got deleted", kvRead.Key)
+			logger.Debugf("Query response nil. Key [%s] got deleted", kvRead.GetKey())
 			return false, nil
 		}
 
-		if result.Key != kvRead.Key {
-			logger.Debugf("key name mismatch: Key in rwset = [%s], key in query results = [%s]", kvRead.Key, result.Key)
+		if result.Key != kvRead.GetKey() {
+			logger.Debugf("key name mismatch: Key in rwset = [%s], key in query results = [%s]", kvRead.GetKey(), result.Key)
 			return false, nil
 		}
-		if !version.AreSame(result.Version, convertToVersionHeight(kvRead.Version)) {
+		if !version.AreSame(result.Version, convertToVersionHeight(kvRead.GetVersion())) {
 			logger.Debugf(`Version mismatch for key [%s]: Version in rwset = [%#v], latest version = [%#v]`,
-				result.Key, result.Version, kvRead.Version)
+				result.Key, result.Version, kvRead.GetVersion())
 			return false, nil
 		}
 		if result, err = itr.Next(); err != nil {
@@ -84,7 +84,7 @@ func (v *rangeQueryHashValidator) init(rqInfo *kvrwset.RangeQueryInfo, itr state
 	v.rqInfo = rqInfo
 	v.itr = itr
 	var err error
-	v.resultsHelper, err = rwsetutil.NewRangeQueryResultsHelper(true, rqInfo.GetReadsMerkleHashes().MaxDegree, v.hashFunc)
+	v.resultsHelper, err = rwsetutil.NewRangeQueryResultsHelper(true, rqInfo.GetReadsMerkleHashes().GetMaxDegree(), v.hashFunc)
 	return err
 }
 
@@ -123,21 +123,21 @@ func (v *rangeQueryHashValidator) validate() (bool, error) {
 		}
 		merkle := v.resultsHelper.GetMerkleSummary()
 
-		if merkle.MaxLevel < inMerkle.MaxLevel {
+		if merkle.GetMaxLevel() < inMerkle.GetMaxLevel() {
 			logger.Debugf("Hashes still under construction. Noting to compare yet. Need more results. Continuing...")
 			continue
 		}
-		if lastMatchedIndex == len(merkle.MaxLevelHashes)-1 {
+		if lastMatchedIndex == len(merkle.GetMaxLevelHashes())-1 {
 			logger.Debugf("Need more results to build next entry [index=%d] at level [%d]. Continuing...",
-				lastMatchedIndex+1, merkle.MaxLevel)
+				lastMatchedIndex+1, merkle.GetMaxLevel())
 			continue
 		}
-		if len(merkle.MaxLevelHashes) > len(inMerkle.MaxLevelHashes) {
+		if len(merkle.GetMaxLevelHashes()) > len(inMerkle.GetMaxLevelHashes()) {
 			logger.Debugf("Entries exceeded from what are present in the incoming merkleSummary. Validation failed")
 			return false, nil
 		}
 		lastMatchedIndex++
-		if !bytes.Equal(merkle.MaxLevelHashes[lastMatchedIndex], inMerkle.MaxLevelHashes[lastMatchedIndex]) {
+		if !bytes.Equal(merkle.GetMaxLevelHashes()[lastMatchedIndex], inMerkle.GetMaxLevelHashes()[lastMatchedIndex]) {
 			logger.Debugf("Hashes does not match at index [%d]. Validation failed", lastMatchedIndex)
 			return false, nil
 		}
@@ -148,13 +148,13 @@ func merkleSummariesEqual(ms, anotherMS *kvrwset.QueryReadsMerkleSummary) bool {
 	if anotherMS == nil {
 		return false
 	}
-	if ms.MaxDegree != anotherMS.MaxDegree ||
-		ms.MaxLevel != anotherMS.MaxLevel ||
-		len(ms.MaxLevelHashes) != len(anotherMS.MaxLevelHashes) {
+	if ms.GetMaxDegree() != anotherMS.GetMaxDegree() ||
+		ms.GetMaxLevel() != anotherMS.GetMaxLevel() ||
+		len(ms.GetMaxLevelHashes()) != len(anotherMS.GetMaxLevelHashes()) {
 		return false
 	}
-	for i := 0; i < len(ms.MaxLevelHashes); i++ {
-		if !bytes.Equal(ms.MaxLevelHashes[i], anotherMS.MaxLevelHashes[i]) {
+	for i := 0; i < len(ms.GetMaxLevelHashes()); i++ {
+		if !bytes.Equal(ms.GetMaxLevelHashes()[i], anotherMS.GetMaxLevelHashes()[i]) {
 			return false
 		}
 	}
@@ -162,5 +162,5 @@ func merkleSummariesEqual(ms, anotherMS *kvrwset.QueryReadsMerkleSummary) bool {
 }
 
 func convertToVersionHeight(v *kvrwset.Version) *version.Height {
-	return version.NewHeight(v.BlockNum, v.TxNum)
+	return version.NewHeight(v.GetBlockNum(), v.GetTxNum())
 }

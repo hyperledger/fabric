@@ -86,7 +86,7 @@ func (ccpack *CDSPackage) GetChaincodeData() *ChaincodeData {
 	if ccpack.depSpec == nil || ccpack.datab == nil || ccpack.id == nil {
 		panic("GetChaincodeData called on uninitialized package")
 	}
-	return &ChaincodeData{Name: ccpack.depSpec.ChaincodeSpec.ChaincodeId.Name, Version: ccpack.depSpec.ChaincodeSpec.ChaincodeId.Version, Data: ccpack.datab, Id: ccpack.id}
+	return &ChaincodeData{Name: ccpack.depSpec.GetChaincodeSpec().GetChaincodeId().GetName(), Version: ccpack.depSpec.GetChaincodeSpec().GetChaincodeId().GetVersion(), Data: ccpack.datab, Id: ccpack.id}
 }
 
 func (ccpack *CDSPackage) getCDSData(cds *pb.ChaincodeDeploymentSpec) ([]byte, []byte, *CDSData, error) {
@@ -111,14 +111,14 @@ func (ccpack *CDSPackage) getCDSData(cds *pb.ChaincodeDeploymentSpec) ([]byte, [
 	cdsdata := &CDSData{}
 
 	// code hash
-	hash.Write(cds.CodePackage)
+	hash.Write(cds.GetCodePackage())
 	cdsdata.CodeHash = hash.Sum(nil)
 
 	hash.Reset()
 
 	// metadata hash
-	hash.Write([]byte(cds.ChaincodeSpec.ChaincodeId.Name))
-	hash.Write([]byte(cds.ChaincodeSpec.ChaincodeId.Version))
+	hash.Write([]byte(cds.GetChaincodeSpec().GetChaincodeId().GetName()))
+	hash.Write([]byte(cds.GetChaincodeSpec().GetChaincodeId().GetVersion()))
 
 	cdsdata.MetaDataHash = hash.Sum(nil)
 
@@ -130,8 +130,8 @@ func (ccpack *CDSPackage) getCDSData(cds *pb.ChaincodeDeploymentSpec) ([]byte, [
 	hash.Reset()
 
 	// compute the id
-	hash.Write(cdsdata.CodeHash)
-	hash.Write(cdsdata.MetaDataHash)
+	hash.Write(cdsdata.GetCodeHash())
+	hash.Write(cdsdata.GetMetaDataHash())
 
 	id := hash.Sum(nil)
 
@@ -155,16 +155,16 @@ func (ccpack *CDSPackage) ValidateCC(ccdata *ChaincodeData) error {
 	// protobuf will gladly deserialize garbage and there are paths where we assume that
 	// a successful unmarshal means everything works but, if it fails, we try to unmarshal
 	// into something different.
-	if !isPrintable(ccdata.Name) {
-		return fmt.Errorf("invalid chaincode name: %q", ccdata.Name)
+	if !isPrintable(ccdata.GetName()) {
+		return fmt.Errorf("invalid chaincode name: %q", ccdata.GetName())
 	}
 
-	if ccdata.Name != ccpack.depSpec.ChaincodeSpec.ChaincodeId.Name || ccdata.Version != ccpack.depSpec.ChaincodeSpec.ChaincodeId.Version {
-		return fmt.Errorf("invalid chaincode data %v (%v)", ccdata, ccpack.depSpec.ChaincodeSpec.ChaincodeId)
+	if ccdata.GetName() != ccpack.depSpec.GetChaincodeSpec().GetChaincodeId().GetName() || ccdata.GetVersion() != ccpack.depSpec.GetChaincodeSpec().GetChaincodeId().GetVersion() {
+		return fmt.Errorf("invalid chaincode data %v (%v)", ccdata, ccpack.depSpec.GetChaincodeSpec().GetChaincodeId())
 	}
 
 	otherdata := &CDSData{}
-	err := proto.Unmarshal(ccdata.Data, otherdata)
+	err := proto.Unmarshal(ccdata.GetData(), otherdata)
 	if err != nil {
 		return err
 	}
@@ -244,8 +244,8 @@ func (ccpack *CDSPackage) PutChaincodeToFS() error {
 		return errors.New("nil data bytes")
 	}
 
-	ccname := ccpack.depSpec.ChaincodeSpec.ChaincodeId.Name
-	ccversion := ccpack.depSpec.ChaincodeSpec.ChaincodeId.Version
+	ccname := ccpack.depSpec.GetChaincodeSpec().GetChaincodeId().GetName()
+	ccversion := ccpack.depSpec.GetChaincodeSpec().GetChaincodeId().GetVersion()
 
 	// return error if chaincode exists
 	path := fmt.Sprintf("%s/%s.%s", chaincodeInstallPath, ccname, ccversion)

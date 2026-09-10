@@ -348,7 +348,7 @@ var _ = Describe("PrivateData", func() {
 						channelInfo := cb.BlockchainInfo{}
 						err = json.Unmarshal([]byte(channelInfoStr), &channelInfo)
 						Expect(err).NotTo(HaveOccurred())
-						return int(channelInfo.Height)
+						return int(channelInfo.GetHeight())
 					}
 
 					// If not Org2.peer1, just use regular getLedgerHeight call with User1
@@ -802,7 +802,7 @@ var _ = Describe("PrivateData", func() {
 					"marble11":                               getValueForCollectionMarbles("marble11", "blue", "tom", 35),
 				},
 			}
-			assertPrivateDataAsExpected(event.BlockAndPvtData.PrivateDataMap, expectedKVWritesMap)
+			assertPrivateDataAsExpected(event.BlockAndPvtData.GetPrivateDataMap(), expectedKVWritesMap)
 
 			By("upgrading chaincode with collections_config1.json where isMemberOnlyRead is false")
 			testChaincode.CollectionsConfig = CollectionConfig("collections_config1.json")
@@ -814,7 +814,7 @@ var _ = Describe("PrivateData", func() {
 			event = getEventFromDeliverService(network, peer, channelID, signingIdentity, event.BlockNum)
 
 			By("verifying the deliver event for the old block uses old config")
-			assertPrivateDataAsExpected(event.BlockAndPvtData.PrivateDataMap, expectedKVWritesMap)
+			assertPrivateDataAsExpected(event.BlockAndPvtData.GetPrivateDataMap(), expectedKVWritesMap)
 
 			By("adding a new marble after upgrade")
 			marblechaincodeutil.AddMarble(
@@ -836,7 +836,7 @@ var _ = Describe("PrivateData", func() {
 					"marble12": getValueForCollectionMarblePrivateDetails("marble12", 99),
 				},
 			}
-			assertPrivateDataAsExpected(event.BlockAndPvtData.PrivateDataMap, expectedKVWritesMap)
+			assertPrivateDataAsExpected(event.BlockAndPvtData.GetPrivateDataMap(), expectedKVWritesMap)
 		}
 
 		It("calls marbles APIs and delivers private data", func() {
@@ -1142,10 +1142,10 @@ func receiveDeliverResponse(dp pb.Deliver_DeliverWithPrivateDataClient, peer *nw
 	if err != nil {
 		event.Err = errors.WithMessagef(err, "error receiving deliver response from peer %s", peer.ID())
 	}
-	switch r := resp.Type.(type) {
+	switch r := resp.GetType().(type) {
 	case *pb.DeliverResponse_BlockAndPrivateData:
 		event.BlockAndPvtData = r.BlockAndPrivateData
-		event.BlockNum = r.BlockAndPrivateData.Block.Header.Number
+		event.BlockNum = r.BlockAndPrivateData.GetBlock().GetHeader().GetNumber()
 	case *pb.DeliverResponse_Status:
 		event.Err = errors.Errorf("deliver completed with status (%s) before DeliverResponse_BlockAndPrivateData received from peer %s", r.Status, peer.ID())
 	default:
@@ -1247,21 +1247,21 @@ func createHeader(txType cb.HeaderType, channelID string, creator []byte) (*cb.H
 func assertPrivateDataAsExpected(pvtdataMap map[uint64]*rwset.TxPvtReadWriteSet, expectedKVWritesMap map[string]map[string][]byte) {
 	// In the test, each block has only 1 tx, so txSeqInBlock is 0
 	txPvtRwset := pvtdataMap[uint64(0)]
-	Expect(txPvtRwset.NsPvtRwset).To(HaveLen(1))
-	Expect(txPvtRwset.NsPvtRwset[0].Namespace).To(Equal("marblesp"))
-	Expect(txPvtRwset.NsPvtRwset[0].CollectionPvtRwset).To(HaveLen(len(expectedKVWritesMap)))
+	Expect(txPvtRwset.GetNsPvtRwset()).To(HaveLen(1))
+	Expect(txPvtRwset.GetNsPvtRwset()[0].GetNamespace()).To(Equal("marblesp"))
+	Expect(txPvtRwset.GetNsPvtRwset()[0].GetCollectionPvtRwset()).To(HaveLen(len(expectedKVWritesMap)))
 
 	// verify the collections returned in private data have expected collection names and kvRwset.Writes
-	for _, col := range txPvtRwset.NsPvtRwset[0].CollectionPvtRwset {
-		Expect(expectedKVWritesMap).To(HaveKey(col.CollectionName))
-		expectedKvWrites := expectedKVWritesMap[col.CollectionName]
+	for _, col := range txPvtRwset.GetNsPvtRwset()[0].GetCollectionPvtRwset() {
+		Expect(expectedKVWritesMap).To(HaveKey(col.GetCollectionName()))
+		expectedKvWrites := expectedKVWritesMap[col.GetCollectionName()]
 		kvRwset := kvrwset.KVRWSet{}
 		err := proto.Unmarshal(col.GetRwset(), &kvRwset)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(kvRwset.Writes).To(HaveLen(len(expectedKvWrites)))
-		for _, kvWrite := range kvRwset.Writes {
-			Expect(expectedKvWrites).To(HaveKey(kvWrite.Key))
-			Expect(kvWrite.Value).To(Equal(expectedKvWrites[kvWrite.Key]))
+		Expect(kvRwset.GetWrites()).To(HaveLen(len(expectedKvWrites)))
+		for _, kvWrite := range kvRwset.GetWrites() {
+			Expect(expectedKvWrites).To(HaveKey(kvWrite.GetKey()))
+			Expect(kvWrite.GetValue()).To(Equal(expectedKvWrites[kvWrite.GetKey()]))
 		}
 	}
 }
@@ -1302,7 +1302,7 @@ func updateConfigWithNewCertsForPeer(network *nwo.Network, tempCryptoDir string,
 	By("parsing the old and new MSP configs")
 	oldConfig := &mspp.MSPConfig{}
 	err := proto.Unmarshal(
-		updatedConfig.ChannelGroup.Groups["Application"].Groups[org.Name].Values["MSP"].Value,
+		updatedConfig.GetChannelGroup().GetGroups()["Application"].GetGroups()[org.Name].GetValues()["MSP"].GetValue(),
 		oldConfig,
 	)
 	Expect(err).NotTo(HaveOccurred())
@@ -1312,9 +1312,9 @@ func updateConfigWithNewCertsForPeer(network *nwo.Network, tempCryptoDir string,
 	Expect(err).NotTo(HaveOccurred())
 	oldMspConfig := &mspp.FabricMSPConfig{}
 	newMspConfig := &mspp.FabricMSPConfig{}
-	err = proto.Unmarshal(oldConfig.Config, oldMspConfig)
+	err = proto.Unmarshal(oldConfig.GetConfig(), oldMspConfig)
 	Expect(err).NotTo(HaveOccurred())
-	err = proto.Unmarshal(newConfig.Config, newMspConfig)
+	err = proto.Unmarshal(newConfig.GetConfig(), newMspConfig)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("merging the two MSP configs")
@@ -1323,7 +1323,7 @@ func updateConfigWithNewCertsForPeer(network *nwo.Network, tempCryptoDir string,
 	By("updating the channel config")
 	updatedConfig.ChannelGroup.Groups["Application"].Groups[org.Name].Values["MSP"].Value = protoutil.MarshalOrPanic(
 		&mspp.MSPConfig{
-			Type:   oldConfig.Type,
+			Type:   oldConfig.GetType(),
 			Config: protoutil.MarshalOrPanic(oldMspConfig),
 		},
 	)
@@ -1332,8 +1332,8 @@ func updateConfigWithNewCertsForPeer(network *nwo.Network, tempCryptoDir string,
 
 // updateOldMspConfigWithNewMspConfig updates the oldMspConfig with certs from the newMspConfig
 func updateOldMspConfigWithNewMspConfig(oldMspConfig, newMspConfig *mspp.FabricMSPConfig) {
-	oldMspConfig.RootCerts = append(oldMspConfig.RootCerts, newMspConfig.RootCerts...)
-	oldMspConfig.TlsRootCerts = append(oldMspConfig.TlsRootCerts, newMspConfig.TlsRootCerts...)
+	oldMspConfig.RootCerts = append(oldMspConfig.RootCerts, newMspConfig.GetRootCerts()...)
+	oldMspConfig.TlsRootCerts = append(oldMspConfig.TlsRootCerts, newMspConfig.GetTlsRootCerts()...)
 	oldMspConfig.FabricNodeOus.PeerOuIdentifier.Certificate = nil
 	oldMspConfig.FabricNodeOus.ClientOuIdentifier.Certificate = nil
 	oldMspConfig.FabricNodeOus.AdminOuIdentifier.Certificate = nil

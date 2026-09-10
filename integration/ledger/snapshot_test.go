@@ -811,8 +811,8 @@ func joinBySnapshot(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 	bcInfo := cb.BlockchainInfo{}
 	err = json.Unmarshal([]byte(channelInfoStr), &bcInfo)
 	Expect(err).NotTo(HaveOccurred())
-	Expect(bcInfo.Height).To(Equal(uint64(channelHeight)))
-	Expect(bcInfo.BootstrappingSnapshotInfo.LastBlockInSnapshot).To(Equal(uint64(lastBlockInSnapshot)))
+	Expect(bcInfo.GetHeight()).To(Equal(uint64(channelHeight)))
+	Expect(bcInfo.GetBootstrappingSnapshotInfo().GetLastBlockInSnapshot()).To(Equal(uint64(lastBlockInSnapshot)))
 }
 
 func verifyQSCC(n *nwo.Network, peer *nwo.Peer, channelID string, lastBlockInSnapshot int, txidBeforeSnapshot string) {
@@ -867,9 +867,9 @@ func getTxFromLastBlock(n *nwo.Network, peer *nwo.Peer) (*cb.Envelope, string) {
 	Expect(sess.Err).To(gbytes.Say("Received block: "))
 
 	block := nwo.UnmarshalBlockFromFile(blockfile)
-	txEnvelope, err := protoutil.UnmarshalEnvelope(block.Data.Data[0])
+	txEnvelope, err := protoutil.UnmarshalEnvelope(block.GetData().GetData()[0])
 	Expect(err).NotTo(HaveOccurred())
-	txID, err := protoutil.GetOrComputeTxIDFromEnvelope(block.Data.Data[0])
+	txID, err := protoutil.GetOrComputeTxIDFromEnvelope(block.GetData().GetData()[0])
 	Expect(err).NotTo(HaveOccurred())
 
 	return txEnvelope, txID
@@ -1076,16 +1076,16 @@ func commitTx(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channelID st
 		if err != nil {
 			return err
 		}
-		fb, ok := resp.Type.(*pb.DeliverResponse_FilteredBlock)
+		fb, ok := resp.GetType().(*pb.DeliverResponse_FilteredBlock)
 		if !ok {
-			return fmt.Errorf("unexpected filtered block, received %T", resp.Type)
+			return fmt.Errorf("unexpected filtered block, received %T", resp.GetType())
 		}
-		for _, tx := range fb.FilteredBlock.FilteredTransactions {
-			if tx.Txid != txid {
+		for _, tx := range fb.FilteredBlock.GetFilteredTransactions() {
+			if tx.GetTxid() != txid {
 				continue
 			}
-			if tx.TxValidationCode != pb.TxValidationCode_VALID {
-				return fmt.Errorf("transaction invalidated with status (%s)", tx.TxValidationCode)
+			if tx.GetTxValidationCode() != pb.TxValidationCode_VALID {
+				return fmt.Errorf("transaction invalidated with status (%s)", tx.GetTxValidationCode())
 			}
 			return nil
 		}

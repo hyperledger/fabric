@@ -99,7 +99,7 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup, bccsp bccsp.BCCSP) (*Channel
 	mspConfigHandler := NewMSPConfigHandler(channelCapabilities.MSPVersion(), bccsp)
 
 	var err error
-	for groupName, group := range channelGroup.Groups {
+	for groupName, group := range channelGroup.GetGroups() {
 		switch groupName {
 		case ApplicationGroupKey:
 			cc.appConfig, err = NewApplicationConfig(group, mspConfigHandler)
@@ -149,25 +149,25 @@ func (cc *ChannelConfig) HashingAlgorithm() func(input []byte) []byte {
 
 // BlockDataHashingStructureWidth returns the width to use when forming the block data hashing structure
 func (cc *ChannelConfig) BlockDataHashingStructureWidth() uint32 {
-	return cc.protos.BlockDataHashingStructure.Width
+	return cc.protos.BlockDataHashingStructure.GetWidth()
 }
 
 // OrdererAddresses returns the list of valid orderer addresses to connect to invoke Broadcast/Deliver
 func (cc *ChannelConfig) OrdererAddresses() []string {
-	return cc.protos.OrdererAddresses.Addresses
+	return cc.protos.OrdererAddresses.GetAddresses()
 }
 
 // ConsortiumName returns the name of the consortium this channel was created under
 func (cc *ChannelConfig) ConsortiumName() string {
-	return cc.protos.Consortium.Name
+	return cc.protos.Consortium.GetName()
 }
 
 // Capabilities returns information about the available capabilities for this channel
 func (cc *ChannelConfig) Capabilities() ChannelCapabilities {
 	_ = cc.protos
 	_ = cc.protos.Capabilities
-	_ = cc.protos.Capabilities.Capabilities
-	return capabilities.NewChannelProvider(cc.protos.Capabilities.Capabilities)
+	_ = cc.protos.Capabilities.GetCapabilities()
+	return capabilities.NewChannelProvider(cc.protos.Capabilities.GetCapabilities())
 }
 
 // Validate inspects the generated configuration protos and ensures that the values are correct
@@ -197,34 +197,34 @@ func (cc *ChannelConfig) Validate(channelCapabilities ChannelCapabilities) error
 }
 
 func (cc *ChannelConfig) validateHashingAlgorithm() error {
-	switch cc.protos.HashingAlgorithm.Name {
+	switch cc.protos.HashingAlgorithm.GetName() {
 	case bccsp.SHA256:
 		cc.hashingAlgorithm = util.ComputeSHA256
 	case bccsp.SHA3_256:
 		cc.hashingAlgorithm = util.ComputeSHA3256
 	default:
-		return fmt.Errorf("Unknown hashing algorithm type: %s", cc.protos.HashingAlgorithm.Name)
+		return fmt.Errorf("Unknown hashing algorithm type: %s", cc.protos.HashingAlgorithm.GetName())
 	}
 
 	return nil
 }
 
 func (cc *ChannelConfig) validateBlockDataHashingStructure() error {
-	if cc.protos.BlockDataHashingStructure.Width != math.MaxUint32 {
+	if cc.protos.BlockDataHashingStructure.GetWidth() != math.MaxUint32 {
 		return fmt.Errorf("BlockDataHashStructure width only supported at MaxUint32 in this version")
 	}
 	return nil
 }
 
 func (cc *ChannelConfig) validateOrdererAddresses() error {
-	if len(cc.protos.OrdererAddresses.Addresses) == 0 {
+	if len(cc.protos.OrdererAddresses.GetAddresses()) == 0 {
 		return fmt.Errorf("Must set some OrdererAddresses")
 	}
 	return nil
 }
 
 func (cc *ChannelConfig) validateNoOrdererAddresses() error {
-	if len(cc.protos.OrdererAddresses.Addresses) > 0 {
+	if len(cc.protos.OrdererAddresses.GetAddresses()) > 0 {
 		return fmt.Errorf("global OrdererAddresses are not allowed with V3_0 capability, use org specific addresses only")
 	}
 	return nil

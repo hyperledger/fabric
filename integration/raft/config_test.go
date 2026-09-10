@@ -137,8 +137,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			b1 := nwo.UnmarshalBlockFromFile(blockFile1)
 			b2 := nwo.UnmarshalBlockFromFile(blockFile2)
 			b3 := nwo.UnmarshalBlockFromFile(blockFile3)
-			Expect(protoutil.BlockHeaderBytes(b1.Header)).To(Equal(protoutil.BlockHeaderBytes(b2.Header)))
-			Expect(protoutil.BlockHeaderBytes(b2.Header)).To(Equal(protoutil.BlockHeaderBytes(b3.Header)))
+			Expect(protoutil.BlockHeaderBytes(b1.GetHeader())).To(Equal(protoutil.BlockHeaderBytes(b2.GetHeader())))
+			Expect(protoutil.BlockHeaderBytes(b2.GetHeader())).To(Equal(protoutil.BlockHeaderBytes(b3.GetHeader())))
 		})
 	})
 
@@ -152,21 +152,21 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			// Change the genesis block
 			genesisPath := network.OutputBlockPath("testchannel")
 			genesisBlock := nwo.UnmarshalBlockFromFile(genesisPath)
-			envelope, err := protoutil.GetEnvelopeFromBlock(genesisBlock.Data.Data[0])
+			envelope, err := protoutil.GetEnvelopeFromBlock(genesisBlock.GetData().GetData()[0])
 			Expect(err).NotTo(HaveOccurred())
-			payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+			payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
 			Expect(err).NotTo(HaveOccurred())
 			configEnv := &common.ConfigEnvelope{}
-			err = proto.Unmarshal(payload.Data, configEnv)
+			err = proto.Unmarshal(payload.GetData(), configEnv)
 			Expect(err).NotTo(HaveOccurred())
 			genesisConfig := configEnv.GetConfig()
 
-			consensusTypeConfigValue := genesisConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+			consensusTypeConfigValue := genesisConfig.GetChannelGroup().GetGroups()["Orderer"].GetValues()["ConsensusType"]
 			consensusTypeValue := &protosorderer.ConsensusType{}
-			Expect(proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)).To(Succeed())
+			Expect(proto.Unmarshal(consensusTypeConfigValue.GetValue(), consensusTypeValue)).To(Succeed())
 
 			metadata := &etcdraft.ConfigMetadata{}
-			Expect(proto.Unmarshal(consensusTypeValue.Metadata, metadata)).To(Succeed())
+			Expect(proto.Unmarshal(consensusTypeValue.GetMetadata(), metadata)).To(Succeed())
 
 			metadata.Options.HeartbeatTick = 10
 			metadata.Options.ElectionTick = 10
@@ -187,7 +187,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).NotTo(HaveOccurred())
 			genesisBlock.Data.Data[0], err = protoutil.Marshal(envelope)
 			Expect(err).NotTo(HaveOccurred())
-			genesisBlock.Header.DataHash = protoutil.ComputeBlockDataHash(genesisBlock.Data)
+			genesisBlock.Header.DataHash = protoutil.ComputeBlockDataHash(genesisBlock.GetData())
 			genesisBlockBytes, err := protoutil.Marshal(genesisBlock)
 			Expect(err).NotTo(HaveOccurred())
 			err = os.WriteFile(network.OutputBlockPath("testchannel"), genesisBlockBytes, 0o644)
@@ -223,12 +223,12 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			config := nwo.GetConfig(network, org1Peer0, orderer, "testchannel")
 			updatedConfig := proto.Clone(config).(*common.Config)
 
-			consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+			consensusTypeConfigValue := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetValues()["ConsensusType"]
 			consensusTypeValue := &protosorderer.ConsensusType{}
-			Expect(proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)).To(Succeed())
+			Expect(proto.Unmarshal(consensusTypeConfigValue.GetValue(), consensusTypeValue)).To(Succeed())
 
 			metadata := &etcdraft.ConfigMetadata{}
-			Expect(proto.Unmarshal(consensusTypeValue.Metadata, metadata)).To(Succeed())
+			Expect(proto.Unmarshal(consensusTypeValue.GetMetadata(), metadata)).To(Succeed())
 
 			metadata.Options.HeartbeatTick = 10
 			metadata.Options.ElectionTick = 10
@@ -526,8 +526,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			swap := func(o *nwo.Orderer, certificate []byte, c *etcdraft.Consenter) {
 				updateEtcdRaftMetadata(network, peer, o, "testchannel", func(metadata *etcdraft.ConfigMetadata) {
 					var newConsenters []*etcdraft.Consenter
-					for _, consenter := range metadata.Consenters {
-						if bytes.Equal(consenter.ClientTlsCert, certificate) || bytes.Equal(consenter.ServerTlsCert, certificate) {
+					for _, consenter := range metadata.GetConsenters() {
+						if bytes.Equal(consenter.GetClientTlsCert(), certificate) || bytes.Equal(consenter.GetServerTlsCert(), certificate) {
 							continue
 						}
 						newConsenters = append(newConsenters, consenter)
@@ -790,7 +790,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			env := ordererclient.CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
 			resp, err := ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 			blockSeq++
 
 			assertBlockReception(map[string]int{"testchannel": blockSeq}, orderers, network)
@@ -826,13 +826,13 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			env = ordererclient.CreateBroadcastEnvelope(network, peer, "testchannel2", []byte("hello"))
 			resp, err = ordererclient.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
+			Expect(resp.GetStatus()).To(Equal(common.Status_BAD_REQUEST))
 			Eventually(orderer4Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("channel does not exist"))
 
 			env = ordererclient.CreateBroadcastEnvelope(network, peer, "testchannel3", []byte("hello"))
 			resp, err = ordererclient.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
+			Expect(resp.GetStatus()).To(Equal(common.Status_BAD_REQUEST))
 			Eventually(orderer4Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("channel does not exist"))
 
 			By("Adding orderer4 to testchannel2")
@@ -864,7 +864,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			env = ordererclient.CreateBroadcastEnvelope(network, peer, "testchannel2", []byte("hello"))
 			resp, err = ordererclient.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 			By("And ensuring it is propagated amongst all orderers")
 			assertBlockReception(map[string]int{"testchannel2": 2}, orderers, network)
@@ -945,11 +945,11 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			env := ordererclient.CreateBroadcastEnvelope(network, peer, "mychannel", []byte("hello"))
 			resp, err := ordererclient.Broadcast(network, o2, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
+			Expect(resp.GetStatus()).To(Equal(common.Status_BAD_REQUEST))
 			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout).Should(gbytes.Say("channel does not exist"))
 			resp, err = ordererclient.Broadcast(network, o3, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
+			Expect(resp.GetStatus()).To(Equal(common.Status_BAD_REQUEST))
 			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout).Should(gbytes.Say("channel does not exist"))
 			// With channel participation API, an orderer returns NOT_FOUND for channels it does not serve.
 			ensureNotFound(o2, peer, network, "mychannel")
@@ -1200,7 +1200,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			env := ordererclient.CreateBroadcastEnvelope(network, orderers[survivor], "testchannel", []byte("foo"))
 			resp, err := ordererclient.Broadcast(network, orderers[survivor], env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 			By("Ensuring re-added orderer starts serving testchannel")
 			assertBlockReception(map[string]int{
@@ -1311,7 +1311,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				env := ordererclient.CreateBroadcastEnvelope(network, o2, "testchannel", []byte("foo"))
 				resp, err := ordererclient.Broadcast(network, o2, env)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+				Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 				By("Waiting for the channel to stabilize")
 				expectedInfo = nwo.ChannelInfo{
@@ -1392,7 +1392,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				env := ordererclient.CreateBroadcastEnvelope(network, o2, "testchannel", []byte("foo"))
 				resp, err := ordererclient.Broadcast(network, o2, env)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+				Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 
 				By("Waiting for the channel to stabilize")
 				expectedInfo.Height++
@@ -1611,7 +1611,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			env := ordererclient.CreateBroadcastEnvelope(network, orderers[4], "testchannel", []byte("hello"))
 			resp, err := ordererclient.Broadcast(network, orderers[4], env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			Expect(resp.GetStatus()).To(Equal(common.Status_SUCCESS))
 			blockNum++
 
 			assertBlockReception(map[string]int{
@@ -1731,13 +1731,13 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		config := nwo.GetConfig(network, peer, o1, channel)
 		updatedConfig := proto.Clone(config).(*common.Config)
 
-		ordererOrg := updatedConfig.ChannelGroup.Groups["Orderer"].Groups["OrdererOrg"]
+		ordererOrg := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetGroups()["OrdererOrg"]
 		mspConfig := &msp.MSPConfig{}
-		err := proto.Unmarshal(ordererOrg.Values["MSP"].Value, mspConfig)
+		err := proto.Unmarshal(ordererOrg.GetValues()["MSP"].GetValue(), mspConfig)
 		Expect(err).NotTo(HaveOccurred())
 
 		fabMSPConfig := &msp.FabricMSPConfig{}
-		err = proto.Unmarshal(mspConfig.Config, fabMSPConfig)
+		err = proto.Unmarshal(mspConfig.GetConfig(), fabMSPConfig)
 		Expect(err).NotTo(HaveOccurred())
 
 		fabMSPConfig.Name = "OrdererMSP2"
@@ -1944,13 +1944,13 @@ func consenterAdder(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channe
 	config := nwo.GetConfig(n, peer, orderer, channel)
 	updatedConfig := proto.Clone(config).(*common.Config)
 
-	consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+	consensusTypeConfigValue := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetValues()["ConsensusType"]
 	consensusTypeValue := &protosorderer.ConsensusType{}
-	err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
+	err := proto.Unmarshal(consensusTypeConfigValue.GetValue(), consensusTypeValue)
 	Expect(err).NotTo(HaveOccurred())
 
 	metadata := &etcdraft.ConfigMetadata{}
-	err = proto.Unmarshal(consensusTypeValue.Metadata, metadata)
+	err = proto.Unmarshal(consensusTypeValue.GetMetadata(), metadata)
 	Expect(err).NotTo(HaveOccurred())
 
 	metadata.Consenters = append(metadata.Consenters, tmp)
@@ -1972,18 +1972,18 @@ func consenterRemover(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, chan
 	config := nwo.GetConfig(n, peer, orderer, channel)
 	updatedConfig := proto.Clone(config).(*common.Config)
 
-	consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+	consensusTypeConfigValue := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetValues()["ConsensusType"]
 	consensusTypeValue := &protosorderer.ConsensusType{}
-	err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
+	err := proto.Unmarshal(consensusTypeConfigValue.GetValue(), consensusTypeValue)
 	Expect(err).NotTo(HaveOccurred())
 
 	metadata := &etcdraft.ConfigMetadata{}
-	err = proto.Unmarshal(consensusTypeValue.Metadata, metadata)
+	err = proto.Unmarshal(consensusTypeValue.GetMetadata(), metadata)
 	Expect(err).NotTo(HaveOccurred())
 
 	var newConsenters []*etcdraft.Consenter
-	for _, consenter := range metadata.Consenters {
-		if bytes.Equal(consenter.ClientTlsCert, certificate) || bytes.Equal(consenter.ServerTlsCert, certificate) {
+	for _, consenter := range metadata.GetConsenters() {
+		if bytes.Equal(consenter.GetClientTlsCert(), certificate) || bytes.Equal(consenter.GetServerTlsCert(), certificate) {
 			continue
 		}
 		newConsenters = append(newConsenters, consenter)
@@ -2014,8 +2014,8 @@ func addConsenter(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel 
 func removeConsenter(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, certificate []byte) {
 	updateEtcdRaftMetadata(n, peer, orderer, channel, func(metadata *etcdraft.ConfigMetadata) {
 		var newConsenters []*etcdraft.Consenter
-		for _, consenter := range metadata.Consenters {
-			if bytes.Equal(consenter.ClientTlsCert, certificate) || bytes.Equal(consenter.ServerTlsCert, certificate) {
+		for _, consenter := range metadata.GetConsenters() {
+			if bytes.Equal(consenter.GetClientTlsCert(), certificate) || bytes.Equal(consenter.GetServerTlsCert(), certificate) {
 				continue
 			}
 			newConsenters = append(newConsenters, consenter)
@@ -2058,13 +2058,13 @@ func updateOrdererMSPAndConsensusMetadata(network *nwo.Network, peer *nwo.Peer, 
 	updatedConfig := proto.Clone(config).(*common.Config)
 
 	// Unpack the MSP config
-	rawMSPConfig := updatedConfig.ChannelGroup.Groups["Orderer"].Groups[orgID].Values["MSP"]
+	rawMSPConfig := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetGroups()[orgID].GetValues()["MSP"]
 	mspConfig := &msp.MSPConfig{}
-	err := proto.Unmarshal(rawMSPConfig.Value, mspConfig)
+	err := proto.Unmarshal(rawMSPConfig.GetValue(), mspConfig)
 	Expect(err).NotTo(HaveOccurred())
 
 	fabricConfig := &msp.FabricMSPConfig{}
-	err = proto.Unmarshal(mspConfig.Config, fabricConfig)
+	err = proto.Unmarshal(mspConfig.GetConfig(), fabricConfig)
 	Expect(err).NotTo(HaveOccurred())
 
 	// Mutate it as we are asked
@@ -2074,12 +2074,12 @@ func updateOrdererMSPAndConsensusMetadata(network *nwo.Network, peer *nwo.Peer, 
 	mspConfig.Config = protoutil.MarshalOrPanic(fabricConfig)
 	rawMSPConfig.Value = protoutil.MarshalOrPanic(mspConfig)
 
-	consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+	consensusTypeConfigValue := updatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetValues()["ConsensusType"]
 	consensusTypeValue := &protosorderer.ConsensusType{}
-	err = proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
+	err = proto.Unmarshal(consensusTypeConfigValue.GetValue(), consensusTypeValue)
 	Expect(err).NotTo(HaveOccurred())
 
-	consensusTypeValue.Metadata = mutateConsensusMetadata(consensusTypeValue.Metadata, f)
+	consensusTypeValue.Metadata = mutateConsensusMetadata(consensusTypeValue.GetMetadata(), f)
 
 	updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
 		ModPolicy: "Admins",
@@ -2106,13 +2106,13 @@ func configToGenesisBlock(configBlock *common.Block, channelId string) *common.B
 		}),
 	})
 
-	envelope, err := protoutil.GetEnvelopeFromBlock(genesisBlock.Data.Data[0])
+	envelope, err := protoutil.GetEnvelopeFromBlock(genesisBlock.GetData().GetData()[0])
 	Expect(err).NotTo(HaveOccurred())
-	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+	payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
 	Expect(err).NotTo(HaveOccurred())
 
 	Expect(err).NotTo(HaveOccurred())
-	payloadChannelHeader, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	payloadChannelHeader, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	Expect(err).NotTo(HaveOccurred())
 	payloadChannelHeader.ChannelId = channelId
 	payloadSignatureHeader := protoutil.MakeSignatureHeader(nil, protoutil.CreateNonceOrPanic())
@@ -2124,7 +2124,7 @@ func configToGenesisBlock(configBlock *common.Block, channelId string) *common.B
 	genesisBlock.Data.Data[0], err = protoutil.Marshal(envelope)
 	Expect(err).NotTo(HaveOccurred())
 
-	genesisBlock.Header.DataHash = protoutil.ComputeBlockDataHash(genesisBlock.Data)
+	genesisBlock.Header.DataHash = protoutil.ComputeBlockDataHash(genesisBlock.GetData())
 
 	return genesisBlock
 }

@@ -87,7 +87,7 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 		return shim.Error(fmt.Sprintf("Failed getting signed proposal from stub, %s: %s", cid, err))
 	}
 
-	name, err := protoutil.InvokedChaincodeName(sp.ProposalBytes)
+	name, err := protoutil.InvokedChaincodeName(sp.GetProposalBytes())
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to identify the called chaincode: %s", err))
 	}

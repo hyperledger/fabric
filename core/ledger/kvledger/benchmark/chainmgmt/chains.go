@@ -115,7 +115,7 @@ type Chain struct {
 func newChain(id ChainID, peerLedger ledger.PeerLedger, m *chainsMgr) *Chain {
 	bcInfo, err := peerLedger.GetBlockchainInfo()
 	panicOnError(err)
-	return &Chain{peerLedger, id, newBlkGenerator(m.batchConf, bcInfo.Height, bcInfo.CurrentBlockHash), m}
+	return &Chain{peerLedger, id, newBlkGenerator(m.batchConf, bcInfo.GetHeight(), bcInfo.GetCurrentBlockHash()), m}
 }
 
 func (c *Chain) startBlockPollingAndCommit() {

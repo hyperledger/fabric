@@ -190,7 +190,7 @@ func (c *SimpleCollectionStore) RetrieveCollectionPersistenceConfigs(cc Collecti
 	if err != nil {
 		return nil, err
 	}
-	return &SimpleCollectionPersistenceConfigs{staticCollectionConfig.BlockToLive}, nil
+	return &SimpleCollectionPersistenceConfigs{staticCollectionConfig.GetBlockToLive()}, nil
 }
 
 // RetrieveReadWritePermission retrieves the read-write permission of the creator of the
@@ -238,24 +238,24 @@ func isCreatorOfProposalAMember(signedProposal *peer.SignedProposal, collection 
 }
 
 func getSignedData(signedProposal *peer.SignedProposal) (protoutil.SignedData, error) {
-	proposal, err := protoutil.UnmarshalProposal(signedProposal.ProposalBytes)
+	proposal, err := protoutil.UnmarshalProposal(signedProposal.GetProposalBytes())
 	if err != nil {
 		return protoutil.SignedData{}, err
 	}
 
-	hdr, err := protoutil.UnmarshalHeader(proposal.Header)
+	hdr, err := protoutil.UnmarshalHeader(proposal.GetHeader())
 	if err != nil {
 		return protoutil.SignedData{}, err
 	}
 
-	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.GetSignatureHeader())
 	if err != nil {
 		return protoutil.SignedData{}, err
 	}
 
 	return protoutil.SignedData{
-		Data:      signedProposal.ProposalBytes,
-		Identity:  shdr.Creator,
-		Signature: signedProposal.Signature,
+		Data:      signedProposal.GetProposalBytes(),
+		Identity:  shdr.GetCreator(),
+		Signature: signedProposal.GetSignature(),
 	}, nil
 }

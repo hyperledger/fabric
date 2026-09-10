@@ -21,19 +21,19 @@ import (
 // ExtractSignedCCDepSpec extracts the messages from the envelope
 func ExtractSignedCCDepSpec(env *common.Envelope) (*common.ChannelHeader, *peer.SignedChaincodeDeploymentSpec, error) {
 	p := &common.Payload{}
-	if err := proto.Unmarshal(env.Payload, p); err != nil {
+	if err := proto.Unmarshal(env.GetPayload(), p); err != nil {
 		return nil, nil, err
 	}
-	if p.Header == nil {
+	if p.GetHeader() == nil {
 		return nil, nil, errors.New("channel header cannot be nil")
 	}
 	ch := &common.ChannelHeader{}
-	if err := proto.Unmarshal(p.Header.ChannelHeader, ch); err != nil {
+	if err := proto.Unmarshal(p.GetHeader().GetChannelHeader(), ch); err != nil {
 		return nil, nil, err
 	}
 
 	sp := &peer.SignedChaincodeDeploymentSpec{}
-	if err := proto.Unmarshal(p.Data, sp); err != nil {
+	if err := proto.Unmarshal(p.GetData(), sp); err != nil {
 		return nil, nil, err
 	}
 
@@ -56,8 +56,8 @@ func ValidateCip(baseCip, otherCip *peer.SignedChaincodeDeploymentSpec) error {
 		return errors.New("endorsements should either be both nil or not nil")
 	}
 
-	bN := len(baseCip.OwnerEndorsements)
-	oN := len(otherCip.OwnerEndorsements)
+	bN := len(baseCip.GetOwnerEndorsements())
+	oN := len(otherCip.GetOwnerEndorsements())
 	if bN > 1 || oN > 1 {
 		return errors.New("expect utmost 1 endorsement from a owner")
 	}
@@ -66,12 +66,12 @@ func ValidateCip(baseCip, otherCip *peer.SignedChaincodeDeploymentSpec) error {
 		return fmt.Errorf("Rule-all packages should be endorsed or none should be endorsed failed for (%d, %d)", bN, oN)
 	}
 
-	if !bytes.Equal(baseCip.ChaincodeDeploymentSpec, otherCip.ChaincodeDeploymentSpec) {
-		return fmt.Errorf("Rule-all deployment specs should match(%d, %d)", len(baseCip.ChaincodeDeploymentSpec), len(otherCip.ChaincodeDeploymentSpec))
+	if !bytes.Equal(baseCip.GetChaincodeDeploymentSpec(), otherCip.GetChaincodeDeploymentSpec()) {
+		return fmt.Errorf("Rule-all deployment specs should match(%d, %d)", len(baseCip.GetChaincodeDeploymentSpec()), len(otherCip.GetChaincodeDeploymentSpec()))
 	}
 
-	if !bytes.Equal(baseCip.InstantiationPolicy, otherCip.InstantiationPolicy) {
-		return fmt.Errorf("Rule-all instantiation policies should match(%d, %d)", len(baseCip.InstantiationPolicy), len(otherCip.InstantiationPolicy))
+	if !bytes.Equal(baseCip.GetInstantiationPolicy(), otherCip.GetInstantiationPolicy()) {
+		return fmt.Errorf("Rule-all instantiation policies should match(%d, %d)", len(baseCip.GetInstantiationPolicy()), len(otherCip.GetInstantiationPolicy()))
 	}
 
 	return nil
@@ -125,12 +125,12 @@ func CreateSignedCCDepSpecForInstall(pack []*common.Envelope) (*common.Envelope,
 	var endorsements []*peer.Endorsement
 	for n, r := range pack {
 		p := &common.Payload{}
-		if err = proto.Unmarshal(r.Payload, p); err != nil {
+		if err = proto.Unmarshal(r.GetPayload(), p); err != nil {
 			return nil, err
 		}
 
 		cip := &peer.SignedChaincodeDeploymentSpec{}
-		if err = proto.Unmarshal(p.Data, cip); err != nil {
+		if err = proto.Unmarshal(p.GetData(), cip); err != nil {
 			return nil, err
 		}
 
@@ -139,7 +139,7 @@ func CreateSignedCCDepSpecForInstall(pack []*common.Envelope) (*common.Envelope,
 		if n == 0 {
 			baseCip = cip
 			// if it has endorsement, all other owners should have signed too
-			if len(cip.OwnerEndorsements) > 0 {
+			if len(cip.GetOwnerEndorsements()) > 0 {
 				endorsementExists = true
 				endorsements = make([]*peer.Endorsement, len(pack))
 			}
@@ -149,11 +149,11 @@ func CreateSignedCCDepSpecForInstall(pack []*common.Envelope) (*common.Envelope,
 		}
 
 		if endorsementExists {
-			endorsements[n] = cip.OwnerEndorsements[0]
+			endorsements[n] = cip.GetOwnerEndorsements()[0]
 		}
 	}
 
-	return createSignedCCDepSpec(baseCip.ChaincodeDeploymentSpec, baseCip.InstantiationPolicy, endorsements)
+	return createSignedCCDepSpec(baseCip.GetChaincodeDeploymentSpec(), baseCip.GetInstantiationPolicy(), endorsements)
 }
 
 // OwnerCreateSignedCCDepSpec creates a package from a ChaincodeDeploymentSpec and
@@ -232,5 +232,5 @@ func SignExistingPackage(env *common.Envelope, owner identity.SignerSerializer) 
 
 	endorsements := append(sdepspec.OwnerEndorsements, &peer.Endorsement{Signature: signature, Endorser: endorser})
 
-	return createSignedCCDepSpec(sdepspec.ChaincodeDeploymentSpec, sdepspec.InstantiationPolicy, endorsements)
+	return createSignedCCDepSpec(sdepspec.GetChaincodeDeploymentSpec(), sdepspec.GetInstantiationPolicy(), endorsements)
 }

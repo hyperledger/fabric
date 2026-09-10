@@ -101,9 +101,9 @@ func (c *client) simulateUpgradeTx(ccName string, collConfs []*collConf) *txAndP
 
 func (c *client) causeMissingPvtData(txIndex uint64) {
 	pvtws := c.simulatedTrans[txIndex].Pvtws
-	for _, nsPvtRwset := range pvtws.NsPvtRwset {
-		for _, collPvtRwset := range nsPvtRwset.CollectionPvtRwset {
-			c.missingPvtData.Add(txIndex, nsPvtRwset.Namespace, collPvtRwset.CollectionName, true)
+	for _, nsPvtRwset := range pvtws.GetNsPvtRwset() {
+		for _, collPvtRwset := range nsPvtRwset.GetCollectionPvtRwset() {
+			c.missingPvtData.Add(txIndex, nsPvtRwset.GetNamespace(), collPvtRwset.GetCollectionName(), true)
 		}
 	}
 	c.simulatedTrans[txIndex].Pvtws = nil
@@ -126,19 +126,19 @@ func (c *client) retrieveCommittedBlocksAndPvtdata(startNum, endNum uint64) []*l
 func (c *client) currentHeight() uint64 {
 	bcInfo, err := c.lgr.GetBlockchainInfo()
 	c.assert.NoError(err)
-	return bcInfo.Height
+	return bcInfo.GetHeight()
 }
 
 func (c *client) currentCommitHash() []byte {
 	block, err := c.lgr.GetBlockByNumber(c.currentHeight() - 1)
 	c.assert.NoError(err)
-	if len(block.Metadata.Metadata) < int(common.BlockMetadataIndex_COMMIT_HASH+1) {
+	if len(block.GetMetadata().GetMetadata()) < int(common.BlockMetadataIndex_COMMIT_HASH+1) {
 		return nil
 	}
 	commitHash := &common.Metadata{}
-	err = proto.Unmarshal(block.Metadata.Metadata[common.BlockMetadataIndex_COMMIT_HASH], commitHash)
+	err = proto.Unmarshal(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_COMMIT_HASH], commitHash)
 	c.assert.NoError(err)
-	return commitHash.Value
+	return commitHash.GetValue()
 }
 
 // /////////////////////   simulator wrapper functions  ///////////////////////

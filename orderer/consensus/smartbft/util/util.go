@@ -24,54 +24,54 @@ func ConfigFromMetadataOptions(selfID uint64, options *smartbft.Options) (types.
 		return config, errors.New("config metadata options field is nil")
 	}
 
-	config.RequestBatchMaxCount = options.RequestBatchMaxCount
-	config.RequestBatchMaxBytes = options.RequestBatchMaxBytes
-	if config.RequestBatchMaxInterval, err = time.ParseDuration(options.RequestBatchMaxInterval); err != nil {
+	config.RequestBatchMaxCount = options.GetRequestBatchMaxCount()
+	config.RequestBatchMaxBytes = options.GetRequestBatchMaxBytes()
+	if config.RequestBatchMaxInterval, err = time.ParseDuration(options.GetRequestBatchMaxInterval()); err != nil {
 		return config, errors.Wrap(err, "bad config metadata option RequestBatchMaxInterval")
 	}
-	config.IncomingMessageBufferSize = options.IncomingMessageBufferSize
-	config.RequestPoolSize = options.RequestPoolSize
-	if config.RequestForwardTimeout, err = time.ParseDuration(options.RequestForwardTimeout); err != nil {
+	config.IncomingMessageBufferSize = options.GetIncomingMessageBufferSize()
+	config.RequestPoolSize = options.GetRequestPoolSize()
+	if config.RequestForwardTimeout, err = time.ParseDuration(options.GetRequestForwardTimeout()); err != nil {
 		return config, errors.Wrap(err, "bad config metadata option RequestForwardTimeout")
 	}
-	if config.RequestComplainTimeout, err = time.ParseDuration(options.RequestComplainTimeout); err != nil {
+	if config.RequestComplainTimeout, err = time.ParseDuration(options.GetRequestComplainTimeout()); err != nil {
 		return config, errors.Wrap(err, "bad config metadata option RequestComplainTimeout")
 	}
-	if config.RequestAutoRemoveTimeout, err = time.ParseDuration(options.RequestAutoRemoveTimeout); err != nil {
+	if config.RequestAutoRemoveTimeout, err = time.ParseDuration(options.GetRequestAutoRemoveTimeout()); err != nil {
 		return config, errors.Wrap(err, "bad config metadata option RequestAutoRemoveTimeout")
 	}
-	if config.ViewChangeResendInterval, err = time.ParseDuration(options.ViewChangeResendInterval); err != nil {
+	if config.ViewChangeResendInterval, err = time.ParseDuration(options.GetViewChangeResendInterval()); err != nil {
 		return config, errors.Wrap(err, "bad config metadata option ViewChangeResendInterval")
 	}
-	if config.ViewChangeTimeout, err = time.ParseDuration(options.ViewChangeTimeout); err != nil {
+	if config.ViewChangeTimeout, err = time.ParseDuration(options.GetViewChangeTimeout()); err != nil {
 		return config, errors.Wrap(err, "bad config metadata option ViewChangeTimeout")
 	}
-	if config.LeaderHeartbeatTimeout, err = time.ParseDuration(options.LeaderHeartbeatTimeout); err != nil {
+	if config.LeaderHeartbeatTimeout, err = time.ParseDuration(options.GetLeaderHeartbeatTimeout()); err != nil {
 		return config, errors.Wrap(err, "bad config metadata option LeaderHeartbeatTimeout")
 	}
-	config.LeaderHeartbeatCount = options.LeaderHeartbeatCount
-	if config.CollectTimeout, err = time.ParseDuration(options.CollectTimeout); err != nil {
+	config.LeaderHeartbeatCount = options.GetLeaderHeartbeatCount()
+	if config.CollectTimeout, err = time.ParseDuration(options.GetCollectTimeout()); err != nil {
 		return config, errors.Wrap(err, "bad config metadata option CollectTimeout")
 	}
-	config.SyncOnStart = options.SyncOnStart
-	config.SpeedUpViewChange = options.SpeedUpViewChange
+	config.SyncOnStart = options.GetSyncOnStart()
+	config.SpeedUpViewChange = options.GetSpeedUpViewChange()
 
-	if options.LeaderRotation != smartbft.Options_ROTATION_ON {
+	if options.GetLeaderRotation() != smartbft.Options_ROTATION_ON {
 		config.LeaderRotation = false
 		config.DecisionsPerLeader = 0
 	} else {
 		config.LeaderRotation = true
-		config.DecisionsPerLeader = options.DecisionsPerLeader
+		config.DecisionsPerLeader = options.GetDecisionsPerLeader()
 	}
 
 	if err = config.Validate(); err != nil {
 		return config, errors.Wrap(err, "config validation failed")
 	}
 
-	if options.RequestMaxBytes == 0 {
+	if options.GetRequestMaxBytes() == 0 {
 		config.RequestMaxBytes = config.RequestBatchMaxBytes
 	} else {
-		config.RequestMaxBytes = options.RequestMaxBytes
+		config.RequestMaxBytes = options.GetRequestMaxBytes()
 	}
 
 	return config, nil

@@ -118,16 +118,16 @@ func (vi *ValidatorImpl) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 		return nil, errors.Errorf("cannot process nil ConfigUpdateEnvelope")
 	}
 
-	configUpdate, err := UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+	configUpdate, err := UnmarshalConfigUpdate(configUpdateEnv.GetConfigUpdate())
 	if err != nil {
 		return nil, err
 	}
 
-	if configUpdate.ChannelId != vi.channelID {
-		return nil, errors.Errorf("ConfigUpdate for channel '%s' but envelope for channel '%s'", configUpdate.ChannelId, vi.channelID)
+	if configUpdate.GetChannelId() != vi.channelID {
+		return nil, errors.Errorf("ConfigUpdate for channel '%s' but envelope for channel '%s'", configUpdate.GetChannelId(), vi.channelID)
 	}
 
-	readSet, err := mapConfig(configUpdate.ReadSet, vi.namespace)
+	readSet, err := mapConfig(configUpdate.GetReadSet(), vi.namespace)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error mapping ReadSet")
 	}
@@ -136,7 +136,7 @@ func (vi *ValidatorImpl) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 		return nil, errors.Wrapf(err, "error validating ReadSet")
 	}
 
-	writeSet, err := mapConfig(configUpdate.WriteSet, vi.namespace)
+	writeSet, err := mapConfig(configUpdate.GetWriteSet(), vi.namespace)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error mapping WriteSet")
 	}

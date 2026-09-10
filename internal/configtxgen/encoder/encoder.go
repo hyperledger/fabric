@@ -490,7 +490,7 @@ func DefaultConfigTemplate(conf *genesisconfig.Profile) (*cb.ConfigGroup, error)
 		return nil, errors.WithMessage(err, "error parsing configuration")
 	}
 
-	if _, ok := channelGroup.Groups[channelconfig.ApplicationGroupKey]; !ok {
+	if _, ok := channelGroup.GetGroups()[channelconfig.ApplicationGroupKey]; !ok {
 		return nil, errors.New("channel template configs must contain an application section")
 	}
 
@@ -513,7 +513,7 @@ func ConfigTemplateFromGroup(conf *genesisconfig.Profile, cg *cb.ConfigGroup) (*
 		},
 	}
 
-	consortiums, ok := template.Groups[channelconfig.ConsortiumsGroupKey]
+	consortiums, ok := template.GetGroups()[channelconfig.ConsortiumsGroupKey]
 	if !ok {
 		return nil, errors.Errorf("supplied system channel group does not appear to be system channel (missing consortiums group)")
 	}
@@ -522,7 +522,7 @@ func ConfigTemplateFromGroup(conf *genesisconfig.Profile, cg *cb.ConfigGroup) (*
 		return nil, errors.Errorf("system channel consortiums group appears to have no consortiums defined")
 	}
 
-	consortium, ok := consortiums.Groups[conf.Consortium]
+	consortium, ok := consortiums.GetGroups()[conf.Consortium]
 	if !ok {
 		return nil, errors.Errorf("supplied system channel group is missing '%s' consortium", conf.Consortium)
 	}
@@ -533,12 +533,12 @@ func ConfigTemplateFromGroup(conf *genesisconfig.Profile, cg *cb.ConfigGroup) (*
 
 	for _, organization := range conf.Application.Organizations {
 		var ok bool
-		template.Groups[channelconfig.ApplicationGroupKey].Groups[organization.Name], ok = consortium.Groups[organization.Name]
+		template.Groups[channelconfig.ApplicationGroupKey].Groups[organization.Name], ok = consortium.GetGroups()[organization.Name]
 		if !ok {
 			return nil, errors.Errorf("consortium %s does not contain member org %s", conf.Consortium, organization.Name)
 		}
 	}
-	delete(template.Groups, channelconfig.ConsortiumsGroupKey)
+	delete(template.GetGroups(), channelconfig.ConsortiumsGroupKey)
 
 	addValue(template, channelconfig.ConsortiumValue(conf.Consortium), channelconfig.AdminsPolicyKey)
 
@@ -611,7 +611,7 @@ func MakeChannelCreationTransactionFromTemplate(
 			SignatureHeader: protoutil.MarshalOrPanic(sigHeader),
 		}}
 
-		newConfigUpdateEnv.Signatures[0].Signature, err = signer.Sign(util.ConcatenateBytes(newConfigUpdateEnv.Signatures[0].SignatureHeader, newConfigUpdateEnv.ConfigUpdate))
+		newConfigUpdateEnv.Signatures[0].Signature, err = signer.Sign(util.ConcatenateBytes(newConfigUpdateEnv.GetSignatures()[0].GetSignatureHeader(), newConfigUpdateEnv.GetConfigUpdate()))
 		if err != nil {
 			return nil, errors.Wrap(err, "signature failure over config update")
 		}

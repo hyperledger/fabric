@@ -130,7 +130,7 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	expectedtxsFilter := []uint8{uint8(peer.TxValidationCode_VALID), uint8(peer.TxValidationCode_VALID), uint8(peer.TxValidationCode_INVALID_OTHER_REASON)}
 
 	postprocessProtoBlock(blk, mvccValidatedBlock)
-	require.Equal(t, expectedtxsFilter, blk.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	require.Equal(t, expectedtxsFilter, blk.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 }
 
 func TestPreprocessProtoBlock(t *testing.T) {
@@ -145,7 +145,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	// bad envelope
 	gb = testutil.ConstructTestBlock(t, 11, 1, 1)
 	gb.Data = &common.BlockData{Data: [][]byte{{123}}}
-	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(len(gb.Data.Data), peer.TxValidationCode_VALID)
+	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(len(gb.GetData().GetData()), peer.TxValidationCode_VALID)
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
 	require.Error(t, err)
 	t.Log(err)
@@ -174,7 +174,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	})
 	envBytes, _ = protoutil.GetBytesEnvelope(&common.Envelope{Payload: payloadBytes})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
-	flags := txflags.New(len(gb.Data.Data))
+	flags := txflags.New(len(gb.GetData().GetData()))
 	flags.SetFlag(0, peer.TxValidationCode_BAD_CHANNEL_HEADER)
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = flags
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
@@ -185,7 +185,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	txid := "testtxid1234"
 	gb = testutil.ConstructBlockWithTxid(t, blockNum, []byte{123},
 		[][]byte{{123}}, []string{txid}, false)
-	flags = txflags.New(len(gb.Data.Data))
+	flags = txflags.New(len(gb.GetData().GetData()))
 	flags.SetFlag(0, peer.TxValidationCode_BAD_HEADER_EXTENSION)
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = flags
 
@@ -228,7 +228,7 @@ func TestPreprocessProtoBlockInvalidWriteset(t *testing.T) {
 
 	blk := testutil.ConstructBlock(t, 1, testutil.ConstructRandomBytes(t, 32),
 		[][]byte{simulation1Bytes, simulation2Bytes}, false) // block with two txs
-	txfilter := txflags.ValidationFlags(blk.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txfilter := txflags.ValidationFlags(blk.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	require.True(t, txfilter.IsValid(0))
 	require.True(t, txfilter.IsValid(1)) // both txs are valid initially at the time of block cutting
 
@@ -304,7 +304,7 @@ func TestTxStatsInfoWithConfigTx(t *testing.T) {
 	gb := testutil.ConstructTestBlocks(t, 1)[0]
 	_, _, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: gb}, true)
 	require.NoError(t, err)
-	txID, err := protoutil.GetOrComputeTxIDFromEnvelope(gb.Data.Data[0])
+	txID, err := protoutil.GetOrComputeTxIDFromEnvelope(gb.GetData().GetData()[0])
 	require.NoError(t, err)
 	expectedTxStatInfo := []*TxStatInfo{
 		{
