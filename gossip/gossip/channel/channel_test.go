@@ -193,7 +193,7 @@ func (m *receivedMsg) GetConnectionInfo() *protoext.ConnectionInfo {
 }
 
 type gossipAdapterMock struct {
-	signCallCount uint32
+	signCallCount atomic.Uint32
 	mock.Mock
 	sync.RWMutex
 }
@@ -205,7 +205,7 @@ func (ga *gossipAdapterMock) On(methodName string, arguments ...any) *mock.Call 
 }
 
 func (ga *gossipAdapterMock) Sign(msg *proto.GossipMessage) (*protoext.SignedGossipMessage, error) {
-	atomic.AddUint32(&ga.signCallCount, 1)
+	ga.signCallCount.Add(1)
 	return protoext.NoopSign(msg)
 }
 
@@ -478,14 +478,14 @@ func TestLeaveChannel(t *testing.T) {
 	require.Len(t, gc.GetPeers(), 1)
 	// Ensure peer in org1 remained and peer in org2 is skipped
 	require.Equal(t, pkiIDInOrg1, gc.GetPeers()[0].PKIid)
-	var digestSendTime int32
+	var digestSendTime atomic.Int32
 	var DigestSentWg sync.WaitGroup
 	DigestSentWg.Add(1)
 	hello := createHelloMsg(pkiIDInOrg1)
 	hello.On("Respond", mock.Anything).Run(func(arguments mock.Arguments) {
-		atomic.AddInt32(&digestSendTime, 1)
+		digestSendTime.Add(1)
 		// Ensure we only respond with digest before we leave the channel
-		require.Equal(t, int32(1), atomic.LoadInt32(&digestSendTime))
+		require.Equal(t, int32(1), digestSendTime.Load())
 		DigestSentWg.Done()
 	})
 	// Wait until we send a hello pull message
@@ -1120,14 +1120,14 @@ func TestNoGossipOrSigningWhenEmptyMembership(t *testing.T) {
 
 	gc := NewGossipChannel(pkiIDInOrg1, orgInChannelA, cs, channelA, adapter, &joinChanMsg{}, disabledMetrics, nil)
 	// We have signed only once at creation time
-	assert.Equal(t, uint32(1), atomic.LoadUint32(&adapter.signCallCount))
+	assert.Equal(t, uint32(1), adapter.signCallCount.Load())
 	defer gc.Stop()
 	gc.UpdateLedgerHeight(1)
 
 	// The first time we have membership, so we should gossip and sign
 	gossipedWG.Wait()
 	// So far we have signed twice: Once at creation time, and once before we gossiped
-	assert.Equal(t, uint32(2), atomic.LoadUint32(&adapter.signCallCount))
+	assert.Equal(t, uint32(2), adapter.signCallCount.Load())
 
 	// Membership is now empty
 	dynamicMembership.Store(emptyMembership)
@@ -1136,14 +1136,14 @@ func TestNoGossipOrSigningWhenEmptyMembership(t *testing.T) {
 	// Wait some time and ensure we do not sign because membership is now empty
 	time.Sleep(conf.PublishStateInfoInterval * 3)
 	// We haven't signed anything
-	assert.Equal(t, uint32(2), atomic.LoadUint32(&adapter.signCallCount))
+	assert.Equal(t, uint32(2), adapter.signCallCount.Load())
 
 	assert.Empty(t, gc.Self().GetStateInfo().Properties.Chaincodes)
 	gossipedWG.Add(1)
 	// Now, update chaincodes and check our chaincode information was indeed updated
 	gc.UpdateChaincodes([]*proto.Chaincode{{Name: "mycc"}})
 	// We should have signed regardless!
-	assert.Equal(t, uint32(3), atomic.LoadUint32(&adapter.signCallCount))
+	assert.Equal(t, uint32(3), adapter.signCallCount.Load())
 	assert.Equal(t, "mycc", gc.Self().GetStateInfo().Properties.Chaincodes[0].Name)
 }
 
@@ -1453,22 +1453,22 @@ func TestChannelStop(t *testing.T) {
 	cs := &cryptoService{}
 	cs.On("VerifyBlock", mock.Anything).Return(nil)
 	adapter := new(gossipAdapterMock)
-	var sendCount int32
+	var sendCount atomic.Int32
 	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
 	adapter.On("Send", mock.Anything, mock.Anything).Run(func(mock.Arguments) {
-		atomic.AddInt32(&sendCount, int32(1))
+		sendCount.Add(int32(1))
 	})
 	gc := NewGossipChannel(pkiIDInOrg1, orgInChannelA, cs, channelA, adapter, &joinChanMsg{}, disabledMetrics, nil)
 	time.Sleep(time.Second)
 	gc.Stop()
-	oldCount := atomic.LoadInt32(&sendCount)
+	oldCount := sendCount.Load()
 	t1 := time.Now()
 	for {
 		if time.Since(t1).Nanoseconds() > (time.Second * 15).Nanoseconds() {
 			t.Fatal("Stop failed")
 		}
 		time.Sleep(time.Second)
-		newCount := atomic.LoadInt32(&sendCount)
+		newCount := sendCount.Load()
 		if newCount == oldCount {
 			break
 		}
@@ -2336,11 +2336,11 @@ func TestMembershiptrackerStopWhenGCStops(t *testing.T) {
 		waitForHandleMsgChan <- struct{}{}
 	}).Once()
 
-	var check uint32
-	atomic.StoreUint32(&check, 0)
+	var check atomic.Uint32
+	check.Store(0)
 	logger := util.GetLogger(util.ChannelLogger, adapter.GetConf().ID)
 	logger = logger.(*flogging.FabricLogger).WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
-		if atomic.LoadUint32(&check) == 1 {
+		if check.Load() == 1 {
 			if !strings.Contains(entry.Message, "Membership view has changed. peers went offline:  [[a]] , peers went online:  [[b]] , current view:  [[b]]") {
 				return nil
 			}
@@ -2364,7 +2364,7 @@ func TestMembershiptrackerStopWhenGCStops(t *testing.T) {
 	}).Once()
 
 	flogging.ActivateSpec("info")
-	atomic.StoreUint32(&check, 1)
+	check.Store(1)
 	<-membershipReported
 
 	wg.Wait()
