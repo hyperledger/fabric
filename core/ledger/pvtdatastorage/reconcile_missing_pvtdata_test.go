@@ -613,16 +613,16 @@ func constructPvtDataForTest(t *testing.T, blockInfo []*blockTxPvtDataInfoForTes
 			require.NoError(t, err)
 			for _, ns := range txPvtWS.NsPvtRwSet {
 				for _, coll := range ns.CollPvtRwSets {
-					for _, kv := range coll.KvRwSet.Writes {
+					for _, kv := range coll.KvRwSet.GetWrites() {
 						p.hashedIndexEntries = append(p.hashedIndexEntries, &hashedIndexEntry{
 							key: &hashedIndexKey{
 								ns:         ns.NameSpace,
 								coll:       coll.CollectionName,
-								pvtkeyHash: util.ComputeStringHash(kv.Key),
+								pvtkeyHash: util.ComputeStringHash(kv.GetKey()),
 								blkNum:     b.blkNum,
 								txNum:      b.txNum,
 							},
-							value: kv.Key,
+							value: kv.GetKey(),
 						})
 					}
 				}

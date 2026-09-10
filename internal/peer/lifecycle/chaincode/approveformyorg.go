@@ -194,12 +194,12 @@ func (a *ApproverForMyOrg) Approve() error {
 		return errors.New("received nil proposal response")
 	}
 
-	if proposalResponse.Response == nil {
+	if proposalResponse.GetResponse() == nil {
 		return errors.Errorf("received proposal response with nil response")
 	}
 
-	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("proposal failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+	if proposalResponse.GetResponse().GetStatus() != int32(cb.Status_SUCCESS) {
+		return errors.Errorf("proposal failed with status: %d - %s", proposalResponse.GetResponse().GetStatus(), proposalResponse.GetResponse().GetMessage())
 	}
 	// assemble a signed transaction (it's an Envelope message)
 	env, err := protoutil.CreateSignedTx(proposal, a.Signer, responses...)

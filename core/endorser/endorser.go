@@ -126,12 +126,12 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 	// per doc anything < 400 can be sent as TX.
 	// fabric errors will always be >= 400 (ie, unambiguous errors )
 	// "lscc" will respond with status 200 or 500 (ie, unambiguous OK or ERROR)
-	if res.Status >= shim.ERRORTHRESHOLD {
+	if res.GetStatus() >= shim.ERRORTHRESHOLD {
 		return res, nil, nil
 	}
 
 	// Unless this is the weirdo LSCC case, just return
-	if chaincodeName != "lscc" || len(input.Args) < 3 || (string(input.Args[0]) != "deploy" && string(input.Args[0]) != "upgrade") {
+	if chaincodeName != "lscc" || len(input.GetArgs()) < 3 || (string(input.GetArgs()[0]) != "deploy" && string(input.GetArgs()[0]) != "upgrade") {
 		return res, ccevent, nil
 	}
 
@@ -143,29 +143,29 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 	//
 	// NOTE that if there's an error all simulation, including the chaincode
 	// table changes in lscc will be thrown away
-	cds, err := protoutil.UnmarshalChaincodeDeploymentSpec(input.Args[2])
+	cds, err := protoutil.UnmarshalChaincodeDeploymentSpec(input.GetArgs()[2])
 	if err != nil {
 		e.Metrics.SimulationFailure.With(meterLabels...).Add(1)
 		return nil, nil, err
 	}
 
 	// this should not be a system chaincode
-	if e.Support.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
+	if e.Support.IsSysCC(cds.GetChaincodeSpec().GetChaincodeId().GetName()) {
 		e.Metrics.SimulationFailure.With(meterLabels...).Add(1)
-		return nil, nil, errors.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeId.Name, txParams.ChannelID)
+		return nil, nil, errors.Errorf("attempting to deploy a system chaincode %s/%s", cds.GetChaincodeSpec().GetChaincodeId().GetName(), txParams.ChannelID)
 	}
 
-	if len(cds.CodePackage) != 0 {
+	if len(cds.GetCodePackage()) != 0 {
 		e.Metrics.SimulationFailure.With(meterLabels...).Add(1)
 		return nil, nil, errors.Errorf("lscc upgrade/deploy should not include a code packages")
 	}
 
-	_, _, err = e.Support.ExecuteLegacyInit(txParams, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, cds.ChaincodeSpec.Input)
+	_, _, err = e.Support.ExecuteLegacyInit(txParams, cds.GetChaincodeSpec().GetChaincodeId().GetName(), cds.GetChaincodeSpec().GetChaincodeId().GetVersion(), cds.GetChaincodeSpec().GetInput())
 	if err != nil {
 		// increment the failure to indicate instantion/upgrade failures
 		meterLabels = []string{
 			"channel", txParams.ChannelID,
-			"chaincode", cds.ChaincodeSpec.ChaincodeId.Name,
+			"chaincode", cds.GetChaincodeSpec().GetChaincodeId().GetName(),
 		}
 		e.Metrics.InitFailed.With(meterLabels...).Add(1)
 		return nil, nil, err
@@ -261,7 +261,7 @@ func (e *Endorser) preProcess(up *UnpackedProposal, channel *Channel) error {
 		return errors.WithMessage(err, "error validating proposal")
 	}
 
-	if up.ChannelHeader.ChannelId == "" {
+	if up.ChannelHeader.GetChannelId() == "" {
 		// chainless proposals do not/cannot affect ledger and cannot be submitted as transactions
 		// ignore uniqueness checks; also, chainless proposals are not validated using the policies
 		// of the chain since by definition there is no chain; they are validated against the local
@@ -271,24 +271,24 @@ func (e *Endorser) preProcess(up *UnpackedProposal, channel *Channel) error {
 
 	// labels that provide context for failure metrics
 	meterLabels := []string{
-		"channel", up.ChannelHeader.ChannelId,
+		"channel", up.ChannelHeader.GetChannelId(),
 		"chaincode", up.ChaincodeName,
 	}
 
 	// Here we handle uniqueness check and ACLs for proposals targeting a chain
 	// Notice that ValidateProposalMessage has already verified that TxID is computed properly
-	if _, err = e.Support.GetTransactionByID(up.ChannelHeader.ChannelId, up.ChannelHeader.TxId); err == nil {
+	if _, err = e.Support.GetTransactionByID(up.ChannelHeader.GetChannelId(), up.ChannelHeader.GetTxId()); err == nil {
 		// increment failure due to duplicate transactions. Useful for catching replay attacks in
 		// addition to benign retries
 		e.Metrics.DuplicateTxsFailure.With(meterLabels...).Add(1)
-		return errors.Errorf("duplicate transaction found [%s]. Creator [%x]", up.ChannelHeader.TxId, up.SignatureHeader.Creator)
+		return errors.Errorf("duplicate transaction found [%s]. Creator [%x]", up.ChannelHeader.GetTxId(), up.SignatureHeader.GetCreator())
 	}
 
 	// check ACL only for application chaincodes; ACLs
 	// for system chaincodes are checked elsewhere
 	if !e.Support.IsSysCC(up.ChaincodeName) {
 		// check that the proposal complies with the Channel's writers
-		if err = e.Support.CheckACL(up.ChannelHeader.ChannelId, up.SignedProposal); err != nil {
+		if err = e.Support.CheckACL(up.ChannelHeader.GetChannelId(), up.SignedProposal); err != nil {
 			e.Metrics.ProposalACLCheckFailed.With(meterLabels...).Add(1)
 			return err
 		}
@@ -323,7 +323,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	if up.ChannelID() != "" {
 		channel = e.ChannelFetcher.Channel(up.ChannelID())
 		if channel == nil {
-			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: fmt.Sprintf("channel '%s' not found", up.ChannelHeader.ChannelId)}}, nil
+			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: fmt.Sprintf("channel '%s' not found", up.ChannelHeader.GetChannelId())}}, nil
 		}
 	} else {
 		channel = &Channel{
@@ -340,7 +340,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 
 	defer func() {
 		meterLabels := []string{
-			"channel", up.ChannelHeader.ChannelId,
+			"channel", up.ChannelHeader.GetChannelId(),
 			"chaincode", up.ChaincodeName,
 			"success", strconv.FormatBool(success),
 		}
@@ -349,12 +349,12 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 
 	pResp, err := e.ProcessProposalSuccessfullyOrError(up)
 	if err != nil {
-		endorserLogger.Warnw("Failed to invoke chaincode", "channel", up.ChannelHeader.ChannelId, "chaincode", up.ChaincodeName, "error", err.Error())
+		endorserLogger.Warnw("Failed to invoke chaincode", "channel", up.ChannelHeader.GetChannelId(), "chaincode", up.ChaincodeName, "error", err.Error())
 		// Return a nil error since clients are expected to look at the ProposalResponse response status code (500) and message.
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 	}
 
-	if pResp.Endorsement != nil || up.ChannelHeader.ChannelId == "" {
+	if pResp.GetEndorsement() != nil || up.ChannelHeader.GetChannelId() == "" {
 		// We mark the tx as successful only if it was successfully endorsed, or
 		// if it was a system chaincode on a channel-less channel and therefore
 		// cannot be endorsed.
@@ -368,15 +368,15 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 
 func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb.ProposalResponse, error) {
 	txParams := &ccprovider.TransactionParams{
-		ChannelID:  up.ChannelHeader.ChannelId,
-		TxID:       up.ChannelHeader.TxId,
+		ChannelID:  up.ChannelHeader.GetChannelId(),
+		TxID:       up.ChannelHeader.GetTxId(),
 		SignedProp: up.SignedProposal,
 		Proposal:   up.Proposal,
 	}
 
 	logger := decorateLogger(endorserLogger, txParams)
 
-	if acquireTxSimulator(up.ChannelHeader.ChannelId, up.ChaincodeName) {
+	if acquireTxSimulator(up.ChannelHeader.GetChannelId(), up.ChaincodeName) {
 		txSim, err := e.Support.GetTxSimulator(up.ChannelID(), up.TxID())
 		if err != nil {
 			return nil, err
@@ -432,7 +432,7 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 	}
 
 	switch {
-	case res.Status >= shim.ERROR:
+	case res.GetStatus() >= shim.ERROR:
 		return &pb.ProposalResponse{
 			Response: res,
 			Payload:  prpBytes,
@@ -445,10 +445,10 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 		return &pb.ProposalResponse{
 			Response: res,
 		}, nil
-	case res.Status >= shim.ERRORTHRESHOLD:
+	case res.GetStatus() >= shim.ERRORTHRESHOLD:
 		meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(true))
 		e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
-		logger.Debugf("chaincode error %d", res.Status)
+		logger.Debugf("chaincode error %d", res.GetStatus())
 		return &pb.ProposalResponse{
 			Response: res,
 		}, nil
@@ -487,13 +487,13 @@ func (e *Endorser) buildChaincodeInterest(simResult *ledger.TxSimulationResults)
 	// There might be public states that are read and not written.  Need to add these to the policyRequired structure.
 	// This will also include private reads, because the hashed read will appear in the public RWset.
 	for _, nsrws := range simResult.PubSimulationResults.GetNsRwset() {
-		if e.Support.IsSysCC(nsrws.Namespace) {
+		if e.Support.IsSysCC(nsrws.GetNamespace()) {
 			// skip system chaincodes
 			continue
 		}
-		if _, ok := policies.policyRequired[nsrws.Namespace]; !ok {
+		if _, ok := policies.policyRequired[nsrws.GetNamespace()]; !ok {
 			// There's a public RWset for this namespace, but no public or private writes, so chaincode policy is required.
-			policies.add(nsrws.Namespace, "", true)
+			policies.add(nsrws.GetNamespace(), "", true)
 		}
 	}
 

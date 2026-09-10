@@ -144,13 +144,13 @@ func TestDeduplicateEndorsements(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, proto.Equal(transaction, transaction), "got: %#v, want: %#v", transaction, transaction)
 
-	pl := protoutil.UnmarshalPayloadOrPanic(transaction.Payload)
-	tx, err := protoutil.UnmarshalTransaction(pl.Data)
+	pl := protoutil.UnmarshalPayloadOrPanic(transaction.GetPayload())
+	tx, err := protoutil.UnmarshalTransaction(pl.GetData())
 	require.NoError(t, err)
-	ccap, err := protoutil.UnmarshalChaincodeActionPayload(tx.Actions[0].Payload)
+	ccap, err := protoutil.UnmarshalChaincodeActionPayload(tx.GetActions()[0].GetPayload())
 	require.NoError(t, err)
-	require.Len(t, ccap.Action.Endorsements, 1)
-	require.Equal(t, []byte{5, 4, 3}, ccap.Action.Endorsements[0].Endorser)
+	require.Len(t, ccap.GetAction().GetEndorsements(), 1)
+	require.Equal(t, []byte{5, 4, 3}, ccap.GetAction().GetEndorsements()[0].GetEndorser())
 }
 
 func TestCreateSignedTx(t *testing.T) {
@@ -348,12 +348,12 @@ func TestCreateSignedEnvelope(t *testing.T) {
 	require.NoError(t, err, "Unexpected error creating signed envelope")
 	require.NotNil(t, env, "Envelope should not be nil")
 	// mock sign returns the bytes to be signed
-	require.Equal(t, []byte("goodsig"), env.Signature, "Unexpected signature returned")
+	require.Equal(t, []byte("goodsig"), env.GetSignature(), "Unexpected signature returned")
 	payload := &cb.Payload{}
-	err = proto.Unmarshal(env.Payload, payload)
+	err = proto.Unmarshal(env.GetPayload(), payload)
 	require.NoError(t, err, "Failed to unmarshal payload")
 	data := &cb.ConfigEnvelope{}
-	err = proto.Unmarshal(payload.Data, data)
+	err = proto.Unmarshal(payload.GetData(), data)
 	require.NoError(t, err, "Expected payload data to be a config envelope")
 	require.True(t, proto.Equal(msg, data), "Payload data does not match expected value")
 
@@ -371,12 +371,12 @@ func TestCreateSignedEnvelopeNilSigner(t *testing.T) {
 		nil, msg, int32(1), uint64(1))
 	require.NoError(t, err, "Unexpected error creating signed envelope")
 	require.NotNil(t, env, "Envelope should not be nil")
-	require.Empty(t, env.Signature, "Signature should have been empty")
+	require.Empty(t, env.GetSignature(), "Signature should have been empty")
 	payload := &cb.Payload{}
-	err = proto.Unmarshal(env.Payload, payload)
+	err = proto.Unmarshal(env.GetPayload(), payload)
 	require.NoError(t, err, "Failed to unmarshal payload")
 	data := &cb.ConfigEnvelope{}
-	err = proto.Unmarshal(payload.Data, data)
+	err = proto.Unmarshal(payload.GetData(), data)
 	require.NoError(t, err, "Expected payload data to be a config envelope")
 	require.True(t, proto.Equal(msg, data), "Payload data does not match expected value")
 }
@@ -394,9 +394,9 @@ func TestGetSignedProposal(t *testing.T) {
 	propBytes, _ := proto.Marshal(prop)
 	signedProp, err = protoutil.GetSignedProposal(prop, signID)
 	require.NoError(t, err, "Unexpected error getting signed proposal")
-	require.Equal(t, propBytes, signedProp.ProposalBytes,
+	require.Equal(t, propBytes, signedProp.GetProposalBytes(),
 		"Proposal bytes did not match expected value")
-	require.Equal(t, sig, signedProp.Signature,
+	require.Equal(t, sig, signedProp.GetSignature(),
 		"Signature did not match expected value")
 
 	_, err = protoutil.GetSignedProposal(nil, signID)
@@ -422,16 +422,16 @@ func TestMockSignedEndorserProposalOrPanic(t *testing.T) {
 
 	signedProp, prop = protoutil.MockSignedEndorserProposalOrPanic(chainID, cs,
 		creator, sig)
-	require.Equal(t, sig, signedProp.Signature,
+	require.Equal(t, sig, signedProp.GetSignature(),
 		"Signature did not match expected result")
 	propBytes, _ := proto.Marshal(prop)
-	require.Equal(t, propBytes, signedProp.ProposalBytes,
+	require.Equal(t, propBytes, signedProp.GetProposalBytes(),
 		"Proposal bytes do not match expected value")
-	err := proto.Unmarshal(prop.Payload, ccProposal)
+	err := proto.Unmarshal(prop.GetPayload(), ccProposal)
 	require.NoError(t, err, "Expected ChaincodeProposalPayload")
-	err = proto.Unmarshal(ccProposal.Input, cis)
+	err = proto.Unmarshal(ccProposal.GetInput(), cis)
 	require.NoError(t, err, "Expected ChaincodeInvocationSpec")
-	require.Equal(t, cs.ChaincodeId.Name, cis.ChaincodeSpec.ChaincodeId.Name,
+	require.Equal(t, cs.GetChaincodeId().GetName(), cis.GetChaincodeSpec().GetChaincodeId().GetName(),
 		"Chaincode name did not match expected value")
 }
 
@@ -448,14 +448,14 @@ func TestMockSignedEndorserProposal2OrPanic(t *testing.T) {
 
 	signedProp, prop = protoutil.MockSignedEndorserProposal2OrPanic(chainID,
 		&pb.ChaincodeSpec{}, signID)
-	require.Equal(t, sig, signedProp.Signature,
+	require.Equal(t, sig, signedProp.GetSignature(),
 		"Signature did not match expected result")
 	propBytes, _ := proto.Marshal(prop)
-	require.Equal(t, propBytes, signedProp.ProposalBytes,
+	require.Equal(t, propBytes, signedProp.GetProposalBytes(),
 		"Proposal bytes do not match expected value")
-	err := proto.Unmarshal(prop.Payload, ccProposal)
+	err := proto.Unmarshal(prop.GetPayload(), ccProposal)
 	require.NoError(t, err, "Expected ChaincodeProposalPayload")
-	err = proto.Unmarshal(ccProposal.Input, cis)
+	err = proto.Unmarshal(ccProposal.GetInput(), cis)
 	require.NoError(t, err, "Expected ChaincodeInvocationSpec")
 }
 
@@ -523,21 +523,21 @@ func TestCreateProposalResponseFailure(t *testing.T) {
 	response := &pb.Response{Status: 502, Payload: []byte("Invalid function name")}
 	result := []byte("res")
 
-	prespFailure, err := protoutil.CreateProposalResponseFailure(prop.Header, prop.Payload, response, result, nil, "foo")
+	prespFailure, err := protoutil.CreateProposalResponseFailure(prop.GetHeader(), prop.GetPayload(), response, result, nil, "foo")
 	if err != nil {
 		t.Fatalf("Could not create proposal response failure, err %s\n", err)
 		return
 	}
 
-	require.Equal(t, int32(502), prespFailure.Response.Status)
+	require.Equal(t, int32(502), prespFailure.GetResponse().GetStatus())
 	// drilldown into the response to find the chaincode response
-	pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(prespFailure.Payload)
+	pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(prespFailure.GetPayload())
 	require.NoError(t, err, "Error while unmarshalling proposal response payload: %s", err)
-	ca, err := protoutil.UnmarshalChaincodeAction(pRespPayload.Extension)
+	ca, err := protoutil.UnmarshalChaincodeAction(pRespPayload.GetExtension())
 	require.NoError(t, err, "Error while unmarshalling chaincode action: %s", err)
 
-	require.Equal(t, int32(502), ca.Response.Status)
-	require.Equal(t, "Invalid function name", string(ca.Response.Payload))
+	require.Equal(t, int32(502), ca.GetResponse().GetStatus())
+	require.Equal(t, "Invalid function name", string(ca.GetResponse().GetPayload()))
 }
 
 func TestGetorComputeTxIDFromEnvelope(t *testing.T) {

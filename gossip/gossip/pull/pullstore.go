@@ -178,21 +178,21 @@ func (p *pullMediatorImpl) HandleMessage(m protoext.ReceivedMessage) {
 
 	if helloMsg := msg.GetHello(); helloMsg != nil {
 		pullMsgType = HelloMsgType
-		p.engine.OnHello(helloMsg.Nonce, m)
+		p.engine.OnHello(helloMsg.GetNonce(), m)
 	} else if digest := msg.GetDataDig(); digest != nil {
 		d := p.PullAdapter.IngressDigFilter(digest)
-		itemIDs = util.BytesToStrings(d.Digests)
+		itemIDs = util.BytesToStrings(d.GetDigests())
 		pullMsgType = DigestMsgType
-		p.engine.OnDigest(itemIDs, d.Nonce, m)
+		p.engine.OnDigest(itemIDs, d.GetNonce(), m)
 	} else if req := msg.GetDataReq(); req != nil {
-		itemIDs = util.BytesToStrings(req.Digests)
+		itemIDs = util.BytesToStrings(req.GetDigests())
 		pullMsgType = RequestMsgType
-		p.engine.OnReq(itemIDs, req.Nonce, m)
+		p.engine.OnReq(itemIDs, req.GetNonce(), m)
 	} else if res := msg.GetDataUpdate(); res != nil {
-		itemIDs = make([]string, len(res.Data))
-		items = make([]*protoext.SignedGossipMessage, len(res.Data))
+		itemIDs = make([]string, len(res.GetData()))
+		items = make([]*protoext.SignedGossipMessage, len(res.GetData()))
 		pullMsgType = ResponseMsgType
-		for i, pulledMsg := range res.Data {
+		for i, pulledMsg := range res.GetData() {
 			msg, err := protoext.EnvelopeToGossipMessage(pulledMsg)
 			if err != nil {
 				p.logger.Warningf("Data update contains an invalid message: %+v", errors.WithStack(err))
@@ -206,7 +206,7 @@ func (p *pullMediatorImpl) HandleMessage(m protoext.ReceivedMessage) {
 			p.logger.Debugf("Added %s to the in memory item map, total items: %d", itemIDs[i], len(p.itemID2Msg))
 			p.Unlock()
 		}
-		p.engine.OnRes(itemIDs, res.Nonce)
+		p.engine.OnRes(itemIDs, res.GetNonce())
 	}
 
 	// Invoke hooks for relevant message type
@@ -385,7 +385,7 @@ func (p *pullMediatorImpl) SendRes(items []string, context any, nonce uint64) {
 		},
 	}
 	remotePeer := context.(protoext.ReceivedMessage).GetConnectionInfo()
-	p.logger.Debug("Sending", len(returnedUpdate.GetDataUpdate().Data), p.config.MsgType, "items to", remotePeer)
+	p.logger.Debug("Sending", len(returnedUpdate.GetDataUpdate().GetData()), p.config.MsgType, "items to", remotePeer)
 	context.(protoext.ReceivedMessage).Respond(returnedUpdate)
 }
 

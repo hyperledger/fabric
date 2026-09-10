@@ -44,18 +44,18 @@ func mockCDSFactory(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error)
 
 func extractSignedCCDepSpec(env *pcommon.Envelope) (*pcommon.ChannelHeader, *pb.SignedChaincodeDeploymentSpec, error) {
 	p := &pcommon.Payload{}
-	err := proto.Unmarshal(env.Payload, p)
+	err := proto.Unmarshal(env.GetPayload(), p)
 	if err != nil {
 		return nil, nil, err
 	}
 	ch := &pcommon.ChannelHeader{}
-	err = proto.Unmarshal(p.Header.ChannelHeader, ch)
+	err = proto.Unmarshal(p.GetHeader().GetChannelHeader(), ch)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	sp := &pb.SignedChaincodeDeploymentSpec{}
-	err = proto.Unmarshal(p.Data, sp)
+	err = proto.Unmarshal(p.GetData(), sp)
 	if err != nil {
 		return nil, nil, err
 	}

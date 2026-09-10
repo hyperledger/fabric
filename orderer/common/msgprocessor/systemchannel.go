@@ -150,12 +150,12 @@ func (s *SystemChannel) ProcessConfigUpdateMsg(envConfigUpdate *cb.Envelope) (co
 //   - `HeaderType_ORDERER_TRANSACTION`: it's a channel creation message, we unpack `ConfigUpdate` envelope
 //     and run `ProcessConfigUpdateMsg` on it
 func (s *SystemChannel) ProcessConfigMsg(env *cb.Envelope) (*cb.Envelope, uint64, error) {
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	if err != nil {
 		return nil, 0, err
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return nil, 0, fmt.Errorf("Abort processing config msg because no head was set")
 	}
 
@@ -163,22 +163,22 @@ func (s *SystemChannel) ProcessConfigMsg(env *cb.Envelope) (*cb.Envelope, uint64
 		return nil, 0, fmt.Errorf("Abort processing config msg because no channel header was set")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, 0, fmt.Errorf("Abort processing config msg because channel header unmarshalling error: %s", err)
 	}
 
-	switch chdr.Type {
+	switch chdr.GetType() {
 	case int32(cb.HeaderType_CONFIG):
 		configEnvelope := &cb.ConfigEnvelope{}
-		if err = proto.Unmarshal(payload.Data, configEnvelope); err != nil {
+		if err = proto.Unmarshal(payload.GetData(), configEnvelope); err != nil {
 			return nil, 0, err
 		}
 
-		return s.StandardChannel.ProcessConfigUpdateMsg(configEnvelope.LastUpdate)
+		return s.StandardChannel.ProcessConfigUpdateMsg(configEnvelope.GetLastUpdate())
 
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
-		env, err := protoutil.UnmarshalEnvelope(payload.Data)
+		env, err := protoutil.UnmarshalEnvelope(payload.GetData())
 		if err != nil {
 			return nil, 0, fmt.Errorf("Abort processing config msg because payload data unmarshalling error: %s", err)
 		}
@@ -189,10 +189,10 @@ func (s *SystemChannel) ProcessConfigMsg(env *cb.Envelope) (*cb.Envelope, uint64
 			return nil, 0, fmt.Errorf("Abort processing config msg because payload data unmarshalling error: %s", err)
 		}
 
-		return s.ProcessConfigUpdateMsg(configEnvelope.LastUpdate)
+		return s.ProcessConfigUpdateMsg(configEnvelope.GetLastUpdate())
 
 	default:
-		return nil, 0, fmt.Errorf("Panic processing config msg due to unexpected envelope type %s", cb.HeaderType_name[chdr.Type])
+		return nil, 0, fmt.Errorf("Panic processing config msg due to unexpected envelope type %s", cb.HeaderType_name[chdr.GetType()])
 	}
 }
 
@@ -227,53 +227,53 @@ func NewDefaultTemplator(support DefaultTemplatorSupport, bccsp bccsp.BCCSP) *De
 
 // NewChannelConfig creates a new template channel configuration based on the current config in the ordering system channel.
 func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (channelconfig.Resources, error) {
-	configUpdatePayload, err := protoutil.UnmarshalPayload(envConfigUpdate.Payload)
+	configUpdatePayload, err := protoutil.UnmarshalPayload(envConfigUpdate.GetPayload())
 	if err != nil {
 		return nil, fmt.Errorf("Failing initial channel config creation because of payload unmarshalling error: %s", err)
 	}
 
-	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(configUpdatePayload.Data)
+	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(configUpdatePayload.GetData())
 	if err != nil {
 		return nil, fmt.Errorf("Failing initial channel config creation because of config update envelope unmarshalling error: %s", err)
 	}
 
-	if configUpdatePayload.Header == nil {
+	if configUpdatePayload.GetHeader() == nil {
 		return nil, fmt.Errorf("Failed initial channel config creation because config update header was missing")
 	}
 
-	channelHeader, err := protoutil.UnmarshalChannelHeader(configUpdatePayload.Header.ChannelHeader)
+	channelHeader, err := protoutil.UnmarshalChannelHeader(configUpdatePayload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, fmt.Errorf("Failed initial channel config creation because channel header was malformed: %s", err)
 	}
 
-	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.GetConfigUpdate())
 	if err != nil {
 		return nil, fmt.Errorf("Failing initial channel config creation because of config update unmarshalling error: %s", err)
 	}
 
-	if configUpdate.ChannelId != channelHeader.ChannelId {
-		return nil, fmt.Errorf("Failing initial channel config creation: mismatched channel IDs: '%s' != '%s'", configUpdate.ChannelId, channelHeader.ChannelId)
+	if configUpdate.GetChannelId() != channelHeader.GetChannelId() {
+		return nil, fmt.Errorf("Failing initial channel config creation: mismatched channel IDs: '%s' != '%s'", configUpdate.GetChannelId(), channelHeader.GetChannelId())
 	}
 
-	if configUpdate.WriteSet == nil {
+	if configUpdate.GetWriteSet() == nil {
 		return nil, fmt.Errorf("Config update has an empty writeset")
 	}
 
-	if configUpdate.WriteSet.Groups == nil || configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey] == nil {
+	if configUpdate.WriteSet.Groups == nil || configUpdate.GetWriteSet().GetGroups()[channelconfig.ApplicationGroupKey] == nil {
 		return nil, fmt.Errorf("Config update has missing application group")
 	}
 
-	if uv := configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Version; uv != 1 {
+	if uv := configUpdate.GetWriteSet().GetGroups()[channelconfig.ApplicationGroupKey].GetVersion(); uv != 1 {
 		return nil, fmt.Errorf("Config update for channel creation does not set application group version to 1, was %d", uv)
 	}
 
-	consortiumConfigValue, ok := configUpdate.WriteSet.Values[channelconfig.ConsortiumKey]
+	consortiumConfigValue, ok := configUpdate.GetWriteSet().GetValues()[channelconfig.ConsortiumKey]
 	if !ok {
 		return nil, fmt.Errorf("Consortium config value missing")
 	}
 
 	consortium := &cb.Consortium{}
-	err = proto.Unmarshal(consortiumConfigValue.Value, consortium)
+	err = proto.Unmarshal(consortiumConfigValue.GetValue(), consortium)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading unmarshalling consortium name: %s", err)
 	}
@@ -284,9 +284,9 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 		return nil, fmt.Errorf("The ordering system channel does not appear to resources creating channels")
 	}
 
-	consortiumConf, ok := consortiumsConfig.Consortiums()[consortium.Name]
+	consortiumConf, ok := consortiumsConfig.Consortiums()[consortium.GetName()]
 	if !ok {
-		return nil, fmt.Errorf("Unknown consortium name: %s", consortium.Name)
+		return nil, fmt.Errorf("Unknown consortium name: %s", consortium.GetName())
 	}
 
 	policyKey := channelconfig.ChannelCreationPolicyKey
@@ -304,9 +304,9 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 		// submitting a configtx generated by a newer version of configtxgen.  We detect if an old
 		// configtxgen was used to generate the configtx if the /Channel/Application/Admins policy has a
 		// version set to 0.  Otherwise, we use the newer behavior.
-		applicationPolicies := configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Policies
+		applicationPolicies := configUpdate.GetWriteSet().GetGroups()[channelconfig.ApplicationGroupKey].GetPolicies()
 		if applicationPolicies != nil {
-			if policy, ok := applicationPolicies[channelconfig.AdminsPolicyKey]; !ok || policy.Version != uint64(0) {
+			if policy, ok := applicationPolicies[channelconfig.AdminsPolicyKey]; !ok || policy.GetVersion() != uint64(0) {
 				policyKey = channelconfig.AdminsPolicyKey
 			}
 		}
@@ -318,20 +318,20 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 	applicationGroup.ModPolicy = policyKey
 
 	// Get the current system channel config
-	systemChannelGroup := dt.support.ConfigtxValidator().ConfigProto().ChannelGroup
+	systemChannelGroup := dt.support.ConfigtxValidator().ConfigProto().GetChannelGroup()
 
 	// If the consortium group has no members, allow the source request to have no members.  However,
 	// if the consortium group has any members, there must be at least one member in the source request
-	if len(systemChannelGroup.Groups[channelconfig.ConsortiumsGroupKey].Groups[consortium.Name].Groups) > 0 &&
-		len(configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups) == 0 {
+	if len(systemChannelGroup.GetGroups()[channelconfig.ConsortiumsGroupKey].GetGroups()[consortium.GetName()].GetGroups()) > 0 &&
+		len(configUpdate.GetWriteSet().GetGroups()[channelconfig.ApplicationGroupKey].GetGroups()) == 0 {
 		return nil, fmt.Errorf("Proposed configuration has no application group members, but consortium contains members")
 	}
 
 	// If the consortium has no members, allow the source request to contain arbitrary members, even though the eventual channel creation transaction may get invalidated
 	// Otherwise, require that the supplied members are a subset of the consortium members
-	if len(systemChannelGroup.Groups[channelconfig.ConsortiumsGroupKey].Groups[consortium.Name].Groups) > 0 {
-		for orgName := range configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups {
-			consortiumGroup, ok := systemChannelGroup.Groups[channelconfig.ConsortiumsGroupKey].Groups[consortium.Name].Groups[orgName]
+	if len(systemChannelGroup.GetGroups()[channelconfig.ConsortiumsGroupKey].GetGroups()[consortium.GetName()].GetGroups()) > 0 {
+		for orgName := range configUpdate.GetWriteSet().GetGroups()[channelconfig.ApplicationGroupKey].GetGroups() {
+			consortiumGroup, ok := systemChannelGroup.GetGroups()[channelconfig.ConsortiumsGroupKey].GetGroups()[consortium.GetName()].GetGroups()[orgName]
 			if !ok {
 				return nil, fmt.Errorf("Attempted to include member %s which is not in the consortium", orgName)
 			}
@@ -341,14 +341,14 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 		// If consortium has no members, log a Warning to help troulbeshoot any issues,
 		// e.g. if channel creation transaction eventually gets invalidated due to including members
 		logger.Warnf("System channel consortium has no members, attempting to create application channel %s with %d members",
-			channelHeader.ChannelId,
-			len(configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups))
+			channelHeader.GetChannelId(),
+			len(configUpdate.GetWriteSet().GetGroups()[channelconfig.ApplicationGroupKey].GetGroups()))
 	}
 
 	channelGroup := protoutil.NewConfigGroup()
 
 	// Copy the system channel Channel level config to the new config
-	for key, value := range systemChannelGroup.Values {
+	for key, value := range systemChannelGroup.GetValues() {
 		channelGroup.Values[key] = proto.Clone(value).(*cb.ConfigValue)
 		if key == channelconfig.ConsortiumKey {
 			// Do not set the consortium name, we do this later
@@ -356,26 +356,26 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 		}
 	}
 
-	for key, policy := range systemChannelGroup.Policies {
+	for key, policy := range systemChannelGroup.GetPolicies() {
 		channelGroup.Policies[key] = proto.Clone(policy).(*cb.ConfigPolicy)
 	}
 
 	// Set the new config orderer group to the system channel orderer group and the application group to the new application group
-	channelGroup.Groups[channelconfig.OrdererGroupKey] = proto.Clone(systemChannelGroup.Groups[channelconfig.OrdererGroupKey]).(*cb.ConfigGroup)
+	channelGroup.Groups[channelconfig.OrdererGroupKey] = proto.Clone(systemChannelGroup.GetGroups()[channelconfig.OrdererGroupKey]).(*cb.ConfigGroup)
 	channelGroup.Groups[channelconfig.ApplicationGroupKey] = applicationGroup
 	channelGroup.Values[channelconfig.ConsortiumKey] = &cb.ConfigValue{
-		Value:     protoutil.MarshalOrPanic(channelconfig.ConsortiumValue(consortium.Name).Value()),
+		Value:     protoutil.MarshalOrPanic(channelconfig.ConsortiumValue(consortium.GetName()).Value()),
 		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 
 	// Non-backwards compatible bugfix introduced in v1.1
 	// The capability check should be removed once v1.0 is deprecated
 	if oc, ok := dt.support.OrdererConfig(); ok && oc.Capabilities().PredictableChannelTemplate() {
-		channelGroup.ModPolicy = systemChannelGroup.ModPolicy
+		channelGroup.ModPolicy = systemChannelGroup.GetModPolicy()
 		zeroVersions(channelGroup)
 	}
 
-	bundle, err := channelconfig.NewBundle(channelHeader.ChannelId, &cb.Config{
+	bundle, err := channelconfig.NewBundle(channelHeader.GetChannelId(), &cb.Config{
 		ChannelGroup: channelGroup,
 	}, dt.bccsp)
 	if err != nil {
@@ -389,15 +389,15 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 func zeroVersions(cg *cb.ConfigGroup) {
 	cg.Version = 0
 
-	for _, value := range cg.Values {
+	for _, value := range cg.GetValues() {
 		value.Version = 0
 	}
 
-	for _, policy := range cg.Policies {
+	for _, policy := range cg.GetPolicies() {
 		policy.Version = 0
 	}
 
-	for _, group := range cg.Groups {
+	for _, group := range cg.GetGroups() {
 		zeroVersions(group)
 	}
 }

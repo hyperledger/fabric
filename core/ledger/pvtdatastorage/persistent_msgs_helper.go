@@ -11,7 +11,7 @@ func newExpiryData() *ExpiryData {
 }
 
 func (e *ExpiryData) getOrCreateCollections(ns string) *NamespaceExpiryData {
-	nsExpiryData, ok := e.Map[ns]
+	nsExpiryData, ok := e.GetMap()[ns]
 	if !ok {
 		nsExpiryData = &NamespaceExpiryData{
 			PresentData:  make(map[string]*TxNums),
@@ -39,7 +39,7 @@ func (e *ExpiryData) getOrCreateCollections(ns string) *NamespaceExpiryData {
 func (e *ExpiryData) addPresentData(ns, coll string, txNum uint64) {
 	nsExpiryData := e.getOrCreateCollections(ns)
 
-	txNums, ok := nsExpiryData.PresentData[coll]
+	txNums, ok := nsExpiryData.GetPresentData()[coll]
 	if !ok {
 		txNums = &TxNums{}
 		nsExpiryData.PresentData[coll] = txNums
@@ -55,7 +55,7 @@ func (e *ExpiryData) addMissingData(ns, coll string) {
 func (e *ExpiryData) addBootKVHash(ns, coll string, txNum uint64) {
 	nsExpiryData := e.getOrCreateCollections(ns)
 
-	txNums, ok := nsExpiryData.BootKVHashes[coll]
+	txNums, ok := nsExpiryData.GetBootKVHashes()[coll]
 	if !ok {
 		txNums = &TxNums{}
 		nsExpiryData.BootKVHashes[coll] = txNums
@@ -64,9 +64,9 @@ func (e *ExpiryData) addBootKVHash(ns, coll string, txNum uint64) {
 }
 
 func (h *BootKVHashes) toMap() map[string][]byte {
-	m := make(map[string][]byte, len(h.List))
-	for _, kv := range h.List {
-		m[string(kv.KeyHash)] = kv.ValueHash
+	m := make(map[string][]byte, len(h.GetList()))
+	for _, kv := range h.GetList() {
+		m[string(kv.GetKeyHash())] = kv.GetValueHash()
 	}
 	return m
 }
@@ -74,7 +74,7 @@ func (h *BootKVHashes) toMap() map[string][]byte {
 func newCollElgInfo(nsCollMap map[string][]string) *CollElgInfo {
 	m := &CollElgInfo{NsCollMap: map[string]*CollNames{}}
 	for ns, colls := range nsCollMap {
-		collNames, ok := m.NsCollMap[ns]
+		collNames, ok := m.GetNsCollMap()[ns]
 		if !ok {
 			collNames = &CollNames{}
 			m.NsCollMap[ns] = collNames

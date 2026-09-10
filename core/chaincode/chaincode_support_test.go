@@ -346,7 +346,7 @@ func processDone(t *testing.T, done chan error, expecterr bool) {
 
 func startTx(t *testing.T, peerInstance *peer.Peer, channelID string, cis *pb.ChaincodeInvocationSpec, txId string) (*ccprovider.TransactionParams, ledger.TxSimulator) {
 	creator := []byte([]byte("Alice"))
-	sprop, prop := protoutil.MockSignedEndorserProposalOrPanic(channelID, cis.ChaincodeSpec, creator, []byte("msg1"))
+	sprop, prop := protoutil.MockSignedEndorserProposalOrPanic(channelID, cis.GetChaincodeSpec(), creator, []byte("msg1"))
 	txsim, hqe, err := startTxSimulation(peerInstance, channelID, txId)
 	if err != nil {
 		t.Fatalf("getting txsimulator failed %s", err)
@@ -365,7 +365,7 @@ func startTx(t *testing.T, peerInstance *peer.Peer, channelID string, cis *pb.Ch
 }
 
 func endTx(t *testing.T, peerInstance *peer.Peer, txParams *ccprovider.TransactionParams, txsim ledger.TxSimulator, cis *pb.ChaincodeInvocationSpec) {
-	if err := endTxSimulationCIS(peerInstance, txParams.ChannelID, cis.ChaincodeSpec.ChaincodeId, txParams.TxID, txsim, []byte("invoke"), true, cis, globalBlockNum[txParams.ChannelID]); err != nil {
+	if err := endTxSimulationCIS(peerInstance, txParams.ChannelID, cis.GetChaincodeSpec().GetChaincodeId(), txParams.TxID, txsim, []byte("invoke"), true, cis, globalBlockNum[txParams.ChannelID]); err != nil {
 		t.Fatalf("simulation failed with error %s", err)
 	}
 	globalBlockNum[txParams.ChannelID] = globalBlockNum[txParams.ChannelID] + 1
@@ -374,9 +374,9 @@ func endTx(t *testing.T, peerInstance *peer.Peer, txParams *ccprovider.Transacti
 func execCC(t *testing.T, txParams *ccprovider.TransactionParams, ccSide *mock.MockCCComm, chaincodeName string, waitForERROR bool, expectExecErr bool, done chan error, cis *pb.ChaincodeInvocationSpec, respSet *mock.MockResponseSet, chaincodeSupport *ChaincodeSupport) error {
 	ccSide.SetResponses(respSet)
 
-	resp, _, err := chaincodeSupport.Execute(txParams, chaincodeName, cis.ChaincodeSpec.Input)
-	if err == nil && resp.Status != shim.OK {
-		err = errors.New(resp.Message)
+	resp, _, err := chaincodeSupport.Execute(txParams, chaincodeName, cis.GetChaincodeSpec().GetInput())
+	if err == nil && resp.GetStatus() != shim.OK {
+		err = errors.New(resp.GetMessage())
 	}
 
 	if err == nil && expectExecErr {
@@ -465,7 +465,7 @@ func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, ccContext *C
 	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lscc"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(txParams.ChannelID), b}}}}
 
 	// write to lscc
-	if _, _, err := chaincodeSupport.Execute(txParams, "lscc", lsccSpec.ChaincodeSpec.Input); err != nil {
+	if _, _, err := chaincodeSupport.Execute(txParams, "lscc", lsccSpec.GetChaincodeSpec().GetInput()); err != nil {
 		t.Fatalf("Error deploying chaincode %v (err: %s)", ccContext, err)
 	}
 }
@@ -622,13 +622,13 @@ func getQueryStateByRange(t *testing.T, collection, chainID, ccname string, ccSi
 	// create the response
 	queryStateNextFunc := func(reqMsg *pb.ChaincodeMessage) *pb.ChaincodeMessage {
 		qr := &pb.QueryResponse{}
-		proto.Unmarshal(reqMsg.Payload, qr)
-		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Payload: protoutil.MarshalOrPanic(&pb.QueryStateNext{Id: qr.Id}), Txid: txid, ChannelId: chainID}
+		proto.Unmarshal(reqMsg.GetPayload(), qr)
+		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Payload: protoutil.MarshalOrPanic(&pb.QueryStateNext{Id: qr.GetId()}), Txid: txid, ChannelId: chainID}
 	}
 	queryStateCloseFunc := func(reqMsg *pb.ChaincodeMessage) *pb.ChaincodeMessage {
 		qr := &pb.QueryResponse{}
-		proto.Unmarshal(reqMsg.Payload, qr)
-		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: protoutil.MarshalOrPanic(&pb.QueryStateClose{Id: qr.Id}), Txid: txid, ChannelId: chainID}
+		proto.Unmarshal(reqMsg.GetPayload(), qr)
+		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: protoutil.MarshalOrPanic(&pb.QueryStateClose{Id: qr.GetId()}), Txid: txid, ChannelId: chainID}
 	}
 
 	var mkpeer []*mock.MockResponse
@@ -703,7 +703,7 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mock.MockCCCo
 		Version: "0",
 	}
 
-	deployCC(t, txParams, ccContext, cis.ChaincodeSpec, chaincodeSupport)
+	deployCC(t, txParams, ccContext, cis.GetChaincodeSpec(), chaincodeSupport)
 
 	// commit
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
@@ -807,13 +807,13 @@ func getQueryResult(t *testing.T, collection, chainID, ccname string, ccSide *mo
 	// create the response
 	queryStateNextFunc := func(reqMsg *pb.ChaincodeMessage) *pb.ChaincodeMessage {
 		qr := &pb.QueryResponse{}
-		proto.Unmarshal(reqMsg.Payload, qr)
-		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Payload: protoutil.MarshalOrPanic(&pb.QueryStateNext{Id: qr.Id}), Txid: txid, ChannelId: chainID}
+		proto.Unmarshal(reqMsg.GetPayload(), qr)
+		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Payload: protoutil.MarshalOrPanic(&pb.QueryStateNext{Id: qr.GetId()}), Txid: txid, ChannelId: chainID}
 	}
 	queryStateCloseFunc := func(reqMsg *pb.ChaincodeMessage) *pb.ChaincodeMessage {
 		qr := &pb.QueryResponse{}
-		proto.Unmarshal(reqMsg.Payload, qr)
-		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: protoutil.MarshalOrPanic(&pb.QueryStateClose{Id: qr.Id}), Txid: txid, ChannelId: chainID}
+		proto.Unmarshal(reqMsg.GetPayload(), qr)
+		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: protoutil.MarshalOrPanic(&pb.QueryStateClose{Id: qr.GetId()}), Txid: txid, ChannelId: chainID}
 	}
 
 	var mkpeer []*mock.MockResponse
@@ -887,13 +887,13 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm, c
 	// create the response
 	queryStateNextFunc := func(reqMsg *pb.ChaincodeMessage) *pb.ChaincodeMessage {
 		qr := &pb.QueryResponse{}
-		proto.Unmarshal(reqMsg.Payload, qr)
-		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Payload: protoutil.MarshalOrPanic(&pb.QueryStateNext{Id: qr.Id}), Txid: txid}
+		proto.Unmarshal(reqMsg.GetPayload(), qr)
+		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Payload: protoutil.MarshalOrPanic(&pb.QueryStateNext{Id: qr.GetId()}), Txid: txid}
 	}
 	queryStateCloseFunc := func(reqMsg *pb.ChaincodeMessage) *pb.ChaincodeMessage {
 		qr := &pb.QueryResponse{}
-		proto.Unmarshal(reqMsg.Payload, qr)
-		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: protoutil.MarshalOrPanic(&pb.QueryStateClose{Id: qr.Id}), Txid: txid}
+		proto.Unmarshal(reqMsg.GetPayload(), qr)
+		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: protoutil.MarshalOrPanic(&pb.QueryStateClose{Id: qr.GetId()}), Txid: txid}
 	}
 
 	respSet := &mock.MockResponseSet{
@@ -1125,7 +1125,7 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mock.Mock
 		Version: "0",
 	}
 
-	deployCC(t, txParams, ccContext, cis.ChaincodeSpec, chaincodeSupport)
+	deployCC(t, txParams, ccContext, cis.GetChaincodeSpec(), chaincodeSupport)
 
 	// commit
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
@@ -1372,7 +1372,7 @@ func endTxSimulation(peerInstance *peer.Peer, channelID string, ccid *pb.Chainco
 				return err
 			}
 			// assemble a (signed) proposal response message
-			resp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &pb.Response{Status: 200},
+			resp, err := protoutil.CreateProposalResponse(prop.GetHeader(), prop.GetPayload(), &pb.Response{Status: 200},
 				txSimulationBytes, nil, ccid, signer)
 			if err != nil {
 				return err
@@ -1394,9 +1394,9 @@ func endTxSimulation(peerInstance *peer.Peer, channelID string, ccid *pb.Chainco
 			if err != nil {
 				return err
 			}
-			block := protoutil.NewBlock(blockNumber, bcInfo.CurrentBlockHash)
+			block := protoutil.NewBlock(blockNumber, bcInfo.GetCurrentBlockHash())
 			block.Data.Data = [][]byte{envBytes}
-			txsFilter := txflags.NewWithValues(len(block.Data.Data), pb.TxValidationCode_VALID)
+			txsFilter := txflags.NewWithValues(len(block.GetData().GetData()), pb.TxValidationCode_VALID)
 			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
 			// commit the block

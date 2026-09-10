@@ -93,7 +93,7 @@ func (consenter *consenterImpl) HandleChain(support consensus.ConsenterSupport, 
 		return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChannelID())}, nil
 	}
 
-	lastOffsetPersisted, lastOriginalOffsetProcessed, lastResubmittedConfigOffset := getOffsets(metadata.Value, support.ChannelID())
+	lastOffsetPersisted, lastOriginalOffsetProcessed, lastResubmittedConfigOffset := getOffsets(metadata.GetValue(), support.ChannelID())
 	ch, err := newChain(consenter, support, lastOffsetPersisted, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 	if err != nil {
 		return nil, err

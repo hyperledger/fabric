@@ -51,7 +51,7 @@ func newBlockWriter(lastBlock *cb.Block, r *Registrar, support blockWriterSuppor
 
 	// If this is the genesis block, the lastconfig field may be empty, and, the last config block is necessarily block 0
 	// so no need to initialize lastConfig
-	if lastBlock.Header.Number != 0 {
+	if lastBlock.GetHeader().GetNumber() != 0 {
 		var err error
 		bw.lastConfigBlockNum, err = protoutil.GetLastConfigIndexFromBlock(lastBlock)
 		if err != nil {
@@ -59,13 +59,13 @@ func newBlockWriter(lastBlock *cb.Block, r *Registrar, support blockWriterSuppor
 		}
 	}
 
-	logger.Debugf("[channel: %s] Creating block writer for tip of chain (blockNumber=%d, lastConfigBlockNum=%d, lastConfigSeq=%d)", support.ChannelID(), lastBlock.Header.Number, bw.lastConfigBlockNum, bw.lastConfigSeq)
+	logger.Debugf("[channel: %s] Creating block writer for tip of chain (blockNumber=%d, lastConfigBlockNum=%d, lastConfigSeq=%d)", support.ChannelID(), lastBlock.GetHeader().GetNumber(), bw.lastConfigBlockNum, bw.lastConfigSeq)
 	return bw
 }
 
 // CreateNextBlock creates a new block with the next block number, and the given contents.
 func (bw *BlockWriter) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
-	previousBlockHash := protoutil.BlockHeaderHash(bw.lastBlock.Header)
+	previousBlockHash := protoutil.BlockHeaderHash(bw.lastBlock.GetHeader())
 
 	data := &cb.BlockData{
 		Data: make([][]byte, len(messages)),
@@ -79,7 +79,7 @@ func (bw *BlockWriter) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
 		}
 	}
 
-	block := protoutil.NewBlock(bw.lastBlock.Header.Number+1, previousBlockHash)
+	block := protoutil.NewBlock(bw.lastBlock.GetHeader().GetNumber()+1, previousBlockHash)
 	block.Header.DataHash = protoutil.BlockDataHash(data)
 	block.Data = data
 
@@ -95,30 +95,30 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 		logger.Panicf("Told to write a config block, but could not get configtx: %s", err)
 	}
 
-	payload, err := protoutil.UnmarshalPayload(ctx.Payload)
+	payload, err := protoutil.UnmarshalPayload(ctx.GetPayload())
 	if err != nil {
 		logger.Panicf("Told to write a config block, but configtx payload is invalid: %s", err)
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		logger.Panicf("Told to write a config block, but configtx payload header is missing")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		logger.Panicf("Told to write a config block with an invalid channel header: %s", err)
 	}
 
-	switch chdr.Type {
+	switch chdr.GetType() {
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
-		newChannelConfig, err := protoutil.UnmarshalEnvelope(payload.Data)
+		newChannelConfig, err := protoutil.UnmarshalEnvelope(payload.GetData())
 		if err != nil {
 			logger.Panicf("Told to write a config block with new channel, but did not have config update embedded: %s", err)
 		}
 		bw.registrar.newChain(newChannelConfig)
 
 	case int32(cb.HeaderType_CONFIG):
-		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 		if err != nil {
 			logger.Panicf("Told to write a config block with new channel, but did not have config envelope encoded: %s", err)
 		}
@@ -128,7 +128,7 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 			logger.Panicf("Told to write a config block with new config, but could not apply it: %s", err)
 		}
 
-		bundle, err := bw.support.CreateBundle(chdr.ChannelId, configEnvelope.Config)
+		bundle, err := bw.support.CreateBundle(chdr.GetChannelId(), configEnvelope.GetConfig())
 		if err != nil {
 			logger.Panicf("Told to write a config block with a new config, but could not convert it to a bundle: %s", err)
 		}
@@ -153,7 +153,7 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 		bw.committingBlock.Unlock()
 		bw.support.Update(bundle)
 	default:
-		logger.Panicf("Told to write a config block with unknown header type: %v", chdr.Type)
+		logger.Panicf("Told to write a config block with unknown header type: %v", chdr.GetType())
 	}
 
 	bw.WriteBlockSync(block, encodedMetadataValue)
@@ -203,7 +203,7 @@ func (bw *BlockWriter) commitBlock(encodedMetadataValue []byte) {
 	if err != nil {
 		logger.Panicf("[channel: %s] Could not append block: %s", bw.support.ChannelID(), err)
 	}
-	logger.Debugf("[channel: %s] Wrote block [%d]", bw.support.ChannelID(), bw.lastBlock.GetHeader().Number)
+	logger.Debugf("[channel: %s] Wrote block [%d]", bw.support.ChannelID(), bw.lastBlock.GetHeader().GetNumber())
 }
 
 func (bw *BlockWriter) addBlockSignature(block *cb.Block, consenterMetadata []byte) {
@@ -218,7 +218,7 @@ func (bw *BlockWriter) addBlockSignature(block *cb.Block, consenterMetadata []by
 
 	blockSignature.Signature = protoutil.SignOrPanic(
 		bw.support,
-		util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header)),
+		util.ConcatenateBytes(blockSignatureValue, blockSignature.GetSignatureHeader(), protoutil.BlockHeaderBytes(block.GetHeader())),
 	)
 
 	block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&cb.Metadata{
@@ -232,8 +232,8 @@ func (bw *BlockWriter) addBlockSignature(block *cb.Block, consenterMetadata []by
 func (bw *BlockWriter) addLastConfig(block *cb.Block) {
 	configSeq := bw.support.Sequence()
 	if configSeq > bw.lastConfigSeq {
-		logger.Debugf("[channel: %s] Detected lastConfigSeq transitioning from %d to %d, setting lastConfigBlockNum from %d to %d", bw.support.ChannelID(), bw.lastConfigSeq, configSeq, bw.lastConfigBlockNum, block.Header.Number)
-		bw.lastConfigBlockNum = block.Header.Number
+		logger.Debugf("[channel: %s] Detected lastConfigSeq transitioning from %d to %d, setting lastConfigBlockNum from %d to %d", bw.support.ChannelID(), bw.lastConfigSeq, configSeq, bw.lastConfigBlockNum, block.GetHeader().GetNumber())
+		bw.lastConfigBlockNum = block.GetHeader().GetNumber()
 		bw.lastConfigSeq = configSeq
 	}
 

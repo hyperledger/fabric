@@ -165,8 +165,8 @@ func TestPolicyChecker(t *testing.T) {
 	t.Run("CheckPolicy", func(t *testing.T) {
 		// Validate Alice signatures against channel A's readers
 		sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
-		policyManagerGetter.Managers["A"].(*mocks.MockChannelPolicyManager).MockPolicy.(*mocks.MockPolicy).Deserializer.(*mocks.MockIdentityDeserializer).Msg = sProp.ProposalBytes
-		sProp.Signature = sProp.ProposalBytes
+		policyManagerGetter.Managers["A"].(*mocks.MockChannelPolicyManager).MockPolicy.(*mocks.MockPolicy).Deserializer.(*mocks.MockIdentityDeserializer).Msg = sProp.GetProposalBytes()
+		sProp.Signature = sProp.GetProposalBytes()
 		err := pc.CheckPolicy("A", "readers", sProp)
 		require.NoError(t, err)
 
@@ -183,10 +183,10 @@ func TestPolicyChecker(t *testing.T) {
 
 	t.Run("CheckPolicyNoChannel", func(t *testing.T) {
 		sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
-		sProp.Signature = sProp.ProposalBytes
+		sProp.Signature = sProp.GetProposalBytes()
 
 		// Alice is a member of the local MSP, policy check must succeed
-		identityDeserializer.Msg = sProp.ProposalBytes
+		identityDeserializer.Msg = sProp.GetProposalBytes()
 		err := pc.CheckPolicyNoChannel(Members, sProp)
 		require.NoError(t, err)
 

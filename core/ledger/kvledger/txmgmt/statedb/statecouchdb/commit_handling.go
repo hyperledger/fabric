@@ -281,7 +281,7 @@ func (vdb *VersionedDB) addMissingRevisionsFromCache(ns string, keys []string, r
 			missingKeys = append(missingKeys, k)
 			continue
 		}
-		revs[k] = string(cv.AdditionalInfo)
+		revs[k] = string(cv.GetAdditionalInfo())
 	}
 	return missingKeys, nil
 }

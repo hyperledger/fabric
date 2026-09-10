@@ -904,9 +904,9 @@ func TestGetLastOffsetPersisted(t *testing.T) {
 		expectedResubmitted int64
 		panics              bool
 	}{
-		{"Proper", mockMetadata.Value, int64(5), int64(3), int64(4), false},
+		{"Proper", mockMetadata.GetValue(), int64(5), int64(3), int64(4), false},
 		{"Empty", nil, sarama.OffsetOldest - 1, int64(0), int64(0), false},
-		{"Panics", tamperBytes(mockMetadata.Value), sarama.OffsetOldest - 1, int64(0), int64(0), true},
+		{"Panics", tamperBytes(mockMetadata.GetValue()), sarama.OffsetOldest - 1, int64(0), int64(0), true},
 	}
 
 	for _, tc := range testCases {
@@ -1609,8 +1609,8 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				require.Equal(t, uint64(3), counts[indexRecvPass], "Expected 2 messages received and unmarshaled")
 				require.Equal(t, uint64(3), counts[indexProcessRegularPass], "Expected 2 REGULAR messages processed")
 				require.Equal(t, lastCutBlockNumber+2, bareMinimumChain.lastCutBlockNumber, "Expected lastCutBlockNumber to be bumped up by two")
-				require.Equal(t, block1LastOffset, extractEncodedOffset(block1.GetMetadata().Metadata[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in first block to be %d", block1LastOffset)
-				require.Equal(t, block2LastOffset, extractEncodedOffset(block2.GetMetadata().Metadata[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in second block to be %d", block2LastOffset)
+				require.Equal(t, block1LastOffset, extractEncodedOffset(block1.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in first block to be %d", block1LastOffset)
+				require.Equal(t, block2LastOffset, extractEncodedOffset(block2.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in second block to be %d", block2LastOffset)
 			})
 
 			t.Run("InvalidConfigEnv", func(t *testing.T) {
@@ -1827,7 +1827,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				require.Equal(t, uint64(1), counts[indexRecvPass], "Expected 1 message received and unmarshaled")
 				require.Equal(t, uint64(1), counts[indexProcessRegularPass], "Expected 1 REGULAR message processed")
 				require.Equal(t, lastCutBlockNumber+1, bareMinimumChain.lastCutBlockNumber, "Expected lastCutBlockNumber to be incremented by 1")
-				require.Equal(t, configBlkOffset, extractEncodedOffset(configBlk.GetMetadata().Metadata[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in second block to be %d", configBlkOffset)
+				require.Equal(t, configBlkOffset, extractEncodedOffset(configBlk.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in second block to be %d", configBlkOffset)
 			})
 
 			// We are not expecting this type of message from Kafka
@@ -2107,8 +2107,8 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				require.Equal(t, uint64(2), counts[indexRecvPass], "Expected 2 messages received and unmarshaled")
 				require.Equal(t, uint64(2), counts[indexProcessRegularPass], "Expected 2 REGULAR messages processed")
 				require.Equal(t, lastCutBlockNumber+2, bareMinimumChain.lastCutBlockNumber, "Expected lastCutBlockNumber to be bumped up by two")
-				require.Equal(t, block1LastOffset, extractEncodedOffset(block1.GetMetadata().Metadata[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in first block to be %d", block1LastOffset)
-				require.Equal(t, block2LastOffset, extractEncodedOffset(block2.GetMetadata().Metadata[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in second block to be %d", block2LastOffset)
+				require.Equal(t, block1LastOffset, extractEncodedOffset(block1.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in first block to be %d", block1LastOffset)
+				require.Equal(t, block2LastOffset, extractEncodedOffset(block2.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in second block to be %d", block2LastOffset)
 			})
 
 			t.Run("ReceiveRegularAndQueue", func(t *testing.T) {
@@ -2247,8 +2247,8 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				require.Equal(t, uint64(2), counts[indexRecvPass], "Expected 1 message received and unmarshaled")
 				require.Equal(t, uint64(2), counts[indexProcessRegularPass], "Expected 1 REGULAR message processed")
 				require.Equal(t, lastCutBlockNumber+2, bareMinimumChain.lastCutBlockNumber, "Expected lastCutBlockNumber to be incremented by 2")
-				require.Equal(t, normalBlkOffset, extractEncodedOffset(normalBlk.GetMetadata().Metadata[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in first block to be %d", normalBlkOffset)
-				require.Equal(t, configBlkOffset, extractEncodedOffset(configBlk.GetMetadata().Metadata[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in second block to be %d", configBlkOffset)
+				require.Equal(t, normalBlkOffset, extractEncodedOffset(normalBlk.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in first block to be %d", normalBlkOffset)
+				require.Equal(t, configBlkOffset, extractEncodedOffset(configBlk.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in second block to be %d", configBlkOffset)
 
 				require.Equal(t, fakeLastOffsetPersisted.WithCallCount(), 2)
 				require.Equal(t, fakeLastOffsetPersisted.WithArgsForCall(0), []string{"channel", "mockChannelFoo"})
@@ -2642,10 +2642,10 @@ func TestResubmission(t *testing.T) {
 			select {
 			case block := <-mockSupport.Blocks:
 				metadata := &cb.Metadata{}
-				proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER], metadata)
+				proto.Unmarshal(block.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_ORDERER], metadata)
 				kafkaMetadata := &ab.KafkaMetadata{}
-				proto.Unmarshal(metadata.Value, kafkaMetadata)
-				require.Equal(t, kafkaMetadata.LastOriginalOffsetProcessed, int64(4))
+				proto.Unmarshal(metadata.GetValue(), kafkaMetadata)
+				require.Equal(t, kafkaMetadata.GetLastOriginalOffsetProcessed(), int64(4))
 			case <-time.After(shortTimeout):
 				t.Fatalf("Expected one block being cut")
 			}
@@ -2769,11 +2769,11 @@ func TestResubmission(t *testing.T) {
 					return fmt.Errorf("Expect message type to be regular")
 				}
 
-				if regular.ConfigSeq != mockSupport.Sequence() {
-					return fmt.Errorf("Expect new config seq to be %d, got %d", mockSupport.Sequence(), regular.ConfigSeq)
+				if regular.GetConfigSeq() != mockSupport.Sequence() {
+					return fmt.Errorf("Expect new config seq to be %d, got %d", mockSupport.Sequence(), regular.GetConfigSeq())
 				}
 
-				if regular.OriginalOffset == 0 {
+				if regular.GetOriginalOffset() == 0 {
 					return fmt.Errorf("Expect Original Offset to be non-zero if resubmission")
 				}
 
@@ -3008,11 +3008,11 @@ func TestResubmission(t *testing.T) {
 				metadata, err := protoutil.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
 				require.NoError(t, err, "Failed to get metadata from block")
 				kafkaMetadata := &ab.KafkaMetadata{}
-				err = proto.Unmarshal(metadata.Value, kafkaMetadata)
+				err = proto.Unmarshal(metadata.GetValue(), kafkaMetadata)
 				require.NoError(t, err, "Failed to unmarshal metadata")
 
-				require.Equal(t, kafkaMetadata.LastResubmittedConfigOffset, int64(5), "LastResubmittedConfigOffset didn't catch up")
-				require.Equal(t, kafkaMetadata.LastOriginalOffsetProcessed, int64(5), "LastOriginalOffsetProcessed doesn't match")
+				require.Equal(t, kafkaMetadata.GetLastResubmittedConfigOffset(), int64(5), "LastResubmittedConfigOffset didn't catch up")
+				require.Equal(t, kafkaMetadata.GetLastOriginalOffsetProcessed(), int64(5), "LastOriginalOffsetProcessed doesn't match")
 			case <-time.After(shortTimeout):
 				t.Fatalf("Expected one block being cut")
 			}
@@ -3216,11 +3216,11 @@ func TestResubmission(t *testing.T) {
 					return fmt.Errorf("Expect message type to be regular")
 				}
 
-				if regular.ConfigSeq != mockSupport.Sequence() {
-					return fmt.Errorf("Expect new config seq to be %d, got %d", mockSupport.Sequence(), regular.ConfigSeq)
+				if regular.GetConfigSeq() != mockSupport.Sequence() {
+					return fmt.Errorf("Expect new config seq to be %d, got %d", mockSupport.Sequence(), regular.GetConfigSeq())
 				}
 
-				if regular.OriginalOffset == 0 {
+				if regular.GetOriginalOffset() == 0 {
 					return fmt.Errorf("Expect Original Offset to be non-zero if resubmission")
 				}
 

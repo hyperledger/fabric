@@ -40,12 +40,12 @@ type EndorserTx struct {
 }
 
 func unmarshalEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
-	if len(txenv.ChannelHeader.Extension) == 0 {
+	if len(txenv.ChannelHeader.GetExtension()) == 0 {
 		return nil, errors.New("empty header extension")
 	}
 
 	hdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(
-		txenv.ChannelHeader.Extension,
+		txenv.ChannelHeader.GetExtension(),
 	)
 	if err != nil {
 		return nil, err
@@ -70,57 +70,57 @@ func unmarshalEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
 		return nil, errors.New("nil action")
 	}
 
-	if len(txAction.Payload) == 0 {
+	if len(txAction.GetPayload()) == 0 {
 		return nil, errors.New("empty ChaincodeActionPayload")
 	}
 
-	ccActionPayload, err := protoutil.UnmarshalChaincodeActionPayload(txAction.Payload)
+	ccActionPayload, err := protoutil.UnmarshalChaincodeActionPayload(txAction.GetPayload())
 	if err != nil {
 		return nil, err
 	}
 
-	if ccActionPayload.Action == nil {
+	if ccActionPayload.GetAction() == nil {
 		return nil, errors.New("nil ChaincodeEndorsedAction")
 	}
 
-	if len(ccActionPayload.Action.ProposalResponsePayload) == 0 {
+	if len(ccActionPayload.GetAction().GetProposalResponsePayload()) == 0 {
 		return nil, errors.New("empty ProposalResponsePayload")
 	}
 
 	proposalResponsePayload, err := protoutil.UnmarshalProposalResponsePayload(
-		ccActionPayload.Action.ProposalResponsePayload,
+		ccActionPayload.GetAction().GetProposalResponsePayload(),
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(proposalResponsePayload.Extension) == 0 {
+	if len(proposalResponsePayload.GetExtension()) == 0 {
 		return nil, errors.New("nil Extension")
 	}
 
-	ccAction, err := protoutil.UnmarshalChaincodeAction(proposalResponsePayload.Extension)
+	ccAction, err := protoutil.UnmarshalChaincodeAction(proposalResponsePayload.GetExtension())
 	if err != nil {
 		return nil, err
 	}
 
 	computedTxID := protoutil.ComputeTxID(
-		txenv.SignatureHeader.Nonce,
-		txenv.SignatureHeader.Creator,
+		txenv.SignatureHeader.GetNonce(),
+		txenv.SignatureHeader.GetCreator(),
 	)
 
 	return &EndorserTx{
 		ComputedTxID: computedTxID,
-		ChannelID:    txenv.ChannelHeader.ChannelId,
-		Creator:      txenv.SignatureHeader.Creator,
-		Response:     ccAction.Response,
-		Events:       ccAction.Events,
-		Results:      ccAction.Results,
-		Endorsements: ccActionPayload.Action.Endorsements,
-		ChaincodeID:  hdrExt.ChaincodeId,
-		Type:         txenv.ChannelHeader.Type,
-		Version:      txenv.ChannelHeader.Version,
-		Epoch:        txenv.ChannelHeader.Epoch,
-		Nonce:        txenv.SignatureHeader.Nonce,
+		ChannelID:    txenv.ChannelHeader.GetChannelId(),
+		Creator:      txenv.SignatureHeader.GetCreator(),
+		Response:     ccAction.GetResponse(),
+		Events:       ccAction.GetEvents(),
+		Results:      ccAction.GetResults(),
+		Endorsements: ccActionPayload.GetAction().GetEndorsements(),
+		ChaincodeID:  hdrExt.GetChaincodeId(),
+		Type:         txenv.ChannelHeader.GetType(),
+		Version:      txenv.ChannelHeader.GetVersion(),
+		Epoch:        txenv.ChannelHeader.GetEpoch(),
+		Nonce:        txenv.SignatureHeader.GetNonce(),
 	}, nil
 }
 
@@ -149,7 +149,7 @@ func (e *EndorserTx) validate() error {
 		return errors.New("nil ChaincodeId")
 	}
 
-	if e.ChaincodeID.Name == "" {
+	if e.ChaincodeID.GetName() == "" {
 		return errors.New("empty chaincode name in chaincode id")
 	}
 

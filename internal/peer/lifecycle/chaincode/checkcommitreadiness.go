@@ -176,12 +176,12 @@ func (c *CommitReadinessChecker) ReadinessCheck() error {
 		return errors.New("received nil proposal response")
 	}
 
-	if proposalResponse.Response == nil {
+	if proposalResponse.GetResponse() == nil {
 		return errors.New("received proposal response with nil response")
 	}
 
-	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("query failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+	if proposalResponse.GetResponse().GetStatus() != int32(cb.Status_SUCCESS) {
+		return errors.Errorf("query failed with status: %d - %s", proposalResponse.GetResponse().GetStatus(), proposalResponse.GetResponse().GetMessage())
 	}
 
 	if strings.ToLower(c.Input.OutputFormat) == "json" {
@@ -194,20 +194,20 @@ func (c *CommitReadinessChecker) ReadinessCheck() error {
 // from the server as human readable plain-text.
 func (c *CommitReadinessChecker) printResponse(proposalResponse *pb.ProposalResponse) error {
 	result := &lb.CheckCommitReadinessResult{}
-	err := proto.Unmarshal(proposalResponse.Response.Payload, result)
+	err := proto.Unmarshal(proposalResponse.GetResponse().GetPayload(), result)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
 
 	orgs := []string{}
-	for org := range result.Approvals {
+	for org := range result.GetApprovals() {
 		orgs = append(orgs, org)
 	}
 	sort.Strings(orgs)
 
 	fmt.Fprintf(c.Writer, "Chaincode definition for chaincode '%s', version '%s', sequence '%d' on channel '%s' approval status by org:\n", c.Input.Name, c.Input.Version, c.Input.Sequence, c.Input.ChannelID)
 	for _, org := range orgs {
-		fmt.Fprintf(c.Writer, "%s: %t\n", org, result.Approvals[org])
+		fmt.Fprintf(c.Writer, "%s: %t\n", org, result.GetApprovals()[org])
 	}
 
 	return nil

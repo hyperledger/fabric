@@ -271,15 +271,15 @@ func (m *KeyLevelValidationParameterManagerImpl) ExtractValidationParameterDepen
 		// all subsequent transaction know they have to wait for validation of
 		// transaction (blockNum, txNum) before they can continue
 		for _, rws := range rwset.NsRwSets {
-			for _, mw := range rws.KvRwSet.MetadataWrites {
+			for _, mw := range rws.KvRwSet.GetMetadataWrites() {
 				// record the fact that this key has a dependency on our tx
-				vCtx.addDependency(newLedgerKeyID(rws.NameSpace, "", mw.Key), txNum, dep)
+				vCtx.addDependency(newLedgerKeyID(rws.NameSpace, "", mw.GetKey()), txNum, dep)
 			}
 
 			for _, cw := range rws.CollHashedRwSets {
-				for _, mw := range cw.HashedRwSet.MetadataWrites {
+				for _, mw := range cw.HashedRwSet.GetMetadataWrites() {
 					// record the fact that this (pvt) key has a dependency on our tx
-					vCtx.addDependency(newLedgerKeyID(rws.NameSpace, cw.CollectionName, string(mw.KeyHash)), txNum, dep)
+					vCtx.addDependency(newLedgerKeyID(rws.NameSpace, cw.CollectionName, string(mw.GetKeyHash())), txNum, dep)
 				}
 			}
 		}

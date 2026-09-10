@@ -117,45 +117,45 @@ func (vscc *Validator) extractValidationArtifacts(
 	actionPosition int,
 ) (*validationArtifacts, error) {
 	// get the envelope...
-	env, err := protoutil.GetEnvelopeFromBlock(block.Data.Data[txPosition])
+	env, err := protoutil.GetEnvelopeFromBlock(block.GetData().GetData()[txPosition])
 	if err != nil {
 		logger.Errorf("VSCC error: GetEnvelope failed, err %s", err)
 		return nil, err
 	}
 
 	// ...and the payload...
-	payl, err := protoutil.UnmarshalPayload(env.Payload)
+	payl, err := protoutil.UnmarshalPayload(env.GetPayload())
 	if err != nil {
 		logger.Errorf("VSCC error: GetPayload failed, err %s", err)
 		return nil, err
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payl.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payl.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, err
 	}
 
 	// validate the payload type
-	if common.HeaderType(chdr.Type) != common.HeaderType_ENDORSER_TRANSACTION {
-		logger.Errorf("Only Endorser Transactions are supported, provided type %d", chdr.Type)
-		err = fmt.Errorf("Only Endorser Transactions are supported, provided type %d", chdr.Type)
+	if common.HeaderType(chdr.GetType()) != common.HeaderType_ENDORSER_TRANSACTION {
+		logger.Errorf("Only Endorser Transactions are supported, provided type %d", chdr.GetType())
+		err = fmt.Errorf("Only Endorser Transactions are supported, provided type %d", chdr.GetType())
 		return nil, err
 	}
 
 	// ...and the transaction...
-	tx, err := protoutil.UnmarshalTransaction(payl.Data)
+	tx, err := protoutil.UnmarshalTransaction(payl.GetData())
 	if err != nil {
 		logger.Errorf("VSCC error: GetTransaction failed, err %s", err)
 		return nil, err
 	}
 
-	cap, err := protoutil.UnmarshalChaincodeActionPayload(tx.Actions[actionPosition].Payload)
+	cap, err := protoutil.UnmarshalChaincodeActionPayload(tx.GetActions()[actionPosition].GetPayload())
 	if err != nil {
 		logger.Errorf("VSCC error: GetChaincodeActionPayload failed, err %s", err)
 		return nil, err
 	}
 
-	pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(cap.Action.ProposalResponsePayload)
+	pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(cap.GetAction().GetProposalResponsePayload())
 	if err != nil {
 		err = fmt.Errorf("GetProposalResponsePayload error %s", err)
 		return nil, err
@@ -164,16 +164,16 @@ func (vscc *Validator) extractValidationArtifacts(
 		err = fmt.Errorf("nil pRespPayload.Extension")
 		return nil, err
 	}
-	respPayload, err := protoutil.UnmarshalChaincodeAction(pRespPayload.Extension)
+	respPayload, err := protoutil.UnmarshalChaincodeAction(pRespPayload.GetExtension())
 	if err != nil {
 		err = fmt.Errorf("GetChaincodeAction error %s", err)
 		return nil, err
 	}
 
 	return &validationArtifacts{
-		rwset:        respPayload.Results,
-		prp:          cap.Action.ProposalResponsePayload,
-		endorsements: cap.Action.Endorsements,
+		rwset:        respPayload.GetResults(),
+		prp:          cap.GetAction().GetProposalResponsePayload(),
+		endorsements: cap.GetAction().GetEndorsements(),
 		chdr:         chdr,
 		env:          env,
 		payl:         payl,
@@ -198,13 +198,13 @@ func (vscc *Validator) Validate(
 
 	va, err := vscc.extractValidationArtifacts(block, txPosition, actionPosition)
 	if err != nil {
-		vscc.stateBasedValidator.PostValidate(namespace, block.Header.Number, uint64(txPosition), err)
+		vscc.stateBasedValidator.PostValidate(namespace, block.GetHeader().GetNumber(), uint64(txPosition), err)
 		return policyErr(err)
 	}
 
 	txverr := vscc.stateBasedValidator.Validate(
 		namespace,
-		block.Header.Number,
+		block.GetHeader().GetNumber(),
 		uint64(txPosition),
 		va.rwset,
 		va.prp,
@@ -213,22 +213,22 @@ func (vscc *Validator) Validate(
 	)
 	if txverr != nil {
 		logger.Errorf("VSCC error: stateBasedValidator.Validate failed, err %s", txverr)
-		vscc.stateBasedValidator.PostValidate(namespace, block.Header.Number, uint64(txPosition), txverr)
+		vscc.stateBasedValidator.PostValidate(namespace, block.GetHeader().GetNumber(), uint64(txPosition), txverr)
 		return txverr
 	}
 
 	// do some extra validation that is specific to lscc
 	if namespace == "lscc" {
 		logger.Debugf("VSCC info: doing special validation for LSCC")
-		err := vscc.ValidateLSCCInvocation(va.chdr.ChannelId, va.env, va.cap, va.payl, vscc.capabilities)
+		err := vscc.ValidateLSCCInvocation(va.chdr.GetChannelId(), va.env, va.cap, va.payl, vscc.capabilities)
 		if err != nil {
 			logger.Errorf("VSCC error: ValidateLSCCInvocation failed, err %s", err)
-			vscc.stateBasedValidator.PostValidate(namespace, block.Header.Number, uint64(txPosition), err)
+			vscc.stateBasedValidator.PostValidate(namespace, block.GetHeader().GetNumber(), uint64(txPosition), err)
 			return err
 		}
 	}
 
-	vscc.stateBasedValidator.PostValidate(namespace, block.Header.Number, uint64(txPosition), nil)
+	vscc.stateBasedValidator.PostValidate(namespace, block.GetHeader().GetNumber(), uint64(txPosition), nil)
 	return nil
 }
 

@@ -102,7 +102,7 @@ func TestMSPSetupNoCryptoConf(t *testing.T) {
 	}
 
 	mspconf := &msp.FabricMSPConfig{}
-	err = proto.Unmarshal(conf.Config, mspconf)
+	err = proto.Unmarshal(conf.GetConfig(), mspconf)
 	require.NoError(t, err)
 
 	// here we test the case of an MSP configuration
@@ -474,7 +474,7 @@ func TestIsWellFormed(t *testing.T) {
 	err = mspMgr.IsWellFormed(sId)
 	require.NoError(t, err)
 
-	bl, _ := pem.Decode(sId.IdBytes)
+	bl, _ := pem.Decode(sId.GetIdBytes())
 	require.Equal(t, "CERTIFICATE", bl.Type)
 
 	// Now, strip off the type from the PEM block. It should still be valid
@@ -629,7 +629,7 @@ func TestSerializeIdentitiesWithMSPManager(t *testing.T) {
 
 	_, err = mspMgr.DeserializeIdentity(serializedID)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), fmt.Sprintf("MSP %s is not defined on channel", sid.Mspid))
+	require.Contains(t, err.Error(), fmt.Sprintf("MSP %s is not defined on channel", sid.GetMspid()))
 
 	_, err = mspMgr.DeserializeIdentity([]byte("barf"))
 	require.Error(t, err)
@@ -703,7 +703,7 @@ func TestSignAndVerifyFailures(t *testing.T) {
 		return
 	}
 
-	hash := id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily
+	hash := id.(*signingidentity).msp.cryptoConfig.GetSignatureHashFamily()
 	id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily = "barf"
 
 	_, err = id.Sign(msg)
@@ -732,7 +732,7 @@ func TestSignAndVerifyOtherHash(t *testing.T) {
 		return
 	}
 
-	hash := id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily
+	hash := id.(*signingidentity).msp.cryptoConfig.GetSignatureHashFamily()
 	id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily = bccsp.SHA3
 
 	msg := []byte("foo")
@@ -828,7 +828,7 @@ func TestCertificationIdentifierComputation(t *testing.T) {
 
 	// Hash the chain
 	// Use the hash of the identity's certificate as id in the IdentityIdentifier
-	hashOpt, err := bccsp.GetHashOpt(localMsp.(*bccspmsp).cryptoConfig.IdentityIdentifierHashFunction)
+	hashOpt, err := bccsp.GetHashOpt(localMsp.(*bccspmsp).cryptoConfig.GetIdentityIdentifierHashFunction())
 	require.NoError(t, err)
 
 	hf, err := localMsp.(*bccspmsp).bccsp.GetHash(hashOpt)
@@ -1537,7 +1537,7 @@ func TestMSPIdentityIdentifier(t *testing.T) {
 
 	// Compute the digest for certFromFile
 	thisBCCSPMsp := thisMSP.(*bccspmsp)
-	hashOpt, err := bccsp.GetHashOpt(thisBCCSPMsp.cryptoConfig.IdentityIdentifierHashFunction)
+	hashOpt, err := bccsp.GetHashOpt(thisBCCSPMsp.cryptoConfig.GetIdentityIdentifierHashFunction())
 	require.NoError(t, err)
 	digest, err := thisBCCSPMsp.bccsp.Hash(certFromFile.Raw, hashOpt)
 	require.NoError(t, err)

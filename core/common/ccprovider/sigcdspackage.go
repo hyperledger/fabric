@@ -98,7 +98,7 @@ func (ccpack *SignedCDSPackage) GetInstantiationPolicy() []byte {
 	if ccpack.sDepSpec == nil {
 		panic("GetInstantiationPolicy called on uninitialized package")
 	}
-	return ccpack.sDepSpec.InstantiationPolicy
+	return ccpack.sDepSpec.GetInstantiationPolicy()
 }
 
 // GetDepSpecBytes gets the serialized ChaincodeDeploymentSpec from the package
@@ -108,7 +108,7 @@ func (ccpack *SignedCDSPackage) GetDepSpecBytes() []byte {
 	if ccpack.sDepSpec == nil || ccpack.sDepSpec.ChaincodeDeploymentSpec == nil {
 		panic("GetDepSpecBytes called on uninitialized package")
 	}
-	return ccpack.sDepSpec.ChaincodeDeploymentSpec
+	return ccpack.sDepSpec.GetChaincodeDeploymentSpec()
 }
 
 // GetPackageObject gets the ChaincodeDeploymentSpec as proto.Message
@@ -126,12 +126,12 @@ func (ccpack *SignedCDSPackage) GetChaincodeData() *ChaincodeData {
 
 	var instPolicy []byte
 	if ccpack.sDepSpec != nil {
-		instPolicy = ccpack.sDepSpec.InstantiationPolicy
+		instPolicy = ccpack.sDepSpec.GetInstantiationPolicy()
 	}
 
 	return &ChaincodeData{
-		Name:                ccpack.depSpec.ChaincodeSpec.ChaincodeId.Name,
-		Version:             ccpack.depSpec.ChaincodeSpec.ChaincodeId.Version,
+		Name:                ccpack.depSpec.GetChaincodeSpec().GetChaincodeId().GetName(),
+		Version:             ccpack.depSpec.GetChaincodeSpec().GetChaincodeId().GetVersion(),
 		Data:                ccpack.datab,
 		Id:                  ccpack.id,
 		InstantiationPolicy: instPolicy,
@@ -147,7 +147,7 @@ func (ccpack *SignedCDSPackage) getCDSData(scds *pb.SignedChaincodeDeploymentSpe
 	}
 
 	cds := &pb.ChaincodeDeploymentSpec{}
-	err := proto.Unmarshal(scds.ChaincodeDeploymentSpec, cds)
+	err := proto.Unmarshal(scds.GetChaincodeDeploymentSpec(), cds)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -165,14 +165,14 @@ func (ccpack *SignedCDSPackage) getCDSData(scds *pb.SignedChaincodeDeploymentSpe
 	scdsdata := &SignedCDSData{}
 
 	// get the code hash
-	hash.Write(cds.CodePackage)
+	hash.Write(cds.GetCodePackage())
 	scdsdata.CodeHash = hash.Sum(nil)
 
 	hash.Reset()
 
 	// get the metadata hash
-	hash.Write([]byte(cds.ChaincodeSpec.ChaincodeId.Name))
-	hash.Write([]byte(cds.ChaincodeSpec.ChaincodeId.Version))
+	hash.Write([]byte(cds.GetChaincodeSpec().GetChaincodeId().GetName()))
+	hash.Write([]byte(cds.GetChaincodeSpec().GetChaincodeId().GetVersion()))
 
 	scdsdata.MetaDataHash = hash.Sum(nil)
 
@@ -180,12 +180,12 @@ func (ccpack *SignedCDSPackage) getCDSData(scds *pb.SignedChaincodeDeploymentSpe
 
 	// get the signature hashes
 	if scds.InstantiationPolicy == nil {
-		return nil, nil, nil, fmt.Errorf("instantiation policy cannot be nil for chaincode (%s:%s)", cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version)
+		return nil, nil, nil, fmt.Errorf("instantiation policy cannot be nil for chaincode (%s:%s)", cds.GetChaincodeSpec().GetChaincodeId().GetName(), cds.GetChaincodeSpec().GetChaincodeId().GetVersion())
 	}
 
-	hash.Write(scds.InstantiationPolicy)
-	for _, o := range scds.OwnerEndorsements {
-		hash.Write(o.Endorser)
+	hash.Write(scds.GetInstantiationPolicy())
+	for _, o := range scds.GetOwnerEndorsements() {
+		hash.Write(o.GetEndorser())
 	}
 	scdsdata.SignatureHash = hash.Sum(nil)
 
@@ -232,8 +232,8 @@ func (ccpack *SignedCDSPackage) ValidateCC(ccdata *ChaincodeData) error {
 		return fmt.Errorf("invalid chaincode name: %q", ccdata.Name)
 	}
 
-	if ccdata.Name != ccpack.depSpec.ChaincodeSpec.ChaincodeId.Name || ccdata.Version != ccpack.depSpec.ChaincodeSpec.ChaincodeId.Version {
-		return fmt.Errorf("invalid chaincode data %v (%v)", ccdata, ccpack.depSpec.ChaincodeSpec.ChaincodeId)
+	if ccdata.Name != ccpack.depSpec.GetChaincodeSpec().GetChaincodeId().GetName() || ccdata.Version != ccpack.depSpec.GetChaincodeSpec().GetChaincodeId().GetVersion() {
+		return fmt.Errorf("invalid chaincode data %v (%v)", ccdata, ccpack.depSpec.GetChaincodeSpec().GetChaincodeId())
 	}
 
 	otherdata := &SignedCDSData{}
@@ -261,12 +261,12 @@ func (ccpack *SignedCDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, erro
 		return nil, err
 	}
 
-	if cHdr.Type != int32(common.HeaderType_CHAINCODE_PACKAGE) {
+	if cHdr.GetType() != int32(common.HeaderType_CHAINCODE_PACKAGE) {
 		return nil, fmt.Errorf("invalid type of envelope for chaincode package")
 	}
 
 	depSpec := &pb.ChaincodeDeploymentSpec{}
-	err = proto.Unmarshal(sDepSpec.ChaincodeDeploymentSpec, depSpec)
+	err = proto.Unmarshal(sDepSpec.GetChaincodeDeploymentSpec(), depSpec)
 	if err != nil {
 		return nil, fmt.Errorf("error getting deployment spec")
 	}
@@ -332,8 +332,8 @@ func (ccpack *SignedCDSPackage) PutChaincodeToFS() error {
 		return fmt.Errorf("nil data bytes")
 	}
 
-	ccname := ccpack.depSpec.ChaincodeSpec.ChaincodeId.Name
-	ccversion := ccpack.depSpec.ChaincodeSpec.ChaincodeId.Version
+	ccname := ccpack.depSpec.GetChaincodeSpec().GetChaincodeId().GetName()
+	ccversion := ccpack.depSpec.GetChaincodeSpec().GetChaincodeId().GetVersion()
 
 	// return error if chaincode exists
 	path := fmt.Sprintf("%s/%s.%s", chaincodeInstallPath, ccname, ccversion)

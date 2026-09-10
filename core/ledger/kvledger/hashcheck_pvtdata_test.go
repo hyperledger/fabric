@@ -277,7 +277,7 @@ func TestExtractValidPvtData(t *testing.T) {
 		require.NoError(t, err)
 
 		expectedOutput := pvtdataCopy()
-		expectedOutput[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset = expectedOutput[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset[1:]
+		expectedOutput[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset = expectedOutput[0].WriteSet.GetNsPvtRwset()[0].GetCollectionPvtRwset()[1:]
 
 		verifyBlocksPvtdata(t,
 			map[uint64][]*ledger.TxPvtData{
@@ -452,7 +452,7 @@ func commitCollectionConfigsHistoryAndDummyBlock(t *testing.T, provider *Provide
 			provider,
 			kvledger.ledgerID,
 			namespace,
-			blockAndPvtdata.Block.Header.Number,
+			blockAndPvtdata.Block.GetHeader().GetNumber(),
 			collConfig,
 		)
 	}

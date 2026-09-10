@@ -51,9 +51,9 @@ var _ = Describe("PendingQueryResult", func() {
 				Expect(results).To(HaveLen(10))
 				for i, result := range results {
 					var kv queryresult.KV
-					err := proto.Unmarshal(result.ResultBytes, &kv)
+					err := proto.Unmarshal(result.GetResultBytes(), &kv)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(kv.Key).To(Equal(fmt.Sprintf("key-%d", i+1)))
+					Expect(kv.GetKey()).To(Equal(fmt.Sprintf("key-%d", i+1)))
 				}
 			})
 

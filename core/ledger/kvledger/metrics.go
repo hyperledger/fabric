@@ -63,7 +63,7 @@ func (s *ledgerStats) updateTransactionsStats(
 
 		chaincodeName := "unknown"
 		if txstat.ChaincodeID != nil {
-			chaincodeName = txstat.ChaincodeID.Name + ":" + txstat.ChaincodeID.Version
+			chaincodeName = txstat.ChaincodeID.GetName() + ":" + txstat.ChaincodeID.GetVersion()
 		}
 
 		s.stats.transactionsCount.With(

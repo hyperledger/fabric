@@ -154,8 +154,8 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 	for snapshotRecord1 != nil && snapshotRecord2 != nil {
 
 		// nsKeys used for comparing snapshot records
-		key1 := &nsKey{namespace: namespace1, key: snapshotRecord1.Key}
-		key2 := &nsKey{namespace: namespace2, key: snapshotRecord2.Key}
+		key1 := &nsKey{namespace: namespace1, key: snapshotRecord1.GetKey()}
+		key2 := &nsKey{namespace: namespace2, key: snapshotRecord2.GetKey()}
 
 		// Determine the difference in records by comparing nsKeys
 		switch nsKeyCompare(key1, key2) {
@@ -362,7 +362,7 @@ func newDiffRecord(namespace string, hashed bool, record1 *privacyenabledstate.S
 
 	// Snapshot2 has a missing record
 	if record1 != nil {
-		k = bytesToString(record1.Key, hashed)
+		k = bytesToString(record1.GetKey(), hashed)
 		s1, err = newSnapshotRecord(record1, hashed)
 		if err != nil {
 			return nil, err
@@ -370,7 +370,7 @@ func newDiffRecord(namespace string, hashed bool, record1 *privacyenabledstate.S
 	}
 	// Snapshot1 has a missing record
 	if record2 != nil {
-		k = bytesToString(record2.Key, hashed)
+		k = bytesToString(record2.GetKey(), hashed)
 		s2, err = newSnapshotRecord(record2, hashed)
 		if err != nil {
 			return nil, err
@@ -434,13 +434,13 @@ func earlierSSRecord(r1 *snapshotRecord, r2 *snapshotRecord) *snapshotRecord {
 
 // Creates a new SnapshotRecord
 func newSnapshotRecord(record *privacyenabledstate.SnapshotRecord, hashed bool) (*snapshotRecord, error) {
-	blockNum, txNum, err := heightFromBytes(record.Version)
+	blockNum, txNum, err := heightFromBytes(record.GetVersion())
 	if err != nil {
 		return nil, err
 	}
 
 	return &snapshotRecord{
-		Value:    bytesToString(record.Value, hashed),
+		Value:    bytesToString(record.GetValue(), hashed),
 		BlockNum: blockNum,
 		TxNum:    txNum,
 	}, nil

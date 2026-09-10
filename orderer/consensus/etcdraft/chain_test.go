@@ -167,18 +167,18 @@ var _ = Describe("Chain", func() {
 			support.BlockReturns(getSeedBlock())
 
 			meta := &raftprotos.BlockMetadata{
-				ConsenterIds:    make([]uint64, len(consenterMetadata.Consenters)),
+				ConsenterIds:    make([]uint64, len(consenterMetadata.GetConsenters())),
 				NextConsenterId: 1,
 			}
 
-			for i := range meta.ConsenterIds {
-				meta.ConsenterIds[i] = meta.NextConsenterId
+			for i := range meta.GetConsenterIds() {
+				meta.ConsenterIds[i] = meta.GetNextConsenterId()
 				meta.NextConsenterId++
 			}
 
 			consenters = map[uint64]*raftprotos.Consenter{}
-			for i, c := range consenterMetadata.Consenters {
-				consenters[meta.ConsenterIds[i]] = c
+			for i, c := range consenterMetadata.GetConsenters() {
+				consenters[meta.GetConsenterIds()[i]] = c
 			}
 
 			fakeFields = newFakeMetricsFields()
@@ -456,7 +456,7 @@ var _ = Describe("Chain", func() {
 
 				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 				b, _ := support.WriteBlockArgsForCall(0)
-				Expect(b.Data.Data).To(HaveLen(2))
+				Expect(b.GetData().GetData()).To(HaveLen(2))
 				Expect(cutter.CurBatch()).To(HaveLen(0))
 
 				// this should start a fresh timer
@@ -472,7 +472,7 @@ var _ = Describe("Chain", func() {
 
 				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 				b, _ = support.WriteBlockArgsForCall(1)
-				Expect(b.Data.Data).To(HaveLen(1))
+				Expect(b.GetData().GetData()).To(HaveLen(1))
 			})
 
 			It("cut two batches if incoming envelope does not fit into first batch", func() {
@@ -779,12 +779,12 @@ var _ = Describe("Chain", func() {
 						_, metadata := c.support.WriteBlockArgsForCall(0)
 						m := &raftprotos.BlockMetadata{}
 						proto.Unmarshal(metadata, m)
-						Expect(m.RaftIndex).To(Equal(m1.RaftIndex))
+						Expect(m.GetRaftIndex()).To(Equal(m1.GetRaftIndex()))
 
 						_, metadata = c.support.WriteBlockArgsForCall(1)
 						m = &raftprotos.BlockMetadata{}
 						proto.Unmarshal(metadata, m)
-						Expect(m.RaftIndex).To(Equal(m2.RaftIndex))
+						Expect(m.GetRaftIndex()).To(Equal(m2.GetRaftIndex()))
 
 						// chain should keep functioning
 						campaign(c.Chain, c.observe)
@@ -797,7 +797,7 @@ var _ = Describe("Chain", func() {
 					})
 
 					It("only replays blocks after Applied index", func() {
-						raftMetadata.RaftIndex = m1.RaftIndex
+						raftMetadata.RaftIndex = m1.GetRaftIndex()
 						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider, nil, nil, logger)
 						c.support.WriteBlock(support.WriteBlockArgsForCall(0))
 
@@ -810,7 +810,7 @@ var _ = Describe("Chain", func() {
 						_, metadata := c.support.WriteBlockArgsForCall(1)
 						m := &raftprotos.BlockMetadata{}
 						proto.Unmarshal(metadata, m)
-						Expect(m.RaftIndex).To(Equal(m2.RaftIndex))
+						Expect(m.GetRaftIndex()).To(Equal(m2.GetRaftIndex()))
 
 						// chain should keep functioning
 						campaign(c.Chain, c.observe)
@@ -823,7 +823,7 @@ var _ = Describe("Chain", func() {
 					})
 
 					It("does not replay any block if already in sync", func() {
-						raftMetadata.RaftIndex = m2.RaftIndex
+						raftMetadata.RaftIndex = m2.GetRaftIndex()
 						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider, nil, nil, logger)
 						c.init()
 						c.Start()
@@ -891,7 +891,7 @@ var _ = Describe("Chain", func() {
 
 							ledgerLock.Lock()
 							defer ledgerLock.Unlock()
-							ledger[b.Header.Number] = b
+							ledger[b.GetHeader().GetNumber()] = b
 						}
 
 						support.HeightStub = func() uint64 {
@@ -918,8 +918,8 @@ var _ = Describe("Chain", func() {
 							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
 							Expect(fakeFields.fakeSnapshotBlockNumber.SetCallCount()).To(Equal(2)) // incl. initial call
 							s, _ := opts.MemoryStorage.Snapshot()
-							b := protoutil.UnmarshalBlockOrPanic(s.Data)
-							Expect(fakeFields.fakeSnapshotBlockNumber.SetArgsForCall(1)).To(Equal(float64(b.Header.Number)))
+							b := protoutil.UnmarshalBlockOrPanic(s.GetData())
+							Expect(fakeFields.fakeSnapshotBlockNumber.SetArgsForCall(1)).To(Equal(float64(b.GetHeader().GetNumber())))
 
 							i, _ = opts.MemoryStorage.FirstIndex()
 
@@ -930,8 +930,8 @@ var _ = Describe("Chain", func() {
 							Eventually(opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
 							Expect(fakeFields.fakeSnapshotBlockNumber.SetCallCount()).To(Equal(3)) // incl. initial call
 							s, _ = opts.MemoryStorage.Snapshot()
-							b = protoutil.UnmarshalBlockOrPanic(s.Data)
-							Expect(fakeFields.fakeSnapshotBlockNumber.SetArgsForCall(2)).To(Equal(float64(b.Header.Number)))
+							b = protoutil.UnmarshalBlockOrPanic(s.GetData())
+							Expect(fakeFields.fakeSnapshotBlockNumber.SetArgsForCall(2)).To(Equal(float64(b.GetHeader().GetNumber())))
 						})
 
 						It("pauses chain if sync is in progress", func() {
@@ -1042,7 +1042,7 @@ var _ = Describe("Chain", func() {
 
 							chain.Halt()
 
-							raftMetadata.RaftIndex = m.RaftIndex
+							raftMetadata.RaftIndex = m.GetRaftIndex()
 							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider, nil, nil, logger)
 							c.opts.SnapshotIntervalSize = 1
 
@@ -1071,7 +1071,7 @@ var _ = Describe("Chain", func() {
 							_, metadata = c.support.WriteBlockArgsForCall(0)
 							m = &raftprotos.BlockMetadata{}
 							proto.Unmarshal(metadata, m)
-							raftMetadata.RaftIndex = m.RaftIndex
+							raftMetadata.RaftIndex = m.GetRaftIndex()
 							cx := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider, nil, nil, logger)
 
 							cx.init()
@@ -1135,7 +1135,7 @@ var _ = Describe("Chain", func() {
 
 							chain.Halt()
 
-							raftMetadata.RaftIndex = m.RaftIndex
+							raftMetadata.RaftIndex = m.GetRaftIndex()
 							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider, nil, nil, logger)
 							cnt := support.WriteBlockCallCount()
 							for i := range cnt {
@@ -1193,7 +1193,7 @@ var _ = Describe("Chain", func() {
 
 								chain.Halt()
 
-								raftMetadata.RaftIndex = m.RaftIndex
+								raftMetadata.RaftIndex = m.GetRaftIndex()
 								c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider, nil, nil, logger)
 								// replay block 1&2
 								c.support.WriteBlock(support.WriteBlockArgsForCall(0))
@@ -1240,7 +1240,7 @@ var _ = Describe("Chain", func() {
 
 							chain.Halt()
 
-							raftMetadata.RaftIndex = m.RaftIndex
+							raftMetadata.RaftIndex = m.GetRaftIndex()
 							c1 := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider, nil, nil, logger)
 							cnt := support.WriteBlockCallCount()
 							for i := range cnt {
@@ -1538,7 +1538,7 @@ var _ = Describe("Chain", func() {
 			step1 := c1.getStepFunc()
 			c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 				stepMsg := &raftpb.Message{}
-				if err := proto.Unmarshal(msg.Payload, stepMsg); err != nil {
+				if err := proto.Unmarshal(msg.GetPayload(), stepMsg); err != nil {
 					return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
 				}
 
@@ -1711,7 +1711,7 @@ var _ = Describe("Chain", func() {
 					bytes, err := proto.Marshal(&common.Metadata{Value: meta})
 					Expect(err).NotTo(HaveOccurred())
 					b.Metadata.Metadata[common.BlockMetadataIndex_ORDERER] = bytes
-					blocks[b.Header.Number] = b
+					blocks[b.GetHeader().GetNumber()] = b
 				}
 
 				c3.puller.PullBlockStub = func(i uint64) *common.Block {
@@ -2754,13 +2754,13 @@ var _ = Describe("Chain", func() {
 				step1 := c1.getStepFunc()
 				c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 					stepMsg := &raftpb.Message{}
-					Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
+					Expect(proto.Unmarshal(msg.GetPayload(), stepMsg)).NotTo(HaveOccurred())
 
 					if dest == 3 {
 						return nil
 					}
 
-					if stepMsg.GetType() == raftpb.MsgApp && len(stepMsg.Entries) == 0 {
+					if stepMsg.GetType() == raftpb.MsgApp && len(stepMsg.GetEntries()) == 0 {
 						return nil
 					}
 
@@ -2778,11 +2778,11 @@ var _ = Describe("Chain", func() {
 				step2 := c2.getStepFunc()
 				c2.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 					stepMsg := &raftpb.Message{}
-					Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
+					Expect(proto.Unmarshal(msg.GetPayload(), stepMsg)).NotTo(HaveOccurred())
 
-					if stepMsg.GetType() == raftpb.MsgApp && len(stepMsg.Entries) != 0 && dest == 3 {
-						for _, ent := range stepMsg.Entries {
-							if len(ent.Data) != 0 {
+					if stepMsg.GetType() == raftpb.MsgApp && len(stepMsg.GetEntries()) != 0 && dest == 3 {
+						for _, ent := range stepMsg.GetEntries() {
+							if len(ent.GetData()) != 0 {
 								return nil
 							}
 						}
@@ -2807,9 +2807,9 @@ var _ = Describe("Chain", func() {
 				Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 
 				b, _ := c2.support.WriteBlockArgsForCall(0)
-				Expect(b.Header.Number).To(Equal(uint64(1)))
+				Expect(b.GetHeader().GetNumber()).To(Equal(uint64(1)))
 				b, _ = c2.support.WriteBlockArgsForCall(1)
-				Expect(b.Header.Number).To(Equal(uint64(2)))
+				Expect(b.GetHeader().GetNumber()).To(Equal(uint64(2)))
 			})
 
 			Context("handling config blocks", func() {
@@ -2931,9 +2931,9 @@ var _ = Describe("Chain", func() {
 
 					c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 						stepMsg := &raftpb.Message{}
-						Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
+						Expect(proto.Unmarshal(msg.GetPayload(), stepMsg)).NotTo(HaveOccurred())
 						if dest == 3 && stepMsg.GetType() == raftpb.MsgApp && len(stepMsg.GetEntries()) > 0 {
-							stepMsg.Entries = stepMsg.Entries[0:1]
+							stepMsg.Entries = stepMsg.GetEntries()[0:1]
 							stepMsg.Entries[0].Data = nil
 							msg.Payload = protoutil.MarshalOrPanic(stepMsg)
 						}
@@ -2950,9 +2950,9 @@ var _ = Describe("Chain", func() {
 					// node 1 should take a snapshot but node 3 should not
 					c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 						stepMsg := &raftpb.Message{}
-						Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
-						if dest == 3 && stepMsg.GetType() == raftpb.MsgApp && len(stepMsg.Entries) > 0 {
-							stepMsg.Entries = stepMsg.Entries[0:1]
+						Expect(proto.Unmarshal(msg.GetPayload(), stepMsg)).NotTo(HaveOccurred())
+						if dest == 3 && stepMsg.GetType() == raftpb.MsgApp && len(stepMsg.GetEntries()) > 0 {
+							stepMsg.Entries = stepMsg.GetEntries()[0:1]
 							// change message type to raftpb.EntryConfChange
 							stepMsg.Entries[0].Type = new(raftpb.EntryConfChange)
 							cc := &raftpb.ConfChange{NodeId: new(uint64(3)), Type: new(raftpb.ConfChangeRemoveNode)}
@@ -3264,13 +3264,13 @@ var _ = Describe("Chain", func() {
 
 func nodeConfigFromMetadata(consenterMetadata *raftprotos.ConfigMetadata) []cluster.RemoteNode {
 	var nodes []cluster.RemoteNode
-	for i, consenter := range consenterMetadata.Consenters {
+	for i, consenter := range consenterMetadata.GetConsenters() {
 		// For now, skip ourselves
 		if i == 0 {
 			continue
 		}
-		serverDER, _ := pem.Decode(consenter.ServerTlsCert)
-		clientDER, _ := pem.Decode(consenter.ClientTlsCert)
+		serverDER, _ := pem.Decode(consenter.GetServerTlsCert())
+		clientDER, _ := pem.Decode(consenter.GetClientTlsCert())
 		node := cluster.RemoteNode{
 			ID:            uint64(i + 1),
 			Endpoint:      "localhost:7050",
@@ -3466,9 +3466,9 @@ func newChain(
 			Value: lastConfigValue,
 		})
 
-		c.ledger[b.Header.Number] = b
-		if c.ledgerHeight < b.Header.Number+1 {
-			c.ledgerHeight = b.Header.Number + 1
+		c.ledger[b.GetHeader().GetNumber()] = b
+		if c.ledgerHeight < b.GetHeader().GetNumber()+1 {
+			c.ledgerHeight = b.GetHeader().GetNumber() + 1
 		}
 	}
 
@@ -3483,16 +3483,16 @@ func newChain(
 		Expect(err).NotTo(HaveOccurred())
 		b.Metadata.Metadata[common.BlockMetadataIndex_ORDERER] = bytes
 
-		c.lastConfigBlockNumber = b.Header.Number
+		c.lastConfigBlockNumber = b.GetHeader().GetNumber()
 
 		lastConfigValue := protoutil.MarshalOrPanic(&common.LastConfig{Index: c.lastConfigBlockNumber})
 		b.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.Metadata{
 			Value: lastConfigValue,
 		})
 
-		c.ledger[b.Header.Number] = b
-		if c.ledgerHeight < b.Header.Number+1 {
-			c.ledgerHeight = b.Header.Number + 1
+		c.ledger[b.GetHeader().GetNumber()] = b
+		if c.ledgerHeight < b.GetHeader().GetNumber()+1 {
+			c.ledgerHeight = b.GetHeader().GetNumber() + 1
 		}
 	}
 
@@ -3717,7 +3717,7 @@ func createNetwork(
 		links:        make(map[uint64]map[uint64]bool),
 	}
 
-	for _, nodeID := range raftMetadata.ConsenterIds {
+	for _, nodeID := range raftMetadata.GetConsenterIds() {
 		dir, err := os.MkdirTemp(dataDir, fmt.Sprintf("node-%d-", nodeID))
 		Expect(err).NotTo(HaveOccurred())
 

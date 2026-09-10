@@ -100,7 +100,7 @@ func NewReplicationInitiator(
 }
 
 func (ri *ReplicationInitiator) ReplicateIfNeeded(bootstrapBlock *common.Block) {
-	if bootstrapBlock.Header.Number == 0 {
+	if bootstrapBlock.GetHeader().GetNumber() == 0 {
 		ri.logger.Debug("Booted with a genesis block, replication isn't an option")
 		return
 	}
@@ -396,7 +396,7 @@ func (vl *verifierLoader) loadVerifier(chain string) cluster.BlockVerifier {
 	if err != nil {
 		vl.onFailure(lastConfigBlock)
 		vl.logger.Panicf("Failed extracting configuration for channel %s from block [%d]: %v",
-			chain, lastConfigBlock.Header.Number, err)
+			chain, lastConfigBlock.GetHeader().GetNumber(), err)
 	}
 
 	verifier, err := vl.verifierFactory.VerifierFromConfig(conf, chain)
@@ -415,12 +415,12 @@ func ValidateBootstrapBlock(block *common.Block, bccsp bccsp.BCCSP) error {
 		return errors.New("nil block")
 	}
 
-	if block.Data == nil || len(block.Data.Data) == 0 {
+	if block.GetData() == nil || len(block.GetData().GetData()) == 0 {
 		return errors.New("empty block data")
 	}
 
 	firstTransaction := &common.Envelope{}
-	if err := proto.Unmarshal(block.Data.Data[0], firstTransaction); err != nil {
+	if err := proto.Unmarshal(block.GetData().GetData()[0], firstTransaction); err != nil {
 		return errors.Wrap(err, "failed extracting envelope from block")
 	}
 

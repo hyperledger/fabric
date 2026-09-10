@@ -56,9 +56,9 @@ func AssemblePvtRWSet(channelName string,
 		CollectionConfigs: make(map[string]*peer.CollectionConfigPackage),
 	}
 
-	for _, pvtRwset := range privData.NsPvtRwset {
-		namespace := pvtRwset.Namespace
-		if _, found := txPvtRwSetWithConfig.CollectionConfigs[namespace]; !found {
+	for _, pvtRwset := range privData.GetNsPvtRwset() {
+		namespace := pvtRwset.GetNamespace()
+		if _, found := txPvtRwSetWithConfig.GetCollectionConfigs()[namespace]; !found {
 			colCP, err := deployedCCInfoProvider.AllCollectionsConfigPkg(channelName, namespace, txsim)
 			if err != nil {
 				return nil, errors.WithMessagef(err, "error while retrieving collection config for chaincode %#v", namespace)
@@ -75,22 +75,22 @@ func AssemblePvtRWSet(channelName string,
 
 func trimCollectionConfigs(pvtData *transientstore.TxPvtReadWriteSetWithConfigInfo) {
 	flags := make(map[string]map[string]struct{})
-	for _, pvtRWset := range pvtData.PvtRwset.NsPvtRwset {
-		namespace := pvtRWset.Namespace
-		for _, col := range pvtRWset.CollectionPvtRwset {
+	for _, pvtRWset := range pvtData.GetPvtRwset().GetNsPvtRwset() {
+		namespace := pvtRWset.GetNamespace()
+		for _, col := range pvtRWset.GetCollectionPvtRwset() {
 			if _, found := flags[namespace]; !found {
 				flags[namespace] = make(map[string]struct{})
 			}
-			flags[namespace][col.CollectionName] = struct{}{}
+			flags[namespace][col.GetCollectionName()] = struct{}{}
 		}
 	}
 
 	filteredConfigs := make(map[string]*peer.CollectionConfigPackage)
-	for namespace, configs := range pvtData.CollectionConfigs {
+	for namespace, configs := range pvtData.GetCollectionConfigs() {
 		filteredConfigs[namespace] = &peer.CollectionConfigPackage{}
-		for _, conf := range configs.Config {
+		for _, conf := range configs.GetConfig() {
 			if colConf := conf.GetStaticCollectionConfig(); colConf != nil {
-				if _, found := flags[namespace][colConf.Name]; found {
+				if _, found := flags[namespace][colConf.GetName()]; found {
 					filteredConfigs[namespace].Config = append(filteredConfigs[namespace].Config, conf)
 				}
 			}

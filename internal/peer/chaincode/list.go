@@ -104,12 +104,12 @@ func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory, cryptoProvider b
 		return errors.WithMessage(err, "error endorsing proposal")
 	}
 
-	if proposalResponse.Response == nil {
+	if proposalResponse.GetResponse() == nil {
 		return errors.Errorf("proposal response had nil response")
 	}
 
-	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("bad response: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+	if proposalResponse.GetResponse().GetStatus() != int32(cb.Status_SUCCESS) {
+		return errors.Errorf("bad response: %d - %s", proposalResponse.GetResponse().GetStatus(), proposalResponse.GetResponse().GetMessage())
 	}
 
 	return printResponse(getInstalledChaincodes, getInstantiatedChaincodes, proposalResponse)
@@ -121,7 +121,7 @@ func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory, cryptoProvider b
 // chaincode information.
 func printResponse(getInstalledChaincodes, getInstantiatedChaincodes bool, proposalResponse *pb.ProposalResponse) error {
 	cqr := &pb.ChaincodeQueryResponse{}
-	err := proto.Unmarshal(proposalResponse.Response.Payload, cqr)
+	err := proto.Unmarshal(proposalResponse.GetResponse().GetPayload(), cqr)
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func printResponse(getInstalledChaincodes, getInstantiatedChaincodes bool, propo
 		fmt.Printf("Get instantiated chaincodes on channel %s:\n", channelID)
 	}
 
-	for _, chaincode := range cqr.Chaincodes {
+	for _, chaincode := range cqr.GetChaincodes() {
 		fmt.Printf("%v\n", ccInfo{chaincode}.String())
 	}
 

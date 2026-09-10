@@ -376,8 +376,8 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 	dasf := &digestsAndSourceFactory{}
 
 	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig)).toSources().create())
-	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[1])
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].GetPayload()[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].GetPayload()[1])
 	fetched := []util.PrivateRWSet{rws1, rws2}
 	require.NoError(t, err)
 	require.Equal(t, p2TransientStore.RWSet, fetched)
@@ -611,10 +611,10 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 	dasf := &digestsAndSourceFactory{}
 	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig1)).toSources().mapDigest(toDigKey(dig2)).toSources().create())
 	require.NoError(t, err)
-	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[1])
-	rws3 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].Payload[0])
-	rws4 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].Payload[1])
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].GetPayload()[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].GetPayload()[1])
+	rws3 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].GetPayload()[0])
+	rws4 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].GetPayload()[1])
 	fetched := []util.PrivateRWSet{rws1, rws2, rws3, rws4}
 	require.Contains(t, fetched, p2TransientStore.RWSet[0])
 	require.Contains(t, fetched, p2TransientStore.RWSet[1])
@@ -719,8 +719,8 @@ func TestPullerRetries(t *testing.T) {
 	dasf := &digestsAndSourceFactory{}
 	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig)).toSources().create())
 	require.NoError(t, err)
-	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[1])
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].GetPayload()[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].GetPayload()[1])
 	fetched := []util.PrivateRWSet{rws1, rws2}
 	require.NoError(t, err)
 	require.Equal(t, transientStore.RWSet, fetched)
@@ -811,10 +811,10 @@ func TestPullerPreferEndorsers(t *testing.T) {
 	d2s := dasf.mapDigest(toDigKey(dig1)).toSources("p3").mapDigest(toDigKey(dig2)).toSources().create()
 	fetchedMessages, err := p1.fetch(d2s)
 	require.NoError(t, err)
-	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[1])
-	rws3 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].Payload[0])
-	rws4 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].Payload[1])
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].GetPayload()[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].GetPayload()[1])
+	rws3 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].GetPayload()[0])
+	rws4 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].GetPayload()[1])
 	fetched := []util.PrivateRWSet{rws1, rws2, rws3, rws4}
 	require.Contains(t, fetched, p3TransientStore.RWSet[0])
 	require.Contains(t, fetched, p3TransientStore.RWSet[1])
@@ -927,10 +927,10 @@ func TestPullerFetchReconciledItemsPreferPeersFromOriginalConfig(t *testing.T) {
 
 	fetchedMessages, err := p1.FetchReconciledItems(d2cc)
 	require.NoError(t, err)
-	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[1])
-	rws3 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].Payload[0])
-	rws4 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].Payload[1])
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].GetPayload()[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].GetPayload()[1])
+	rws3 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].GetPayload()[0])
+	rws4 := util.PrivateRWSet(fetchedMessages.AvailableElements[1].GetPayload()[1])
 	fetched := []util.PrivateRWSet{rws1, rws2, rws3, rws4}
 	require.Contains(t, fetched, p3TransientStore.RWSet[0])
 	require.Contains(t, fetched, p3TransientStore.RWSet[1])
@@ -1141,17 +1141,17 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, len(fetchedMessages.AvailableElements))
 	require.Equal(t, 1, dataRetreiver.getNumberOfCalls())
-	require.Equal(t, 2, len(fetchedMessages.AvailableElements[0].Payload))
-	require.Equal(t, 2, len(fetchedMessages.AvailableElements[1].Payload))
+	require.Equal(t, 2, len(fetchedMessages.AvailableElements[0].GetPayload()))
+	require.Equal(t, 2, len(fetchedMessages.AvailableElements[1].GetPayload()))
 }
 
 func toDigKey(dig *proto.PvtDataDigest) *privdatacommon.DigKey {
 	return &privdatacommon.DigKey{
-		TxId:       dig.TxId,
-		BlockSeq:   dig.BlockSeq,
-		SeqInBlock: dig.SeqInBlock,
-		Namespace:  dig.Namespace,
-		Collection: dig.Collection,
+		TxId:       dig.GetTxId(),
+		BlockSeq:   dig.GetBlockSeq(),
+		SeqInBlock: dig.GetSeqInBlock(),
+		Namespace:  dig.GetNamespace(),
+		Collection: dig.GetCollection(),
 	}
 }
 
@@ -1211,8 +1211,8 @@ func TestPullerMetrics(t *testing.T) {
 	dasf := &digestsAndSourceFactory{}
 
 	fetchedMessages, err := p1.fetch(dasf.mapDigest(toDigKey(dig)).toSources().create())
-	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[0])
-	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].Payload[1])
+	rws1 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].GetPayload()[0])
+	rws2 := util.PrivateRWSet(fetchedMessages.AvailableElements[0].GetPayload()[1])
 	fetched := []util.PrivateRWSet{rws1, rws2}
 	require.NoError(t, err)
 	require.Equal(t, p2TransientStore.RWSet, fetched)

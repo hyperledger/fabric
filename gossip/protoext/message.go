@@ -54,19 +54,19 @@ func IsRemoteStateMessage(m *gossip.GossipMessage) bool {
 // If this isn't a pull message, PullMsgType_UNDEFINED is returned.
 func GetPullMsgType(m *gossip.GossipMessage) gossip.PullMsgType {
 	if helloMsg := m.GetHello(); helloMsg != nil {
-		return helloMsg.MsgType
+		return helloMsg.GetMsgType()
 	}
 
 	if digMsg := m.GetDataDig(); digMsg != nil {
-		return digMsg.MsgType
+		return digMsg.GetMsgType()
 	}
 
 	if reqMsg := m.GetDataReq(); reqMsg != nil {
-		return reqMsg.MsgType
+		return reqMsg.GetMsgType()
 	}
 
 	if resMsg := m.GetDataUpdate(); resMsg != nil {
-		return resMsg.MsgType
+		return resMsg.GetMsgType()
 	}
 
 	return gossip.PullMsgType_UNDEFINED
@@ -75,13 +75,13 @@ func GetPullMsgType(m *gossip.GossipMessage) gossip.PullMsgType {
 // IsChannelRestricted returns whether this GossipMessage should be routed
 // only in its channel
 func IsChannelRestricted(m *gossip.GossipMessage) bool {
-	return m.Tag == gossip.GossipMessage_CHAN_AND_ORG || m.Tag == gossip.GossipMessage_CHAN_ONLY || m.Tag == gossip.GossipMessage_CHAN_OR_ORG
+	return m.GetTag() == gossip.GossipMessage_CHAN_AND_ORG || m.GetTag() == gossip.GossipMessage_CHAN_ONLY || m.GetTag() == gossip.GossipMessage_CHAN_OR_ORG
 }
 
 // IsOrgRestricted returns whether this GossipMessage should be routed only
 // inside the organization
 func IsOrgRestricted(m *gossip.GossipMessage) bool {
-	return m.Tag == gossip.GossipMessage_CHAN_AND_ORG || m.Tag == gossip.GossipMessage_ORG_ONLY
+	return m.GetTag() == gossip.GossipMessage_CHAN_AND_ORG || m.GetTag() == gossip.GossipMessage_ORG_ONLY
 }
 
 // IsIdentityMsg returns whether this GossipMessage is an identity message
@@ -127,25 +127,25 @@ func IsLeadershipMsg(m *gossip.GossipMessage) bool {
 // IsTagLegal checks the GossipMessage tags and inner type
 // and returns an error if the tag doesn't match the type.
 func IsTagLegal(m *gossip.GossipMessage) error {
-	if m.Tag == gossip.GossipMessage_UNDEFINED {
+	if m.GetTag() == gossip.GossipMessage_UNDEFINED {
 		return fmt.Errorf("Undefined tag")
 	}
 	if IsDataMsg(m) {
-		if m.Tag != gossip.GossipMessage_CHAN_AND_ORG {
+		if m.GetTag() != gossip.GossipMessage_CHAN_AND_ORG {
 			return fmt.Errorf("Tag should be %s", gossip.GossipMessage_Tag_name[int32(gossip.GossipMessage_CHAN_AND_ORG)])
 		}
 		return nil
 	}
 
 	if IsAliveMsg(m) || m.GetMemReq() != nil || m.GetMemRes() != nil {
-		if m.Tag != gossip.GossipMessage_EMPTY {
+		if m.GetTag() != gossip.GossipMessage_EMPTY {
 			return fmt.Errorf("Tag should be %s", gossip.GossipMessage_Tag_name[int32(gossip.GossipMessage_EMPTY)])
 		}
 		return nil
 	}
 
 	if IsIdentityMsg(m) {
-		if m.Tag != gossip.GossipMessage_ORG_ONLY {
+		if m.GetTag() != gossip.GossipMessage_ORG_ONLY {
 			return fmt.Errorf("Tag should be %s", gossip.GossipMessage_Tag_name[int32(gossip.GossipMessage_ORG_ONLY)])
 		}
 		return nil
@@ -154,12 +154,12 @@ func IsTagLegal(m *gossip.GossipMessage) error {
 	if IsPullMsg(m) {
 		switch GetPullMsgType(m) {
 		case gossip.PullMsgType_BLOCK_MSG:
-			if m.Tag != gossip.GossipMessage_CHAN_AND_ORG {
+			if m.GetTag() != gossip.GossipMessage_CHAN_AND_ORG {
 				return fmt.Errorf("Tag should be %s", gossip.GossipMessage_Tag_name[int32(gossip.GossipMessage_CHAN_AND_ORG)])
 			}
 			return nil
 		case gossip.PullMsgType_IDENTITY_MSG:
-			if m.Tag != gossip.GossipMessage_EMPTY {
+			if m.GetTag() != gossip.GossipMessage_EMPTY {
 				return fmt.Errorf("Tag should be %s", gossip.GossipMessage_Tag_name[int32(gossip.GossipMessage_EMPTY)])
 			}
 			return nil
@@ -169,14 +169,14 @@ func IsTagLegal(m *gossip.GossipMessage) error {
 	}
 
 	if IsStateInfoMsg(m) || IsStateInfoPullRequestMsg(m) || IsStateInfoSnapshot(m) || IsRemoteStateMessage(m) {
-		if m.Tag != gossip.GossipMessage_CHAN_OR_ORG {
+		if m.GetTag() != gossip.GossipMessage_CHAN_OR_ORG {
 			return fmt.Errorf("Tag should be %s", gossip.GossipMessage_Tag_name[int32(gossip.GossipMessage_CHAN_OR_ORG)])
 		}
 		return nil
 	}
 
 	if IsLeadershipMsg(m) {
-		if m.Tag != gossip.GossipMessage_CHAN_AND_ORG {
+		if m.GetTag() != gossip.GossipMessage_CHAN_AND_ORG {
 			return fmt.Errorf("Tag should be %s", gossip.GossipMessage_Tag_name[int32(gossip.GossipMessage_CHAN_AND_ORG)])
 		}
 		return nil

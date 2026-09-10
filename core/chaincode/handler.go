@@ -152,9 +152,9 @@ type Handler struct {
 
 // handleMessage is called by ProcessStream to dispatch messages.
 func (h *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
-	chaincodeLogger.Debugf("[%s] Fabric side handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, h.state)
+	chaincodeLogger.Debugf("[%s] Fabric side handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.GetTxid()), msg.GetType(), h.state)
 
-	if msg.Type == pb.ChaincodeMessage_KEEPALIVE {
+	if msg.GetType() == pb.ChaincodeMessage_KEEPALIVE {
 		return nil
 	}
 
@@ -164,22 +164,22 @@ func (h *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
 	case Ready:
 		return h.handleMessageReadyState(msg)
 	default:
-		return errors.Errorf("handle message: invalid state %s for transaction %s", h.state, msg.Txid)
+		return errors.Errorf("handle message: invalid state %s for transaction %s", h.state, msg.GetTxid())
 	}
 }
 
 func (h *Handler) handleMessageCreatedState(msg *pb.ChaincodeMessage) error {
-	switch msg.Type {
+	switch msg.GetType() {
 	case pb.ChaincodeMessage_REGISTER:
 		h.HandleRegister(msg)
 	default:
-		return fmt.Errorf("[%s] Fabric side handler cannot handle message (%s) while in created state", msg.Txid, msg.Type)
+		return fmt.Errorf("[%s] Fabric side handler cannot handle message (%s) while in created state", msg.GetTxid(), msg.GetType())
 	}
 	return nil
 }
 
 func (h *Handler) handleMessageReadyState(msg *pb.ChaincodeMessage) error {
-	switch msg.Type {
+	switch msg.GetType() {
 	case pb.ChaincodeMessage_COMPLETED, pb.ChaincodeMessage_ERROR:
 		h.Notify(msg)
 
@@ -210,7 +210,7 @@ func (h *Handler) handleMessageReadyState(msg *pb.ChaincodeMessage) error {
 	case pb.ChaincodeMessage_PURGE_PRIVATE_DATA:
 		go h.HandleTransaction(msg, h.HandlePurgePrivateData)
 	default:
-		return fmt.Errorf("[%s] Fabric side handler cannot handle message (%s) while in ready state", msg.Txid, msg.Type)
+		return fmt.Errorf("[%s] Fabric side handler cannot handle message (%s) while in ready state", msg.GetTxid(), msg.GetType())
 	}
 
 	return nil
@@ -229,8 +229,8 @@ type handleFunc func(*pb.ChaincodeMessage, *TransactionContext) (*pb.ChaincodeMe
 func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFunc) {
 	startTime := time.Now()
 	meterLabels := []string{
-		"type", msg.Type.String(),
-		"channel", msg.ChannelId,
+		"type", msg.GetType().String(),
+		"channel", msg.GetChannelId(),
 		"chaincode", h.chaincodeID,
 	}
 
@@ -241,14 +241,14 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 	// See https://github.com/hyperledger/fabric/issues/5048
 	defer func() {
 		if r := recover(); r != nil {
-			chaincodeLogger.Errorf("[%s] Recovered from panic handling %s: %v", shorttxid(msg.Txid), msg.Type, r)
+			chaincodeLogger.Errorf("[%s] Recovered from panic handling %s: %v", shorttxid(msg.GetTxid()), msg.GetType(), r)
 			resp := &pb.ChaincodeMessage{
 				Type:      pb.ChaincodeMessage_ERROR,
-				Payload:   []byte(fmt.Sprintf("%s failed: transaction ID: %s: panic during execution", msg.Type, msg.Txid)),
-				Txid:      msg.Txid,
-				ChannelId: msg.ChannelId,
+				Payload:   []byte(fmt.Sprintf("%s failed: transaction ID: %s: panic during execution", msg.GetType(), msg.GetTxid())),
+				Txid:      msg.GetTxid(),
+				ChannelId: msg.GetChannelId(),
 			}
-			h.ActiveTransactions.Remove(msg.ChannelId, msg.Txid)
+			h.ActiveTransactions.Remove(msg.GetChannelId(), msg.GetTxid())
 			h.serialSendAsync(resp)
 
 			meterLabels = append(meterLabels, "success", "false")
@@ -257,17 +257,17 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 		}
 	}()
 
-	chaincodeLogger.Debugf("[%s] handling %s from chaincode", shorttxid(msg.Txid), msg.Type.String())
+	chaincodeLogger.Debugf("[%s] handling %s from chaincode", shorttxid(msg.GetTxid()), msg.GetType().String())
 	if !h.registerTxid(msg) {
 		return
 	}
 
 	var txContext *TransactionContext
 	var err error
-	if msg.Type == pb.ChaincodeMessage_INVOKE_CHAINCODE {
-		txContext, err = h.getTxContextForInvoke(msg.ChannelId, msg.Txid, msg.Payload, "")
+	if msg.GetType() == pb.ChaincodeMessage_INVOKE_CHAINCODE {
+		txContext, err = h.getTxContextForInvoke(msg.GetChannelId(), msg.GetTxid(), msg.GetPayload(), "")
 	} else {
-		txContext, err = h.isValidTxSim(msg.ChannelId, msg.Txid, "no ledger context")
+		txContext, err = h.isValidTxSim(msg.GetChannelId(), msg.GetTxid(), "no ledger context")
 	}
 
 	h.Metrics.ShimRequestsReceived.With(meterLabels...).Add(1)
@@ -278,16 +278,16 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 	}
 
 	if err != nil {
-		err = errors.Wrapf(err, "%s failed: transaction ID: %s", msg.Type, msg.Txid)
-		chaincodeLogger.Errorf("[%s] Failed to handle %s. error: %+v", shorttxid(msg.Txid), msg.Type, err)
-		resp = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(err.Error()), Txid: msg.Txid, ChannelId: msg.ChannelId}
+		err = errors.Wrapf(err, "%s failed: transaction ID: %s", msg.GetType(), msg.GetTxid())
+		chaincodeLogger.Errorf("[%s] Failed to handle %s. error: %+v", shorttxid(msg.GetTxid()), msg.GetType(), err)
+		resp = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(err.Error()), Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}
 	}
 
-	chaincodeLogger.Debugf("[%s] Completed %s. Sending %s", shorttxid(msg.Txid), msg.Type, resp.Type)
-	h.ActiveTransactions.Remove(msg.ChannelId, msg.Txid)
+	chaincodeLogger.Debugf("[%s] Completed %s. Sending %s", shorttxid(msg.GetTxid()), msg.GetType(), resp.GetType())
+	h.ActiveTransactions.Remove(msg.GetChannelId(), msg.GetTxid())
 	h.serialSendAsync(resp)
 
-	meterLabels = append(meterLabels, "success", strconv.FormatBool(resp.Type != pb.ChaincodeMessage_ERROR))
+	meterLabels = append(meterLabels, "success", strconv.FormatBool(resp.GetType() != pb.ChaincodeMessage_ERROR))
 	h.Metrics.ShimRequestDuration.With(meterLabels...).Observe(time.Since(startTime).Seconds())
 	h.Metrics.ShimRequestsCompleted.With(meterLabels...).Add(1)
 }
@@ -323,7 +323,7 @@ func (h *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	defer h.serialLock.Unlock()
 
 	if err := h.chatStream.Send(msg); err != nil {
-		err = errors.WithMessagef(err, "[%s] error sending %s", shorttxid(msg.Txid), msg.Type)
+		err = errors.WithMessagef(err, "[%s] error sending %s", shorttxid(msg.GetTxid()), msg.GetType())
 		chaincodeLogger.Errorf("%+v", err)
 		return err
 	}
@@ -343,8 +343,8 @@ func (h *Handler) serialSendAsync(msg *pb.ChaincodeMessage) {
 			resp := &pb.ChaincodeMessage{
 				Type:      pb.ChaincodeMessage_ERROR,
 				Payload:   []byte(err.Error()),
-				Txid:      msg.Txid,
-				ChannelId: msg.ChannelId,
+				Txid:      msg.GetTxid(),
+				ChannelId: msg.GetChannelId(),
 			}
 			h.Notify(resp)
 
@@ -436,7 +436,7 @@ func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error {
 				err := h.handleMessage(rmsg.msg)
 				if err != nil {
 					err = errors.WithMessage(err, "error handling message, ending stream")
-					chaincodeLogger.Errorf("[%s] %+v", shorttxid(rmsg.msg.Txid), err)
+					chaincodeLogger.Errorf("[%s] %+v", shorttxid(rmsg.msg.GetTxid()), err)
 					return err
 				}
 
@@ -492,9 +492,9 @@ func (h *Handler) notifyRegistry(err error) {
 
 // handleRegister is invoked when chaincode tries to register.
 func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
-	chaincodeLogger.Debugf("Received %s in state %s", msg.Type, h.state)
+	chaincodeLogger.Debugf("Received %s in state %s", msg.GetType(), h.state)
 	chaincodeID := &pb.ChaincodeID{}
-	err := proto.Unmarshal(msg.Payload, chaincodeID)
+	err := proto.Unmarshal(msg.GetPayload(), chaincodeID)
 	if err != nil {
 		chaincodeLogger.Errorf("Error in received %s, could NOT unmarshal registration info: %s", pb.ChaincodeMessage_REGISTER, err)
 		return
@@ -504,11 +504,11 @@ func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 	// Note: chaincodeID.Name is actually of the form name:version for older chaincodes, and
 	// of the form label:hash for newer chaincodes.  Either way, it is the handle by which
 	// we track the chaincode's registration.
-	if chaincodeID.Name == "" {
+	if chaincodeID.GetName() == "" {
 		h.notifyRegistry(errors.New("error in handling register chaincode, chaincodeID name is empty"))
 		return
 	}
-	h.chaincodeID = chaincodeID.Name
+	h.chaincodeID = chaincodeID.GetName()
 	err = h.Registry.Register(h)
 	if err != nil {
 		h.notifyRegistry(err)
@@ -531,13 +531,13 @@ func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 }
 
 func (h *Handler) Notify(msg *pb.ChaincodeMessage) {
-	tctx := h.TXContexts.Get(msg.ChannelId, msg.Txid)
+	tctx := h.TXContexts.Get(msg.GetChannelId(), msg.GetTxid())
 	if tctx == nil {
-		chaincodeLogger.Debugf("notifier Txid:%s, channelID:%s does not exist for handling message %s", msg.Txid, msg.ChannelId, msg.Type)
+		chaincodeLogger.Debugf("notifier Txid:%s, channelID:%s does not exist for handling message %s", msg.GetTxid(), msg.GetChannelId(), msg.GetType())
 		return
 	}
 
-	chaincodeLogger.Debugf("[%s] notifying Txid:%s, channelID:%s", shorttxid(msg.Txid), msg.Txid, msg.ChannelId)
+	chaincodeLogger.Debugf("[%s] notifying Txid:%s, channelID:%s", shorttxid(msg.GetTxid()), msg.GetTxid(), msg.GetChannelId())
 	tctx.ResponseNotifier <- msg
 	tctx.CloseQueryIterators()
 }
@@ -556,19 +556,19 @@ func (h *Handler) isValidTxSim(channelID string, txid string, fmtStr string, arg
 // register Txid to prevent overlapping handle messages from chaincode
 func (h *Handler) registerTxid(msg *pb.ChaincodeMessage) bool {
 	// Check if this is the unique state request from this chaincode txid
-	if h.ActiveTransactions.Add(msg.ChannelId, msg.Txid) {
+	if h.ActiveTransactions.Add(msg.GetChannelId(), msg.GetTxid()) {
 		return true
 	}
 
 	// Log the issue and drop the request
-	chaincodeLogger.Errorf("[%s] Another request pending for this CC: %s, Txid: %s, ChannelID: %s. Cannot process.", shorttxid(msg.Txid), h.chaincodeID, msg.Txid, msg.ChannelId)
+	chaincodeLogger.Errorf("[%s] Another request pending for this CC: %s, Txid: %s, ChannelID: %s. Cannot process.", shorttxid(msg.GetTxid()), h.chaincodeID, msg.GetTxid(), msg.GetChannelId())
 	return false
 }
 
 func (h *Handler) checkMetadataCap(msg *pb.ChaincodeMessage) error {
-	ac, exists := h.AppConfig.GetApplicationConfig(msg.ChannelId)
+	ac, exists := h.AppConfig.GetApplicationConfig(msg.GetChannelId())
 	if !exists {
-		return errors.Errorf("application config does not exist for %s", msg.ChannelId)
+		return errors.Errorf("application config does not exist for %s", msg.GetChannelId())
 	}
 
 	if !ac.Capabilities().KeyLevelEndorsement() {
@@ -578,9 +578,9 @@ func (h *Handler) checkMetadataCap(msg *pb.ChaincodeMessage) error {
 }
 
 func (h *Handler) checkPurgePrivateDataCap(msg *pb.ChaincodeMessage) error {
-	ac, exists := h.AppConfig.GetApplicationConfig(msg.ChannelId)
+	ac, exists := h.AppConfig.GetApplicationConfig(msg.GetChannelId())
 	if !exists {
-		return errors.Errorf("application config does not exist for %s", msg.ChannelId)
+		return errors.Errorf("application config does not exist for %s", msg.GetChannelId())
 	}
 
 	if !ac.Capabilities().PurgePvtData() {
@@ -638,15 +638,15 @@ func getReadWritePermission(chaincodeName, collection string, txContext *Transac
 // Handles query to ledger to get state
 func (h *Handler) HandleGetState(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	getState := &pb.GetState{}
-	err := proto.Unmarshal(msg.Payload, getState)
+	err := proto.Unmarshal(msg.GetPayload(), getState)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
 	var res []byte
 	namespaceID := txContext.NamespaceID
-	collection := getState.Collection
-	chaincodeLogger.Debugf("[%s] getting state for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), namespaceID, getState.Key, txContext.ChannelID)
+	collection := getState.GetCollection()
+	chaincodeLogger.Debugf("[%s] getting state for chaincode %s, key %s, channel %s", shorttxid(msg.GetTxid()), namespaceID, getState.GetKey(), txContext.ChannelID)
 
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
@@ -655,44 +655,44 @@ func (h *Handler) HandleGetState(msg *pb.ChaincodeMessage, txContext *Transactio
 		if err := errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
 			return nil, err
 		}
-		res, err = txContext.TXSimulator.GetPrivateData(namespaceID, collection, getState.Key)
+		res, err = txContext.TXSimulator.GetPrivateData(namespaceID, collection, getState.GetKey())
 	} else {
-		res, err = txContext.TXSimulator.GetState(namespaceID, getState.Key)
+		res, err = txContext.TXSimulator.GetState(namespaceID, getState.GetKey())
 	}
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	if res == nil {
-		chaincodeLogger.Debugf("[%s] No state associated with key: %s. Sending %s with an empty payload", shorttxid(msg.Txid), getState.Key, pb.ChaincodeMessage_RESPONSE)
+		chaincodeLogger.Debugf("[%s] No state associated with key: %s. Sending %s with an empty payload", shorttxid(msg.GetTxid()), getState.GetKey(), pb.ChaincodeMessage_RESPONSE)
 	}
 
 	// Send response msg back to chaincode. GetState will not trigger event
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}, nil
 }
 
 func (h *Handler) HandleGetPrivateDataHash(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	getState := &pb.GetState{}
-	err := proto.Unmarshal(msg.Payload, getState)
+	err := proto.Unmarshal(msg.GetPayload(), getState)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
 	var res []byte
 	namespaceID := txContext.NamespaceID
-	collection := getState.Collection
-	chaincodeLogger.Debugf("[%s] getting private data hash for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), namespaceID, getState.Key, txContext.ChannelID)
+	collection := getState.GetCollection()
+	chaincodeLogger.Debugf("[%s] getting private data hash for chaincode %s, key %s, channel %s", shorttxid(msg.GetTxid()), namespaceID, getState.GetKey(), txContext.ChannelID)
 	if txContext.IsInitTransaction {
 		return nil, errors.New("private data APIs are not allowed in chaincode Init()")
 	}
-	res, err = txContext.TXSimulator.GetPrivateDataHash(namespaceID, collection, getState.Key)
+	res, err = txContext.TXSimulator.GetPrivateDataHash(namespaceID, collection, getState.GetKey())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	if res == nil {
-		chaincodeLogger.Debugf("[%s] No state associated with key: %s. Sending %s with an empty payload", shorttxid(msg.Txid), getState.Key, pb.ChaincodeMessage_RESPONSE)
+		chaincodeLogger.Debugf("[%s] No state associated with key: %s. Sending %s with an empty payload", shorttxid(msg.GetTxid()), getState.GetKey(), pb.ChaincodeMessage_RESPONSE)
 	}
 	// Send response msg back to chaincode. GetState will not trigger event
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}, nil
 }
 
 // Handles query to ledger to get state metadata
@@ -703,14 +703,14 @@ func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 	}
 
 	getStateMetadata := &pb.GetStateMetadata{}
-	err = proto.Unmarshal(msg.Payload, getStateMetadata)
+	err = proto.Unmarshal(msg.GetPayload(), getStateMetadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
 	namespaceID := txContext.NamespaceID
-	collection := getStateMetadata.Collection
-	chaincodeLogger.Debugf("[%s] getting state metadata for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), namespaceID, getStateMetadata.Key, txContext.ChannelID)
+	collection := getStateMetadata.GetCollection()
+	chaincodeLogger.Debugf("[%s] getting state metadata for chaincode %s, key %s, channel %s", shorttxid(msg.GetTxid()), namespaceID, getStateMetadata.GetKey(), txContext.ChannelID)
 
 	var metadata map[string][]byte
 	if isCollectionSet(collection) {
@@ -720,9 +720,9 @@ func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 		if err := errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
 			return nil, err
 		}
-		metadata, err = txContext.TXSimulator.GetPrivateDataMetadata(namespaceID, collection, getStateMetadata.Key)
+		metadata, err = txContext.TXSimulator.GetPrivateDataMetadata(namespaceID, collection, getStateMetadata.GetKey())
 	} else {
-		metadata, err = txContext.TXSimulator.GetStateMetadata(namespaceID, getStateMetadata.Key)
+		metadata, err = txContext.TXSimulator.GetStateMetadata(namespaceID, getStateMetadata.GetKey())
 	}
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -738,18 +738,18 @@ func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 	}
 
 	// Send response msg back to chaincode. GetState will not trigger event
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}, nil
 }
 
 // Handles query to ledger to rage query state
 func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	getStateByRange := &pb.GetStateByRange{}
-	err := proto.Unmarshal(msg.Payload, getStateByRange)
+	err := proto.Unmarshal(msg.GetPayload(), getStateByRange)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	metadata, err := getQueryMetadataFromBytes(getStateByRange.Metadata)
+	metadata, err := getQueryMetadataFromBytes(getStateByRange.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
@@ -759,7 +759,7 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 	var rangeIter commonledger.ResultsIterator
 	isPaginated := false
 	namespaceID := txContext.NamespaceID
-	collection := getStateByRange.Collection
+	collection := getStateByRange.GetCollection()
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
@@ -768,19 +768,19 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 			return nil, err
 		}
 		rangeIter, err = txContext.TXSimulator.GetPrivateDataRangeScanIterator(namespaceID, collection,
-			getStateByRange.StartKey, getStateByRange.EndKey)
+			getStateByRange.GetStartKey(), getStateByRange.GetEndKey())
 	} else if isMetadataSetForPagination(metadata) {
 		isPaginated = true
-		startKey := getStateByRange.StartKey
+		startKey := getStateByRange.GetStartKey()
 		if isMetadataSetForPagination(metadata) {
-			if metadata.Bookmark != "" {
-				startKey = metadata.Bookmark
+			if metadata.GetBookmark() != "" {
+				startKey = metadata.GetBookmark()
 			}
 		}
 		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIteratorWithPagination(namespaceID,
-			startKey, getStateByRange.EndKey, metadata.PageSize)
+			startKey, getStateByRange.GetEndKey(), metadata.GetPageSize())
 	} else {
-		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIterator(namespaceID, getStateByRange.StartKey, getStateByRange.EndKey)
+		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIterator(namespaceID, getStateByRange.GetStartKey(), getStateByRange.GetEndKey())
 	}
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -800,59 +800,59 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 	}
 
 	chaincodeLogger.Debugf("Got keys and values. Sending %s", pb.ChaincodeMessage_RESPONSE)
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}, nil
 }
 
 // Handles query to ledger for query state next
 func (h *Handler) HandleQueryStateNext(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	queryStateNext := &pb.QueryStateNext{}
-	err := proto.Unmarshal(msg.Payload, queryStateNext)
+	err := proto.Unmarshal(msg.GetPayload(), queryStateNext)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	queryIter := txContext.GetQueryIterator(queryStateNext.Id)
+	queryIter := txContext.GetQueryIterator(queryStateNext.GetId())
 	if queryIter == nil {
 		return nil, errors.New("query iterator not found")
 	}
 
 	totalReturnLimit := h.calculateTotalReturnLimit(nil)
 
-	payload, err := h.QueryResponseBuilder.BuildQueryResponse(txContext, queryIter, queryStateNext.Id, false, totalReturnLimit)
+	payload, err := h.QueryResponseBuilder.BuildQueryResponse(txContext, queryIter, queryStateNext.GetId(), false, totalReturnLimit)
 	if err != nil {
-		txContext.CleanupQueryContext(queryStateNext.Id)
+		txContext.CleanupQueryContext(queryStateNext.GetId())
 		return nil, errors.WithStack(err)
 	}
 
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
-		txContext.CleanupQueryContext(queryStateNext.Id)
+		txContext.CleanupQueryContext(queryStateNext.GetId())
 		return nil, errors.Wrap(err, "marshal failed")
 	}
 
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}, nil
 }
 
 // Handles the closing of a state iterator
 func (h *Handler) HandleQueryStateClose(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	queryStateClose := &pb.QueryStateClose{}
-	err := proto.Unmarshal(msg.Payload, queryStateClose)
+	err := proto.Unmarshal(msg.GetPayload(), queryStateClose)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	iter := txContext.GetQueryIterator(queryStateClose.Id)
+	iter := txContext.GetQueryIterator(queryStateClose.GetId())
 	if iter != nil {
-		txContext.CleanupQueryContext(queryStateClose.Id)
+		txContext.CleanupQueryContext(queryStateClose.GetId())
 	}
 
-	payload := &pb.QueryResponse{HasMore: false, Id: queryStateClose.Id}
+	payload := &pb.QueryResponse{HasMore: false, Id: queryStateClose.GetId()}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
 		return nil, errors.Wrap(err, "marshal failed")
 	}
 
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}, nil
 }
 
 // Handles query to ledger to execute query state
@@ -860,12 +860,12 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 	iterID := h.UUIDGenerator.New()
 
 	getQueryResult := &pb.GetQueryResult{}
-	err := proto.Unmarshal(msg.Payload, getQueryResult)
+	err := proto.Unmarshal(msg.GetPayload(), getQueryResult)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	metadata, err := getQueryMetadataFromBytes(getQueryResult.Metadata)
+	metadata, err := getQueryMetadataFromBytes(getQueryResult.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
@@ -874,7 +874,7 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 	isPaginated := false
 	var executeIter commonledger.ResultsIterator
 	namespaceID := txContext.NamespaceID
-	collection := getQueryResult.Collection
+	collection := getQueryResult.GetCollection()
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
@@ -882,14 +882,14 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 		if err := errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
 			return nil, err
 		}
-		executeIter, err = txContext.TXSimulator.ExecuteQueryOnPrivateData(namespaceID, collection, getQueryResult.Query)
+		executeIter, err = txContext.TXSimulator.ExecuteQueryOnPrivateData(namespaceID, collection, getQueryResult.GetQuery())
 	} else if isMetadataSetForPagination(metadata) {
 		isPaginated = true
 		executeIter, err = txContext.TXSimulator.ExecuteQueryWithPagination(namespaceID,
-			getQueryResult.Query, metadata.Bookmark, metadata.PageSize)
+			getQueryResult.GetQuery(), metadata.GetBookmark(), metadata.GetPageSize())
 
 	} else {
-		executeIter, err = txContext.TXSimulator.ExecuteQuery(namespaceID, getQueryResult.Query)
+		executeIter, err = txContext.TXSimulator.ExecuteQuery(namespaceID, getQueryResult.GetQuery())
 	}
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -910,7 +910,7 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 	}
 
 	chaincodeLogger.Debugf("Got keys and values. Sending %s", pb.ChaincodeMessage_RESPONSE)
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}, nil
 }
 
 // Handles query to ledger history db
@@ -922,12 +922,12 @@ func (h *Handler) HandleGetHistoryForKey(msg *pb.ChaincodeMessage, txContext *Tr
 	namespaceID := txContext.NamespaceID
 
 	getHistoryForKey := &pb.GetHistoryForKey{}
-	err := proto.Unmarshal(msg.Payload, getHistoryForKey)
+	err := proto.Unmarshal(msg.GetPayload(), getHistoryForKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	historyIter, err := txContext.HistoryQueryExecutor.GetHistoryForKey(namespaceID, getHistoryForKey.Key)
+	historyIter, err := txContext.HistoryQueryExecutor.GetHistoryForKey(namespaceID, getHistoryForKey.GetKey())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -948,7 +948,7 @@ func (h *Handler) HandleGetHistoryForKey(msg *pb.ChaincodeMessage, txContext *Tr
 	}
 
 	chaincodeLogger.Debugf("Got keys and values. Sending %s", pb.ChaincodeMessage_RESPONSE)
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}, nil
 }
 
 func isCollectionSet(collection string) bool {
@@ -960,7 +960,7 @@ func isMetadataSetForPagination(metadata *pb.QueryMetadata) bool {
 		return false
 	}
 
-	if metadata.PageSize == 0 && metadata.Bookmark == "" {
+	if metadata.GetPageSize() == 0 && metadata.GetBookmark() == "" {
 		return false
 	}
 
@@ -982,7 +982,7 @@ func getQueryMetadataFromBytes(metadataBytes []byte) (*pb.QueryMetadata, error) 
 func (h *Handler) calculateTotalReturnLimit(metadata *pb.QueryMetadata) int32 {
 	totalReturnLimit := int32(h.TotalQueryLimit)
 	if metadata != nil {
-		pageSize := int32(metadata.PageSize)
+		pageSize := int32(metadata.GetPageSize())
 		if pageSize > 0 && pageSize < totalReturnLimit {
 			totalReturnLimit = pageSize
 		}
@@ -1005,7 +1005,7 @@ func (h *Handler) getTxContextForInvoke(channelID string, txid string, payload [
 	// Get the chaincodeID to invoke. The chaincodeID to be called may
 	// contain composite info like "chaincode-name:version/channel-name"
 	// We are not using version now but default to the latest
-	targetInstance := ParseName(chaincodeSpec.ChaincodeId.Name)
+	targetInstance := ParseName(chaincodeSpec.GetChaincodeId().GetName())
 
 	// If targetInstance is not an SCC, isValidTxSim should be called which will return an err.
 	// We do not want to propagate calls to user CCs when the original call was to a SCC
@@ -1027,13 +1027,13 @@ func (h *Handler) getTxContextForInvoke(channelID string, txid string, payload [
 
 func (h *Handler) HandlePutState(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	putState := &pb.PutState{}
-	err := proto.Unmarshal(msg.Payload, putState)
+	err := proto.Unmarshal(msg.GetPayload(), putState)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
 	namespaceID := txContext.NamespaceID
-	collection := putState.Collection
+	collection := putState.GetCollection()
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
@@ -1041,15 +1041,15 @@ func (h *Handler) HandlePutState(msg *pb.ChaincodeMessage, txContext *Transactio
 		if err := errorIfCreatorHasNoWritePermission(namespaceID, collection, txContext); err != nil {
 			return nil, err
 		}
-		err = txContext.TXSimulator.SetPrivateData(namespaceID, collection, putState.Key, putState.Value)
+		err = txContext.TXSimulator.SetPrivateData(namespaceID, collection, putState.GetKey(), putState.GetValue())
 	} else {
-		err = txContext.TXSimulator.SetState(namespaceID, putState.Key, putState.Value)
+		err = txContext.TXSimulator.SetState(namespaceID, putState.GetKey(), putState.GetValue())
 	}
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}, nil
 }
 
 func (h *Handler) HandlePutStateMetadata(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
@@ -1059,16 +1059,16 @@ func (h *Handler) HandlePutStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 	}
 
 	putStateMetadata := &pb.PutStateMetadata{}
-	err = proto.Unmarshal(msg.Payload, putStateMetadata)
+	err = proto.Unmarshal(msg.GetPayload(), putStateMetadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
 	metadata := make(map[string][]byte)
-	metadata[putStateMetadata.Metadata.Metakey] = putStateMetadata.Metadata.Value
+	metadata[putStateMetadata.GetMetadata().GetMetakey()] = putStateMetadata.GetMetadata().GetValue()
 
 	namespaceID := txContext.NamespaceID
-	collection := putStateMetadata.Collection
+	collection := putStateMetadata.GetCollection()
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
@@ -1076,26 +1076,26 @@ func (h *Handler) HandlePutStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 		if err := errorIfCreatorHasNoWritePermission(namespaceID, collection, txContext); err != nil {
 			return nil, err
 		}
-		err = txContext.TXSimulator.SetPrivateDataMetadata(namespaceID, collection, putStateMetadata.Key, metadata)
+		err = txContext.TXSimulator.SetPrivateDataMetadata(namespaceID, collection, putStateMetadata.GetKey(), metadata)
 	} else {
-		err = txContext.TXSimulator.SetStateMetadata(namespaceID, putStateMetadata.Key, metadata)
+		err = txContext.TXSimulator.SetStateMetadata(namespaceID, putStateMetadata.GetKey(), metadata)
 	}
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}, nil
 }
 
 func (h *Handler) HandleDelState(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	delState := &pb.DelState{}
-	err := proto.Unmarshal(msg.Payload, delState)
+	err := proto.Unmarshal(msg.GetPayload(), delState)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
 	namespaceID := txContext.NamespaceID
-	collection := delState.Collection
+	collection := delState.GetCollection()
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
@@ -1103,16 +1103,16 @@ func (h *Handler) HandleDelState(msg *pb.ChaincodeMessage, txContext *Transactio
 		if err := errorIfCreatorHasNoWritePermission(namespaceID, collection, txContext); err != nil {
 			return nil, err
 		}
-		err = txContext.TXSimulator.DeletePrivateData(namespaceID, collection, delState.Key)
+		err = txContext.TXSimulator.DeletePrivateData(namespaceID, collection, delState.GetKey())
 	} else {
-		err = txContext.TXSimulator.DeleteState(namespaceID, delState.Key)
+		err = txContext.TXSimulator.DeleteState(namespaceID, delState.GetKey())
 	}
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	// Send response msg back to chaincode.
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}, nil
 }
 
 func (h *Handler) HandlePurgePrivateData(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
@@ -1121,12 +1121,12 @@ func (h *Handler) HandlePurgePrivateData(msg *pb.ChaincodeMessage, txContext *Tr
 		return nil, err
 	}
 	delState := &pb.DelState{}
-	if err := proto.Unmarshal(msg.Payload, delState); err != nil {
+	if err := proto.Unmarshal(msg.GetPayload(), delState); err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
 	namespaceID := txContext.NamespaceID
-	collection := delState.Collection
+	collection := delState.GetCollection()
 	if collection == "" {
 		return nil, errors.New("only applicable for private data")
 	}
@@ -1139,20 +1139,20 @@ func (h *Handler) HandlePurgePrivateData(msg *pb.ChaincodeMessage, txContext *Tr
 		return nil, err
 	}
 
-	if err := txContext.TXSimulator.PurgePrivateData(namespaceID, collection, delState.Key); err != nil {
+	if err := txContext.TXSimulator.PurgePrivateData(namespaceID, collection, delState.GetKey()); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	// Send response msg back to chaincode.
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}, nil
 }
 
 // Handles requests that modify ledger state
 func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
-	chaincodeLogger.Debugf("[%s] C-call-C", shorttxid(msg.Txid))
+	chaincodeLogger.Debugf("[%s] C-call-C", shorttxid(msg.GetTxid()))
 
 	chaincodeSpec := &pb.ChaincodeSpec{}
-	err := proto.Unmarshal(msg.Payload, chaincodeSpec)
+	err := proto.Unmarshal(msg.GetPayload(), chaincodeSpec)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
@@ -1160,19 +1160,19 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	// Get the chaincodeID to invoke. The chaincodeID to be called may
 	// contain composite info like "chaincode-name:version/channel-name".
 	// We are not using version now but default to the latest.
-	targetInstance := ParseName(chaincodeSpec.ChaincodeId.Name)
+	targetInstance := ParseName(chaincodeSpec.GetChaincodeId().GetName())
 	chaincodeSpec.ChaincodeId.Name = targetInstance.ChaincodeName
 	if targetInstance.ChannelID == "" {
 		// use caller's channel as the called chaincode is in the same channel
 		targetInstance.ChannelID = txContext.ChannelID
 	}
-	chaincodeLogger.Debugf("[%s] C-call-C %s on channel %s", shorttxid(msg.Txid), targetInstance.ChaincodeName, targetInstance.ChannelID)
+	chaincodeLogger.Debugf("[%s] C-call-C %s on channel %s", shorttxid(msg.GetTxid()), targetInstance.ChaincodeName, targetInstance.ChannelID)
 
 	err = h.checkACL(txContext.SignedProp, txContext.Proposal, targetInstance)
 	if err != nil {
 		chaincodeLogger.Errorf(
 			"[%s] C-call-C %s on channel %s failed check ACL [%v]: [%s]",
-			shorttxid(msg.Txid),
+			shorttxid(msg.GetTxid()),
 			targetInstance.ChaincodeName,
 			targetInstance.ChannelID,
 			txContext.SignedProp,
@@ -1184,7 +1184,7 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	// Set up a new context for the called chaincode if on a different channel
 	// We grab the called channel's ledger simulator to hold the new state
 	txParams := &ccprovider.TransactionParams{
-		TxID:                 msg.Txid,
+		TxID:                 msg.GetTxid(),
 		ChannelID:            targetInstance.ChannelID,
 		SignedProp:           txContext.SignedProp,
 		Proposal:             txContext.Proposal,
@@ -1198,7 +1198,7 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 			return nil, errors.Errorf("failed to find ledger for channel: %s", targetInstance.ChannelID)
 		}
 
-		sim, err := lgr.NewTxSimulator(msg.Txid)
+		sim, err := lgr.NewTxSimulator(msg.GetTxid())
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -1214,7 +1214,7 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	}
 
 	// Execute the chaincode... this CANNOT be an init at least for now
-	responseMessage, err := h.Invoker.Invoke(txParams, targetInstance.ChaincodeName, chaincodeSpec.Input)
+	responseMessage, err := h.Invoker.Invoke(txParams, targetInstance.ChaincodeName, chaincodeSpec.GetInput())
 	if err != nil {
 		return nil, errors.Wrap(err, "execute failed")
 	}
@@ -1226,22 +1226,22 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 		return nil, errors.Wrap(err, "marshal failed")
 	}
 
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.GetTxid(), ChannelId: msg.GetChannelId()}, nil
 }
 
 func (h *Handler) Execute(txParams *ccprovider.TransactionParams, namespace string, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
 	chaincodeLogger.Debugf("Entry")
 	defer chaincodeLogger.Debugf("Exit")
 
-	txParams.CollectionStore = h.getCollectionStore(msg.ChannelId)
-	txParams.IsInitTransaction = (msg.Type == pb.ChaincodeMessage_INIT)
+	txParams.CollectionStore = h.getCollectionStore(msg.GetChannelId())
+	txParams.IsInitTransaction = (msg.GetType() == pb.ChaincodeMessage_INIT)
 	txParams.NamespaceID = namespace
 
 	txctx, err := h.TXContexts.Create(txParams)
 	if err != nil {
 		return nil, err
 	}
-	defer h.TXContexts.Delete(msg.ChannelId, msg.Txid)
+	defer h.TXContexts.Delete(msg.GetChannelId(), msg.GetTxid())
 
 	if err := h.setChaincodeProposal(txParams.SignedProp, txParams.Proposal, msg); err != nil {
 		return nil, err

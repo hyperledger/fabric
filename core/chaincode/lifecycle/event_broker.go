@@ -60,7 +60,7 @@ func (b *EventBroker) RegisterListener(
 		}
 		legacyDefinition := &ledger.ChaincodeDefinition{
 			Name:              chaincodeName,
-			Version:           cachedChaincode.Definition.EndorsementInfo.Version,
+			Version:           cachedChaincode.Definition.EndorsementInfo.GetVersion(),
 			Hash:              []byte(cachedChaincode.InstallInfo.PackageID),
 			CollectionConfigs: cachedChaincode.Definition.Collections,
 		}
@@ -97,7 +97,7 @@ func (b *EventBroker) ProcessInstallEvent(localChaincode *LocalChaincode) {
 			}
 			ccdef := &ledger.ChaincodeDefinition{
 				Name:              chaincodeName,
-				Version:           cachedChaincode.Definition.EndorsementInfo.Version,
+				Version:           cachedChaincode.Definition.EndorsementInfo.GetVersion(),
 				Hash:              []byte(cachedChaincode.InstallInfo.PackageID),
 				CollectionConfigs: cachedChaincode.Definition.Collections,
 			}
@@ -136,7 +136,7 @@ func (b *EventBroker) ProcessApproveOrDefineEvent(channelID string, chaincodeNam
 	}
 	ccdef := &ledger.ChaincodeDefinition{
 		Name:              chaincodeName,
-		Version:           cachedChaincode.Definition.EndorsementInfo.Version,
+		Version:           cachedChaincode.Definition.EndorsementInfo.GetVersion(),
 		Hash:              []byte(cachedChaincode.InstallInfo.PackageID),
 		CollectionConfigs: cachedChaincode.Definition.Collections,
 	}

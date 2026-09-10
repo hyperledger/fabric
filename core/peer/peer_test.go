@@ -186,7 +186,7 @@ func TestCreateChannel(t *testing.T) {
 	block, err = ConfigBlockFromLedger(ledger)
 	require.NoError(t, err, "Failed to get config block from ledger")
 	require.NotNil(t, block, "Config block should not be nil")
-	require.Equal(t, uint64(0), block.Header.Number, "config block should have been block 0")
+	require.Equal(t, uint64(0), block.GetHeader().GetNumber(), "config block should have been block 0")
 
 	// Bad ledger
 	ledger = peerInstance.GetLedger("BogusChain")
@@ -250,7 +250,7 @@ func TestCreateChannelBySnapshot(t *testing.T) {
 
 	// wait until ledger creation is done
 	ledgerCreationDone := func() bool {
-		return !peerInstance.JoinBySnaphotStatus().InProgress
+		return !peerInstance.JoinBySnaphotStatus().GetInProgress()
 	}
 	require.Eventually(t, ledgerCreationDone, time.Minute, time.Second)
 

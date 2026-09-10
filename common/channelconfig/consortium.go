@@ -39,7 +39,7 @@ func NewConsortiumConfig(consortiumGroup *cb.ConfigGroup, mspConfig *MSPConfigHa
 		return nil, errors.Wrap(err, "failed to deserialize values")
 	}
 
-	for orgName, orgGroup := range consortiumGroup.Groups {
+	for orgName, orgGroup := range consortiumGroup.GetGroups() {
 		var err error
 		if cc.orgs[orgName], err = NewOrganizationConfig(orgName, orgGroup, mspConfig); err != nil {
 			return nil, err

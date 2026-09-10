@@ -78,25 +78,25 @@ func (p *policyChecker) CheckPolicy(channelID, policyName string, signedProp *pb
 	}
 
 	// Prepare SignedData
-	proposal, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
+	proposal, err := protoutil.UnmarshalProposal(signedProp.GetProposalBytes())
 	if err != nil {
 		return fmt.Errorf("Failing extracting proposal during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
 	}
 
-	header, err := protoutil.UnmarshalHeader(proposal.Header)
+	header, err := protoutil.UnmarshalHeader(proposal.GetHeader())
 	if err != nil {
 		return fmt.Errorf("Failing extracting header during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
 	}
 
-	shdr, err := protoutil.UnmarshalSignatureHeader(header.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(header.GetSignatureHeader())
 	if err != nil {
 		return fmt.Errorf("Invalid Proposal's SignatureHeader during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
 	}
 
 	sd := []*protoutil.SignedData{{
-		Data:      signedProp.ProposalBytes,
-		Identity:  shdr.Creator,
-		Signature: signedProp.Signature,
+		Data:      signedProp.GetProposalBytes(),
+		Identity:  shdr.GetCreator(),
+		Signature: signedProp.GetSignature(),
 	}}
 
 	return p.CheckPolicyBySignedData(channelID, policyName, sd)
@@ -113,25 +113,25 @@ func (p *policyChecker) CheckPolicyNoChannel(policyName string, signedProp *pb.S
 		return fmt.Errorf("Invalid signed proposal during channelless check policy with policy [%s]", policyName)
 	}
 
-	proposal, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
+	proposal, err := protoutil.UnmarshalProposal(signedProp.GetProposalBytes())
 	if err != nil {
 		return fmt.Errorf("Failing extracting proposal during channelless check policy with policy [%s]: [%s]", policyName, err)
 	}
 
-	header, err := protoutil.UnmarshalHeader(proposal.Header)
+	header, err := protoutil.UnmarshalHeader(proposal.GetHeader())
 	if err != nil {
 		return fmt.Errorf("Failing extracting header during channelless check policy with policy [%s]: [%s]", policyName, err)
 	}
 
-	shdr, err := protoutil.UnmarshalSignatureHeader(header.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(header.GetSignatureHeader())
 	if err != nil {
 		return fmt.Errorf("Invalid Proposal's SignatureHeader during channelless check policy with policy [%s]: [%s]", policyName, err)
 	}
 
 	// Deserialize proposal's creator with the local MSP
-	id, err := p.localMSP.DeserializeIdentity(shdr.Creator)
+	id, err := p.localMSP.DeserializeIdentity(shdr.GetCreator())
 	if err != nil {
-		logger.Warnw("Failed deserializing proposal creator during channelless check policy", "error", err, "policyName", policyName, "identity", protoutil.LogMessageForSerializedIdentity(shdr.Creator))
+		logger.Warnw("Failed deserializing proposal creator during channelless check policy", "error", err, "policyName", policyName, "identity", protoutil.LogMessageForSerializedIdentity(shdr.GetCreator()))
 		return fmt.Errorf("Failed deserializing proposal creator during channelless check policy with policy [%s]: [%s]", policyName, err)
 	}
 
@@ -144,12 +144,12 @@ func (p *policyChecker) CheckPolicyNoChannel(policyName string, signedProp *pb.S
 	// Verify that proposal's creator satisfies the principal
 	err = id.SatisfiesPrincipal(principal)
 	if err != nil {
-		logger.Warnw("Failed verifying that proposal's creator satisfies local MSP principal during channelless check policy", "error", err, "policyName", policyName, "requiredPrincipal", principal, "signingIdentity", protoutil.LogMessageForSerializedIdentity(shdr.Creator))
+		logger.Warnw("Failed verifying that proposal's creator satisfies local MSP principal during channelless check policy", "error", err, "policyName", policyName, "requiredPrincipal", principal, "signingIdentity", protoutil.LogMessageForSerializedIdentity(shdr.GetCreator()))
 		return fmt.Errorf("Failed verifying that proposal's creator satisfies local MSP principal during channelless check policy with policy [%s]: [%s]", policyName, err)
 	}
 
 	// Verify the signature
-	return id.Verify(signedProp.ProposalBytes, signedProp.Signature)
+	return id.Verify(signedProp.GetProposalBytes(), signedProp.GetSignature())
 }
 
 // CheckPolicyBySignedData checks that the passed signed data is valid with the respect to

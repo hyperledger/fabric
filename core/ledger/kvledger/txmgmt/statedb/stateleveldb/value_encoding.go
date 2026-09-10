@@ -30,12 +30,12 @@ func decodeValue(encodedValue []byte) (*statedb.VersionedValue, error) {
 	if err != nil {
 		return nil, err
 	}
-	ver, _, err := version.NewHeightFromBytes(dbValue.Version)
+	ver, _, err := version.NewHeightFromBytes(dbValue.GetVersion())
 	if err != nil {
 		return nil, err
 	}
-	val := dbValue.Value
-	metadata := dbValue.Metadata
+	val := dbValue.GetValue()
+	metadata := dbValue.GetMetadata()
 	// protobuf always makes an empty byte array as nil
 	if val == nil {
 		val = []byte{}

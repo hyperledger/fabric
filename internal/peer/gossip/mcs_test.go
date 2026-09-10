@@ -66,7 +66,7 @@ func TestPKIidOfCert(t *testing.T) {
 	// Check that pkid is correctly computed
 	id, err := deserializersManager.Deserialize(peerIdentity)
 	require.NoError(t, err, "Failed getting validated identity from [% x]", []byte(peerIdentity))
-	idRaw := append([]byte(id.Mspid), id.IdBytes...)
+	idRaw := append([]byte(id.GetMspid()), id.GetIdBytes()...)
 	require.NoError(t, err, "Failed marshalling identity identifier [% x]: [%s]", peerIdentity, err)
 	h := sha256.New()
 	h.Write(idRaw)
@@ -295,7 +295,7 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner *mocks.S
 	if len(dataHash) != 0 {
 		block.Header.DataHash = dataHash
 	} else {
-		block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+		block.Header.DataHash = protoutil.BlockDataHash(block.GetData())
 	}
 
 	// Add signer's signature to the block
@@ -310,7 +310,7 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner *mocks.S
 	// information required beyond the fact that the metadata item is signed.
 	blockSignatureValue := []byte(nil)
 
-	msg := util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header))
+	msg := util.ConcatenateBytes(blockSignatureValue, blockSignature.GetSignatureHeader(), protoutil.BlockHeaderBytes(block.GetHeader()))
 	localSigner.SignReturns(msg, nil)
 	blockSignature.Signature, err = localSigner.Sign(msg)
 	require.NoError(t, err, "Failed signing block")

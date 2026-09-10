@@ -135,12 +135,12 @@ func (i *InstalledPackageGetter) Get() error {
 		return errors.New("received nil proposal response")
 	}
 
-	if proposalResponse.Response == nil {
+	if proposalResponse.GetResponse() == nil {
 		return errors.New("received proposal response with nil response")
 	}
 
-	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("proposal failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+	if proposalResponse.GetResponse().GetStatus() != int32(cb.Status_SUCCESS) {
+		return errors.Errorf("proposal failed with status: %d - %s", proposalResponse.GetResponse().GetStatus(), proposalResponse.GetResponse().GetMessage())
 	}
 
 	return i.writePackage(proposalResponse)
@@ -148,7 +148,7 @@ func (i *InstalledPackageGetter) Get() error {
 
 func (i *InstalledPackageGetter) writePackage(proposalResponse *pb.ProposalResponse) error {
 	result := &lb.GetInstalledChaincodePackageResult{}
-	err := proto.Unmarshal(proposalResponse.Response.Payload, result)
+	err := proto.Unmarshal(proposalResponse.GetResponse().GetPayload(), result)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
@@ -161,7 +161,7 @@ func (i *InstalledPackageGetter) writePackage(proposalResponse *pb.ProposalRespo
 		return err
 	}
 
-	err = i.Writer.WriteFile(dir, name, result.ChaincodeInstallPackage)
+	err = i.Writer.WriteFile(dir, name, result.GetChaincodeInstallPackage())
 	if err != nil {
 		err = errors.Wrapf(err, "failed to write chaincode package to %s", outputFile)
 		logger.Error(err.Error())

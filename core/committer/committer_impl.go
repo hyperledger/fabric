@@ -79,7 +79,7 @@ func (lc *LedgerCommitter) LedgerHeight() (uint64, error) {
 		return 0, err
 	}
 
-	return info.Height, nil
+	return info.GetHeight(), nil
 }
 
 // DoesPvtDataInfoExistInLedger returns true if the ledger has pvtdata info

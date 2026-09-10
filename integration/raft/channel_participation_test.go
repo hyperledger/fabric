@@ -280,7 +280,7 @@ var _ = Describe("ChannelParticipation", func() {
 			env := CreateBroadcastEnvelope(network, peer, "participation-trophy", []byte("hello"))
 			resp, err := ordererclient.Broadcast(network, orderer1, env)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
+			Expect(resp.GetStatus()).To(Equal(common.Status_BAD_REQUEST))
 
 			By("listing all channels for orderer1")
 			cl = channelparticipation.List(network, orderer1)
@@ -918,7 +918,7 @@ var _ = Describe("ChannelParticipation", func() {
 			// make sure we can join using a config block from one of the other orderers
 
 			configBlockSC := nwo.GetConfigBlock(network, org1peer0, orderer2, "systemchannel")
-			Expect(configBlockSC.Header.Number).To(Equal(uint64(3)))
+			Expect(configBlockSC.GetHeader().GetNumber()).To(Equal(uint64(3)))
 
 			expectedChannelInfo = channelparticipation.ChannelInfo{
 				Name:              "systemchannel",
@@ -1601,7 +1601,7 @@ func broadcastTransactionFunc(n *nwo.Network, o *nwo.Orderer, env *common.Envelo
 	return func() common.Status {
 		resp, err := ordererclient.Broadcast(n, o, env)
 		Expect(err).NotTo(HaveOccurred())
-		return resp.Status
+		return resp.GetStatus()
 	}
 }
 

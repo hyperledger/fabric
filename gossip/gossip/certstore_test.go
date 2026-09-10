@@ -158,7 +158,7 @@ func TestCertRevocation(t *testing.T) {
 				Tag: proto.GossipMessage_EMPTY,
 				Content: &proto.GossipMessage_DataDig{
 					DataDig: &proto.DataDigest{
-						Nonce:   hello.Nonce,
+						Nonce:   hello.GetNonce(),
 						MsgType: proto.PullMsgType_IDENTITY_MSG,
 						Digests: [][]byte{[]byte("B")},
 					},
@@ -234,7 +234,7 @@ func TestCertExpiration(t *testing.T) {
 	acceptIdentityPullMsgs := func(o any) bool {
 		m := o.(protoext.ReceivedMessage).GetGossipMessage()
 		if protoext.IsPullMsg(m.GossipMessage) && protoext.IsDigestMsg(m.GossipMessage) {
-			for _, dig := range m.GetDataDig().Digests {
+			for _, dig := range m.GetDataDig().GetDigests() {
 				if bytes.Equal(dig, fmt.Appendf(nil, "127.0.0.1:%d", port0)) {
 					identitiesGotViaPull <- struct{}{}
 				}
@@ -278,9 +278,9 @@ func testCertificateUpdate(t *testing.T, shouldSucceed bool, certStore *certStor
 	select {
 	case msg := <-responseChan:
 		if shouldSucceed {
-			require.Len(t, msg.GetDataDig().Digests, 2, "Valid identity hasn't entered the certStore")
+			require.Len(t, msg.GetDataDig().GetDigests(), 2, "Valid identity hasn't entered the certStore")
 		} else {
-			require.Len(t, msg.GetDataDig().Digests, 1, "Mismatched identity has been injected into certStore")
+			require.Len(t, msg.GetDataDig().GetDigests(), 1, "Mismatched identity has been injected into certStore")
 		}
 	case <-time.After(time.Second):
 		t.Fatal("Didn't respond with a digest message in a timely manner")
@@ -336,7 +336,7 @@ func createBadlySignedUpdateMessage() *protoext.SignedGossipMessage {
 	}
 	sMsg.Sign(signer)
 	// This would simulate a bad sig
-	if sMsg.Envelope.Signature[0] == 0 {
+	if sMsg.Envelope.GetSignature()[0] == 0 {
 		sMsg.Envelope.Signature[0] = 1
 	} else {
 		sMsg.Envelope.Signature[0] = 0
@@ -424,11 +424,11 @@ func createObjects(updateFactory func(uint64) protoext.ReceivedMessage, msgCons 
 	adapter := &pull.PullAdapter{
 		Sndr: sender,
 		MsgCons: func(msg *protoext.SignedGossipMessage) {
-			certStore.idMapper.Put(msg.GetPeerIdentity().PkiId, msg.GetPeerIdentity().Cert)
+			certStore.idMapper.Put(msg.GetPeerIdentity().GetPkiId(), msg.GetPeerIdentity().GetCert())
 			msgCons(msg)
 		},
 		IdExtractor: func(msg *protoext.SignedGossipMessage) string {
-			return string(msg.GetPeerIdentity().PkiId)
+			return string(msg.GetPeerIdentity().GetPkiId())
 		},
 		MemSvc: memberSvc,
 	}
@@ -452,12 +452,12 @@ func createObjects(updateFactory func(uint64) protoext.ReceivedMessage, msgCons 
 
 		if hello := msg.GetHello(); hello != nil && !sentHello {
 			sentHello = true
-			go certStore.handleMessage(createDigest(hello.Nonce))
+			go certStore.handleMessage(createDigest(hello.GetNonce()))
 		}
 
 		if dataReq := msg.GetDataReq(); dataReq != nil && !sentDataReq {
 			sentDataReq = true
-			certStore.handleMessage(updateFactory(dataReq.Nonce))
+			certStore.handleMessage(updateFactory(dataReq.GetNonce()))
 			wg.Done()
 		}
 	})

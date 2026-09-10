@@ -104,13 +104,13 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 	logger.Debugf("[%s] Dispatch starts for bytes %p", chainID, envBytes)
 
 	// get channel header
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return peer.TxValidationCode_BAD_CHANNEL_HEADER, err
 	}
 
 	// get header extensions so we have the chaincode ID
-	hdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(chdr.Extension)
+	hdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(chdr.GetExtension())
 	if err != nil {
 		return peer.TxValidationCode_BAD_HEADER_EXTENSION, err
 	}
@@ -121,22 +121,22 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 		return peer.TxValidationCode_BAD_RESPONSE_PAYLOAD, errors.WithMessage(err, "GetActionFromEnvelope failed")
 	}
 	txRWSet := &rwsetutil.TxRwSet{}
-	if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
+	if err = txRWSet.FromProtoBytes(respPayload.GetResults()); err != nil {
 		return peer.TxValidationCode_BAD_RWSET, errors.WithMessage(err, "txRWSet.FromProtoBytes failed")
 	}
 
 	// Verify the header extension and response payload contain the ChaincodeId
-	if hdrExt.ChaincodeId == nil {
+	if hdrExt.GetChaincodeId() == nil {
 		return peer.TxValidationCode_INVALID_OTHER_REASON, errors.New("nil ChaincodeId in header extension")
 	}
 
-	if respPayload.ChaincodeId == nil {
+	if respPayload.GetChaincodeId() == nil {
 		return peer.TxValidationCode_INVALID_OTHER_REASON, errors.New("nil ChaincodeId in ChaincodeAction")
 	}
 
 	// get name and version of the cc we invoked
-	ccID := hdrExt.ChaincodeId.Name
-	ccVer := respPayload.ChaincodeId.Version
+	ccID := hdrExt.GetChaincodeId().GetName()
+	ccVer := respPayload.GetChaincodeId().GetVersion()
 
 	// sanity check on ccID
 	if ccID == "" {
@@ -144,8 +144,8 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 		logger.Errorf("%+v", err)
 		return peer.TxValidationCode_INVALID_CHAINCODE, err
 	}
-	if ccID != respPayload.ChaincodeId.Name {
-		err = errors.Errorf("inconsistent ccid info (%s/%s)", ccID, respPayload.ChaincodeId.Name)
+	if ccID != respPayload.GetChaincodeId().GetName() {
+		err = errors.Errorf("inconsistent ccid info (%s/%s)", ccID, respPayload.GetChaincodeId().GetName())
 		logger.Errorf("%+v", err)
 		return peer.TxValidationCode_INVALID_CHAINCODE, err
 	}
@@ -160,10 +160,10 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 	wrNamespace[ccID] = true
 	if respPayload.Events != nil {
 		ccEvent := &peer.ChaincodeEvent{}
-		if err = proto.Unmarshal(respPayload.Events, ccEvent); err != nil {
+		if err = proto.Unmarshal(respPayload.GetEvents(), ccEvent); err != nil {
 			return peer.TxValidationCode_INVALID_OTHER_REASON, errors.Wrapf(err, "invalid chaincode event")
 		}
-		if ccEvent.ChaincodeId != ccID {
+		if ccEvent.GetChaincodeId() != ccID {
 			return peer.TxValidationCode_INVALID_OTHER_REASON, errors.Errorf("chaincode event chaincode id does not match chaincode action chaincode id")
 		}
 	}
@@ -191,7 +191,7 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 		// Get latest chaincode validation plugin name and policy
 		validationPlugin, args, err := v.GetInfoForValidate(chdr, ns)
 		if err != nil {
-			logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.TxId, err)
+			logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.GetTxId(), err)
 			return peer.TxValidationCode_INVALID_CHAINCODE, err
 		}
 
@@ -200,8 +200,8 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 			Seq:        seq,
 			Envelope:   envBytes,
 			Block:      block,
-			TxID:       chdr.TxId,
-			Channel:    chdr.ChannelId,
+			TxID:       chdr.GetTxId(),
+			Channel:    chdr.GetChannelId(),
 			Namespace:  ns,
 			Policy:     args,
 			PluginName: validationPlugin,
@@ -265,9 +265,9 @@ func (v *dispatcherImpl) getCDataForCC(channelID, ccid string) (string, []byte, 
 // GetInfoForValidate gets the ChaincodeInstance(with latest version) of tx, validation plugin and policy
 func (v *dispatcherImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID string) (string, []byte, error) {
 	// obtain name of the validation plugin and the policy
-	plugin, args, err := v.getCDataForCC(chdr.ChannelId, ccID)
+	plugin, args, err := v.getCDataForCC(chdr.GetChannelId(), ccID)
 	if err != nil {
-		logger.Errorf("Unable to get chaincode data from ledger for txid %s, due to %s", chdr.TxId, err)
+		logger.Errorf("Unable to get chaincode data from ledger for txid %s, due to %s", chdr.GetTxId(), err)
 		return "", nil, err
 	}
 	return plugin, args, nil
@@ -277,23 +277,23 @@ func (v *dispatcherImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID str
 // performs a ledger write
 func (v *dispatcherImpl) txWritesToNamespace(ns *rwsetutil.NsRwSet) bool {
 	// check for public writes first
-	if ns.KvRwSet != nil && len(ns.KvRwSet.Writes) > 0 {
+	if ns.KvRwSet != nil && len(ns.KvRwSet.GetWrites()) > 0 {
 		return true
 	}
 
 	// check for private writes for all collections
 	for _, c := range ns.CollHashedRwSets {
-		if c.HashedRwSet != nil && len(c.HashedRwSet.HashedWrites) > 0 {
+		if c.HashedRwSet != nil && len(c.HashedRwSet.GetHashedWrites()) > 0 {
 			return true
 		}
 
 		// private metadata updates
-		if c.HashedRwSet != nil && len(c.HashedRwSet.MetadataWrites) > 0 {
+		if c.HashedRwSet != nil && len(c.HashedRwSet.GetMetadataWrites()) > 0 {
 			return true
 		}
 	}
 
-	if ns.KvRwSet != nil && len(ns.KvRwSet.MetadataWrites) > 0 {
+	if ns.KvRwSet != nil && len(ns.KvRwSet.GetMetadataWrites()) > 0 {
 		return true
 	}
 

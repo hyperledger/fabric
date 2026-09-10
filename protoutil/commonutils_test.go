@@ -80,8 +80,8 @@ func TestUnmarshalSignatureHeader(t *testing.T) {
 		sighdrBytes := MarshalOrPanic(sighdr)
 		sighdr, err := UnmarshalSignatureHeader(sighdrBytes)
 		require.NoError(t, err, "Unexpected error unmarshalling signature header")
-		require.Nil(t, sighdr.Creator)
-		require.Nil(t, sighdr.Nonce)
+		require.Nil(t, sighdr.GetCreator())
+		require.Nil(t, sighdr.GetNonce())
 	})
 
 	t.Run("valid header", func(t *testing.T) {
@@ -92,8 +92,8 @@ func TestUnmarshalSignatureHeader(t *testing.T) {
 		sighdrBytes := MarshalOrPanic(sighdr)
 		sighdr, err := UnmarshalSignatureHeader(sighdrBytes)
 		require.NoError(t, err, "Unexpected error unmarshalling signature header")
-		require.Equal(t, []byte("creator"), sighdr.Creator)
-		require.Equal(t, []byte("nonce"), sighdr.Nonce)
+		require.Equal(t, []byte("creator"), sighdr.GetCreator())
+		require.Equal(t, []byte("nonce"), sighdr.GetNonce())
 	})
 }
 
@@ -109,8 +109,8 @@ func TestUnmarshalSignatureHeaderOrPanic(t *testing.T) {
 		sighdr := &cb.SignatureHeader{}
 		sighdrBytes := MarshalOrPanic(sighdr)
 		sighdr = UnmarshalSignatureHeaderOrPanic(sighdrBytes)
-		require.Nil(t, sighdr.Creator)
-		require.Nil(t, sighdr.Nonce)
+		require.Nil(t, sighdr.GetCreator())
+		require.Nil(t, sighdr.GetNonce())
 	})
 }
 
@@ -215,7 +215,7 @@ func TestExtractEnvelopeNilData(t *testing.T) {
 
 func TestExtractEnvelopeWrongIndex(t *testing.T) {
 	block := testBlock()
-	if _, err := ExtractEnvelope(block, len(block.GetData().Data)); err == nil {
+	if _, err := ExtractEnvelope(block, len(block.GetData().GetData())); err == nil {
 		t.Fatal("Expected envelope extraction to fail (wrong index)")
 	}
 }
@@ -228,7 +228,7 @@ func TestExtractEnvelopeWrongIndexOrPanic(t *testing.T) {
 	}()
 
 	block := testBlock()
-	ExtractEnvelopeOrPanic(block, len(block.GetData().Data))
+	ExtractEnvelopeOrPanic(block, len(block.GetData().GetData()))
 }
 
 func TestExtractEnvelope(t *testing.T) {
@@ -252,7 +252,7 @@ func TestExtractEnvelopeOrPanic(t *testing.T) {
 }
 
 func TestExtractPayload(t *testing.T) {
-	if payload, err := UnmarshalPayload(testEnvelope().Payload); err != nil {
+	if payload, err := UnmarshalPayload(testEnvelope().GetPayload()); err != nil {
 		t.Fatalf("Expected payload extraction to succeed: %s", err)
 	} else if !proto.Equal(payload, testPayload()) {
 		t.Fatal("Expected extracted payload to match test payload")
@@ -266,7 +266,7 @@ func TestExtractPayloadOrPanic(t *testing.T) {
 		}
 	}()
 
-	if !proto.Equal(UnmarshalPayloadOrPanic(testEnvelope().Payload), testPayload()) {
+	if !proto.Equal(UnmarshalPayloadOrPanic(testEnvelope().GetPayload()), testPayload()) {
 		t.Fatal("Expected extracted payload to match test payload")
 	}
 }
@@ -280,8 +280,8 @@ func TestUnmarshalChaincodeID(t *testing.T) {
 	})
 	ccid, err := UnmarshalChaincodeID(ccidbytes)
 	require.NoError(t, err)
-	require.Equal(t, ccname, ccid.Name, "Expected ccid names to match")
-	require.Equal(t, ccversion, ccid.Version, "Expected ccid versions to match")
+	require.Equal(t, ccname, ccid.GetName(), "Expected ccid names to match")
+	require.Equal(t, ccversion, ccid.GetVersion(), "Expected ccid versions to match")
 
 	_, err = UnmarshalChaincodeID([]byte("bad chaincodeID"))
 	require.Error(t, err, "Expected error marshaling malformed chaincode ID")

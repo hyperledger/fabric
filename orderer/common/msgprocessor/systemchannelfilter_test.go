@@ -67,10 +67,10 @@ func mockCrypto() *mocks.SignerSerializer {
 func makeConfigTxFromConfigUpdateTx(configUpdateTx *cb.Envelope) *cb.Envelope {
 	confUpdate := configtx.UnmarshalConfigUpdateOrPanic(
 		configtx.UnmarshalConfigUpdateEnvelopeOrPanic(
-			protoutil.UnmarshalPayloadOrPanic(configUpdateTx.Payload).Data,
-		).ConfigUpdate,
+			protoutil.UnmarshalPayloadOrPanic(configUpdateTx.GetPayload()).GetData(),
+		).GetConfigUpdate(),
 	)
-	res, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, confUpdate.ChannelId, nil, &cb.ConfigEnvelope{
+	res, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, confUpdate.GetChannelId(), nil, &cb.ConfigEnvelope{
 		Config:     validConfig,
 		LastUpdate: configUpdateTx,
 	}, 0, 0)

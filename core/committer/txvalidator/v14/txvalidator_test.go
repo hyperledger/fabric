@@ -74,7 +74,7 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 
 	tValidator.Validate(block)
 
-	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 	for i := range nBlocks {
 		require.True(t, txsfltr.IsSetTo(i, peer.TxValidationCode_VALID))
@@ -110,7 +110,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	ledger, _ := ledgerMgr.CreateLedger("TestLedger", gb)
 	defer ledger.Close()
 
@@ -155,7 +155,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	acv.On("ForbidDuplicateTXIdInBlock").Return(false).Once()
 	tValidator.Validate(block)
 
-	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 	require.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
 	require.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_VALID))
@@ -163,7 +163,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	acv.On("ForbidDuplicateTXIdInBlock").Return(true)
 	tValidator.Validate(block)
 
-	txsfltr = txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr = txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 	require.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
 	require.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_DUPLICATE_TXID))
@@ -174,7 +174,7 @@ func TestBlockValidation(t *testing.T) {
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	ledger, _ := ledgerMgr.CreateLedger("TestLedger", gb)
 	defer ledger.Close()
 
@@ -187,7 +187,7 @@ func TestParallelBlockValidation(t *testing.T) {
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	ledger, _ := ledgerMgr.CreateLedger("TestLedger", gb)
 	defer ledger.Close()
 
@@ -200,7 +200,7 @@ func TestVeryLargeParallelBlockValidation(t *testing.T) {
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	gbHash := protoutil.BlockHeaderHash(gb.GetHeader())
 	ledger, _ := ledgerMgr.CreateLedger("TestLedger", gb)
 	defer ledger.Close()
 
@@ -280,12 +280,12 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 
 	block.Header = &common.BlockHeader{
 		Number:   0,
-		DataHash: protoutil.BlockDataHash(block.Data),
+		DataHash: protoutil.BlockDataHash(block.GetData()),
 	}
 
 	// Initialize metadata
 	protoutil.InitBlockMetadata(block)
-	txsFilter := txflags.NewWithValues(len(block.Data.Data), peer.TxValidationCode_VALID)
+	txsFilter := txflags.NewWithValues(len(block.GetData().GetData()), peer.TxValidationCode_VALID)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
 	// Commit block to the ledger
@@ -295,7 +295,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	// because it's already committed
 	tValidator.Validate(block)
 
-	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	require.True(t, txsfltr.IsInvalid(0))
 
 	// We expect the tx to be invalid because of a bad txid
@@ -350,7 +350,7 @@ func TestGetTxCCInstance(t *testing.T) {
 	require.NoError(t, err)
 
 	// get the payload from the envelope
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	require.NoError(t, err)
 
 	expectInvokeCCIns := &sysccprovider.ChaincodeInstance{

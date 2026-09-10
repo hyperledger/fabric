@@ -129,7 +129,7 @@ func TestCollectionInfo(t *testing.T) {
 
 	collInfo2, err := ccInfoProvdier.CollectionInfo("", "cc2", "cc2_coll1", mockQE)
 	require.NoError(t, err)
-	require.Equal(t, "cc2_coll1", collInfo2.Name)
+	require.Equal(t, "cc2_coll1", collInfo2.GetName())
 
 	collInfo3, err := ccInfoProvdier.CollectionInfo("", "cc2", "non-existing-coll-in-cc2", mockQE)
 	require.NoError(t, err)

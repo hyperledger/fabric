@@ -90,8 +90,8 @@ func testSerializedBlockInfo(t *testing.T, block *common.Block, c *testutilTxIDC
 	infoFromBB, err := extractSerializedBlockInfo(bb)
 	require.NoError(t, err)
 	require.Equal(t, info, infoFromBB)
-	require.Equal(t, len(block.Data.Data), len(info.txOffsets))
-	for txIndex, txEnvBytes := range block.Data.Data {
+	require.Equal(t, len(block.GetData().GetData()), len(info.txOffsets))
+	for txIndex, txEnvBytes := range block.GetData().GetData() {
 		txid := c.computeExpectedTxID(txIndex, txEnvBytes)
 		indexInfo := info.txOffsets[txIndex]
 		indexTxID := indexInfo.txID

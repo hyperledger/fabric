@@ -55,8 +55,8 @@ func (s *DiscoverySupport) PeersOfChannel(chain common.ChannelID) discovery.Memb
 	}
 	stateInf := msg.GetStateInfo()
 	selfMember := discovery.NetworkMember{
-		Properties: stateInf.Properties,
-		PKIid:      stateInf.PkiId,
+		Properties: stateInf.GetProperties(),
+		PKIid:      stateInf.GetPkiId(),
 		Envelope:   msg.Envelope,
 	}
 	return append(s.Gossip.PeersOfChannel(chain), selfMember)
@@ -77,8 +77,8 @@ func sanitizeEnvelope(member discovery.NetworkMember) discovery.NetworkMember {
 		return returnedMember
 	}
 	returnedMember.Envelope = &gossip.Envelope{
-		Payload:   member.Envelope.Payload,
-		Signature: member.Envelope.Signature,
+		Payload:   member.Envelope.GetPayload(),
+		Signature: member.Envelope.GetSignature(),
 	}
 	return returnedMember
 }

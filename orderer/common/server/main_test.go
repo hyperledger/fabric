@@ -531,10 +531,10 @@ func TestExtractSystemChannel(t *testing.T) {
 
 	lastConf = extractSystemChannel(rlf, cryptoProvider)
 	require.NotNil(t, lastConf, "get system channel genesis block")
-	require.Equal(t, uint64(0), lastConf.Header.Number)
+	require.Equal(t, uint64(0), lastConf.GetHeader().GetNumber())
 
 	// Make and append the next config block
-	prevHash := protoutil.BlockHeaderHash(configBlock.Header)
+	prevHash := protoutil.BlockHeaderHash(configBlock.GetHeader())
 	configBlock.Header.Number = 1
 	configBlock.Header.PreviousHash = prevHash
 	configBlock.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&common.Metadata{
@@ -550,7 +550,7 @@ func TestExtractSystemChannel(t *testing.T) {
 
 	lastConf = extractSystemChannel(rlf, cryptoProvider)
 	require.NotNil(t, lastConf, "get system channel last config block")
-	require.Equal(t, uint64(1), lastConf.Header.Number)
+	require.Equal(t, uint64(1), lastConf.GetHeader().GetNumber())
 }
 
 func TestSelectClusterBootBlock(t *testing.T) {
@@ -559,24 +559,24 @@ func TestSelectClusterBootBlock(t *testing.T) {
 
 	clusterBoot := selectClusterBootBlock(bootstrapBlock, nil)
 	require.NotNil(t, clusterBoot)
-	require.Equal(t, uint64(100), clusterBoot.Header.Number)
+	require.Equal(t, uint64(100), clusterBoot.GetHeader().GetNumber())
 	require.True(t, bootstrapBlock == clusterBoot)
 
 	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
 	require.NotNil(t, clusterBoot)
-	require.Equal(t, uint64(100), clusterBoot.Header.Number)
+	require.Equal(t, uint64(100), clusterBoot.GetHeader().GetNumber())
 	require.True(t, bootstrapBlock == clusterBoot)
 
 	lastConfBlock.Header.Number = 200
 	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
 	require.NotNil(t, clusterBoot)
-	require.Equal(t, uint64(200), clusterBoot.Header.Number)
+	require.Equal(t, uint64(200), clusterBoot.GetHeader().GetNumber())
 	require.True(t, lastConfBlock == clusterBoot)
 
 	bootstrapBlock.Header.Number = 300
 	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
 	require.NotNil(t, clusterBoot)
-	require.Equal(t, uint64(300), clusterBoot.Header.Number)
+	require.Equal(t, uint64(300), clusterBoot.GetHeader().GetNumber())
 	require.True(t, bootstrapBlock == clusterBoot)
 }
 

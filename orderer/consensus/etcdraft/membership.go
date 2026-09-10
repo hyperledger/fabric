@@ -21,7 +21,7 @@ import (
 func MembershipByCert(consenters map[uint64]*etcdraft.Consenter) map[string]uint64 {
 	set := map[string]uint64{}
 	for nodeID, c := range consenters {
-		set[string(c.ClientTlsCert)] = nodeID
+		set[string(c.GetClientTlsCert())] = nodeID
 	}
 	return set
 }
@@ -52,7 +52,7 @@ func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters
 	var addedNodeIndex int
 	currentConsentersSet := MembershipByCert(oldConsenters)
 	for i, c := range newConsenters {
-		if nodeID, exists := currentConsentersSet[string(c.ClientTlsCert)]; exists {
+		if nodeID, exists := currentConsentersSet[string(c.GetClientTlsCert())]; exists {
 			result.NewBlockMetadata.ConsenterIds[i] = nodeID
 			result.NewConsenters[nodeID] = c
 			continue
@@ -79,7 +79,7 @@ func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters
 		result.NewConsenters[deletedNodeID] = result.AddedNodes[0]
 	case len(result.AddedNodes) == 1 && len(result.RemovedNodes) == 0:
 		// new node
-		nodeID := result.NewBlockMetadata.NextConsenterId
+		nodeID := result.NewBlockMetadata.GetNextConsenterId()
 		result.NewConsenters[nodeID] = result.AddedNodes[0]
 		result.NewBlockMetadata.ConsenterIds[addedNodeIndex] = nodeID
 		result.NewBlockMetadata.NextConsenterId++

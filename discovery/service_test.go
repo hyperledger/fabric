@@ -96,7 +96,7 @@ func TestService(t *testing.T) {
 	req.Queries[0].Query = nil
 	resp, err = service.Discover(ctx, toSignedRequest(req))
 	require.NoError(t, err)
-	require.Contains(t, resp.Results[0].GetError().Content, "unknown or missing request type")
+	require.Contains(t, resp.GetResults()[0].GetError().GetContent(), "unknown or missing request type")
 
 	// Scenario IV: Request payload is invalid
 	signedRequest := toSignedRequest(req)
@@ -116,7 +116,7 @@ func TestService(t *testing.T) {
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
 	require.NoError(t, err)
-	require.Contains(t, resp.Results[0].GetError().Content, "chaincode interest must contain at least one chaincode")
+	require.Contains(t, resp.GetResults()[0].GetError().GetContent(), "chaincode interest must contain at least one chaincode")
 
 	// Scenario VI: Request a CC query with no interests at all
 	req.Queries[0].Query = &discovery.Query_CcQuery{
@@ -126,7 +126,7 @@ func TestService(t *testing.T) {
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
 	require.NoError(t, err)
-	require.Contains(t, resp.Results[0].GetError().Content, "chaincode query must have at least one chaincode interest")
+	require.Contains(t, resp.GetResults()[0].GetError().GetContent(), "chaincode query must have at least one chaincode interest")
 
 	// Scenario VII: Request a CC query with a chaincode name that is empty
 	req.Queries[0].Query = &discovery.Query_CcQuery{
@@ -140,7 +140,7 @@ func TestService(t *testing.T) {
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
 	require.NoError(t, err)
-	require.Contains(t, resp.Results[0].GetError().Content, "chaincode name in interest cannot be empty")
+	require.Contains(t, resp.GetResults()[0].GetError().GetContent(), "chaincode name in interest cannot be empty")
 
 	// Scenario VIII: Request with a CC query where one chaincode is unavailable
 	req.Queries[0].Query = &discovery.Query_CcQuery{
@@ -158,8 +158,8 @@ func TestService(t *testing.T) {
 
 	resp, err = service.Discover(ctx, toSignedRequest(req))
 	require.NoError(t, err)
-	require.Contains(t, resp.Results[0].GetError().Content, "failed constructing descriptor")
-	require.Contains(t, resp.Results[0].GetError().Content, "unknownCC")
+	require.Contains(t, resp.GetResults()[0].GetError().GetContent(), "failed constructing descriptor")
+	require.Contains(t, resp.GetResults()[0].GetError().GetContent(), "unknownCC")
 
 	// Scenario IX: Request with a CC query where all are available
 	req.Queries[0].Query = &discovery.Query_CcQuery{
@@ -191,7 +191,7 @@ func TestService(t *testing.T) {
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
 	require.NoError(t, err)
-	require.Contains(t, resp.Results[0].GetError().Content, "failed fetching config for channel channelWithAccessGranted")
+	require.Contains(t, resp.GetResults()[0].GetError().GetContent(), "failed fetching config for channel channelWithAccessGranted")
 
 	// Scenario XI: Request with a config query
 	mockSup.On("Config", mock.Anything).Return(&discovery.ConfigResult{}, nil).Once()
@@ -200,7 +200,7 @@ func TestService(t *testing.T) {
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
 	require.NoError(t, err)
-	require.NotNil(t, resp.Results[0].GetConfigResult())
+	require.NotNil(t, resp.GetResults()[0].GetConfigResult())
 
 	// Scenario XII: Request with a membership query
 	// Peers in membership view: { p0, p1, p2, p3}
@@ -298,17 +298,17 @@ func TestService(t *testing.T) {
 		},
 	}
 
-	require.Len(t, resp.Results, 3)
-	require.Len(t, resp.Results[0].GetMembers().PeersByOrg, 2)
-	require.Len(t, resp.Results[1].GetMembers().PeersByOrg, 2)
-	require.Equal(t, "an error occurred", resp.Results[2].GetError().Content)
+	require.Len(t, resp.GetResults(), 3)
+	require.Len(t, resp.GetResults()[0].GetMembers().GetPeersByOrg(), 2)
+	require.Len(t, resp.GetResults()[1].GetMembers().GetPeersByOrg(), 2)
+	require.Equal(t, "an error occurred", resp.GetResults()[2].GetError().GetContent())
 
-	for org, responsePeers := range resp.Results[0].GetMembers().PeersByOrg {
-		err := peers(expectedChannelResponse.PeersByOrg[org].Peers).compare(peers(responsePeers.Peers))
+	for org, responsePeers := range resp.GetResults()[0].GetMembers().GetPeersByOrg() {
+		err := peers(expectedChannelResponse.GetPeersByOrg()[org].GetPeers()).compare(peers(responsePeers.GetPeers()))
 		require.NoError(t, err)
 	}
-	for org, responsePeers := range resp.Results[1].GetMembers().PeersByOrg {
-		err := peers(expectedLocalResponse.PeersByOrg[org].Peers).compare(peers(responsePeers.Peers))
+	for org, responsePeers := range resp.GetResults()[1].GetMembers().GetPeersByOrg() {
+		err := peers(expectedLocalResponse.GetPeersByOrg()[org].GetPeers()).compare(peers(responsePeers.GetPeers()))
 		require.NoError(t, err)
 	}
 
@@ -325,7 +325,7 @@ func TestService(t *testing.T) {
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
 	require.NoError(t, err)
-	require.Contains(t, resp.Results[0].GetError().Content, "unknown or missing request type")
+	require.Contains(t, resp.GetResults()[0].GetError().GetContent(), "unknown or missing request type")
 }
 
 func TestValidateStructure(t *testing.T) {
@@ -507,7 +507,7 @@ func (ms *mockSupport) Peers() gdisc.Members {
 }
 
 func (ms *mockSupport) PeersForEndorsement(channel gcommon.ChannelID, interest *peer.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
-	cc := interest.Chaincodes[0].Name
+	cc := interest.GetChaincodes()[0].GetName()
 	args := ms.Called(cc)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

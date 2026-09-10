@@ -73,7 +73,7 @@ func acceptData(m any) bool {
 }
 
 func acceptLeadershp(message any) bool {
-	validMsg := message.(*proto.GossipMessage).Tag == proto.GossipMessage_CHAN_AND_ORG &&
+	validMsg := message.(*proto.GossipMessage).GetTag() == proto.GossipMessage_CHAN_AND_ORG &&
 		protoext.IsLeadershipMsg(message.(*proto.GossipMessage))
 
 	return validMsg
@@ -767,11 +767,11 @@ func TestDissemination(t *testing.T) {
 				return false
 			}
 			for _, p := range peers[i].PeersOfChannel(common.ChannelID("A")) {
-				if len(p.Properties.Chaincodes) != 1 {
+				if len(p.Properties.GetChaincodes()) != 1 {
 					return false
 				}
 
-				if !reflect.DeepEqual(p.Properties.Chaincodes, []*proto.Chaincode{{Name: "exampleCC", Version: "1.2"}}) {
+				if !reflect.DeepEqual(p.Properties.GetChaincodes(), []*proto.Chaincode{{Name: "exampleCC", Version: "1.2"}}) {
 					return false
 				}
 			}
@@ -807,7 +807,7 @@ func TestDissemination(t *testing.T) {
 		go func(index int, ch <-chan *proto.GossipMessage) {
 			defer wgLeadership.Done()
 			msg := <-ch
-			if bytes.Equal(msg.Channel, common.ChannelID("A")) {
+			if bytes.Equal(msg.GetChannel(), common.ChannelID("A")) {
 				receivedLeadershipMessages[index]++
 			}
 		}(i-1, leadershipChan)
@@ -970,7 +970,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 	_, aliveMsgChan := g2.Accept(func(o any) bool {
 		msg := o.(protoext.ReceivedMessage).GetGossipMessage()
 		// Make sure we get an AliveMessage and it's about g3
-		return protoext.IsAliveMsg(msg.GossipMessage) && bytes.Equal(msg.GetAliveMsg().Membership.PkiId, []byte(endpoint2))
+		return protoext.IsAliveMsg(msg.GossipMessage) && bytes.Equal(msg.GetAliveMsg().GetMembership().GetPkiId(), []byte(endpoint2))
 	}, true)
 	aliveMsg := <-aliveMsgChan
 
@@ -1117,9 +1117,9 @@ func TestDataLeakage(t *testing.T) {
 			instanceIndex := (n/2)*i + j
 			require.Len(t, peers[instanceIndex].PeersOfChannel(channel), 2)
 			if i == 0 {
-				require.Equal(t, uint64(1), peers[instanceIndex].PeersOfChannel(channel)[0].Properties.LedgerHeight)
+				require.Equal(t, uint64(1), peers[instanceIndex].PeersOfChannel(channel)[0].Properties.GetLedgerHeight())
 			} else {
-				require.Equal(t, uint64(2), peers[instanceIndex].PeersOfChannel(channel)[0].Properties.LedgerHeight)
+				require.Equal(t, uint64(2), peers[instanceIndex].PeersOfChannel(channel)[0].Properties.GetLedgerHeight())
 			}
 		}
 	}
@@ -1133,7 +1133,7 @@ func TestDataLeakage(t *testing.T) {
 				go func(instanceIndex int, channel common.ChannelID) {
 					incMsgChan, _ := peers[instanceIndex].Accept(acceptData, false)
 					msg := <-incMsgChan
-					require.Equal(t, []byte(channel), []byte(msg.Channel))
+					require.Equal(t, []byte(channel), []byte(msg.GetChannel()))
 					wg.Done()
 				}(instanceIndex, channel)
 			}
@@ -1528,7 +1528,7 @@ func metadataOfPeer(members []discovery.NetworkMember, endpoint string) []byte {
 func heightOfPeer(members []discovery.NetworkMember, endpoint string) int {
 	for _, member := range members {
 		if member.InternalEndpoint == endpoint {
-			return int(member.Properties.LedgerHeight)
+			return int(member.Properties.GetLedgerHeight())
 		}
 	}
 	return -1

@@ -129,12 +129,12 @@ func (c *CommittedQuerier) Query() error {
 		return errors.New("received nil proposal response")
 	}
 
-	if proposalResponse.Response == nil {
+	if proposalResponse.GetResponse() == nil {
 		return errors.New("received proposal response with nil response")
 	}
 
-	if proposalResponse.Response.Status != int32(cb.Status_SUCCESS) {
-		return errors.Errorf("query failed with status: %d - %s", proposalResponse.Response.Status, proposalResponse.Response.Message)
+	if proposalResponse.GetResponse().GetStatus() != int32(cb.Status_SUCCESS) {
+		return errors.Errorf("query failed with status: %d - %s", proposalResponse.GetResponse().GetStatus(), proposalResponse.GetResponse().GetMessage())
 	}
 
 	if strings.ToLower(c.Input.OutputFormat) == "json" {
@@ -155,7 +155,7 @@ func (c *CommittedQuerier) printResponseAsJSON(proposalResponse *pb.ProposalResp
 func (c *CommittedQuerier) printResponse(proposalResponse *pb.ProposalResponse) error {
 	if c.Input.Name != "" {
 		result := &lb.QueryChaincodeDefinitionResult{}
-		err := proto.Unmarshal(proposalResponse.Response.Payload, result)
+		err := proto.Unmarshal(proposalResponse.GetResponse().GetPayload(), result)
 		if err != nil {
 			return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 		}
@@ -167,13 +167,13 @@ func (c *CommittedQuerier) printResponse(proposalResponse *pb.ProposalResponse) 
 	}
 
 	result := &lb.QueryChaincodeDefinitionsResult{}
-	err := proto.Unmarshal(proposalResponse.Response.Payload, result)
+	err := proto.Unmarshal(proposalResponse.GetResponse().GetPayload(), result)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
 	fmt.Fprintf(c.Writer, "Committed chaincode definitions on channel '%s':\n", c.Input.ChannelID)
-	for _, cd := range result.ChaincodeDefinitions {
-		fmt.Fprintf(c.Writer, "Name: %s, ", cd.Name)
+	for _, cd := range result.GetChaincodeDefinitions() {
+		fmt.Fprintf(c.Writer, "Name: %s, ", cd.GetName())
 		c.printSingleChaincodeDefinition(cd)
 		fmt.Fprintf(c.Writer, "\n")
 	}

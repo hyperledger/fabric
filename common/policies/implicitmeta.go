@@ -37,13 +37,13 @@ func NewImplicitMetaPolicy(data []byte, managers map[string]*ManagerImpl) (*Impl
 
 	i := 0
 	for _, manager := range managers {
-		subPolicies[i], _ = manager.GetPolicy(definition.SubPolicy)
+		subPolicies[i], _ = manager.GetPolicy(definition.GetSubPolicy())
 		i++
 	}
 
 	var threshold int
 
-	switch definition.Rule {
+	switch definition.GetRule() {
 	case cb.ImplicitMetaPolicy_ANY:
 		threshold = 1
 	case cb.ImplicitMetaPolicy_ALL:
@@ -61,7 +61,7 @@ func NewImplicitMetaPolicy(data []byte, managers map[string]*ManagerImpl) (*Impl
 		SubPolicies:   subPolicies,
 		Threshold:     threshold,
 		managers:      managers,
-		SubPolicyName: definition.SubPolicy,
+		SubPolicyName: definition.GetSubPolicy(),
 	}, nil
 }
 

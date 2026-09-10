@@ -38,8 +38,8 @@ func TestRollback(t *testing.T) {
 	// 2. Check the BlockchainInfo
 	expectedBlockchainInfo := &common.BlockchainInfo{
 		Height:            50,
-		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[49].Header),
-		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[48].Header),
+		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[49].GetHeader()),
+		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[48].GetHeader()),
 	}
 	actualBlockchainInfo := blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
 	require.Equal(t, expectedBlockchainInfo, actualBlockchainInfo)
@@ -131,8 +131,8 @@ func TestRollbackWithOnlyBlockIndexAttributes(t *testing.T) {
 	// 2. Check the BlockchainInfo
 	expectedBlockchainInfo := &common.BlockchainInfo{
 		Height:            50,
-		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[49].Header),
-		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[48].Header),
+		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[49].GetHeader()),
+		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[48].GetHeader()),
 	}
 	actualBlockchainInfo := blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
 	require.Equal(t, expectedBlockchainInfo, actualBlockchainInfo)
@@ -181,8 +181,8 @@ func TestRollbackWithNoIndexDir(t *testing.T) {
 	// 2. Check the BlockchainInfo
 	expectedBlockchainInfo := &common.BlockchainInfo{
 		Height:            50,
-		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[49].Header),
-		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[48].Header),
+		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[49].GetHeader()),
+		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[48].GetHeader()),
 	}
 	actualBlockchainInfo := blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
 	require.Equal(t, expectedBlockchainInfo, actualBlockchainInfo)
@@ -252,14 +252,14 @@ func TestDuplicateTxIDDuringRollback(t *testing.T) {
 	// 2. Check the BlockchainInfo
 	expectedBlockchainInfo := &common.BlockchainInfo{
 		Height:            4,
-		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[3].Header),
-		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[2].Header),
+		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[3].GetHeader()),
+		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[2].GetHeader()),
 	}
 	actualBlockchainInfo := blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
 	require.Equal(t, expectedBlockchainInfo, actualBlockchainInfo)
 
 	// 3. Retrieve tx
-	blkfileMgrWrapper.testGetTransactionByTxID("tx0", blocks[2].Data.Data[0], nil)
+	blkfileMgrWrapper.testGetTransactionByTxID("tx0", blocks[2].GetData().GetData()[0], nil)
 
 	// 4. Close the blkfileMgrWrapper
 	env.provider.Close()
@@ -276,14 +276,14 @@ func TestDuplicateTxIDDuringRollback(t *testing.T) {
 	// 6. Check the BlockchainInfo
 	expectedBlockchainInfo = &common.BlockchainInfo{
 		Height:            3,
-		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[2].Header),
-		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[1].Header),
+		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[2].GetHeader()),
+		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[1].GetHeader()),
 	}
 	actualBlockchainInfo = blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
 	require.Equal(t, expectedBlockchainInfo, actualBlockchainInfo)
 
 	// 8. Retrieve tx (should not have been deleted)
-	blkfileMgrWrapper.testGetTransactionByTxID("tx0", blocks[2].Data.Data[0], nil)
+	blkfileMgrWrapper.testGetTransactionByTxID("tx0", blocks[2].GetData().GetData()[0], nil)
 }
 
 func assertBlockStoreRollback(t *testing.T, path, ledgerID string, blocks []*common.Block,
@@ -295,8 +295,8 @@ func assertBlockStoreRollback(t *testing.T, path, ledgerID string, blocks []*com
 	// 1. Check the BlockchainInfo after the rollback
 	expectedBlockchainInfo := &common.BlockchainInfo{
 		Height:            rollbackedToBlkNum + 1,
-		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[rollbackedToBlkNum].Header),
-		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[rollbackedToBlkNum-1].Header),
+		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[rollbackedToBlkNum].GetHeader()),
+		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[rollbackedToBlkNum-1].GetHeader()),
 	}
 	actualBlockchainInfo := blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
 	require.Equal(t, expectedBlockchainInfo, actualBlockchainInfo)

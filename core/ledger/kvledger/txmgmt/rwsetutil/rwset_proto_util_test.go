@@ -112,7 +112,7 @@ func TestNsRWSetConversionNoCollHashedRWs(t *testing.T) {
 	nsRwSet := sampleNsRwSetWithNoCollHashedRWs("ns-1")
 	protoMsg, err := nsRwSet.toProtoMsg()
 	require.NoError(t, err)
-	require.Nil(t, protoMsg.CollectionHashedRwset)
+	require.Nil(t, protoMsg.GetCollectionHashedRwset())
 }
 
 func TestCollHashedRwSetConversion(t *testing.T) {

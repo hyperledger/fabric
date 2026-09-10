@@ -90,14 +90,14 @@ func UnmarshalConfigEnvelopeOrPanic(data []byte) *cb.ConfigEnvelope {
 
 // UnmarshalConfigUpdateFromPayload unmarshals configuration update from given payload
 func UnmarshalConfigUpdateFromPayload(payload *cb.Payload) (*cb.ConfigUpdate, error) {
-	configEnv, err := UnmarshalConfigEnvelope(payload.Data)
+	configEnv, err := UnmarshalConfigEnvelope(payload.GetData())
 	if err != nil {
 		return nil, err
 	}
-	configUpdateEnv, err := protoutil.EnvelopeToConfigUpdate(configEnv.LastUpdate)
+	configUpdateEnv, err := protoutil.EnvelopeToConfigUpdate(configEnv.GetLastUpdate())
 	if err != nil {
 		return nil, err
 	}
 
-	return UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+	return UnmarshalConfigUpdate(configUpdateEnv.GetConfigUpdate())
 }

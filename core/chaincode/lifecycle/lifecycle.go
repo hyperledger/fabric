@@ -121,16 +121,16 @@ type ChaincodeParameters struct {
 
 func (cp *ChaincodeParameters) Equal(ocp *ChaincodeParameters) error {
 	switch {
-	case cp.EndorsementInfo.Version != ocp.EndorsementInfo.Version:
-		return errors.Errorf("expected Version '%s' does not match passed Version '%s'", cp.EndorsementInfo.Version, ocp.EndorsementInfo.Version)
-	case cp.EndorsementInfo.EndorsementPlugin != ocp.EndorsementInfo.EndorsementPlugin:
-		return errors.Errorf("expected EndorsementPlugin '%s' does not match passed EndorsementPlugin '%s'", cp.EndorsementInfo.EndorsementPlugin, ocp.EndorsementInfo.EndorsementPlugin)
-	case cp.EndorsementInfo.InitRequired != ocp.EndorsementInfo.InitRequired:
-		return errors.Errorf("expected InitRequired '%t' does not match passed InitRequired '%t'", cp.EndorsementInfo.InitRequired, ocp.EndorsementInfo.InitRequired)
-	case cp.ValidationInfo.ValidationPlugin != ocp.ValidationInfo.ValidationPlugin:
-		return errors.Errorf("expected ValidationPlugin '%s' does not match passed ValidationPlugin '%s'", cp.ValidationInfo.ValidationPlugin, ocp.ValidationInfo.ValidationPlugin)
-	case !bytes.Equal(cp.ValidationInfo.ValidationParameter, ocp.ValidationInfo.ValidationParameter):
-		return errors.Errorf("expected ValidationParameter '%x' does not match passed ValidationParameter '%x'", cp.ValidationInfo.ValidationParameter, ocp.ValidationInfo.ValidationParameter)
+	case cp.EndorsementInfo.GetVersion() != ocp.EndorsementInfo.GetVersion():
+		return errors.Errorf("expected Version '%s' does not match passed Version '%s'", cp.EndorsementInfo.GetVersion(), ocp.EndorsementInfo.GetVersion())
+	case cp.EndorsementInfo.GetEndorsementPlugin() != ocp.EndorsementInfo.GetEndorsementPlugin():
+		return errors.Errorf("expected EndorsementPlugin '%s' does not match passed EndorsementPlugin '%s'", cp.EndorsementInfo.GetEndorsementPlugin(), ocp.EndorsementInfo.GetEndorsementPlugin())
+	case cp.EndorsementInfo.GetInitRequired() != ocp.EndorsementInfo.GetInitRequired():
+		return errors.Errorf("expected InitRequired '%t' does not match passed InitRequired '%t'", cp.EndorsementInfo.GetInitRequired(), ocp.EndorsementInfo.GetInitRequired())
+	case cp.ValidationInfo.GetValidationPlugin() != ocp.ValidationInfo.GetValidationPlugin():
+		return errors.Errorf("expected ValidationPlugin '%s' does not match passed ValidationPlugin '%s'", cp.ValidationInfo.GetValidationPlugin(), ocp.ValidationInfo.GetValidationPlugin())
+	case !bytes.Equal(cp.ValidationInfo.GetValidationParameter(), ocp.ValidationInfo.GetValidationParameter()):
+		return errors.Errorf("expected ValidationParameter '%x' does not match passed ValidationParameter '%x'", cp.ValidationInfo.GetValidationParameter(), ocp.ValidationInfo.GetValidationParameter())
 	case !proto.Equal(cp.Collections, ocp.Collections):
 		return errors.Errorf("Collections do not match")
 	default:
@@ -171,17 +171,17 @@ func (cd *ChaincodeDefinition) String() string {
 	endorsementInfo := "endorsement info: <EMPTY>"
 	if cd.EndorsementInfo != nil {
 		endorsementInfo = fmt.Sprintf("endorsement info: (version: '%s', plugin: '%s', init required: %t)",
-			cd.EndorsementInfo.Version,
-			cd.EndorsementInfo.EndorsementPlugin,
-			cd.EndorsementInfo.InitRequired,
+			cd.EndorsementInfo.GetVersion(),
+			cd.EndorsementInfo.GetEndorsementPlugin(),
+			cd.EndorsementInfo.GetInitRequired(),
 		)
 	}
 
 	validationInfo := "validation info: <EMPTY>"
 	if cd.ValidationInfo != nil {
 		validationInfo = fmt.Sprintf("validation info: (plugin: '%s', policy: '%x')",
-			cd.ValidationInfo.ValidationPlugin,
-			cd.ValidationInfo.ValidationParameter,
+			cd.ValidationInfo.GetValidationPlugin(),
+			cd.ValidationInfo.GetValidationParameter(),
 		)
 	}
 
@@ -254,8 +254,8 @@ func (r *Resources) ChaincodeDefinitionIfDefined(chaincodeName string, state Rea
 		return false, nil, nil
 	}
 
-	if metadata.Datatype != ChaincodeDefinitionType {
-		return false, nil, errors.Errorf("not a chaincode type: %s", metadata.Datatype)
+	if metadata.GetDatatype() != ChaincodeDefinitionType {
+		return false, nil, errors.Errorf("not a chaincode type: %s", metadata.GetDatatype())
 	}
 
 	definedChaincode := &ChaincodeDefinition{}
@@ -382,21 +382,21 @@ func (ef *ExternalFunctions) DefaultEndorsementPolicyAsBytes(channelID string) (
 // SetChaincodeDefinitionDefaults fills any empty fields in the
 // supplied ChaincodeDefinition with the supplied channel's defaults
 func (ef *ExternalFunctions) SetChaincodeDefinitionDefaults(chname string, cd *ChaincodeDefinition) error {
-	if cd.EndorsementInfo.EndorsementPlugin == "" {
+	if cd.EndorsementInfo.GetEndorsementPlugin() == "" {
 		// TODO:
 		// 1) rename to "default" or "builtin"
 		// 2) retrieve from channel config
 		cd.EndorsementInfo.EndorsementPlugin = "escc"
 	}
 
-	if cd.ValidationInfo.ValidationPlugin == "" {
+	if cd.ValidationInfo.GetValidationPlugin() == "" {
 		// TODO:
 		// 1) rename to "default" or "builtin"
 		// 2) retrieve from channel config
 		cd.ValidationInfo.ValidationPlugin = "vscc"
 	}
 
-	if len(cd.ValidationInfo.ValidationParameter) == 0 {
+	if len(cd.ValidationInfo.GetValidationParameter()) == 0 {
 		policyBytes, err := ef.DefaultEndorsementPolicyAsBytes(chname)
 		if err != nil {
 			return err
@@ -552,8 +552,8 @@ func (ef *ExternalFunctions) QueryApprovedChaincodeDefinition(chname, ccname str
 		return nil, errors.Errorf("could not fetch approved chaincode definition (name: '%s', sequence: '%d') on channel '%s'", ccname, sequence, chname)
 	}
 
-	if metadata.Datatype != ChaincodeParametersType {
-		return nil, errors.Errorf("not a chaincode parameters type: %s", metadata.Datatype)
+	if metadata.GetDatatype() != ChaincodeParametersType {
+		return nil, errors.Errorf("not a chaincode parameters type: %s", metadata.GetDatatype())
 	}
 
 	// Get chaincode parameters for the request sequence
@@ -570,8 +570,8 @@ func (ef *ExternalFunctions) QueryApprovedChaincodeDefinition(chname, ccname str
 	if !ok {
 		return nil, errors.Errorf("could not fetch approved chaincode definition (name: '%s', sequence: '%d') on channel '%s'", ccname, sequence, chname)
 	}
-	if metadata.Datatype != ChaincodeLocalPackageType {
-		return nil, errors.Errorf("not a chaincode local package type: %s", metadata.Datatype)
+	if metadata.GetDatatype() != ChaincodeLocalPackageType {
+		return nil, errors.Errorf("not a chaincode local package type: %s", metadata.GetDatatype())
 	}
 
 	ccLocalPackage := &ChaincodeLocalPackage{}
@@ -763,12 +763,12 @@ func (ef *ExternalFunctions) QueryNamespaceDefinitions(publicState RangeableStat
 
 	result := map[string]string{}
 	for key, value := range metadatas {
-		switch value.Datatype {
+		switch value.GetDatatype() {
 		case ChaincodeDefinitionType:
 			result[key] = FriendlyChaincodeDefinitionType
 		default:
 			// This should never execute, but seems preferable to returning an error
-			result[key] = value.Datatype
+			result[key] = value.GetDatatype()
 		}
 	}
 	return result, nil

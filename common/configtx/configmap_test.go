@@ -50,17 +50,17 @@ func TestConfigMap(t *testing.T) {
 
 	require.Equal(t, comparable{key: "Channel", path: []string{}, ConfigGroup: config},
 		confMap["[Group]  /Channel"])
-	require.Equal(t, comparable{key: "0DeepGroup", path: []string{"Channel"}, ConfigGroup: config.Groups["0DeepGroup"]},
+	require.Equal(t, comparable{key: "0DeepGroup", path: []string{"Channel"}, ConfigGroup: config.GetGroups()["0DeepGroup"]},
 		confMap["[Group]  /Channel/0DeepGroup"])
-	require.Equal(t, comparable{key: "0DeepValue1", path: []string{"Channel"}, ConfigValue: config.Values["0DeepValue1"]},
+	require.Equal(t, comparable{key: "0DeepValue1", path: []string{"Channel"}, ConfigValue: config.GetValues()["0DeepValue1"]},
 		confMap["[Value]  /Channel/0DeepValue1"])
-	require.Equal(t, comparable{key: "0DeepValue2", path: []string{"Channel"}, ConfigValue: config.Values["0DeepValue2"]},
+	require.Equal(t, comparable{key: "0DeepValue2", path: []string{"Channel"}, ConfigValue: config.GetValues()["0DeepValue2"]},
 		confMap["[Value]  /Channel/0DeepValue2"])
-	require.Equal(t, comparable{key: "1DeepPolicy", path: []string{"Channel", "0DeepGroup"}, ConfigPolicy: config.Groups["0DeepGroup"].Policies["1DeepPolicy"]},
+	require.Equal(t, comparable{key: "1DeepPolicy", path: []string{"Channel", "0DeepGroup"}, ConfigPolicy: config.GetGroups()["0DeepGroup"].GetPolicies()["1DeepPolicy"]},
 		confMap["[Policy] /Channel/0DeepGroup/1DeepPolicy"])
-	require.Equal(t, comparable{key: "1DeepGroup", path: []string{"Channel", "0DeepGroup"}, ConfigGroup: config.Groups["0DeepGroup"].Groups["1DeepGroup"]},
+	require.Equal(t, comparable{key: "1DeepGroup", path: []string{"Channel", "0DeepGroup"}, ConfigGroup: config.GetGroups()["0DeepGroup"].GetGroups()["1DeepGroup"]},
 		confMap["[Group]  /Channel/0DeepGroup/1DeepGroup"])
-	require.Equal(t, comparable{key: "2DeepValue", path: []string{"Channel", "0DeepGroup", "1DeepGroup"}, ConfigValue: config.Groups["0DeepGroup"].Groups["1DeepGroup"].Values["2DeepValue"]},
+	require.Equal(t, comparable{key: "2DeepValue", path: []string{"Channel", "0DeepGroup", "1DeepGroup"}, ConfigValue: config.GetGroups()["0DeepGroup"].GetGroups()["1DeepGroup"].GetValues()["2DeepValue"]},
 		confMap["[Value]  /Channel/0DeepGroup/1DeepGroup/2DeepValue"])
 }
 
@@ -106,17 +106,17 @@ func TestHackInmapConfigBack(t *testing.T) {
 
 	var checkModPolicy func(cg *cb.ConfigGroup)
 	checkModPolicy = func(cg *cb.ConfigGroup) {
-		require.NotEmpty(t, cg.ModPolicy, "empty group mod_policy")
+		require.NotEmpty(t, cg.GetModPolicy(), "empty group mod_policy")
 
-		for key, value := range cg.Values {
-			require.NotEmpty(t, value.ModPolicy, "empty value mod_policy %s", key)
+		for key, value := range cg.GetValues() {
+			require.NotEmpty(t, value.GetModPolicy(), "empty value mod_policy %s", key)
 		}
 
-		for key, policy := range cg.Policies {
-			require.NotEmpty(t, policy.ModPolicy, "empty policy mod_policy %s", key)
+		for key, policy := range cg.GetPolicies() {
+			require.NotEmpty(t, policy.GetModPolicy(), "empty policy mod_policy %s", key)
 		}
 
-		for _, group := range cg.Groups {
+		for _, group := range cg.GetGroups() {
 			checkModPolicy(group)
 		}
 	}

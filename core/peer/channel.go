@@ -50,7 +50,7 @@ func (c *Channel) Apply(configtx *common.ConfigEnvelope) error {
 		return err
 	}
 
-	bundle, err := channelconfig.NewBundle(configTxValidator.ChannelID(), configtx.Config, c.cryptoProvider)
+	bundle, err := channelconfig.NewBundle(configTxValidator.ChannelID(), configtx.GetConfig(), c.cryptoProvider)
 	if err != nil {
 		return err
 	}

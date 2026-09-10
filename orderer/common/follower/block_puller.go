@@ -136,10 +136,10 @@ func (creator *BlockPullerCreator) VerifyBlockSequence(blocks []*common.Block, _
 	if blocks[0] == nil {
 		return errors.New("first block is nil")
 	}
-	if blocks[0].Header == nil {
+	if blocks[0].GetHeader() == nil {
 		return errors.New("first block header is nil")
 	}
-	if blocks[0].Header.Number == 0 {
+	if blocks[0].GetHeader().GetNumber() == 0 {
 		configEnv, err := cluster.ConfigFromBlock(blocks[0])
 		if err != nil {
 			return errors.WithMessage(err, "failed to extract config envelope from genesis block")

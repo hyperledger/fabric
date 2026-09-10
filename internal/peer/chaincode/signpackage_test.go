@@ -93,8 +93,8 @@ func TestSignExistingPackage(t *testing.T) {
 		t.Fatalf("expected endorsements")
 	}
 
-	if len(p.OwnerEndorsements) != 2 {
-		t.Fatalf("expected 2 endorserments but found %d", len(p.OwnerEndorsements))
+	if len(p.GetOwnerEndorsements()) != 2 {
+		t.Fatalf("expected 2 endorserments but found %d", len(p.GetOwnerEndorsements()))
 	}
 }
 

@@ -84,7 +84,7 @@ func CreateStorage(
 	} else {
 		// snapshot found
 		lg.Debugf("Loaded snapshot at Term %d and Index %d, Nodes: %+v",
-			snapshot.Metadata.Term, snapshot.GetMetadata().GetIndex(), snapshot.Metadata.ConfState.Voters)
+			snapshot.GetMetadata().Term, snapshot.GetMetadata().GetIndex(), snapshot.GetMetadata().GetConfState().GetVoters())
 	}
 
 	w, st, ents, err := createOrReadWAL(lg, walDir, snapshot)
@@ -253,7 +253,7 @@ func (rs *RaftStorage) Store(entries []*raftpb.Entry, hardstate *raftpb.HardStat
 		if err := rs.ram.ApplySnapshot(snapshot); err != nil {
 			if err == raft.ErrSnapOutOfDate {
 				rs.lg.Warnf("Attempted to apply out-of-date snapshot at Term %d and Index %d",
-					snapshot.Metadata.Term, snapshot.GetMetadata().GetIndex())
+					snapshot.GetMetadata().Term, snapshot.GetMetadata().GetIndex())
 			} else {
 				rs.lg.Fatalf("Unexpected programming error: %s", err)
 			}
@@ -268,7 +268,7 @@ func (rs *RaftStorage) Store(entries []*raftpb.Entry, hardstate *raftpb.HardStat
 }
 
 func (rs *RaftStorage) saveSnap(snap *raftpb.Snapshot) error {
-	rs.lg.Infof("Persisting snapshot (term: %d, index: %d) to WAL and disk", snap.Metadata.Term, snap.GetMetadata().GetIndex())
+	rs.lg.Infof("Persisting snapshot (term: %d, index: %d) to WAL and disk", snap.GetMetadata().Term, snap.GetMetadata().GetIndex())
 
 	// must save the snapshot index to the WAL before saving the
 	// snapshot to maintain the invariant that we only Open the
@@ -432,7 +432,7 @@ func (rs *RaftStorage) ApplySnapshot(snap *raftpb.Snapshot) {
 	if err := rs.ram.ApplySnapshot(snap); err != nil {
 		if err == raft.ErrSnapOutOfDate {
 			rs.lg.Warnf("Attempted to apply out-of-date snapshot at Term %d and Index %d",
-				snap.Metadata.Term, snap.GetMetadata().GetIndex())
+				snap.GetMetadata().Term, snap.GetMetadata().GetIndex())
 		} else {
 			rs.lg.Fatalf("Unexpected programming error: %s", err)
 		}

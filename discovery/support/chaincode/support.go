@@ -48,8 +48,8 @@ func (s *DiscoverySupport) PoliciesByChaincode(channel string, cc string, collec
 		logger.Errorf("Failed unmarshalling policy for chaincode '%s': %s", cc, err)
 		return nil
 	}
-	if len(pol.Identities) == 0 || pol.Rule == nil {
-		logger.Errorf("Invalid policy, either Identities(%v) or Rule(%v) are empty", pol.Identities, pol.Rule)
+	if len(pol.GetIdentities()) == 0 || pol.GetRule() == nil {
+		logger.Errorf("Invalid policy, either Identities(%v) or Rule(%v) are empty", pol.GetIdentities(), pol.GetRule())
 		return nil
 	}
 	// chaincodeData.CollectionPolicies will be nil when using legacy lifecycle (lscc)
@@ -79,8 +79,8 @@ func (s *DiscoverySupport) PoliciesByChaincode(channel string, cc string, collec
 			logger.Errorf("Failed unmarshalling collection policy for chaincode '%s' collection '%s': %s", cc, collectionName, err)
 			return nil
 		}
-		if len(pol.Identities) == 0 || pol.Rule == nil {
-			logger.Errorf("Invalid collection policy, either Identities(%v) or Rule(%v) are empty", pol.Identities, pol.Rule)
+		if len(pol.GetIdentities()) == 0 || pol.GetRule() == nil {
+			logger.Errorf("Invalid collection policy, either Identities(%v) or Rule(%v) are empty", pol.GetIdentities(), pol.GetRule())
 			return nil
 		}
 		// only add to uniqueInquireablePolicies if the policy doesn't already exist there

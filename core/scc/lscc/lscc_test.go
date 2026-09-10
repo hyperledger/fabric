@@ -177,19 +177,19 @@ func TestInstall(t *testing.T) {
 	}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{}, nil)
-	require.NotEqual(t, int32(shim.OK), res.Status)
-	require.Equal(t, "invalid number of arguments to lscc: 0", res.Message)
+	require.NotEqual(t, int32(shim.OK), res.GetStatus())
+	require.Equal(t, "invalid number of arguments to lscc: 0", res.GetMessage())
 
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte("install")}, nil)
-	require.NotEqual(t, int32(shim.OK), res.Status)
-	require.Equal(t, "invalid number of arguments to lscc: 1", res.Message)
+	require.NotEqual(t, int32(shim.OK), res.GetStatus())
+	require.Equal(t, "invalid number of arguments to lscc: 1", res.GetMessage())
 
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte("install")}, nil)
-	require.NotEqual(t, int32(shim.OK), res.Status)
-	require.Equal(t, "invalid number of arguments to lscc: 1", res.Message)
+	require.NotEqual(t, int32(shim.OK), res.GetStatus())
+	require.Equal(t, "invalid number of arguments to lscc: 1", res.GetMessage())
 
 	path := "mychaincode"
 
@@ -240,10 +240,10 @@ func testInstall(t *testing.T, ccname string, version string, path string, creat
 
 		if expectedErrorMsg == "" {
 			res := stub.MockInvokeWithSignedProposal("1", args, sProp)
-			require.Equal(t, int32(shim.OK), res.Status, res.Message)
+			require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 		} else {
 			res := stub.MockInvokeWithSignedProposal("1", args, sProp)
-			require.True(t, strings.HasPrefix(string(res.Message), expectedErrorMsg), res.Message)
+			require.True(t, strings.HasPrefix(string(res.GetMessage()), expectedErrorMsg), res.GetMessage())
 		}
 	})
 }
@@ -272,8 +272,8 @@ func TestNewLifecycleEnabled(t *testing.T) {
 	}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte("deploy"), []byte("test"), nil}, nil)
-	require.NotEqual(t, int32(shim.OK), res.Status)
-	require.Equal(t, "Channel 'test' has been migrated to the new lifecycle, LSCC is now read-only", res.Message)
+	require.NotEqual(t, int32(shim.OK), res.GetStatus())
+	require.Equal(t, "Channel 'test' has been migrated to the new lifecycle, LSCC is now read-only", res.GetMessage())
 }
 
 func TestDeploy(t *testing.T) {
@@ -303,19 +303,19 @@ func TestDeploy(t *testing.T) {
 	}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte("deploy")}, nil)
-	require.NotEqual(t, int32(shim.OK), res.Status)
-	require.Equal(t, "invalid number of arguments to lscc: 1", res.Message)
+	require.NotEqual(t, int32(shim.OK), res.GetStatus())
+	require.Equal(t, "invalid number of arguments to lscc: 1", res.GetMessage())
 
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte("deploy"), []byte(""), []byte("")}, nil)
-	require.NotEqual(t, int32(shim.OK), res.Status)
-	require.Equal(t, "invalid channel name: ", res.Message)
+	require.NotEqual(t, int32(shim.OK), res.GetStatus())
+	require.Equal(t, "invalid channel name: ", res.GetMessage())
 
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte("deploy"), []byte("chain"), []byte("barf")}, nil)
-	require.NotEqual(t, int32(shim.OK), res.Status)
-	require.Contains(t, res.Message, "error unmarshalling ChaincodeDeploymentSpec")
+	require.NotEqual(t, int32(shim.OK), res.GetStatus())
+	require.Contains(t, res.GetMessage(), "error unmarshalling ChaincodeDeploymentSpec")
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", scc, stub, nil)
 	testDeploy(t, "example02", "1.0", path, false, false, true, "chaincode with name 'example02' already exists", scc, stub, nil)
@@ -333,7 +333,7 @@ func TestDeploy(t *testing.T) {
 	}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 	scc.Support.(*MockSupport).GetInstantiationPolicyErr = errors.New("barf")
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub, nil)
@@ -351,7 +351,7 @@ func TestDeploy(t *testing.T) {
 	}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 	scc.Support.(*MockSupport).CheckInstantiationPolicyErr = errors.New("barf")
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub, nil)
@@ -369,7 +369,7 @@ func TestDeploy(t *testing.T) {
 	}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	// As the PrivateChannelData is disabled, the following error message is expected due to the presence of
 	// collectionConfigBytes in the stub.args
@@ -396,7 +396,7 @@ func TestDeploy(t *testing.T) {
 	}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	// As the PrivateChannelData is enabled and collectionConfigBytes is invalid, the following error
 	// message is expected.
@@ -432,7 +432,7 @@ func TestDeploy(t *testing.T) {
 	}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	// As the PrivateChannelData is enabled and collectionConfigBytes is valid, no error is expected
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", scc, stub, ccpBytes)
@@ -457,7 +457,7 @@ func TestDeploy(t *testing.T) {
 	}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	// As the PrivateChannelData is enabled and collectionConfigBytes is nil, no error is expected
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", scc, stub, []byte("nil"))
@@ -506,7 +506,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 		}
 		stub = shimtest.NewMockStub("lscc", scc)
 		res := stub.MockInit("1", nil)
-		require.Equal(t, int32(shim.OK), res.Status, res.Message)
+		require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 	}
 	stub.ChannelID = channelID
 
@@ -537,7 +537,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 	res := stub.MockInvokeWithSignedProposal("1", args, sProp2)
 
 	if expectedErrorMsg == "" {
-		require.Equal(t, int32(shim.OK), res.Status, res.Message)
+		require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 		for _, function := range []string{"getchaincodes", "GetChaincodes"} {
 			t.Run(function, func(t *testing.T) {
@@ -545,36 +545,36 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 				mockAclProvider.On("CheckACL", resources.Lscc_GetInstantiatedChaincodes, channelID, sProp).Return(nil)
 				args = [][]byte{[]byte(function)}
 				res = stub.MockInvokeWithSignedProposal("1", args, sProp)
-				require.Equal(t, int32(shim.OK), res.Status, res.Message)
+				require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 			})
 		}
 		for _, function := range []string{"getid", "ChaincodeExists"} {
 			t.Run(function, func(t *testing.T) {
 				mockAclProvider.Reset()
 				mockAclProvider.On("CheckACL", resources.Lscc_ChaincodeExists, "test", sProp).Return(nil)
-				args = [][]byte{[]byte(function), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
+				args = [][]byte{[]byte(function), []byte("test"), []byte(cds.GetChaincodeSpec().GetChaincodeId().GetName())}
 				res = stub.MockInvokeWithSignedProposal("1", args, sProp)
-				require.Equal(t, int32(shim.OK), res.Status, res.Message)
+				require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 			})
 		}
 		for _, function := range []string{"getdepspec", "GetDeploymentSpec"} {
 			t.Run(function, func(t *testing.T) {
 				mockAclProvider.Reset()
 				mockAclProvider.On("CheckACL", resources.Lscc_GetDeploymentSpec, "test", sProp).Return(nil)
-				args = [][]byte{[]byte(function), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
+				args = [][]byte{[]byte(function), []byte("test"), []byte(cds.GetChaincodeSpec().GetChaincodeId().GetName())}
 				res = stub.MockInvokeWithSignedProposal("1", args, sProp)
-				require.Equal(t, int32(shim.OK), res.Status, res.Message)
+				require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 				scc.Support.(*MockSupport).GetChaincodeFromLocalStorageErr = errors.New("barf")
 				res = stub.MockInvokeWithSignedProposal("1", args, sProp)
-				require.NotEqual(t, int32(shim.OK), res.Status)
-				require.Equal(t, "invalid deployment spec: barf", res.Message)
+				require.NotEqual(t, int32(shim.OK), res.GetStatus())
+				require.Equal(t, "invalid deployment spec: barf", res.GetMessage())
 				scc.Support.(*MockSupport).GetChaincodeFromLocalStorageErr = nil
 				bkpCCFromLSRv := scc.Support.(*MockSupport).GetChaincodeFromLocalStorageRv
 				cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 				scc.Support.(*MockSupport).GetChaincodeFromLocalStorageRv = &ccprovider.CDSPackage{GetHasher: cryptoProvider}
 				res = stub.MockInvokeWithSignedProposal("1", args, sProp)
-				require.NotEqual(t, int32(shim.OK), res.Status)
-				require.Contains(t, res.Message, "chaincode fingerprint mismatch")
+				require.NotEqual(t, int32(shim.OK), res.GetStatus())
+				require.Contains(t, res.GetMessage(), "chaincode fingerprint mismatch")
 				scc.Support.(*MockSupport).GetChaincodeFromLocalStorageRv = bkpCCFromLSRv
 			})
 		}
@@ -583,13 +583,13 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 			t.Run(function, func(t *testing.T) {
 				mockAclProvider.Reset()
 				mockAclProvider.On("CheckACL", resources.Lscc_GetChaincodeData, "test", sProp).Return(nil)
-				args = [][]byte{[]byte(function), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
+				args = [][]byte{[]byte(function), []byte("test"), []byte(cds.GetChaincodeSpec().GetChaincodeId().GetName())}
 				res = stub.MockInvokeWithSignedProposal("1", args, sProp)
-				require.Equal(t, int32(shim.OK), res.Status, res.Message)
+				require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 			})
 		}
 	} else {
-		require.Equal(t, expectedErrorMsg, string(res.Message))
+		require.Equal(t, expectedErrorMsg, string(res.GetMessage()))
 	}
 }
 
@@ -620,7 +620,7 @@ func TestUpgrade(t *testing.T) {
 	}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 	scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 	scc.Support.(*MockSupport).GetInstantiationPolicyErr = errors.New("barf")
 
@@ -639,7 +639,7 @@ func TestUpgrade(t *testing.T) {
 	}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "instantiation policy missing", scc, stub, nil)
 
@@ -656,7 +656,7 @@ func TestUpgrade(t *testing.T) {
 	}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 	scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 	scc.Support.(*MockSupport).GetInstantiationPolicyMap = map[string][]byte{}
 	scc.Support.(*MockSupport).CheckInstantiationPolicyMap = map[string]error{"example020": errors.New("barf")}
@@ -676,7 +676,7 @@ func TestUpgrade(t *testing.T) {
 	}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 	scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 	scc.Support.(*MockSupport).GetInstantiationPolicyMap = map[string][]byte{}
 	scc.Support.(*MockSupport).CheckInstantiationPolicyMap = map[string]error{"example021": errors.New("barf")}
@@ -704,7 +704,7 @@ func TestUpgrade(t *testing.T) {
 	}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 	scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 
 	collName1 := "mycollection1"
@@ -744,7 +744,7 @@ func TestUpgrade(t *testing.T) {
 	}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 	scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 
 	// As the PrivateChannelData is enabled and collectionConfigBytes is valid, no error is expected
@@ -767,7 +767,7 @@ func TestUpgrade(t *testing.T) {
 	}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 	scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 
 	// As the PrivateChannelData is enabled and collectionConfigBytes is valid, no error is expected
@@ -801,7 +801,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 			}
 			stub = shimtest.NewMockStub("lscc", scc)
 			res := stub.MockInit("1", nil)
-			require.Equal(t, int32(shim.OK), res.Status, res.Message)
+			require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 			scc.Support.(*MockSupport).GetInstantiationPolicyRv = []byte("instantiation policy")
 		}
 
@@ -816,7 +816,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 		scc.Support.(*MockSupport).GetInstantiationPolicyErr = nil
 		scc.Support.(*MockSupport).CheckInstantiationPolicyMap = nil
 		res := stub.MockInvokeWithSignedProposal("1", args, sProp)
-		require.Equal(t, int32(shim.OK), res.Status, res.Message)
+		require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 		scc.Support.(*MockSupport).GetInstantiationPolicyErr = saved1
 		scc.Support.(*MockSupport).CheckInstantiationPolicyMap = saved2
 
@@ -836,10 +836,10 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 
 		res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 		if expectedErrorMsg == "" {
-			require.Equal(t, int32(shim.OK), res.Status, res.Message)
+			require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 			cd := &ccprovider.ChaincodeData{}
-			err = proto.Unmarshal(res.Payload, cd)
+			err = proto.Unmarshal(res.GetPayload(), cd)
 			require.NoError(t, err)
 
 			newVer := cd.Version
@@ -848,13 +848,13 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 			require.Equal(t, newVer, expectVer, fmt.Sprintf("Upgrade chaincode version error, expected %s, got %s", expectVer, newVer))
 
 			chaincodeEvent := <-stub.ChaincodeEventsChannel
-			require.Equal(t, "upgrade", chaincodeEvent.EventName)
+			require.Equal(t, "upgrade", chaincodeEvent.GetEventName())
 			lifecycleEvent := &pb.LifecycleEvent{}
-			err = proto.Unmarshal(chaincodeEvent.Payload, lifecycleEvent)
+			err = proto.Unmarshal(chaincodeEvent.GetPayload(), lifecycleEvent)
 			require.NoError(t, err)
-			require.Equal(t, newccname, lifecycleEvent.ChaincodeName)
+			require.Equal(t, newccname, lifecycleEvent.GetChaincodeName())
 		} else {
-			require.Equal(t, expectedErrorMsg, string(res.Message))
+			require.Equal(t, expectedErrorMsg, string(res.GetMessage()))
 		}
 	})
 }
@@ -874,27 +874,27 @@ func TestFunctionsWithAliases(t *testing.T) {
 	}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 
 	testInvoke := func(function, resource string) {
 		t.Run(function, func(t *testing.T) {
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function), []byte("testchannel1")}, nil)
-			require.NotEqual(t, int32(shim.OK), res.Status)
-			require.Equal(t, "invalid number of arguments to lscc: 2", res.Message)
+			require.NotEqual(t, int32(shim.OK), res.GetStatus())
+			require.Equal(t, "invalid number of arguments to lscc: 2", res.GetMessage())
 
 			mockAclProvider.Reset()
 			mockAclProvider.On("CheckACL", resource, "testchannel1", sProp).Return(errors.New("bonanza"))
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function), []byte("testchannel1"), []byte("chaincode")}, sProp)
-			require.NotEqual(t, int32(shim.OK), res.Status, res.Message)
-			require.Equal(t, fmt.Sprintf("access denied for [%s][testchannel1]: bonanza", function), res.Message)
+			require.NotEqual(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
+			require.Equal(t, fmt.Sprintf("access denied for [%s][testchannel1]: bonanza", function), res.GetMessage())
 
 			mockAclProvider.Reset()
 			mockAclProvider.On("CheckACL", resource, "testchannel1", sProp).Return(nil)
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function), []byte("testchannel1"), []byte("nonexistentchaincode")}, sProp)
-			require.NotEqual(t, int32(shim.OK), res.Status, res.Message)
-			require.Equal(t, res.Message, "could not find chaincode with name 'nonexistentchaincode'")
+			require.NotEqual(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
+			require.Equal(t, res.GetMessage(), "could not find chaincode with name 'nonexistentchaincode'")
 		})
 	}
 
@@ -922,26 +922,26 @@ func TestGetChaincodes(t *testing.T) {
 	stub := shimtest.NewMockStub("lscc", scc)
 	stub.ChannelID = "test"
 	res := stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	for _, function := range []string{"getchaincodes", "GetChaincodes"} {
 		t.Run(function, func(t *testing.T) {
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function), []byte("barf")}, nil)
-			require.NotEqual(t, int32(shim.OK), res.Status)
-			require.Equal(t, "invalid number of arguments to lscc: 2", res.Message)
+			require.NotEqual(t, int32(shim.OK), res.GetStatus())
+			require.Equal(t, "invalid number of arguments to lscc: 2", res.GetMessage())
 
 			sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("test", &pb.ChaincodeSpec{}, []byte("Bob"), []byte("msg1"))
 
 			mockAclProvider.Reset()
 			mockAclProvider.On("CheckACL", resources.Lscc_GetInstantiatedChaincodes, "test", sProp).Return(errors.New("coyote"))
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function)}, sProp)
-			require.NotEqual(t, int32(shim.OK), res.Status)
-			require.Regexp(t, `access denied for \[`+function+`\]\[test\](.*)coyote`, res.Message)
+			require.NotEqual(t, int32(shim.OK), res.GetStatus())
+			require.Regexp(t, `access denied for \[`+function+`\]\[test\](.*)coyote`, res.GetMessage())
 
 			mockAclProvider.Reset()
 			mockAclProvider.On("CheckACL", resources.Lscc_GetInstantiatedChaincodes, "test", sProp).Return(nil)
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function)}, sProp)
-			require.Equal(t, int32(shim.OK), res.Status, res.Message)
+			require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 		})
 	}
 }
@@ -975,13 +975,13 @@ func TestGetChaincodesFilter(t *testing.T) {
 	stub.GetStateByRangeReturns(sqi, nil)
 
 	resp := scc.getChaincodes(stub)
-	require.Equal(t, resp.Status, int32(shim.OK))
+	require.Equal(t, resp.GetStatus(), int32(shim.OK))
 
 	cqr := &pb.ChaincodeQueryResponse{}
 	err = proto.Unmarshal(resp.GetPayload(), cqr)
 	require.NoError(t, err)
 
-	require.Equal(t, cqr.Chaincodes, []*pb.ChaincodeInfo{
+	require.Equal(t, cqr.GetChaincodes(), []*pb.ChaincodeInfo{
 		{Name: "name-one", Version: "1.0", Escc: "escc", Vscc: "vscc"},
 		{Name: "name-two", Version: "2.0", Escc: "escc-2", Vscc: "vscc-2"},
 	})
@@ -1002,42 +1002,42 @@ func TestGetInstalledChaincodes(t *testing.T) {
 	}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	for _, function := range []string{"getinstalledchaincodes", "GetInstalledChaincodes"} {
 		t.Run(function, func(t *testing.T) {
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function), []byte("barf")}, nil)
-			require.NotEqual(t, int32(shim.OK), res.Status)
-			require.Equal(t, "invalid number of arguments to lscc: 2", res.Message)
+			require.NotEqual(t, int32(shim.OK), res.GetStatus())
+			require.Equal(t, "invalid number of arguments to lscc: 2", res.GetMessage())
 
 			sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Bob"), []byte("msg1"))
 
 			mockAclProvider.Reset()
 			mockAclProvider.On("CheckACL", resources.Lscc_GetInstalledChaincodes, "", sProp).Return(errors.New("authorization failure"))
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function)}, sProp)
-			require.NotEqual(t, int32(shim.OK), res.Status)
-			require.Contains(t, res.Message, "access denied for ["+function+"]")
+			require.NotEqual(t, int32(shim.OK), res.GetStatus())
+			require.Contains(t, res.GetMessage(), "access denied for ["+function+"]")
 
 			sProp, _ = protoutil.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 
 			mockAclProvider.Reset()
 			mockAclProvider.On("CheckACL", resources.Lscc_GetInstalledChaincodes, "", sProp).Return(nil)
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function)}, sProp)
-			require.NotEqual(t, int32(shim.OK), res.Status)
-			require.Equal(t, "proto: Marshal called with nil", res.Message)
+			require.NotEqual(t, int32(shim.OK), res.GetStatus())
+			require.Equal(t, "proto: Marshal called with nil", res.GetMessage())
 
 			_, err := constructDeploymentSpec("ccname-"+function, "path", "version", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false, false, scc)
 			require.NoError(t, err)
 
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function)}, sProp)
-			require.NotEqual(t, int32(shim.OK), res.Status)
-			require.Equal(t, "barf", res.Message)
+			require.NotEqual(t, int32(shim.OK), res.GetStatus())
+			require.Equal(t, "barf", res.GetMessage())
 
 			_, err = constructDeploymentSpec("ccname-"+function, "path", "version", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false, true, scc)
 			require.NoError(t, err)
 
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function)}, sProp)
-			require.Equal(t, int32(shim.OK), res.Status, res.Message)
+			require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 			scc.Support = &MockSupport{}
 		})
@@ -1060,11 +1060,11 @@ func TestNewLifeCycleSysCC(t *testing.T) {
 	require.NotNil(t, scc)
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte("barf")}, nil)
-	require.NotEqual(t, int32(shim.OK), res.Status)
-	require.Equal(t, "invalid function to lscc: barf", res.Message)
+	require.NotEqual(t, int32(shim.OK), res.GetStatus())
+	require.Equal(t, "invalid function to lscc: barf", res.GetMessage())
 }
 
 func TestGetChaincodeData(t *testing.T) {
@@ -1083,7 +1083,7 @@ func TestGetChaincodeData(t *testing.T) {
 	require.NotNil(t, scc)
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	_, err = scc.getChaincodeData("barf", []byte("barf"))
 	require.Error(t, err)
@@ -1109,7 +1109,7 @@ func TestExecuteInstall(t *testing.T) {
 	require.NotNil(t, scc)
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	err = scc.executeInstall(stub, []byte("barf"))
 	require.Error(t, err)
@@ -1134,8 +1134,8 @@ func TestPutChaincodeCollectionData(t *testing.T) {
 	}
 	stub := shimtest.NewMockStub("lscc", scc)
 
-	if res := stub.MockInit("1", nil); res.Status != shim.OK {
-		fmt.Println("Init failed", string(res.Message))
+	if res := stub.MockInit("1", nil); res.GetStatus() != shim.OK {
+		fmt.Println("Init failed", string(res.GetMessage()))
 		t.FailNow()
 	}
 
@@ -1197,34 +1197,34 @@ func TestGetChaincodeCollectionData(t *testing.T) {
 	stub.MockTransactionEnd("foo")
 
 	res := stub.MockInit("1", nil)
-	require.Equal(t, int32(shim.OK), res.Status, res.Message)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 
 	for _, function := range []string{"GetCollectionsConfig", "getcollectionsconfig"} {
 		sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("test", &pb.ChaincodeSpec{}, []byte("Bob"), []byte("msg1"))
 
 		t.Run("invalid number of arguments", func(t *testing.T) {
 			res = stub.MockInvokeWithSignedProposal("1", util.ToChaincodeArgs(function, "foo", "bar"), nil)
-			require.NotEqual(t, int32(shim.OK), res.Status)
-			require.Equal(t, "invalid number of arguments to lscc: 3", res.Message)
+			require.NotEqual(t, int32(shim.OK), res.GetStatus())
+			require.Equal(t, "invalid number of arguments to lscc: 3", res.GetMessage())
 		})
 		t.Run("invalid identity", func(t *testing.T) {
 			mockAclProvider.Reset()
 			mockAclProvider.On("CheckACL", resources.Lscc_GetCollectionsConfig, "test", sProp).Return(errors.New("acl check failed"))
 			res = stub.MockInvokeWithSignedProposal("1", util.ToChaincodeArgs(function, "foo"), sProp)
-			require.NotEqual(t, int32(shim.OK), res.Status)
-			require.Contains(t, res.Message, "access denied for ["+function+"]")
+			require.NotEqual(t, int32(shim.OK), res.GetStatus())
+			require.Contains(t, res.GetMessage(), "access denied for ["+function+"]")
 		})
 		t.Run("non-exists collections config", func(t *testing.T) {
 			mockAclProvider.Reset()
 			mockAclProvider.On("CheckACL", resources.Lscc_GetCollectionsConfig, "test", sProp).Return(nil)
 			res = stub.MockInvokeWithSignedProposal("1", util.ToChaincodeArgs(function, "bar"), sProp)
-			require.NotEqual(t, int32(shim.OK), res.Status)
-			require.Equal(t, res.Message, "collections config not defined for chaincode bar")
+			require.NotEqual(t, int32(shim.OK), res.GetStatus())
+			require.Equal(t, res.GetMessage(), "collections config not defined for chaincode bar")
 		})
 		t.Run("Success", func(t *testing.T) {
 			res = stub.MockInvokeWithSignedProposal("1", util.ToChaincodeArgs(function, "foo"), sProp)
-			require.Equal(t, int32(shim.OK), res.Status)
-			require.NotNil(t, res.Payload)
+			require.Equal(t, int32(shim.OK), res.GetStatus())
+			require.NotNil(t, res.GetPayload())
 		})
 	}
 }

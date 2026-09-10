@@ -288,8 +288,8 @@ func TestCommitUpdates(t *testing.T) {
 		cacheEnabled:   true,
 	}
 
-	require.Empty(t, committer.cacheKVs["key2"].AdditionalInfo)
+	require.Empty(t, committer.cacheKVs["key2"].GetAdditionalInfo())
 	err = committer.commitUpdates()
 	require.NoError(t, err)
-	require.NotEmpty(t, committer.cacheKVs["key2"].AdditionalInfo)
+	require.NotEmpty(t, committer.cacheKVs["key2"].GetAdditionalInfo())
 }

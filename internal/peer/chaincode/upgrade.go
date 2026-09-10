@@ -74,7 +74,7 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 	if err != nil {
 		return nil, fmt.Errorf("error creating proposal %s: %s", chainFuncName, err)
 	}
-	logger.Debugf("Get upgrade proposal for chaincode <%v>", spec.ChaincodeId)
+	logger.Debugf("Get upgrade proposal for chaincode <%v>", spec.GetChaincodeId())
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = protoutil.GetSignedProposal(prop, cf.Signer)
@@ -89,7 +89,7 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 	}
 
 	if proposalResponse != nil {
-		logger.Debugf("endorse upgrade proposal, get response <%v>", proposalResponse.Response)
+		logger.Debugf("endorse upgrade proposal, get response <%v>", proposalResponse.GetResponse())
 		// assemble a signed transaction (it's an Envelope message)
 		env, err := protoutil.CreateSignedTx(prop, cf.Signer, proposalResponse)
 		if err != nil {

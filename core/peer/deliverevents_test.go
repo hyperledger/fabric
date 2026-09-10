@@ -227,25 +227,25 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 						deliverServer.On("Send", mock.Anything).Run(func(args mock.Arguments) {
 							defer wg.Done()
 							response := args.Get(0).(*peer.DeliverResponse)
-							switch response.Type.(type) {
+							switch response.GetType().(type) {
 							case *peer.DeliverResponse_Status:
 								config.Equal(common.Status_SUCCESS, response.GetStatus())
 							case *peer.DeliverResponse_FilteredBlock:
 								block := response.GetFilteredBlock()
-								config.Equal(uint64(0), block.Number)
-								config.Equal(config.channelID, block.ChannelId)
-								config.Equal(1, len(block.FilteredTransactions))
-								tx := block.FilteredTransactions[0]
-								config.Equal(config.txID, tx.Txid)
-								config.Equal(peer.TxValidationCode_VALID, tx.TxValidationCode)
-								config.Equal(common.HeaderType_ENDORSER_TRANSACTION, tx.Type)
+								config.Equal(uint64(0), block.GetNumber())
+								config.Equal(config.channelID, block.GetChannelId())
+								config.Equal(1, len(block.GetFilteredTransactions()))
+								tx := block.GetFilteredTransactions()[0]
+								config.Equal(config.txID, tx.GetTxid())
+								config.Equal(peer.TxValidationCode_VALID, tx.GetTxValidationCode())
+								config.Equal(common.HeaderType_ENDORSER_TRANSACTION, tx.GetType())
 								transactionActions := tx.GetTransactionActions()
 								config.NotNil(transactionActions)
-								chaincodeActions := transactionActions.ChaincodeActions
+								chaincodeActions := transactionActions.GetChaincodeActions()
 								config.Equal(1, len(chaincodeActions))
-								config.Equal(config.eventName, chaincodeActions[0].ChaincodeEvent.EventName)
-								config.Equal(config.txID, chaincodeActions[0].ChaincodeEvent.TxId)
-								config.Equal(config.chaincodeName, chaincodeActions[0].ChaincodeEvent.ChaincodeId)
+								config.Equal(config.eventName, chaincodeActions[0].GetChaincodeEvent().GetEventName())
+								config.Equal(config.txID, chaincodeActions[0].GetChaincodeEvent().GetTxId())
+								config.Equal(config.chaincodeName, chaincodeActions[0].GetChaincodeEvent().GetChaincodeId())
 							default:
 								config.FailNow("Unexpected response type")
 							}
@@ -301,21 +301,21 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 						deliverServer.On("Send", mock.Anything).Run(func(args mock.Arguments) {
 							defer wg.Done()
 							response := args.Get(0).(*peer.DeliverResponse)
-							switch response.Type.(type) {
+							switch response.GetType().(type) {
 							case *peer.DeliverResponse_Status:
 								config.Equal(common.Status_SUCCESS, response.GetStatus())
 							case *peer.DeliverResponse_FilteredBlock:
 								block := response.GetFilteredBlock()
-								config.Equal(uint64(0), block.Number)
-								config.Equal(config.channelID, block.ChannelId)
-								config.Equal(1, len(block.FilteredTransactions))
-								tx := block.FilteredTransactions[0]
-								config.Equal(config.txID, tx.Txid)
-								config.Equal(peer.TxValidationCode_VALID, tx.TxValidationCode)
-								config.Equal(common.HeaderType_ENDORSER_TRANSACTION, tx.Type)
+								config.Equal(uint64(0), block.GetNumber())
+								config.Equal(config.channelID, block.GetChannelId())
+								config.Equal(1, len(block.GetFilteredTransactions()))
+								tx := block.GetFilteredTransactions()[0]
+								config.Equal(config.txID, tx.GetTxid())
+								config.Equal(peer.TxValidationCode_VALID, tx.GetTxValidationCode())
+								config.Equal(common.HeaderType_ENDORSER_TRANSACTION, tx.GetType())
 								transactionActions := tx.GetTransactionActions()
 								config.NotNil(transactionActions)
-								chaincodeActions := transactionActions.ChaincodeActions
+								chaincodeActions := transactionActions.GetChaincodeActions()
 								// we expecting to get zero chaincode action,
 								// since provided nil payload
 								config.Equal(0, len(chaincodeActions))
@@ -374,7 +374,7 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 						deliverServer.On("Send", mock.Anything).Run(func(args mock.Arguments) {
 							defer wg.Done()
 							response := args.Get(0).(*peer.DeliverResponse)
-							switch response.Type.(type) {
+							switch response.GetType().(type) {
 							case *peer.DeliverResponse_Status:
 								config.Equal(common.Status_BAD_REQUEST, response.GetStatus())
 							case *peer.DeliverResponse_FilteredBlock:
@@ -455,30 +455,30 @@ func TestEventsServer_DeliverWithPrivateData(t *testing.T) {
 						deliverServer.On("Send", mock.Anything).Run(func(args mock.Arguments) {
 							defer wg.Done()
 							response := args.Get(0).(*peer.DeliverResponse)
-							switch response.Type.(type) {
+							switch response.GetType().(type) {
 							case *peer.DeliverResponse_Status:
 								config.Equal(common.Status_SUCCESS, response.GetStatus())
 							case *peer.DeliverResponse_BlockAndPrivateData:
 								blockAndPvtData := response.GetBlockAndPrivateData()
-								block := blockAndPvtData.Block
-								config.Equal(uint64(0), block.Header.Number)
-								config.Equal(1, len(blockAndPvtData.PrivateDataMap))
-								config.NotNil(blockAndPvtData.PrivateDataMap[uint64(0)])
-								txPvtRwset := blockAndPvtData.PrivateDataMap[uint64(0)]
+								block := blockAndPvtData.GetBlock()
+								config.Equal(uint64(0), block.GetHeader().GetNumber())
+								config.Equal(1, len(blockAndPvtData.GetPrivateDataMap()))
+								config.NotNil(blockAndPvtData.GetPrivateDataMap()[uint64(0)])
+								txPvtRwset := blockAndPvtData.GetPrivateDataMap()[uint64(0)]
 								// expect to have 2 NsPvtRwset (i.e., 2 namespaces)
-								config.Equal(2, len(txPvtRwset.NsPvtRwset))
+								config.Equal(2, len(txPvtRwset.GetNsPvtRwset()))
 								// check namespace because the index may be out of order
-								for _, nsPvtRwset := range txPvtRwset.NsPvtRwset {
-									switch nsPvtRwset.Namespace {
+								for _, nsPvtRwset := range txPvtRwset.GetNsPvtRwset() {
+									switch nsPvtRwset.GetNamespace() {
 									case "ns-0":
-										config.Equal(1, len(nsPvtRwset.CollectionPvtRwset))
-										config.Equal("coll-0", nsPvtRwset.CollectionPvtRwset[0].CollectionName)
+										config.Equal(1, len(nsPvtRwset.GetCollectionPvtRwset()))
+										config.Equal("coll-0", nsPvtRwset.GetCollectionPvtRwset()[0].GetCollectionName())
 									case "ns-2":
-										config.Equal(2, len(nsPvtRwset.CollectionPvtRwset))
-										config.Equal("coll-20", nsPvtRwset.CollectionPvtRwset[0].CollectionName)
-										config.Equal("coll-21", nsPvtRwset.CollectionPvtRwset[1].CollectionName)
+										config.Equal(2, len(nsPvtRwset.GetCollectionPvtRwset()))
+										config.Equal("coll-20", nsPvtRwset.GetCollectionPvtRwset()[0].GetCollectionName())
+										config.Equal("coll-21", nsPvtRwset.GetCollectionPvtRwset()[1].GetCollectionName())
 									default:
-										config.FailNow("Wrong namespace " + nsPvtRwset.Namespace)
+										config.FailNow("Wrong namespace " + nsPvtRwset.GetNamespace())
 									}
 								}
 							default:
@@ -531,7 +531,7 @@ func TestEventsServer_DeliverWithPrivateData(t *testing.T) {
 						deliverServer.On("Send", mock.Anything).Run(func(args mock.Arguments) {
 							defer wg.Done()
 							response := args.Get(0).(*peer.DeliverResponse)
-							switch response.Type.(type) {
+							switch response.GetType().(type) {
 							case *peer.DeliverResponse_Status:
 								config.Equal(common.Status_BAD_REQUEST, response.GetStatus())
 							case *peer.DeliverResponse_BlockAndPrivateData:

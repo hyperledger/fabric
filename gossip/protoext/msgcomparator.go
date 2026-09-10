@@ -56,14 +56,14 @@ func (mc *msgComparator) invalidationPolicy(this any, that any) common.Invalidat
 }
 
 func (mc *msgComparator) stateInvalidationPolicy(thisStateMsg *gossip.StateInfo, thatStateMsg *gossip.StateInfo) common.InvalidationResult {
-	if !bytes.Equal(thisStateMsg.PkiId, thatStateMsg.PkiId) {
+	if !bytes.Equal(thisStateMsg.GetPkiId(), thatStateMsg.GetPkiId()) {
 		return common.MessageNoAction
 	}
-	return compareTimestamps(thisStateMsg.Timestamp, thatStateMsg.Timestamp)
+	return compareTimestamps(thisStateMsg.GetTimestamp(), thatStateMsg.GetTimestamp())
 }
 
 func (mc *msgComparator) identityInvalidationPolicy(thisIdentityMsg *gossip.PeerIdentity, thatIdentityMsg *gossip.PeerIdentity) common.InvalidationResult {
-	if bytes.Equal(thisIdentityMsg.PkiId, thatIdentityMsg.PkiId) {
+	if bytes.Equal(thisIdentityMsg.GetPkiId(), thatIdentityMsg.GetPkiId()) {
 		return common.MessageInvalidated
 	}
 
@@ -71,46 +71,46 @@ func (mc *msgComparator) identityInvalidationPolicy(thisIdentityMsg *gossip.Peer
 }
 
 func (mc *msgComparator) dataInvalidationPolicy(thisDataMsg *gossip.DataMessage, thatDataMsg *gossip.DataMessage) common.InvalidationResult {
-	if thisDataMsg.Payload.SeqNum == thatDataMsg.Payload.SeqNum {
+	if thisDataMsg.GetPayload().GetSeqNum() == thatDataMsg.GetPayload().GetSeqNum() {
 		return common.MessageInvalidated
 	}
 
-	diff := abs(thisDataMsg.Payload.SeqNum, thatDataMsg.Payload.SeqNum)
+	diff := abs(thisDataMsg.GetPayload().GetSeqNum(), thatDataMsg.GetPayload().GetSeqNum())
 	if diff <= uint64(mc.dataBlockStorageSize) {
 		return common.MessageNoAction
 	}
 
-	if thisDataMsg.Payload.SeqNum > thatDataMsg.Payload.SeqNum {
+	if thisDataMsg.GetPayload().GetSeqNum() > thatDataMsg.GetPayload().GetSeqNum() {
 		return common.MessageInvalidates
 	}
 	return common.MessageInvalidated
 }
 
 func aliveInvalidationPolicy(thisMsg *gossip.AliveMessage, thatMsg *gossip.AliveMessage) common.InvalidationResult {
-	if !bytes.Equal(thisMsg.Membership.PkiId, thatMsg.Membership.PkiId) {
+	if !bytes.Equal(thisMsg.GetMembership().GetPkiId(), thatMsg.GetMembership().GetPkiId()) {
 		return common.MessageNoAction
 	}
 
-	return compareTimestamps(thisMsg.Timestamp, thatMsg.Timestamp)
+	return compareTimestamps(thisMsg.GetTimestamp(), thatMsg.GetTimestamp())
 }
 
 func leaderInvalidationPolicy(thisMsg *gossip.LeadershipMessage, thatMsg *gossip.LeadershipMessage) common.InvalidationResult {
-	if !bytes.Equal(thisMsg.PkiId, thatMsg.PkiId) {
+	if !bytes.Equal(thisMsg.GetPkiId(), thatMsg.GetPkiId()) {
 		return common.MessageNoAction
 	}
 
-	return compareTimestamps(thisMsg.Timestamp, thatMsg.Timestamp)
+	return compareTimestamps(thisMsg.GetTimestamp(), thatMsg.GetTimestamp())
 }
 
 func compareTimestamps(thisTS *gossip.PeerTime, thatTS *gossip.PeerTime) common.InvalidationResult {
-	if thisTS.IncNum == thatTS.IncNum {
-		if thisTS.SeqNum > thatTS.SeqNum {
+	if thisTS.GetIncNum() == thatTS.GetIncNum() {
+		if thisTS.GetSeqNum() > thatTS.GetSeqNum() {
 			return common.MessageInvalidates
 		}
 
 		return common.MessageInvalidated
 	}
-	if thisTS.IncNum < thatTS.IncNum {
+	if thisTS.GetIncNum() < thatTS.GetIncNum() {
 		return common.MessageInvalidated
 	}
 	return common.MessageInvalidates

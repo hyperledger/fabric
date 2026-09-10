@@ -60,11 +60,11 @@ func TestGenesisBlock(t *testing.T) {
 		data := &cb.BlockData{
 			Data: [][]byte{expectedBytes},
 		}
-		expectedDataLen := len(data.Data)
+		expectedDataLen := len(data.GetData())
 		metadata := &cb.BlockMetadata{
 			Metadata: [][]byte{expectedBytes},
 		}
-		expectedMetaLen := len(metadata.Metadata)
+		expectedMetaLen := len(metadata.GetMetadata())
 		block := &cb.Block{
 			Header:   header,
 			Data:     data,
@@ -78,18 +78,18 @@ func TestGenesisBlock(t *testing.T) {
 		helper := bootfile.New(testFile)
 		outBlock := helper.GenesisBlock()
 
-		outHeader := outBlock.Header
-		require.Equal(t, expectedNumber, outHeader.Number, "block header Number not read correctly")
-		require.Equal(t, expectedHash, outHeader.PreviousHash, "block header PreviousHash not read correctly")
-		require.Equal(t, expectedBytes, outHeader.DataHash, "block header DataHash not read correctly")
+		outHeader := outBlock.GetHeader()
+		require.Equal(t, expectedNumber, outHeader.GetNumber(), "block header Number not read correctly")
+		require.Equal(t, expectedHash, outHeader.GetPreviousHash(), "block header PreviousHash not read correctly")
+		require.Equal(t, expectedBytes, outHeader.GetDataHash(), "block header DataHash not read correctly")
 
-		outData := outBlock.Data
-		require.Equal(t, expectedDataLen, len(outData.Data), "block len(data) not read correctly")
-		require.Equal(t, expectedBytes, outData.Data[0], "block data not read correctly")
+		outData := outBlock.GetData()
+		require.Equal(t, expectedDataLen, len(outData.GetData()), "block len(data) not read correctly")
+		require.Equal(t, expectedBytes, outData.GetData()[0], "block data not read correctly")
 
-		outMeta := outBlock.Metadata
-		require.Equal(t, expectedMetaLen, len(outMeta.Metadata), "block len(Metadata) not read correctly")
-		require.Equal(t, expectedBytes, outMeta.Metadata[0], "block Metadata not read correctly")
+		outMeta := outBlock.GetMetadata()
+		require.Equal(t, expectedMetaLen, len(outMeta.GetMetadata()), "block len(Metadata) not read correctly")
+		require.Equal(t, expectedBytes, outMeta.GetMetadata()[0], "block Metadata not read correctly")
 	})
 }
 
@@ -140,11 +140,11 @@ func TestReplaceGenesisBlockFile(t *testing.T) {
 	data2 := &cb.BlockData{
 		Data: [][]byte{expectedBytes2},
 	}
-	expectedDataLen2 := len(data2.Data)
+	expectedDataLen2 := len(data2.GetData())
 	metadata2 := &cb.BlockMetadata{
 		Metadata: [][]byte{expectedBytes2},
 	}
-	expectedMetaLen2 := len(metadata2.Metadata)
+	expectedMetaLen2 := len(metadata2.GetMetadata())
 	block2 := &cb.Block{
 		Header:   header2,
 		Data:     data2,
@@ -163,18 +163,18 @@ func TestReplaceGenesisBlockFile(t *testing.T) {
 		helper := bootfile.New(testFile)
 		outBlock := helper.GenesisBlock()
 
-		outHeader := outBlock.Header
-		require.Equal(t, expectedNumber2, outHeader.Number, "block header Number not read correctly.")
-		require.Equal(t, []uint8([]byte(nil)), outHeader.PreviousHash, "block header PreviousHash not read correctly.")
-		require.Equal(t, expectedBytes2, outHeader.DataHash, "block header DataHash not read correctly.")
+		outHeader := outBlock.GetHeader()
+		require.Equal(t, expectedNumber2, outHeader.GetNumber(), "block header Number not read correctly.")
+		require.Equal(t, []uint8([]byte(nil)), outHeader.GetPreviousHash(), "block header PreviousHash not read correctly.")
+		require.Equal(t, expectedBytes2, outHeader.GetDataHash(), "block header DataHash not read correctly.")
 
-		outData := outBlock.Data
-		require.Equal(t, expectedDataLen2, len(outData.Data), "block len(data) not read correctly.")
-		require.Equal(t, expectedBytes2, outData.Data[0], "block data not read correctly.")
+		outData := outBlock.GetData()
+		require.Equal(t, expectedDataLen2, len(outData.GetData()), "block len(data) not read correctly.")
+		require.Equal(t, expectedBytes2, outData.GetData()[0], "block data not read correctly.")
 
-		outMeta := outBlock.Metadata
-		require.Equal(t, expectedMetaLen2, len(outMeta.Metadata), "block len(Metadata) not read correctly.")
-		require.Equal(t, expectedBytes2, outMeta.Metadata[0], "block Metadata not read correctly.")
+		outMeta := outBlock.GetMetadata()
+		require.Equal(t, expectedMetaLen2, len(outMeta.GetMetadata()), "block len(Metadata) not read correctly.")
+		require.Equal(t, expectedBytes2, outMeta.GetMetadata()[0], "block Metadata not read correctly.")
 	})
 
 	t.Run("Bad - No original", func(t *testing.T) {

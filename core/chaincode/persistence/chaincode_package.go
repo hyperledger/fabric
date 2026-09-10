@@ -80,9 +80,9 @@ func (fpl *FallbackPackageLocator) GetChaincodePackage(packageID string) (*Chain
 	}
 
 	md := &ChaincodePackageMetadata{
-		Path:  cds.ChaincodeSpec.ChaincodeId.Path,
-		Type:  cds.ChaincodeSpec.Type.String(),
-		Label: cds.ChaincodeSpec.ChaincodeId.Name,
+		Path:  cds.GetChaincodeSpec().GetChaincodeId().GetPath(),
+		Type:  cds.GetChaincodeSpec().GetType().String(),
+		Label: cds.GetChaincodeSpec().GetChaincodeId().GetName(),
 	}
 
 	mdBytes, err := json.Marshal(md)
@@ -92,7 +92,7 @@ func (fpl *FallbackPackageLocator) GetChaincodePackage(packageID string) (*Chain
 
 	return md,
 		mdBytes,
-		io.NopCloser(bytes.NewBuffer(cds.CodePackage)),
+		io.NopCloser(bytes.NewBuffer(cds.GetCodePackage())),
 		nil
 }
 

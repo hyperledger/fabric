@@ -221,7 +221,7 @@ func assertBlockStorePostReset(t *testing.T, store *BlockStore, originallyCommit
 	require.Equal(t,
 		&common.BlockchainInfo{
 			Height:            1,
-			CurrentBlockHash:  protoutil.BlockHeaderHash(originallyCommittedBlocks[0].Header),
+			CurrentBlockHash:  protoutil.BlockHeaderHash(originallyCommittedBlocks[0].GetHeader()),
 			PreviousBlockHash: nil,
 		},
 		bcInfo)

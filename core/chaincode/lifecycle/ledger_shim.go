@@ -34,7 +34,7 @@ func StateIteratorToMap(itr StateIterator) (map[string][]byte, error) {
 		if entry == nil {
 			return result, nil
 		}
-		result[entry.Key] = entry.Value
+		result[entry.GetKey()] = entry.GetValue()
 	}
 }
 

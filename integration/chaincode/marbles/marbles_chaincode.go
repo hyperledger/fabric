@@ -363,12 +363,12 @@ func constructQueryResponseFromIterator(resultsIterator shim.StateQueryIteratorI
 		}
 		buffer.WriteString("{\"Key\":")
 		buffer.WriteString("\"")
-		buffer.WriteString(queryResponse.Key)
+		buffer.WriteString(queryResponse.GetKey())
 		buffer.WriteString("\"")
 
 		buffer.WriteString(", \"Record\":")
 		// Record is a JSON object, so we write as-is
-		buffer.WriteString(string(queryResponse.Value))
+		buffer.WriteString(string(queryResponse.GetValue()))
 		buffer.WriteString("}")
 		bArrayMemberAlreadyWritten = true
 	}
@@ -384,11 +384,11 @@ func constructQueryResponseFromIterator(resultsIterator shim.StateQueryIteratorI
 func addPaginationMetadataToQueryResults(buffer *bytes.Buffer, responseMetadata *pb.QueryResponseMetadata) *bytes.Buffer {
 	buffer.WriteString("[{\"ResponseMetadata\":{\"RecordsCount\":")
 	buffer.WriteString("\"")
-	buffer.WriteString(fmt.Sprintf("%v", responseMetadata.FetchedRecordsCount))
+	buffer.WriteString(fmt.Sprintf("%v", responseMetadata.GetFetchedRecordsCount()))
 	buffer.WriteString("\"")
 	buffer.WriteString(", \"Bookmark\":")
 	buffer.WriteString("\"")
-	buffer.WriteString(responseMetadata.Bookmark)
+	buffer.WriteString(responseMetadata.GetBookmark())
 	buffer.WriteString("\"}}]")
 
 	return buffer
@@ -466,7 +466,7 @@ func (t *SimpleChaincode) transferMarblesBasedOnColor(stub shim.ChaincodeStubInt
 		}
 
 		// get the color and name from color~name composite key
-		objectType, compositeKeyParts, err := stub.SplitCompositeKey(responseRange.Key)
+		objectType, compositeKeyParts, err := stub.SplitCompositeKey(responseRange.GetKey())
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -478,8 +478,8 @@ func (t *SimpleChaincode) transferMarblesBasedOnColor(stub shim.ChaincodeStubInt
 		// Re-use the same function that is used to transfer individual marbles
 		response := t.transferMarble(stub, []string{returnedMarbleName, newOwner})
 		// if the transfer failed break out of loop and return error
-		if response.Status != shim.OK {
-			return shim.Error("Transfer failed: " + response.Message)
+		if response.GetStatus() != shim.OK {
+			return shim.Error("Transfer failed: " + response.GetMessage())
 		}
 	}
 
@@ -702,19 +702,19 @@ func (t *SimpleChaincode) getHistoryForMarble(stub shim.ChaincodeStubInterface, 
 		}
 
 		var value *marble = nil
-		if !response.IsDelete {
+		if !response.GetIsDelete() {
 			value = &marble{}
-			err = json.Unmarshal(response.Value, value)
+			err = json.Unmarshal(response.GetValue(), value)
 			if err != nil {
 				return shim.Error(err.Error())
 			}
 		}
 
 		history := &marbleHistory{
-			TxId:      response.TxId,
+			TxId:      response.GetTxId(),
 			Value:     value,
-			Timestamp: time.Unix(response.Timestamp.Seconds, int64(response.Timestamp.Nanos)).String(),
-			IsDelete:  strconv.FormatBool(response.IsDelete),
+			Timestamp: time.Unix(response.GetTimestamp().GetSeconds(), int64(response.GetTimestamp().GetNanos())).String(),
+			IsDelete:  strconv.FormatBool(response.GetIsDelete()),
 		}
 		result = append(result, history)
 	}

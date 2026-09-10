@@ -129,7 +129,7 @@ func extractEncodedOffset(marshalledOrdererMetadata []byte) int64 {
 	_ = proto.Unmarshal(marshalledOrdererMetadata, omd)
 	kmd := &ab.KafkaMetadata{}
 	_ = proto.Unmarshal(omd.GetValue(), kmd)
-	return kmd.LastOffsetPersisted
+	return kmd.GetLastOffsetPersisted()
 }
 
 func newMockBrokerConfig(

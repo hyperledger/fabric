@@ -464,7 +464,7 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 				logger.Debugf("[channel: %s] Successfully unmarshalled consumed message, offset is %d. Inspecting type...", chain.ChannelID(), in.Offset)
 				counts[indexRecvPass]++
 			}
-			switch msg.Type.(type) {
+			switch msg.GetType().(type) {
 			case *ab.KafkaMessage_Connect:
 				_ = chain.processConnect(chain.ChannelID())
 				counts[indexProcessConnectPass]++
@@ -540,9 +540,9 @@ func getOffsets(metadataValue []byte, chainID string) (persisted int64, processe
 			logger.Panicf("[channel: %s] Ledger may be corrupted:"+
 				"cannot unmarshal orderer metadata in most recent block", chainID)
 		}
-		return kafkaMetadata.LastOffsetPersisted,
-			kafkaMetadata.LastOriginalOffsetProcessed,
-			kafkaMetadata.LastResubmittedConfigOffset
+		return kafkaMetadata.GetLastOffsetPersisted(),
+			kafkaMetadata.GetLastOriginalOffsetProcessed(),
+			kafkaMetadata.GetLastResubmittedConfigOffset()
 	}
 	return sarama.OffsetOldest - 1, int64(0), int64(0) // default
 }
@@ -720,12 +720,12 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 	seq := chain.Sequence()
 
 	env := &cb.Envelope{}
-	if err := proto.Unmarshal(regularMessage.Payload, env); err != nil {
+	if err := proto.Unmarshal(regularMessage.GetPayload(), env); err != nil {
 		// This shouldn't happen, it should be filtered at ingress
 		return fmt.Errorf("failed to unmarshal payload of regular message because = %s", err)
 	}
 
-	logger.Debugf("[channel: %s] Processing regular Kafka message of type %s", chain.ChannelID(), regularMessage.Class.String())
+	logger.Debugf("[channel: %s] Processing regular Kafka message of type %s", chain.ChannelID(), regularMessage.GetClass().String())
 
 	// If we receive a message from a pre-v1.1 orderer, or resubmission is explicitly disabled, every orderer
 	// should operate as the pre-v1.1 ones: validate again and not attempt to reorder. That is because the
@@ -734,7 +734,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 	//
 	// The implicit assumption here is that the resubmission capability flag is set only when there are no more
 	// pre-v1.1 orderers on the network. Otherwise it is unset, and this is what we call a compatibility mode.
-	if regularMessage.Class == ab.KafkaMessageRegular_UNKNOWN || !chain.SharedConfig().Capabilities().Resubmission() {
+	if regularMessage.GetClass() == ab.KafkaMessageRegular_UNKNOWN || !chain.SharedConfig().Capabilities().Resubmission() {
 		// Received regular message of type UNKNOWN or resubmission if off, indicating an OSN network with v1.0.x orderer
 		logger.Warningf("[channel: %s] This orderer is running in compatibility mode", chain.ChannelID())
 
@@ -769,34 +769,34 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		return nil
 	}
 
-	switch regularMessage.Class {
+	switch regularMessage.GetClass() {
 	case ab.KafkaMessageRegular_UNKNOWN:
 		logger.Panicf("[channel: %s] Kafka message of type UNKNOWN should have been processed already", chain.ChannelID())
 
 	case ab.KafkaMessageRegular_NORMAL:
 		// This is a message that is re-validated and re-ordered
-		if regularMessage.OriginalOffset != 0 {
-			logger.Debugf("[channel: %s] Received re-submitted normal message with original offset %d", chain.ChannelID(), regularMessage.OriginalOffset)
+		if regularMessage.GetOriginalOffset() != 0 {
+			logger.Debugf("[channel: %s] Received re-submitted normal message with original offset %d", chain.ChannelID(), regularMessage.GetOriginalOffset())
 
 			// But we've reprocessed it already
-			if regularMessage.OriginalOffset <= chain.lastOriginalOffsetProcessed {
+			if regularMessage.GetOriginalOffset() <= chain.lastOriginalOffsetProcessed {
 				logger.Debugf(
 					"[channel: %s] OriginalOffset(%d) <= LastOriginalOffsetProcessed(%d), message has been consumed already, discard",
-					chain.ChannelID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
+					chain.ChannelID(), regularMessage.GetOriginalOffset(), chain.lastOriginalOffsetProcessed)
 				return nil
 			}
 
 			logger.Debugf(
 				"[channel: %s] OriginalOffset(%d) > LastOriginalOffsetProcessed(%d), "+
 					"this is the first time we receive this re-submitted normal message",
-				chain.ChannelID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
+				chain.ChannelID(), regularMessage.GetOriginalOffset(), chain.lastOriginalOffsetProcessed)
 
 			// In case we haven't reprocessed the message, there's no need to differentiate it from those
 			// messages that will be processed for the first time.
 		}
 
 		// The config sequence has advanced
-		if regularMessage.ConfigSeq < seq {
+		if regularMessage.GetConfigSeq() < seq {
 			logger.Debugf("[channel: %s] Config sequence has advanced since this normal message got validated, re-validating", chain.ChannelID())
 			configSeq, err := chain.ProcessNormalMsg(env)
 			if err != nil {
@@ -818,7 +818,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		// and re-ordered, BUT they are definitely valid here
 
 		// advance lastOriginalOffsetProcessed if message is re-validated and re-ordered
-		offset := regularMessage.OriginalOffset
+		offset := regularMessage.GetOriginalOffset()
 		if offset == 0 {
 			offset = chain.lastOriginalOffsetProcessed
 		}
@@ -827,26 +827,26 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 
 	case ab.KafkaMessageRegular_CONFIG:
 		// This is a message that is re-validated and re-ordered
-		if regularMessage.OriginalOffset != 0 {
-			logger.Debugf("[channel: %s] Received re-submitted config message with original offset %d", chain.ChannelID(), regularMessage.OriginalOffset)
+		if regularMessage.GetOriginalOffset() != 0 {
+			logger.Debugf("[channel: %s] Received re-submitted config message with original offset %d", chain.ChannelID(), regularMessage.GetOriginalOffset())
 
 			// But we've reprocessed it already
-			if regularMessage.OriginalOffset <= chain.lastOriginalOffsetProcessed {
+			if regularMessage.GetOriginalOffset() <= chain.lastOriginalOffsetProcessed {
 				logger.Debugf(
 					"[channel: %s] OriginalOffset(%d) <= LastOriginalOffsetProcessed(%d), message has been consumed already, discard",
-					chain.ChannelID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
+					chain.ChannelID(), regularMessage.GetOriginalOffset(), chain.lastOriginalOffsetProcessed)
 				return nil
 			}
 
 			logger.Debugf(
 				"[channel: %s] OriginalOffset(%d) > LastOriginalOffsetProcessed(%d), "+
 					"this is the first time we receive this re-submitted config message",
-				chain.ChannelID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
+				chain.ChannelID(), regularMessage.GetOriginalOffset(), chain.lastOriginalOffsetProcessed)
 
-			if regularMessage.OriginalOffset == chain.lastResubmittedConfigOffset && // This is very last resubmitted config message
-				regularMessage.ConfigSeq == seq { // AND we don't need to resubmit it again
+			if regularMessage.GetOriginalOffset() == chain.lastResubmittedConfigOffset && // This is very last resubmitted config message
+				regularMessage.GetConfigSeq() == seq { // AND we don't need to resubmit it again
 				logger.Debugf("[channel: %s] Config message with original offset %d is the last in-flight resubmitted message"+
-					"and it does not require revalidation, unblock ingress messages now", chain.ChannelID(), regularMessage.OriginalOffset)
+					"and it does not require revalidation, unblock ingress messages now", chain.ChannelID(), regularMessage.GetOriginalOffset())
 				chain.reprocessConfigComplete() // Therefore, we could finally unblock broadcast
 			}
 
@@ -854,13 +854,13 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			// that message was considered invalid by us during re-validation, however somebody else deemed it to
 			// be valid, and resubmitted it. We need to advance lastResubmittedConfigOffset in this case in order
 			// to enforce consistency across the network.
-			if chain.lastResubmittedConfigOffset < regularMessage.OriginalOffset {
-				chain.lastResubmittedConfigOffset = regularMessage.OriginalOffset
+			if chain.lastResubmittedConfigOffset < regularMessage.GetOriginalOffset() {
+				chain.lastResubmittedConfigOffset = regularMessage.GetOriginalOffset()
 			}
 		}
 
 		// The config sequence has advanced
-		if regularMessage.ConfigSeq < seq {
+		if regularMessage.GetConfigSeq() < seq {
 			logger.Debugf("[channel: %s] Config sequence has advanced since this config message got validated, re-validating", chain.ChannelID())
 			configEnv, configSeq, err := chain.ProcessConfigMsg(env)
 			if err != nil {
@@ -884,7 +884,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		// and re-ordered, BUT they are definitely valid here
 
 		// advance lastOriginalOffsetProcessed if message is re-validated and re-ordered
-		offset := regularMessage.OriginalOffset
+		offset := regularMessage.GetOriginalOffset()
 		if offset == 0 {
 			offset = chain.lastOriginalOffsetProcessed
 		}
@@ -892,7 +892,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		commitConfigMsg(env, offset)
 
 	default:
-		return errors.Errorf("unsupported regular kafka message type: %v", regularMessage.Class.String())
+		return errors.Errorf("unsupported regular kafka message type: %v", regularMessage.GetClass().String())
 	}
 
 	return nil
@@ -930,14 +930,14 @@ func (chain *chainImpl) processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, r
 // and updating the metrics.
 func (chain *chainImpl) WriteBlock(block *cb.Block, metadata *ab.KafkaMetadata) {
 	chain.ConsenterSupport.WriteBlock(block, protoutil.MarshalOrPanic(metadata))
-	chain.consenter.Metrics().LastOffsetPersisted.With("channel", chain.ChannelID()).Set(float64(metadata.LastOffsetPersisted))
+	chain.consenter.Metrics().LastOffsetPersisted.With("channel", chain.ChannelID()).Set(float64(metadata.GetLastOffsetPersisted()))
 }
 
 // WriteConfigBlock acts as a wrapper around the consenter support WriteConfigBlock, encoding the metadata,
 // and updating the metrics.
 func (chain *chainImpl) WriteConfigBlock(block *cb.Block, metadata *ab.KafkaMetadata) {
 	chain.ConsenterSupport.WriteConfigBlock(block, protoutil.MarshalOrPanic(metadata))
-	chain.consenter.Metrics().LastOffsetPersisted.With("channel", chain.ChannelID()).Set(float64(metadata.LastOffsetPersisted))
+	chain.consenter.Metrics().LastOffsetPersisted.With("channel", chain.ChannelID()).Set(float64(metadata.GetLastOffsetPersisted()))
 }
 
 // Post a CONNECT message to the channel using the given retry options. This

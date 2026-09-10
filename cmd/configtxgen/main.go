@@ -96,16 +96,16 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 
 	updated := proto.Clone(original).(*cb.ConfigGroup)
 
-	originalOrg, ok := original.Groups[channelconfig.ApplicationGroupKey].Groups[asOrg]
+	originalOrg, ok := original.GetGroups()[channelconfig.ApplicationGroupKey].GetGroups()[asOrg]
 	if !ok {
 		return errors.Errorf("org with name '%s' does not exist in config", asOrg)
 	}
 
-	if _, ok = originalOrg.Values[channelconfig.AnchorPeersKey]; !ok {
+	if _, ok = originalOrg.GetValues()[channelconfig.AnchorPeersKey]; !ok {
 		return errors.Errorf("org '%s' does not have any anchor peers defined", asOrg)
 	}
 
-	delete(originalOrg.Values, channelconfig.AnchorPeersKey)
+	delete(originalOrg.GetValues(), channelconfig.AnchorPeersKey)
 
 	updt, err := update.Compute(&cb.Config{ChannelGroup: original}, &cb.Config{ChannelGroup: updated})
 	if err != nil {

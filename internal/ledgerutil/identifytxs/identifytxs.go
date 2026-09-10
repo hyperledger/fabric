@@ -345,12 +345,12 @@ func findAndWriteTxs(blockStore *blkstorage.BlockStore, inputKeyMapWrapper *comp
 			if err != nil {
 				return 0, 0, err
 			}
-			ch, err := protoutil.UnmarshalChannelHeader(pl.Header.ChannelHeader)
+			ch, err := protoutil.UnmarshalChannelHeader(pl.GetHeader().GetChannelHeader())
 			if err != nil {
 				return 0, 0, err
 			}
 			// Check that transaction is endorser transaction, otherwise skip
-			txType := common.HeaderType(ch.Type)
+			txType := common.HeaderType(ch.GetType())
 			if txType == common.HeaderType_ENDORSER_TRANSACTION {
 				txID := ch.GetTxId()
 				// Extract write set from transaction then iterate through transaction write set

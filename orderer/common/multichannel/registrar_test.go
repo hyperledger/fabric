@@ -316,7 +316,7 @@ func TestRegistrar_Initialize(t *testing.T) {
 	require.NotNil(t, genesisBlockAppRaft)
 
 	confSysRaft := genesisconfig.Load(genesisconfig.SampleDevModeEtcdRaftProfile, configtest.GetDevConfigDir())
-	confSysRaft.Orderer.EtcdRaft.Consenters = confAppRaft.Orderer.EtcdRaft.Consenters
+	confSysRaft.Orderer.EtcdRaft.Consenters = confAppRaft.Orderer.EtcdRaft.GetConsenters()
 	bootstrapper, err = encoder.NewBootstrapper(confSysRaft)
 	require.NoError(t, err, "cannot create bootstrapper")
 	genesisBlockSysRaft := bootstrapper.GenesisBlockForChannel("my-sys-channel")
@@ -717,7 +717,7 @@ func TestCreateChain(t *testing.T) {
 
 		configEnv, err := res.ConfigtxValidator().ProposeConfigUpdate(envConfigUpdate)
 		require.NoError(t, err, "Proposing initial update")
-		require.Equal(t, expectedLastConfigSeq, configEnv.GetConfig().Sequence, "Sequence of config envelope for new channel should always be set to %d", expectedLastConfigSeq)
+		require.Equal(t, expectedLastConfigSeq, configEnv.GetConfig().GetSequence(), "Sequence of config envelope for new channel should always be set to %d", expectedLastConfigSeq)
 
 		ingressTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, newChainID, mockCrypto(), configEnv, msgVersion, epoch)
 		require.NoError(t, err, "Creating ingresstx")
@@ -735,11 +735,11 @@ func TestCreateChain(t *testing.T) {
 			if status != cb.Status_SUCCESS {
 				t.Fatalf("Could not retrieve block")
 			}
-			if len(block.Data.Data) != 1 {
+			if len(block.GetData().GetData()) != 1 {
 				t.Fatalf("Should have had only one message in the orderer transaction block")
 			}
 
-			require.True(t, proto.Equal(wrapped, protoutil.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Orderer config block contains wrong transaction")
+			require.True(t, proto.Equal(wrapped, protoutil.UnmarshalEnvelopeOrPanic(block.GetData().GetData()[0])), "Orderer config block contains wrong transaction")
 		}()
 
 		chainSupport = manager.GetChain(newChainID)
@@ -762,11 +762,11 @@ func TestCreateChain(t *testing.T) {
 		if status != cb.Status_SUCCESS {
 			t.Fatalf("Could not retrieve new chain genesis block")
 		}
-		if len(block.Data.Data) != 1 {
+		if len(block.GetData().GetData()) != 1 {
 			t.Fatalf("Should have had only one message in the new genesis block")
 		}
 
-		require.True(t, proto.Equal(ingressTx, protoutil.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Genesis block contains wrong transaction")
+		require.True(t, proto.Equal(ingressTx, protoutil.UnmarshalEnvelopeOrPanic(block.GetData().GetData()[0])), "Genesis block contains wrong transaction")
 
 		block, status = it.Next()
 		if status != cb.Status_SUCCESS {
@@ -1311,7 +1311,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		checkMetrics(t, fakeFields, []string{"channel", "my-raft-channel"}, 1, 1, 1)
 
 		// Let's assume the chain appended another config block
-		genesisBlockAppRaft.Header.PreviousHash = protoutil.BlockHeaderHash(genesisBlockAppRaft.Header)
+		genesisBlockAppRaft.Header.PreviousHash = protoutil.BlockHeaderHash(genesisBlockAppRaft.GetHeader())
 		genesisBlockAppRaft.Header.Number = 1
 		require.NoError(t, cs.Append(genesisBlockAppRaft))
 		consenter.IsChannelMemberReturns(false, nil)
@@ -1623,7 +1623,7 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		require.NotNil(t, registrar.GetChain("channel-im-not-a-member-of"))
 		require.Contains(t, ledgerFactory.ChannelIDs(), "channel-im-not-a-member-of")
 		consenter.IsChannelMemberStub = func(b *cb.Block) (bool, error) {
-			if bytes.Equal(b.Header.DataHash, genesisBlockAppRaft.Header.DataHash) {
+			if bytes.Equal(b.GetHeader().GetDataHash(), genesisBlockAppRaft.GetHeader().GetDataHash()) {
 				return true, nil
 			}
 			return false, nil
@@ -1684,7 +1684,7 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		require.Contains(t, ledgerFactory.ChannelIDs(), "channel-im-not-a-member-of")
 		consenter.IsChannelMemberStub = func(b *cb.Block) (bool, error) {
 			os.RemoveAll(filepath.Join(tmpdir, "pendingops", "remove"))
-			if bytes.Equal(b.Header.DataHash, genesisBlockAppRaft.Header.DataHash) {
+			if bytes.Equal(b.GetHeader().GetDataHash(), genesisBlockAppRaft.GetHeader().GetDataHash()) {
 				return true, nil
 			}
 			return false, nil
@@ -1791,8 +1791,8 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 }
 
 func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) {
-	for i, c := range confAppRaft.Orderer.EtcdRaft.Consenters {
-		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
+	for i, c := range confAppRaft.Orderer.EtcdRaft.GetConsenters() {
+		srvC, err := tlsCA.NewServerCertKeyPair(c.GetHost())
 		require.NoError(t, err)
 		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
 		err = os.WriteFile(srvP, srvC.Cert, 0o644)
@@ -1878,7 +1878,7 @@ func TestRegistrar_ConfigBlockOrPanic(t *testing.T) {
 		_, l := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 
 		cBlock := ConfigBlockOrPanic(l)
-		assert.Equal(t, genesisBlockSys.Header, cBlock.Header)
-		assert.Equal(t, genesisBlockSys.Data, cBlock.Data)
+		assert.Equal(t, genesisBlockSys.GetHeader(), cBlock.GetHeader())
+		assert.Equal(t, genesisBlockSys.GetData(), cBlock.GetData())
 	})
 }

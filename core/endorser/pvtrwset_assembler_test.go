@@ -67,14 +67,14 @@ func TestAssemblePvtRWSet(t *testing.T) {
 	pvtReadWriteSetWithConfigInfo, err := AssemblePvtRWSet("", privData, nil, mockDeployedCCInfoProvider)
 	require.NoError(t, err)
 	require.NotNil(t, pvtReadWriteSetWithConfigInfo)
-	require.NotNil(t, pvtReadWriteSetWithConfigInfo.PvtRwset)
-	configPackages := pvtReadWriteSetWithConfigInfo.CollectionConfigs
+	require.NotNil(t, pvtReadWriteSetWithConfigInfo.GetPvtRwset())
+	configPackages := pvtReadWriteSetWithConfigInfo.GetCollectionConfigs()
 	require.NotNil(t, configPackages)
 	configs, found := configPackages["myCC"]
 	require.True(t, found)
-	require.Equal(t, 1, len(configs.Config))
-	require.NotNil(t, configs.Config[0])
-	require.NotNil(t, configs.Config[0].GetStaticCollectionConfig())
-	require.Equal(t, "mycollection-1", configs.Config[0].GetStaticCollectionConfig().Name)
-	require.Equal(t, 1, len(pvtReadWriteSetWithConfigInfo.PvtRwset.NsPvtRwset))
+	require.Equal(t, 1, len(configs.GetConfig()))
+	require.NotNil(t, configs.GetConfig()[0])
+	require.NotNil(t, configs.GetConfig()[0].GetStaticCollectionConfig())
+	require.Equal(t, "mycollection-1", configs.GetConfig()[0].GetStaticCollectionConfig().GetName())
+	require.Equal(t, 1, len(pvtReadWriteSetWithConfigInfo.GetPvtRwset().GetNsPvtRwset()))
 }

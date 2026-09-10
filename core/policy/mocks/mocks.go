@@ -88,9 +88,9 @@ func (id *MockIdentity) Anonymous() bool {
 }
 
 func (id *MockIdentity) SatisfiesPrincipal(p *mspproto.MSPPrincipal) error {
-	fmt.Printf("[SatisfiesPrincipal] id : [%s], [%s]\n", string(id.identity), string(p.Principal))
-	if !bytes.Equal(id.identity, p.Principal) {
-		return fmt.Errorf("Different identities [% x]!=[% x]", id.identity, p.Principal)
+	fmt.Printf("[SatisfiesPrincipal] id : [%s], [%s]\n", string(id.identity), string(p.GetPrincipal()))
+	if !bytes.Equal(id.identity, p.GetPrincipal()) {
+		return fmt.Errorf("Different identities [% x]!=[% x]", id.identity, p.GetPrincipal())
 	}
 	return nil
 }

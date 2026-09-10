@@ -76,17 +76,17 @@ type OrdererOrgConfig struct {
 
 // Endpoints returns the set of addresses this ordering org exposes as orderers
 func (oc *OrdererOrgConfig) Endpoints() []string {
-	return oc.protos.Endpoints.Addresses
+	return oc.protos.Endpoints.GetAddresses()
 }
 
 // NewOrdererOrgConfig returns an orderer org config built from the given ConfigGroup.
 func NewOrdererOrgConfig(orgName string, orgGroup *cb.ConfigGroup, mspConfigHandler *MSPConfigHandler, channelCapabilities ChannelCapabilities) (*OrdererOrgConfig, error) {
-	if len(orgGroup.Groups) > 0 {
+	if len(orgGroup.GetGroups()) > 0 {
 		return nil, fmt.Errorf("OrdererOrg config does not allow sub-groups")
 	}
 
 	if !channelCapabilities.OrgSpecificOrdererEndpoints() {
-		if _, ok := orgGroup.Values[EndpointsKey]; ok {
+		if _, ok := orgGroup.GetValues()[EndpointsKey]; ok {
 			return nil, errors.Errorf("Orderer Org %s cannot contain endpoints value until V1_4_2+ capabilities have been enabled", orgName)
 		}
 	}
@@ -134,7 +134,7 @@ func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler,
 		return nil, err
 	}
 
-	for orgName, orgGroup := range ordererGroup.Groups {
+	for orgName, orgGroup := range ordererGroup.GetGroups() {
 		var err error
 		if oc.orgs[orgName], err = NewOrdererOrgConfig(orgName, orgGroup, mspConfig, channelCapabilities); err != nil {
 			return nil, err
@@ -145,17 +145,17 @@ func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler,
 
 // ConsensusType returns the configured consensus type.
 func (oc *OrdererConfig) ConsensusType() string {
-	return oc.protos.ConsensusType.Type
+	return oc.protos.ConsensusType.GetType()
 }
 
 // ConsensusMetadata returns the metadata associated with the consensus type.
 func (oc *OrdererConfig) ConsensusMetadata() []byte {
-	return oc.protos.ConsensusType.Metadata
+	return oc.protos.ConsensusType.GetMetadata()
 }
 
 // ConsensusState return the consensus type state.
 func (oc *OrdererConfig) ConsensusState() ab.ConsensusType_State {
-	return oc.protos.ConsensusType.State
+	return oc.protos.ConsensusType.GetState()
 }
 
 // BatchSize returns the maximum number of messages to include in a block.
@@ -172,12 +172,12 @@ func (oc *OrdererConfig) BatchTimeout() time.Duration {
 // Kafka brokers, i.e. this is not necessarily the entire set of Kafka brokers
 // used for ordering.
 func (oc *OrdererConfig) KafkaBrokers() []string {
-	return oc.protos.KafkaBrokers.Brokers
+	return oc.protos.KafkaBrokers.GetBrokers()
 }
 
 // MaxChannelsCount returns the maximum count of channels this orderer supports.
 func (oc *OrdererConfig) MaxChannelsCount() uint64 {
-	return oc.protos.ChannelRestrictions.MaxCount
+	return oc.protos.ChannelRestrictions.GetMaxCount()
 }
 
 // Organizations returns a map of the orgs in the channel.
@@ -187,7 +187,7 @@ func (oc *OrdererConfig) Organizations() map[string]OrdererOrg {
 
 // Capabilities returns the capabilities the ordering network has for this channel.
 func (oc *OrdererConfig) Capabilities() OrdererCapabilities {
-	return capabilities.NewOrdererProvider(oc.protos.Capabilities.Capabilities)
+	return capabilities.NewOrdererProvider(oc.protos.Capabilities.GetCapabilities())
 }
 
 func (oc *OrdererConfig) Validate() error {
@@ -205,24 +205,24 @@ func (oc *OrdererConfig) Validate() error {
 }
 
 func (oc *OrdererConfig) validateBatchSize() error {
-	if oc.protos.BatchSize.MaxMessageCount == 0 {
+	if oc.protos.BatchSize.GetMaxMessageCount() == 0 {
 		return fmt.Errorf("Attempted to set the batch size max message count to an invalid value: 0")
 	}
-	if oc.protos.BatchSize.AbsoluteMaxBytes == 0 {
+	if oc.protos.BatchSize.GetAbsoluteMaxBytes() == 0 {
 		return fmt.Errorf("Attempted to set the batch size absolute max bytes to an invalid value: 0")
 	}
-	if oc.protos.BatchSize.PreferredMaxBytes == 0 {
+	if oc.protos.BatchSize.GetPreferredMaxBytes() == 0 {
 		return fmt.Errorf("Attempted to set the batch size preferred max bytes to an invalid value: 0")
 	}
-	if oc.protos.BatchSize.PreferredMaxBytes > oc.protos.BatchSize.AbsoluteMaxBytes {
-		return fmt.Errorf("Attempted to set the batch size preferred max bytes (%v) greater than the absolute max bytes (%v).", oc.protos.BatchSize.PreferredMaxBytes, oc.protos.BatchSize.AbsoluteMaxBytes)
+	if oc.protos.BatchSize.GetPreferredMaxBytes() > oc.protos.BatchSize.GetAbsoluteMaxBytes() {
+		return fmt.Errorf("Attempted to set the batch size preferred max bytes (%v) greater than the absolute max bytes (%v).", oc.protos.BatchSize.GetPreferredMaxBytes(), oc.protos.BatchSize.GetAbsoluteMaxBytes())
 	}
 	return nil
 }
 
 func (oc *OrdererConfig) validateBatchTimeout() error {
 	var err error
-	oc.batchTimeout, err = time.ParseDuration(oc.protos.BatchTimeout.Timeout)
+	oc.batchTimeout, err = time.ParseDuration(oc.protos.BatchTimeout.GetTimeout())
 	if err != nil {
 		return fmt.Errorf("Attempted to set the batch timeout to a invalid value: %s", err)
 	}
@@ -233,7 +233,7 @@ func (oc *OrdererConfig) validateBatchTimeout() error {
 }
 
 func (oc *OrdererConfig) validateKafkaBrokers() error {
-	for _, broker := range oc.protos.KafkaBrokers.Brokers {
+	for _, broker := range oc.protos.KafkaBrokers.GetBrokers() {
 		if !brokerEntrySeemsValid(broker) {
 			return fmt.Errorf("Invalid broker entry: %s", broker)
 		}

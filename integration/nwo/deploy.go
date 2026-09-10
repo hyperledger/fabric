@@ -629,7 +629,7 @@ func GetLedgerHeight(n *Network, peer *Peer, channel string) int {
 	channelInfoStr := strings.TrimPrefix(string(sess.Buffer().Contents()[:]), "Blockchain info:")
 	channelInfo := common.BlockchainInfo{}
 	json.Unmarshal([]byte(channelInfoStr), &channelInfo)
-	return int(channelInfo.Height)
+	return int(channelInfo.GetHeight())
 }
 
 // GetMaxLedgerHeight returns the maximum ledger height for the

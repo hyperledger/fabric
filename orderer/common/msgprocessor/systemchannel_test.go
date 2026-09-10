@@ -324,8 +324,8 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 			require.Equal(
 				t,
 				int32(cb.HeaderType_CONFIG),
-				hdr.Type,
-				"Expect type of returned envelope to be %d, but got %d", cb.HeaderType_CONFIG, hdr.Type)
+				hdr.GetType(),
+				"Expect type of returned envelope to be %d, but got %d", cb.HeaderType_CONFIG, hdr.GetType())
 		})
 	})
 
@@ -440,8 +440,8 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 			require.Equal(
 				t,
 				int32(cb.HeaderType_ORDERER_TRANSACTION),
-				hdr.Type,
-				"Expect type of returned envelope to be %d, but got %d", cb.HeaderType_ORDERER_TRANSACTION, hdr.Type)
+				hdr.GetType(),
+				"Expect type of returned envelope to be %d, but got %d", cb.HeaderType_ORDERER_TRANSACTION, hdr.GetType())
 		})
 	})
 
@@ -492,7 +492,7 @@ func TestNewChannelConfig(t *testing.T) {
 	ctxm, err := channelconfig.NewBundle(channelID, &cb.Config{ChannelGroup: channelGroup}, cryptoProvider)
 	require.NoError(t, err)
 
-	originalCG := proto.Clone(ctxm.ConfigtxValidator().ConfigProto().ChannelGroup).(*cb.ConfigGroup)
+	originalCG := proto.Clone(ctxm.ConfigtxValidator().ConfigProto().GetChannelGroup()).(*cb.ConfigGroup)
 
 	templator := NewDefaultTemplator(&mockDefaultTemplatorSupport{
 		Resources: ctxm,
@@ -751,8 +751,8 @@ func TestNewChannelConfig(t *testing.T) {
 		require.Nil(t, err)
 		res, err := templator.NewChannelConfig(createTx)
 		require.Nil(t, err)
-		require.NotEmpty(t, res.ConfigtxValidator().ConfigProto().ChannelGroup.ModPolicy)
-		require.True(t, proto.Equal(originalCG, ctxm.ConfigtxValidator().ConfigProto().ChannelGroup), "Underlying system channel config proto was mutated")
+		require.NotEmpty(t, res.ConfigtxValidator().ConfigProto().GetChannelGroup().GetModPolicy())
+		require.True(t, proto.Equal(originalCG, ctxm.ConfigtxValidator().ConfigProto().GetChannelGroup()), "Underlying system channel config proto was mutated")
 	})
 
 	// Successful new channel config type

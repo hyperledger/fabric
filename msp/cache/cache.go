@@ -108,7 +108,7 @@ func (c *cachedMSP) Validate(id msp.Identity) error {
 func (c *cachedMSP) SatisfiesPrincipal(id msp.Identity, principal *pmsp.MSPPrincipal) error {
 	identifier := id.GetIdentifier()
 	identityKey := identifier.Mspid + ":" + identifier.Id
-	principalKey := string(principal.PrincipalClassification) + string(principal.Principal)
+	principalKey := string(principal.GetPrincipalClassification()) + string(principal.GetPrincipal())
 	key := identityKey + principalKey
 
 	v, ok := c.satisfiesPrincipalCache.get(key)

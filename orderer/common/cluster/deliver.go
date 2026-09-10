@@ -225,7 +225,7 @@ func (p *BlockPuller) pullBlocks(seq uint64, reConnected bool) error {
 			p.Logger.Errorf("Received a bad block from %s: %v", p.endpoint, err)
 			return err
 		}
-		seq := block.Header.Number
+		seq := block.GetHeader().GetNumber()
 		if seq != nextExpectedSequence {
 			p.Logger.Errorf("Expected to receive sequence %d but got %d instead", nextExpectedSequence, seq)
 			return errors.Errorf("got unexpected sequence from %s - (%d) instead of (%d)", p.endpoint, seq, nextExpectedSequence)
@@ -271,7 +271,7 @@ func (p *BlockPuller) popBlock(seq uint64) *common.Block {
 	p.blockBuff = rest
 	// If the requested block sequence is the wrong one, discard the buffer
 	// to start fetching blocks all over again.
-	if seq != block.Header.Number {
+	if seq != block.GetHeader().GetNumber() {
 		p.blockBuff = nil
 		return nil
 	}
@@ -414,7 +414,7 @@ func (p *BlockPuller) fetchLastBlockSeq(minRequestedSequence uint64, endpoint st
 	}
 	stream.CloseSend()
 
-	seq := block.Header.Number
+	seq := block.GetHeader().GetNumber()
 	if seq < minRequestedSequence {
 		err := errors.Errorf("minimum requested sequence is %d but %s is at sequence %d", minRequestedSequence, endpoint, seq)
 		p.Logger.Infof("Skipping pulling from %s: %v", endpoint, err)
@@ -422,7 +422,7 @@ func (p *BlockPuller) fetchLastBlockSeq(minRequestedSequence uint64, endpoint st
 	}
 
 	p.Logger.Infof("%s is at block sequence of %d", endpoint, seq)
-	return block.Header.Number, nil
+	return block.GetHeader().GetNumber(), nil
 }
 
 // requestBlocks starts requesting blocks from the given endpoint, using the given ImpatientStreamCreator by sending
@@ -444,19 +444,19 @@ func (p *BlockPuller) requestBlocks(endpoint string, newStream ImpatientStreamCr
 }
 
 func extractBlockFromResponse(resp *orderer.DeliverResponse) (*common.Block, error) {
-	switch t := resp.Type.(type) {
+	switch t := resp.GetType().(type) {
 	case *orderer.DeliverResponse_Block:
 		block := t.Block
 		if block == nil {
 			return nil, errors.New("block is nil")
 		}
-		if block.Data == nil {
+		if block.GetData() == nil {
 			return nil, errors.New("block data is nil")
 		}
-		if block.Header == nil {
+		if block.GetHeader() == nil {
 			return nil, errors.New("block header is nil")
 		}
-		if block.Metadata == nil || len(block.Metadata.Metadata) == 0 {
+		if block.GetMetadata() == nil || len(block.GetMetadata().GetMetadata()) == 0 {
 			return nil, errors.New("block metadata is empty")
 		}
 		return block, nil
@@ -469,7 +469,7 @@ func extractBlockFromResponse(resp *orderer.DeliverResponse) (*common.Block, err
 		}
 		return nil, errors.Errorf("faulty node, received: %v", resp)
 	default:
-		return nil, errors.Errorf("response is of type %v, but expected a block", reflect.TypeOf(resp.Type))
+		return nil, errors.Errorf("response is of type %v, but expected a block", reflect.TypeOf(resp.GetType()))
 	}
 }
 

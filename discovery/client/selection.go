@@ -65,8 +65,8 @@ func (nc noPriorities) Compare(_ Peer, _ Peer) Priority {
 type byHeight struct{}
 
 func (*byHeight) Compare(left Peer, right Peer) Priority {
-	leftHeight := left.StateInfoMessage.GetStateInfo().Properties.LedgerHeight
-	rightHeight := right.StateInfoMessage.GetStateInfo().Properties.LedgerHeight
+	leftHeight := left.StateInfoMessage.GetStateInfo().GetProperties().GetLedgerHeight()
+	rightHeight := right.StateInfoMessage.GetStateInfo().GetProperties().GetLedgerHeight()
 
 	if leftHeight > rightHeight {
 		return 1
@@ -96,7 +96,7 @@ func ExcludeHosts(endpoints ...string) ExclusionFilter {
 // ExcludeByHost creates a ExclusionFilter out of the given exclusion predicate
 func ExcludeByHost(reject func(host string) bool) ExclusionFilter {
 	return selectionFunc(func(p Peer) bool {
-		endpoint := p.AliveMessage.GetAliveMsg().Membership.Endpoint
+		endpoint := p.AliveMessage.GetAliveMsg().GetMembership().GetEndpoint()
 		var internalEndpoint string
 		se := p.AliveMessage.GetSecretEnvelope()
 		if se != nil {

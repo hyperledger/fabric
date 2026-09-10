@@ -161,12 +161,12 @@ func readSeekEnvelope(stream orderer.AtomicBroadcast_DeliverServer) (*orderer.Se
 	if err != nil {
 		return nil, err
 	}
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	if err != nil {
 		return nil, err
 	}
 	seekInfo := &orderer.SeekInfo{}
-	if err = proto.Unmarshal(payload.Data, seekInfo); err != nil {
+	if err = proto.Unmarshal(payload.GetData(), seekInfo); err != nil {
 		return nil, err
 	}
 	return seekInfo, nil
@@ -195,8 +195,8 @@ func loadPEM(cryptoPath, suffix string, t *testing.T) []byte {
 func channelCreationBlock(systemChannel, applicationChannel string, prevBlock *common.Block) *common.Block {
 	block := &common.Block{
 		Header: &common.BlockHeader{
-			Number:       prevBlock.Header.Number + 1,
-			PreviousHash: protoutil.BlockHeaderHash(prevBlock.Header),
+			Number:       prevBlock.GetHeader().GetNumber() + 1,
+			PreviousHash: protoutil.BlockHeaderHash(prevBlock.GetHeader()),
 		},
 		Metadata: &common.BlockMetadata{
 			Metadata: [][]byte{{}, {}, {}, {}},
@@ -225,7 +225,7 @@ func channelCreationBlock(systemChannel, applicationChannel string, prevBlock *c
 		},
 	}
 
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.BlockDataHash(block.GetData())
 	return block
 }
 
@@ -272,14 +272,14 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 			}),
 		})}},
 	}
-	systemChannelGenesisBlock.Header.DataHash = protoutil.BlockDataHash(systemChannelGenesisBlock.Data)
+	systemChannelGenesisBlock.Header.DataHash = protoutil.BlockDataHash(systemChannelGenesisBlock.GetData())
 
 	channelCreationBlock := channelCreationBlock("system", "testchannel", systemChannelGenesisBlock)
 
 	bootBlock := &common.Block{}
 	require.NoError(t, proto.Unmarshal(systemChannelBlockBytes, bootBlock))
 	bootBlock.Header.Number = 2
-	bootBlock.Header.PreviousHash = protoutil.BlockHeaderHash(channelCreationBlock.Header)
+	bootBlock.Header.PreviousHash = protoutil.BlockHeaderHash(channelCreationBlock.GetHeader())
 	injectOrdererEndpoint(t, bootBlock, deliverServer.srv.Address())
 	injectConsenterCertificate(t, testchannelGB, cert)
 
@@ -289,14 +289,14 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 	systemLedger := &cluster_mocks.LedgerWriter{}
 	systemLedger.On("Height").Return(uint64(0))
 	systemLedger.On("Append", mock.Anything).Return(nil).Run(func(arguments mock.Arguments) {
-		seq := arguments.Get(0).(*common.Block).Header.Number
+		seq := arguments.Get(0).(*common.Block).GetHeader().GetNumber()
 		blocksCommittedToSystemLedger <- seq
 	})
 
 	appLedger := &cluster_mocks.LedgerWriter{}
 	appLedger.On("Height").Return(uint64(0))
 	appLedger.On("Append", mock.Anything).Return(nil).Run(func(arguments mock.Arguments) {
-		seq := arguments.Get(0).(*common.Block).Header.Number
+		seq := arguments.Get(0).(*common.Block).GetHeader().GetNumber()
 		blocksCommittedToApplicationLedger <- seq
 	})
 
@@ -534,9 +534,9 @@ func TestReplicate(t *testing.T) {
 
 		bootBlockWithCorruptedPayload = copyBlock(&bootBlock, 100)
 		env := &common.Envelope{}
-		require.NoError(t, proto.Unmarshal(bootBlockWithCorruptedPayload.Data.Data[0], env))
+		require.NoError(t, proto.Unmarshal(bootBlockWithCorruptedPayload.GetData().GetData()[0], env))
 		payload := &common.Payload{}
-		require.NoError(t, proto.Unmarshal(env.Payload, payload))
+		require.NoError(t, proto.Unmarshal(env.GetPayload(), payload))
 		payload.Data = []byte{1, 2, 3}
 
 		deliverServer.blockResponses <- &orderer.DeliverResponse{
@@ -547,7 +547,7 @@ func TestReplicate(t *testing.T) {
 		for seq := uint64(0); seq <= uint64(10); seq++ {
 			block := copyBlock(&bootBlock, seq)
 			if seq > 0 {
-				block.Header.PreviousHash = protoutil.BlockHeaderHash(blocks[seq-1].Header)
+				block.Header.PreviousHash = protoutil.BlockHeaderHash(blocks[seq-1].GetHeader())
 			}
 			blocks[seq] = &block
 			deliverServer.blockResponses <- &orderer.DeliverResponse{
@@ -561,7 +561,7 @@ func TestReplicate(t *testing.T) {
 		// We need to ensure the hash chain is valid with respect to the bootstrap block.
 		// Validating the hash chain itself when we traverse channels will be taken care
 		// of in FAB-12926.
-		bootBlock.Header.PreviousHash = protoutil.BlockHeaderHash(blocks[9].Header)
+		bootBlock.Header.PreviousHash = protoutil.BlockHeaderHash(blocks[9].GetHeader())
 		return deliverServer
 	}
 
@@ -921,11 +921,11 @@ func TestInactiveChainReplicatorChannels(t *testing.T) {
 func injectConsenterCertificate(t *testing.T, block *common.Block, tlsCert []byte) {
 	env, err := protoutil.ExtractEnvelope(block, 0)
 	require.NoError(t, err)
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	require.NoError(t, err)
-	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	require.NoError(t, err)
-	consensus := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.ConsensusTypeKey]
+	consensus := confEnv.GetConfig().GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetValues()[channelconfig.ConsensusTypeKey]
 	consensus.Value = protoutil.MarshalOrPanic(&orderer.ConsensusType{
 		Type: "etcdraft",
 		Metadata: protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{
@@ -941,7 +941,7 @@ func injectConsenterCertificate(t *testing.T, block *common.Block, tlsCert []byt
 	payload.Data = protoutil.MarshalOrPanic(confEnv)
 	env.Payload = protoutil.MarshalOrPanic(payload)
 	block.Data.Data[0] = protoutil.MarshalOrPanic(env)
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.BlockDataHash(block.GetData())
 }
 
 func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
@@ -949,9 +949,9 @@ func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
 	// Unwrap the layers until we reach the orderer addresses
 	env, err := protoutil.ExtractEnvelope(block, 0)
 	require.NoError(t, err)
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	require.NoError(t, err)
-	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	require.NoError(t, err)
 	// Replace the orderer addresses
 	confEnv.Config.ChannelGroup.Values[ordererAddresses.Key()].Value = protoutil.MarshalOrPanic(ordererAddresses.Value())
@@ -959,7 +959,7 @@ func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
 	payload.Data = protoutil.MarshalOrPanic(confEnv)
 	env.Payload = protoutil.MarshalOrPanic(payload)
 	block.Data.Data[0] = protoutil.MarshalOrPanic(env)
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.BlockDataHash(block.GetData())
 }
 
 func TestVerifierLoader(t *testing.T) {

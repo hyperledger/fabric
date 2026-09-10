@@ -676,14 +676,14 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 	// Count the blocks for channel A
 	var expectedSequence uint64
 	for block := range blocksCommittedToLedgerA {
-		require.Equal(t, expectedSequence, block.Header.Number)
+		require.Equal(t, expectedSequence, block.GetHeader().GetNumber())
 		expectedSequence++
 	}
 
 	// Count the blocks for the system channel
 	expectedSequence = uint64(0)
 	for block := range blocksCommittedToSystemLedger {
-		require.Equal(t, expectedSequence, block.Header.Number)
+		require.Equal(t, expectedSequence, block.GetHeader().GetNumber())
 		expectedSequence++
 	}
 
@@ -937,7 +937,7 @@ func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerif
 	// And inject into it a 127.0.0.1 orderer endpoint endpoint and a new TLS CA certificate.
 	injectTLSCACert(t, validBlock, caCert)
 	injectGlobalOrdererEndpoint(t, validBlock, osn.srv.Address())
-	validBlock.Header.DataHash = protoutil.BlockDataHash(validBlock.Data)
+	validBlock.Header.DataHash = protoutil.BlockDataHash(validBlock.GetData())
 
 	for range iterations {
 		blockMsg := &orderer.DeliverResponse_Block{
@@ -982,7 +982,7 @@ func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerif
 	}))
 
 	block := bp.PullBlock(0)
-	require.Equal(t, uint64(0), block.Header.Number)
+	require.Equal(t, uint64(0), block.GetHeader().GetNumber())
 	require.True(t, seenExpectedLogMsg)
 }
 
@@ -1077,9 +1077,9 @@ func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint str
 	// Unwrap the layers until we reach the orderer addresses
 	env, err := protoutil.ExtractEnvelope(block, 0)
 	require.NoError(t, err)
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	require.NoError(t, err)
-	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	require.NoError(t, err)
 	// Replace the orderer addresses
 	confEnv.Config.ChannelGroup.Values[ordererAddresses.Key()] = &common.ConfigValue{
@@ -1087,9 +1087,9 @@ func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint str
 		ModPolicy: "/Channel/Orderer/Admins",
 	}
 	// Remove the per org addresses, if applicable
-	ordererGrps := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
+	ordererGrps := confEnv.GetConfig().GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetGroups()
 	for _, grp := range ordererGrps {
-		if grp.Values[channelconfig.EndpointsKey] == nil {
+		if grp.GetValues()[channelconfig.EndpointsKey] == nil {
 			continue
 		}
 		grp.Values[channelconfig.EndpointsKey].Value = nil
@@ -1104,17 +1104,17 @@ func injectTLSCACert(t *testing.T, block *common.Block, tlsCA []byte) {
 	// Unwrap the layers until we reach the TLS CA certificates
 	env, err := protoutil.ExtractEnvelope(block, 0)
 	require.NoError(t, err)
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
 	require.NoError(t, err)
-	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	require.NoError(t, err)
-	mspKey := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups["OrdererOrg"].Values[channelconfig.MSPKey]
-	rawMSPConfig := mspKey.Value
+	mspKey := confEnv.GetConfig().GetChannelGroup().GetGroups()[channelconfig.OrdererGroupKey].GetGroups()["OrdererOrg"].GetValues()[channelconfig.MSPKey]
+	rawMSPConfig := mspKey.GetValue()
 	mspConf := &msp.MSPConfig{}
 	err = proto.Unmarshal(rawMSPConfig, mspConf)
 	require.NoError(t, err)
 	fabricMSPConf := &msp.FabricMSPConfig{}
-	err = proto.Unmarshal(mspConf.Config, fabricMSPConf)
+	err = proto.Unmarshal(mspConf.GetConfig(), fabricMSPConf)
 	require.NoError(t, err)
 	// Replace the TLS root certs with the given ones
 	fabricMSPConf.TlsRootCerts = [][]byte{tlsCA}
@@ -1520,7 +1520,7 @@ func TestChannels(t *testing.T) {
 			}
 
 			for i := range systemChain {
-				systemChain[i].Header.DataHash = protoutil.BlockDataHash(systemChain[i].Data)
+				systemChain[i].Header.DataHash = protoutil.BlockDataHash(systemChain[i].GetData())
 				systemChain[i].Header.Number = uint64(i)
 			}
 			testCase.prepareSystemChain(systemChain)

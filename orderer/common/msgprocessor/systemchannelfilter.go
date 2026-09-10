@@ -52,21 +52,21 @@ func NewSystemChannelFilter(ls LimitedSupport, cc ChainCreator, validator Metada
 func (scf *SystemChainFilter) Apply(env *cb.Envelope) error {
 	msgData := &cb.Payload{}
 
-	err := proto.Unmarshal(env.Payload, msgData)
+	err := proto.Unmarshal(env.GetPayload(), msgData)
 	if err != nil {
 		return errors.Errorf("bad payload: %s", err)
 	}
 
-	if msgData.Header == nil {
+	if msgData.GetHeader() == nil {
 		return errors.Errorf("missing payload header")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(msgData.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(msgData.GetHeader().GetChannelHeader())
 	if err != nil {
 		return errors.Errorf("bad channel header: %s", err)
 	}
 
-	if chdr.Type != int32(cb.HeaderType_ORDERER_TRANSACTION) {
+	if chdr.GetType() != int32(cb.HeaderType_ORDERER_TRANSACTION) {
 		return nil
 	}
 
@@ -88,7 +88,7 @@ func (scf *SystemChainFilter) Apply(env *cb.Envelope) error {
 	}
 
 	configTx := &cb.Envelope{}
-	err = proto.Unmarshal(msgData.Data, configTx)
+	err = proto.Unmarshal(msgData.GetData(), configTx)
 	if err != nil {
 		return errors.Errorf("payload data error unmarshalling to envelope: %s", err)
 	}
@@ -98,41 +98,41 @@ func (scf *SystemChainFilter) Apply(env *cb.Envelope) error {
 
 func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 	payload := &cb.Payload{}
-	err := proto.Unmarshal(configTx.Payload, payload)
+	err := proto.Unmarshal(configTx.GetPayload(), payload)
 	if err != nil {
 		return errors.Errorf("error unmarshalling wrapped configtx envelope payload: %s", err)
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return errors.Errorf("wrapped configtx envelope missing header")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return errors.Errorf("error unmarshalling wrapped configtx envelope channel header: %s", err)
 	}
 
-	if chdr.Type != int32(cb.HeaderType_CONFIG) {
+	if chdr.GetType() != int32(cb.HeaderType_CONFIG) {
 		return errors.Errorf("wrapped configtx envelope not a config transaction")
 	}
 
 	configEnvelope := &cb.ConfigEnvelope{}
-	err = proto.Unmarshal(payload.Data, configEnvelope)
+	err = proto.Unmarshal(payload.GetData(), configEnvelope)
 	if err != nil {
 		return errors.Errorf("error unmarshalling wrapped configtx config envelope from payload: %s", err)
 	}
 
-	if configEnvelope.LastUpdate == nil {
+	if configEnvelope.GetLastUpdate() == nil {
 		return errors.Errorf("updated config does not include a config update")
 	}
 
-	res, err := scf.cc.NewChannelConfig(configEnvelope.LastUpdate)
+	res, err := scf.cc.NewChannelConfig(configEnvelope.GetLastUpdate())
 	if err != nil {
 		return errors.Errorf("error constructing new channel config from update: %s", err)
 	}
 
 	// Make sure that the config was signed by the appropriate authorized entities
-	newChannelConfigEnv, err := res.ConfigtxValidator().ProposeConfigUpdate(configEnvelope.LastUpdate)
+	newChannelConfigEnv, err := res.ConfigtxValidator().ProposeConfigUpdate(configEnvelope.GetLastUpdate())
 	if err != nil {
 		return errors.Errorf("error proposing channel update to new channel config: %s", err)
 	}
@@ -142,7 +142,7 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 		return errors.Errorf("config proposed by the channel creation request did not match the config received with the channel creation request")
 	}
 
-	bundle, err := scf.cc.CreateBundle(res.ConfigtxValidator().ChannelID(), newChannelConfigEnv.Config)
+	bundle, err := scf.cc.CreateBundle(res.ConfigtxValidator().ChannelID(), newChannelConfigEnv.GetConfig())
 	if err != nil {
 		return errors.Wrap(err, "config does not validly parse")
 	}

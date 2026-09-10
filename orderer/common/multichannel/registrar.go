@@ -264,7 +264,7 @@ func (r *Registrar) initSystemChannel(existingChannels []string) {
 		logger.Infof(
 			"Starting system channel '%s' with genesis block hash %x and orderer type %s",
 			channelID,
-			protoutil.BlockHeaderHash(genesisBlock.Header),
+			protoutil.BlockHeaderHash(genesisBlock.GetHeader()),
 			chain.SharedConfig().ConsensusType(),
 		)
 
@@ -289,7 +289,7 @@ func (r *Registrar) initAppChannels(existingChannels []string, channelsWithJoinB
 			logger.Panicf("Failed to determine cluster membership from join-block, channel: %s, error: %s", channelID, err)
 		}
 
-		if joinBlock.Header.Number == 0 && isMember {
+		if joinBlock.GetHeader().GetNumber() == 0 && isMember {
 			if _, _, err := r.createAsMember(ledgerRes, joinBlock, channelID); err != nil {
 				logger.Panicf("Failed to createAsMember, error: %s", err)
 			}
@@ -434,7 +434,7 @@ func (r *Registrar) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader
 		return nil, false, nil, errors.WithMessage(err, "could not determine channel ID")
 	}
 
-	cs := r.GetChain(chdr.ChannelId)
+	cs := r.GetChain(chdr.GetChannelId())
 	// New channel creation
 	if cs == nil {
 		sysChan := r.SystemChannel()
@@ -486,38 +486,38 @@ func (r *Registrar) GetFollower(chainID string) *follower.Chain {
 }
 
 func (r *Registrar) newLedgerResources(configTx *cb.Envelope) (*ledgerResources, error) {
-	payload, err := protoutil.UnmarshalPayload(configTx.Payload)
+	payload, err := protoutil.UnmarshalPayload(configTx.GetPayload())
 	if err != nil {
 		return nil, errors.WithMessage(err, "error umarshaling envelope to payload")
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return nil, errors.New("missing channel header")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return nil, errors.WithMessage(err, "error unmarshalling channel header")
 	}
 
-	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	if err != nil {
 		return nil, errors.WithMessage(err, "error umarshaling config envelope from payload data")
 	}
 
-	bundle, err := channelconfig.NewBundle(chdr.ChannelId, configEnvelope.Config, r.bccsp)
+	bundle, err := channelconfig.NewBundle(chdr.GetChannelId(), configEnvelope.GetConfig(), r.bccsp)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error creating channelconfig bundle")
 	}
 
 	err = checkResources(bundle)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "error checking bundle for channel: %s", chdr.ChannelId)
+		return nil, errors.WithMessagef(err, "error checking bundle for channel: %s", chdr.GetChannelId())
 	}
 
-	ledger, err := r.ledgerFactory.GetOrCreate(chdr.ChannelId)
+	ledger, err := r.ledgerFactory.GetOrCreate(chdr.GetChannelId())
 	if err != nil {
-		return nil, errors.WithMessagef(err, "error getting ledger for channel: %s", chdr.ChannelId)
+		return nil, errors.WithMessagef(err, "error getting ledger for channel: %s", chdr.GetChannelId())
 	}
 
 	return &ledgerResources{
@@ -806,7 +806,7 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 		return types.ChannelInfo{}, errors.WithMessage(err, "failed to determine cluster membership from join-block")
 	}
 
-	if configBlock.Header.Number == 0 && isMember {
+	if configBlock.GetHeader().GetNumber() == 0 && isMember {
 		chain, info, err := r.createAsMember(ledgerRes, configBlock, channelID)
 		if err == nil {
 			if err := r.removeJoinBlock(channelID); err != nil {
@@ -909,9 +909,9 @@ func (r *Registrar) joinSystemChannel(
 	configBlock *cb.Block,
 	channelID string,
 ) (types.ChannelInfo, error) {
-	logger.Infof("Joining system channel '%s', with config block number: %d", channelID, configBlock.Header.Number)
+	logger.Infof("Joining system channel '%s', with config block number: %d", channelID, configBlock.GetHeader().GetNumber())
 
-	if configBlock.Header.Number == 0 {
+	if configBlock.GetHeader().GetNumber() == 0 {
 		if err := ledgerRes.Append(configBlock); err != nil {
 			return types.ChannelInfo{}, errors.WithMessage(err, "error appending config block to the ledger")
 		}
@@ -1134,19 +1134,19 @@ func (r *Registrar) ReportConsensusRelationAndStatusMetrics(channelID string, re
 }
 
 func channelNameFromConfigTx(configtx *cb.Envelope) (string, error) {
-	payload, err := protoutil.UnmarshalPayload(configtx.Payload)
+	payload, err := protoutil.UnmarshalPayload(configtx.GetPayload())
 	if err != nil {
 		return "", errors.WithMessage(err, "error umarshaling envelope to payload")
 	}
 
-	if payload.Header == nil {
+	if payload.GetHeader() == nil {
 		return "", errors.New("missing channel header")
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return "", errors.WithMessage(err, "error unmarshalling channel header")
 	}
 
-	return chdr.ChannelId, nil
+	return chdr.GetChannelId(), nil
 }
