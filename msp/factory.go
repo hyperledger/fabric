@@ -59,7 +59,7 @@ func New(opts NewOpts, cryptoProvider bccsp.BCCSP) (MSP, error) {
 		}
 	case *IdemixNewOpts:
 		switch opts.GetVersion() {
-		case MSPv1_3, MSPv1_4_3:
+		case MSPv1_3, MSPv1_4_3, MSPv3_0:
 			msp, err := idemix.NewIdemixMsp(MSPv1_3)
 			if err != nil {
 				return nil, err
