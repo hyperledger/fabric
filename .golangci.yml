@@ -42,7 +42,7 @@ linters:
     - nosprintfhostport
 #    - perfsprint
     - promlinter
-#    - protogetter
+    - protogetter
     - reassign
     - sloglint
     - spancheck
