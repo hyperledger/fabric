@@ -293,6 +293,14 @@ var _ = Describe("Persistence", func() {
 				Expect(err).To(MatchError("fake-remove-error"))
 			})
 		})
+
+		When("the package ID contains path separators", func() {
+			It("returns an error without removing anything", func() {
+				err := store.Delete("../../hash")
+				Expect(err).To(MatchError("invalid chaincode install package ID '../../hash'"))
+				Expect(mockReadWriter.RemoveCallCount()).To(Equal(0))
+			})
+		})
 	})
 
 	Describe("Load", func() {
@@ -350,6 +358,16 @@ var _ = Describe("Persistence", func() {
 				ccInstallPkgBytes, err := store.Load("hash")
 				Expect(err).To(MatchError(ContainSubstring("error reading chaincode install package")))
 				Expect(ccInstallPkgBytes).To(HaveLen(0))
+			})
+		})
+
+		Context("when the package ID contains path separators", func() {
+			It("returns an error without accessing the filesystem", func() {
+				ccInstallPkgBytes, err := store.Load("../../hash")
+				Expect(err).To(MatchError("invalid chaincode install package ID '../../hash'"))
+				Expect(ccInstallPkgBytes).To(HaveLen(0))
+				Expect(mockReadWriter.ExistsCallCount()).To(Equal(0))
+				Expect(mockReadWriter.ReadFileCallCount()).To(Equal(0))
 			})
 		})
 	})
