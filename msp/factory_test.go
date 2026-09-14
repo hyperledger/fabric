@@ -74,7 +74,22 @@ func TestNew(t *testing.T) {
 	require.Nil(t, i)
 	require.Contains(t, err.Error(), "Invalid *IdemixNewOpts. Version not recognized [0]")
 
-	i, err = New(&IdemixNewOpts{NewBaseOpts{Version: MSPv1_1}}, cryptoProvider)
-	require.NoError(t, err)
-	require.NotNil(t, i)
+	for _, tc := range []struct {
+		name    string
+		version MSPVersion
+		idemix  MSPVersion
+	}{
+		{"v1_1", MSPv1_1, MSPv1_1},
+		{"v1_3", MSPv1_3, MSPv1_3},
+		{"v1_4_3", MSPv1_4_3, MSPv1_3},
+		{"v3_0", MSPv3_0, MSPv1_3},
+	} {
+		t.Run("Idemix/"+tc.name, func(t *testing.T) {
+			i, err := New(&IdemixNewOpts{NewBaseOpts{Version: tc.version}}, cryptoProvider)
+			require.NoError(t, err)
+			require.NotNil(t, i)
+			require.Equal(t, IDEMIX, i.GetType())
+			require.Equal(t, tc.idemix, i.GetVersion())
+		})
+	}
 }
