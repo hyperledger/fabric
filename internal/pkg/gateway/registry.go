@@ -9,7 +9,7 @@ package gateway
 import (
 	"fmt"
 	"math/rand/v2"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 
@@ -105,7 +105,7 @@ func (reg *registry) endorsementPlan(channel string, interest *peer.ChaincodeInt
 			groupPeers = append(groupPeers, &endorserState{peer: peer, endorser: endorser, height: height})
 		}
 		// sort by decreasing height
-		sort.Slice(groupPeers, sorter(groupPeers, reg.localEndorser.address))
+		slices.SortFunc(groupPeers, sorter(groupPeers, reg.localEndorser.address))
 
 		if len(groupPeers) > 0 {
 			var endorsers []*endorser
@@ -197,7 +197,7 @@ func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string
 
 	// sort by decreasing height in each org
 	for _, es := range endorsersByOrg {
-		sort.Slice(es, sorter(es, reg.localEndorser.address))
+		slices.SortFunc(es, sorter(es, reg.localEndorser.address))
 	}
 
 	return endorsersByOrg
@@ -264,7 +264,7 @@ func (reg *registry) evaluator(channel string, chaincode string, targetOrgs []st
 		}
 	}
 	// sort all the 'other orgs' endorsers by decreasing block height
-	sort.Slice(otherOrgEndorsers, sorter(otherOrgEndorsers, ""))
+	slices.SortFunc(otherOrgEndorsers, sorter(otherOrgEndorsers, ""))
 
 	var allEndorsers []*endorser
 	for _, e := range append(localOrgEndorsers, otherOrgEndorsers...) {
@@ -278,13 +278,22 @@ func (reg *registry) evaluator(channel string, chaincode string, targetOrgs []st
 	return nil, fmt.Errorf("no peers available to evaluate chaincode %s in channel %s", chaincode, channel)
 }
 
-func sorter(e []*endorserState, host string) func(i, j int) bool {
-	return func(i, j int) bool {
-		if e[i].height == e[j].height {
+func sorter(e []*endorserState, host string) func(a, b *endorserState) int {
+	return func(a, b *endorserState) int {
+		if a.height == b.height {
 			// prefer host peer
-			return e[i].endorser.address == host
+			if a.endorser.address == host && b.endorser.address != host {
+				return -1
+			}
+			if b.endorser.address == host && a.endorser.address != host {
+				return 1
+			}
+			return 0
 		}
-		return e[i].height > e[j].height
+		if a.height > b.height {
+			return -1
+		}
+		return 1
 	}
 }
 
