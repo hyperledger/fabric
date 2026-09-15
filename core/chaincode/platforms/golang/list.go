@@ -107,7 +107,7 @@ type ModuleInfo struct {
 	ModulePath string
 }
 
-// listModuleInfo extracts module information for the curent working directory.
+// listModuleInfo extracts module information for the current working directory.
 func listModuleInfo(extraEnv ...string) (*ModuleInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), listTimeout)
 	defer cancel()

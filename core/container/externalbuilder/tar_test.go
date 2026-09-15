@@ -9,10 +9,9 @@ package externalbuilder_test
 import (
 	"os"
 
+	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/hyperledger/fabric/core/container/externalbuilder"
 )
 
 var _ = Describe("Tar", func() {

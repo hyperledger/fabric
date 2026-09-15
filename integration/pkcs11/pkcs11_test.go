@@ -23,8 +23,6 @@ import (
 	"syscall"
 	"time"
 
-	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
-
 	bpkcs11 "github.com/hyperledger/fabric-lib-go/bccsp/pkcs11"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -32,6 +30,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("PKCS11 enabled network", func() {

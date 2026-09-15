@@ -10,11 +10,9 @@ import (
 	"context"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
-
-	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
-
 	"google.golang.org/grpc"
 )
 

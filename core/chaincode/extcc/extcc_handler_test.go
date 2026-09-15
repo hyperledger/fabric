@@ -16,11 +16,9 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/extcc/mock"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
-
-	"google.golang.org/grpc"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"google.golang.org/grpc"
 )
 
 var _ = Describe("Extcc", func() {

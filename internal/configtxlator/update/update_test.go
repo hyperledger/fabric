@@ -9,10 +9,9 @@ package update
 import (
 	"testing"
 
-	"google.golang.org/protobuf/proto"
-
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestNoUpdate(t *testing.T) {
