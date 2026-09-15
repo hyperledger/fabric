@@ -35,7 +35,7 @@ func TestSignConfigtx(t *testing.T) {
 		Signer: signer,
 	}
 
-	cmd := signconfigtxCmd(mockCF)
+	cmd := signconfigtxCmd(mockCF, true)
 
 	AddFlags(cmd)
 
@@ -58,7 +58,7 @@ func TestSignConfigtxMissingConfigTxFlag(t *testing.T) {
 		Signer: signer,
 	}
 
-	cmd := signconfigtxCmd(mockCF)
+	cmd := signconfigtxCmd(mockCF, true)
 
 	AddFlags(cmd)
 
@@ -80,7 +80,7 @@ func TestSignConfigtxChannelMissingConfigTxFile(t *testing.T) {
 		Signer: signer,
 	}
 
-	cmd := signconfigtxCmd(mockCF)
+	cmd := signconfigtxCmd(mockCF, true)
 
 	AddFlags(cmd)
 
