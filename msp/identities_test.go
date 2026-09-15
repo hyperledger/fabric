@@ -20,9 +20,8 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp/signer"
 	"github.com/hyperledger/fabric-lib-go/bccsp/utils"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
-	"google.golang.org/protobuf/proto"
-
 	"github.com/onsi/gomega"
+	"google.golang.org/protobuf/proto"
 )
 
 var (

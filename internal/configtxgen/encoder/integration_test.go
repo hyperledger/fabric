@@ -7,15 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package encoder_test
 
 import (
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 )
 

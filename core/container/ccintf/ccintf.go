@@ -7,9 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package ccintf
 
 import (
-	"github.com/hyperledger/fabric/internal/pkg/comm"
-
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 )
 
 // These structures can/should probably be moved out of here.

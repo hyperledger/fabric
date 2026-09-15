@@ -12,7 +12,6 @@ import (
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

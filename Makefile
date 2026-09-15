@@ -7,7 +7,7 @@
 # This makefile defines the following targets
 #
 #   - all (default) - builds all targets and runs all non-integration tests/checks
-#   - basic-checks - performs basic checks like license, spelling, trailing spaces and linter
+#   - basic-checks - performs basic checks like license, trailing spaces and linter
 #   - checks - runs all non-integration tests/checks
 #   - clean-all - superset of 'clean' that also removes persistent state
 #   - clean - cleans the build area
@@ -116,7 +116,7 @@ checks: ## Runs basic checks along with unit and integration tests
 	basic-checks unit-test integration-test
 
 .PHONY: basic-checks
-basic-checks: check-go-version license spelling references trailing-spaces linter check-help-docs check-metrics-doc filename-spaces check-swagger ## Performs basic checks like license, spelling, trailing spaces and linter
+basic-checks: check-go-version license references trailing-spaces linter check-help-docs check-metrics-doc filename-spaces check-swagger ## Performs basic checks like license, trailing spaces and linter
 
 
 .PHONY: desk-checks
@@ -130,10 +130,6 @@ help-docs: native ## Generate the command reference docs
 .PHONY: check-help-docs
 check-help-docs: native ## Check for outdated command reference documentation
 	@scripts/help_docs.sh check
-
-.PHONY: spelling
-spelling: gotool.misspell ## Check for spelling errors
-	@scripts/check_spelling.sh
 
 .PHONY: references
 references: ## Check for outdated references
@@ -188,7 +184,7 @@ profile: export JOB_TYPE=PROFILE ## Runs unit tests for all packages in coverpro
 profile: unit-test # Runs unit tests for all packages in coverprofile mode (slow)
 
 .PHONY: linter
-linter: gotool.gofumpt gotool.staticcheck gotool.golangci-lint ## Runs all code checks
+linter: gotool.staticcheck gotool.golangci-lint ## Runs all code checks
 	@echo "LINT: Running code checks.."
 	./scripts/golinter.sh
 

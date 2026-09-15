@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protoutil"
-
 	"github.com/pkg/errors"
 )
 

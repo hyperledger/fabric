@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-
 	"github.com/pkg/errors"
 )
 

@@ -7,12 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package tx
 
 import (
-	"github.com/pkg/errors"
-
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/pkg/tx"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 )
 
 // ProcessorFactory maintains a mapping between transaction type and associate `ProcessorCreator`

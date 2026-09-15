@@ -17,7 +17,6 @@ import (
 	"regexp"
 
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
-
 	"github.com/pkg/errors"
 )
 

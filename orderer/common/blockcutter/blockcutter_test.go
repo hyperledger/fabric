@@ -7,13 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package blockcutter_test
 
 import (
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter/mock"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Blockcutter", func() {
