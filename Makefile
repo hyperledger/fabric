@@ -8,7 +8,6 @@
 #
 #   - all (default) - builds all targets and runs all non-integration tests/checks
 #   - basic-checks - performs basic checks like license, spelling, trailing spaces and linter
-#   - check-deps - check for vendored dependencies that are no longer used
 #   - checks - runs all non-integration tests/checks
 #   - clean-all - superset of 'clean' that also removes persistent state
 #   - clean - cleans the build area
@@ -23,7 +22,7 @@
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
 #   - docs - builds the documentation in html format
-#   - gotools - installs go tools like golint
+#   - gotools - installs go tools
 #   - help-docs - generate the command reference docs
 #   - integration-test-prereqs - setup prerequisites for integration tests
 #   - integration-test - runs the integration tests
@@ -46,7 +45,7 @@
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
 
-UBUNTU_VER ?= 22.04
+UBUNTU_VER ?= 24.04
 FABRIC_VER ?= 2.5.16
 
 # 3rd party image version
@@ -163,13 +162,13 @@ unit-test: unit-test-clean docker-thirdparty-couchdb
 unit-tests: unit-test
 
 # Pull thirdparty docker images based on the latest baseimage release version
-# Also pull ccenv-1.4 for compatibility test to ensure pre-2.0 installed chaincodes
-# can be built by a peer configured to use the ccenv-1.4 as the builder image.
+# Also pull ccenv-2.5 for compatibility test to ensure pre-2.0 installed chaincodes
+# can be built by a peer configured to use the ccenv-2.5 as the builder image.
 .PHONY: docker-thirdparty
 docker-thirdparty: docker-thirdparty-couchdb
 	docker pull confluentinc/cp-zookeeper:${ZOOKEEPER_VER}
 	docker pull confluentinc/cp-kafka:${KAFKA_VER}
-	docker pull hyperledger/fabric-ccenv:1.4
+	docker pull hyperledger/fabric-ccenv:2.5
 
 .PHONY: docker-thirdparty-couchdb
 docker-thirdparty-couchdb:
@@ -184,14 +183,9 @@ profile: export JOB_TYPE=PROFILE
 profile: unit-test
 
 .PHONY: linter
-linter: check-deps gotool.goimports gotool.gofumpt gotool.staticcheck
+linter: gotool.gofumpt gotool.staticcheck gotool.golangci-lint
 	@echo "LINT: Running code checks.."
 	./scripts/golinter.sh
-
-.PHONY: check-deps
-check-deps:
-	@echo "DEP: Checking for dependency issues.."
-	./scripts/check_deps.sh
 
 .PHONY: check-metrics-docs
 check-metrics-doc:
@@ -214,7 +208,7 @@ generate-swagger: gotool.swagger
 	./scripts/swagger.sh generate
 
 .PHONY: protos
-protos: gotool.protoc-gen-go
+protos: gotool.protoc-gen-go gotool.protoc-gen-go-grpc
 	@echo "Compiling non-API protos..."
 	./scripts/compile_protos.sh
 

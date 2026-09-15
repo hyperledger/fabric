@@ -16,5 +16,5 @@ PROTO_DIRS="$(find "$(pwd)" \
     sort -u | grep -v testdata)"
 
 for dir in ${PROTO_DIRS}; do
-    protoc --proto_path="$dir" --go_out=plugins=grpc,paths=source_relative:"$dir" "$dir"/*.proto
+    protoc --proto_path="$dir" --go_out=paths=source_relative:"$dir" --go-grpc_out=paths=source_relative:"$dir" "$dir"/*.proto
 done
