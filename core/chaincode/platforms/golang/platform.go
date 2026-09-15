@@ -212,16 +212,16 @@ set -e
 %[3]s
 if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
     cd /chaincode/input/src
-    GO111MODULE=on go build -v -mod=vendor %[1]s -o /chaincode/output/chaincode %[2]s
+    go build -v -mod=vendor %[1]s -o /chaincode/output/chaincode %[2]s
 elif [ -f "/chaincode/input/src/go.mod" ]; then
     cd /chaincode/input/src
-    GO111MODULE=on go build -v -mod=readonly %[1]s -o /chaincode/output/chaincode %[2]s
+    go build -v -mod=readonly %[1]s -o /chaincode/output/chaincode %[2]s
 elif [ -f "/chaincode/input/src/%[2]s/go.mod" ] && [ -d "/chaincode/input/src/%[2]s/vendor" ]; then
     cd /chaincode/input/src/%[2]s
-    GO111MODULE=on go build -v -mod=vendor %[1]s -o /chaincode/output/chaincode .
+    go build -v -mod=vendor %[1]s -o /chaincode/output/chaincode .
 elif [ -f "/chaincode/input/src/%[2]s/go.mod" ]; then
     cd /chaincode/input/src/%[2]s
-    GO111MODULE=on go build -v -mod=readonly %[1]s -o /chaincode/output/chaincode .
+    go build -v -mod=readonly %[1]s -o /chaincode/output/chaincode .
 else
     GO111MODULE=off GOPATH=/chaincode/input:$GOPATH go build -v %[1]s -o /chaincode/output/chaincode %[2]s
 fi
@@ -394,7 +394,7 @@ func moduleInfo(path string) (*ModuleInfo, error) {
 	// generate a go.mod when a vendor tool is in use. To avoid that behavior
 	// we use `go env GOMOD` followed by an existence check.
 	cmd := exec.Command("go", "env", "GOMOD")
-	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+	cmd.Env = os.Environ()
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, wrapExitErr(err, "failed to determine module root")

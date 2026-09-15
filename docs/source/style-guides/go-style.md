@@ -14,8 +14,7 @@ We also recommend new contributors review the following before submitting pull r
 The following tools are executed against all pull requests. Any errors flagged by these tools must be addressed before the code will be merged:
 
   - [gofumpt](https://github.com/mvdan/gofumpt)
-  - [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)
-  - [go vet](https://golang.org/cmd/vet)
+  - [golangci-lint](https://golangci-lint.run/)
   - [staticcheck](https://staticcheck.io)
 
 ## Additional guidelines for Hyperledger Fabric codebase
