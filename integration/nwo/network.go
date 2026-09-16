@@ -1990,7 +1990,7 @@ func (n *Network) GenerateOrdererConfig(o *Orderer) {
 	t, err := template.New("orderer").Funcs(template.FuncMap{
 		"Orderer":    func() *Orderer { return o },
 		"ToLower":    func(s string) string { return strings.ToLower(s) },
-		"ReplaceAll": func(s, old, new string) string { return strings.Replace(s, old, new, -1) },
+		"ReplaceAll": func(s, old, new string) string { return strings.ReplaceAll(s, old, new) },
 	}).Parse(n.Templates.OrdererTemplate())
 	Expect(err).NotTo(HaveOccurred())
 
@@ -2013,7 +2013,7 @@ func (n *Network) GenerateCoreConfig(p *Peer) {
 	t, err := template.New("peer").Funcs(template.FuncMap{
 		"Peer":       func() *Peer { return p },
 		"ToLower":    func(s string) string { return strings.ToLower(s) },
-		"ReplaceAll": func(s, old, new string) string { return strings.Replace(s, old, new, -1) },
+		"ReplaceAll": func(s, old, new string) string { return strings.ReplaceAll(s, old, new) },
 	}).Parse(n.Templates.CoreTemplate())
 	Expect(err).NotTo(HaveOccurred())
 

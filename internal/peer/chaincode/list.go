@@ -160,7 +160,7 @@ func (cci ccInfo) String() string {
 		if strings.HasPrefix(md2.Field(i).Name, "XXX") {
 			continue
 		}
-		b.WriteString(fmt.Sprintf("%s: %s, ", md2.Field(i).Name, val))
+		fmt.Fprintf(&b, "%s: %s, ", md2.Field(i).Name, val)
 	}
 	return b.String()[:len(b.String())-2]
 }

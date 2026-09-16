@@ -995,7 +995,7 @@ func newMockDiscoveryService() *mockDiscoveryServer {
 }
 
 func (ds *mockDiscoveryServer) shutdown() {
-	ds.Server.Stop()
+	ds.Stop()
 }
 
 func (ds *mockDiscoveryServer) Discover(context.Context, *discovery.SignedRequest) (*discovery.Response, error) {

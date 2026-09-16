@@ -57,7 +57,7 @@ type idemixMSPWrapper struct {
 }
 
 func (i *idemixMSPWrapper) deserializeIdentityInternal(serializedIdentity []byte) (Identity, error) {
-	id, err := i.Idemixmsp.DeserializeIdentityInternal(serializedIdentity)
+	id, err := i.DeserializeIdentityInternal(serializedIdentity)
 	if err != nil {
 		return nil, err
 	}

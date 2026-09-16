@@ -321,7 +321,7 @@ func (g *Node) start() {
 		isEmpty := gMsg.GetGossipMessage().GetEmpty() != nil
 		isPrivateData := protoext.IsPrivateDataMsg(gMsg.GetGossipMessage().GossipMessage)
 
-		return !(isConn || isEmpty || isPrivateData)
+		return !isConn && !isEmpty && !isPrivateData
 	}
 
 	incMsgs := g.comm.Accept(msgSelector)
@@ -557,7 +557,7 @@ func (g *Node) sendAndFilterSecrets(msg *protoext.SignedGossipMessage, peers ...
 		// Don't gossip secrets
 		if !g.IsInMyOrg(discovery.NetworkMember{PKIid: peer.PKIID}) {
 			clonedMsg.Envelope = proto.Clone(msg.Envelope).(*pg.Envelope) // clone the envelope
-			clonedMsg.Envelope.SecretEnvelope = nil
+			clonedMsg.SecretEnvelope = nil
 		}
 		g.comm.Send(clonedMsg, peer)
 	}
@@ -778,7 +778,7 @@ func (g *Node) Stop() {
 	g.disc.Stop()
 	g.certStore.stop()
 	g.emitter.Stop()
-	g.ChannelDeMultiplexer.Close()
+	g.Close()
 	g.stateInfoMsgStore.Stop()
 	g.comm.Stop()
 }
@@ -1279,7 +1279,7 @@ func (g *Node) disclosurePolicy(remotePeer *discovery.NetworkMember) (discovery.
 			// The message is from my org
 			fromMyOrg := bytes.Equal(g.selfOrg, org)
 			// Forward to target org only messages from our org, or from the target org itself.
-			if !(fromSameForeignOrg || fromMyOrg) {
+			if !fromSameForeignOrg && !fromMyOrg {
 				return false
 			}
 

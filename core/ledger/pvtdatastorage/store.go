@@ -173,8 +173,8 @@ type storeEntries struct {
 // and is stored as the value of lastUpdatedOldBlocksKey (defined in kv_encoding.go)
 type lastUpdatedOldBlocksList []uint64
 
-//////// Provider functions  /////////////
-//////////////////////////////////////////
+// ////// Provider functions  /////////////
+// ////////////////////////////////////////
 
 // NewProvider instantiates a StoreProvider
 func NewProvider(conf *PrivateDataConfig) (*Provider, error) {
@@ -255,8 +255,8 @@ func (p *Provider) Drop(ledgerid string) error {
 	return p.dbProvider.Drop(ledgerid)
 }
 
-//////// store functions  ////////////////
-//////////////////////////////////////////
+// ////// store functions  ////////////////
+// ////////////////////////////////////////
 
 func (s *Store) initState() error {
 	var err error
@@ -1237,7 +1237,7 @@ func (p *purgeUpdatesProcessor) process(hashedIndexKey, hashedIndexVal []byte) e
 		if err != nil {
 			return err
 		}
-		logger.Infow("Purging private data from private data storage", "channel", p.ledgerid, "chaincode", decodedDataKey.nsCollBlk.ns, "collection", decodedDataKey.nsCollBlk.coll, "key", string(hashedIndexVal), "blockNum", decodedDataKey.nsCollBlk.blkNum, "tranNum", decodedDataKey.txNum)
+		logger.Infow("Purging private data from private data storage", "channel", p.ledgerid, "chaincode", decodedDataKey.ns, "collection", decodedDataKey.coll, "key", string(hashedIndexVal), "blockNum", decodedDataKey.blkNum, "tranNum", decodedDataKey.txNum)
 	}
 
 	p.batch.Delete(hashedIndexKey)

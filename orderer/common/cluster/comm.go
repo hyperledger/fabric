@@ -416,7 +416,7 @@ func (stub *Stub) Deactivate() {
 	if !stub.isActive() {
 		return
 	}
-	stub.RemoteContext.Abort()
+	stub.Abort()
 	stub.RemoteContext = nil
 }
 

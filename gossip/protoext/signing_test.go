@@ -348,12 +348,12 @@ func TestSignedGossipMessage_Verify(t *testing.T) {
 	require.Error(t, res)
 
 	msg.Envelope = env
-	payload := msg.Envelope.GetPayload()
-	msg.Envelope.Payload = nil
+	payload := msg.GetPayload()
+	msg.Payload = nil
 	res = msg.Verify(peerID, verifier)
 	require.Error(t, res)
 
-	msg.Envelope.Payload = payload
+	msg.Payload = payload
 	sig := msg.Signature
 	msg.Signature = nil
 	res = msg.Verify(peerID, verifier)

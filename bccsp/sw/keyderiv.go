@@ -62,7 +62,7 @@ func (kd *ecdsaPublicKeyKeyDeriver) KeyDeriv(key bccsp.Key, opts bccsp.KeyDerivO
 	)
 
 	// Verify temporary public key is a valid point on the reference curve
-	isOn := tempSK.Curve.IsOnCurve(tempSK.X, tempSK.Y)
+	isOn := tempSK.IsOnCurve(tempSK.X, tempSK.Y)
 	if !isOn {
 		return nil, errors.New("Failed temporary public key IsOnCurve check.")
 	}
@@ -105,14 +105,14 @@ func (kd *ecdsaPrivateKeyKeyDeriver) KeyDeriv(key bccsp.Key, opts bccsp.KeyDeriv
 	tempSK.D.Mod(tempSK.D, ecdsaK.privKey.PublicKey.Params().N)
 
 	// Compute temporary public key
-	tempX, tempY := ecdsaK.privKey.PublicKey.ScalarBaseMult(k.Bytes())
-	tempSK.PublicKey.X, tempSK.PublicKey.Y = tempSK.PublicKey.Add(
-		ecdsaK.privKey.PublicKey.X, ecdsaK.privKey.PublicKey.Y,
+	tempX, tempY := ecdsaK.privKey.ScalarBaseMult(k.Bytes())
+	tempSK.X, tempSK.Y = tempSK.Add(
+		ecdsaK.privKey.X, ecdsaK.privKey.Y,
 		tempX, tempY,
 	)
 
 	// Verify temporary public key is a valid point on the reference curve
-	isOn := tempSK.Curve.IsOnCurve(tempSK.PublicKey.X, tempSK.PublicKey.Y)
+	isOn := tempSK.IsOnCurve(tempSK.X, tempSK.Y)
 	if !isOn {
 		return nil, errors.New("Failed temporary public key IsOnCurve check.")
 	}

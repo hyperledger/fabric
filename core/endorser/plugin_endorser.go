@@ -130,7 +130,7 @@ func (pbc *pluginsByChannel) initPlugin(plugin endorsement.Plugin, channel strin
 		if err != nil {
 			return nil, errors.Wrap(err, "failed obtaining channel state")
 		}
-		store := pbc.pe.TransientStoreRetriever.StoreForChannel(channel)
+		store := pbc.pe.StoreForChannel(channel)
 		if store == nil {
 			return nil, errors.Errorf("transient store for channel %s was not initialized", channel)
 		}

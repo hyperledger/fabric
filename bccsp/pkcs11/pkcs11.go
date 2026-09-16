@@ -803,7 +803,8 @@ func (csp *Provider) ecPoint(session pkcs11.SessionHandle, key pkcs11.ObjectHand
 	}
 
 	for _, a := range attr {
-		if a.Type == pkcs11.CKA_EC_POINT {
+		switch a.Type {
+		case pkcs11.CKA_EC_POINT:
 			logger.Debugf("EC point: attr type %d/0x%x, len %d\n%s\n", a.Type, a.Type, len(a.Value), hex.Dump(a.Value))
 
 			// workarounds, see above
@@ -818,7 +819,7 @@ func (csp *Provider) ecPoint(session pkcs11.SessionHandle, key pkcs11.ObjectHand
 			} else {
 				ecpt = a.Value
 			}
-		} else if a.Type == pkcs11.CKA_EC_PARAMS {
+		case pkcs11.CKA_EC_PARAMS:
 			logger.Debugf("EC point: attr type %d/0x%x, len %d\n%s\n", a.Type, a.Type, len(a.Value), hex.Dump(a.Value))
 
 			oid = a.Value

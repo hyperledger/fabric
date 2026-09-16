@@ -48,7 +48,7 @@ type StateContext struct {
 
 // GetTransientByTXID returns the private data associated with this transaction ID.
 func (sc *StateContext) GetTransientByTXID(txID string) ([]*rwset.TxPvtReadWriteSet, error) {
-	scanner, err := sc.Store.GetTxPvtRWSetByTxid(txID, nil)
+	scanner, err := sc.GetTxPvtRWSetByTxid(txID, nil)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

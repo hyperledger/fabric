@@ -627,6 +627,6 @@ func (th *testHelper) assertUnjoinedChannel(peer *nwo.Peer) {
 	Eventually(sess, th.EventuallyTimeout).Should(gexec.Exit(1))
 	Expect(sess.Err).To(gbytes.Say("Invalid chain ID"))
 
-	channelLedgerDir := filepath.Join(th.Network.PeerLedgerDir(peer), "chains/chains", th.channelID)
+	channelLedgerDir := filepath.Join(th.PeerLedgerDir(peer), "chains/chains", th.channelID)
 	Expect(channelLedgerDir).NotTo(BeADirectory())
 }

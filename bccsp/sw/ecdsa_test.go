@@ -127,7 +127,7 @@ func TestEcdsaPrivateKey(t *testing.T) {
 
 	k.privKey = lowLevelKey
 	ski = k.SKI()
-	raw := elliptic.Marshal(k.privKey.Curve, k.privKey.PublicKey.X, k.privKey.PublicKey.Y)
+	raw := elliptic.Marshal(k.privKey.Curve, k.privKey.X, k.privKey.Y)
 	hash := sha256.New()
 	hash.Write(raw)
 	ski2 := hash.Sum(nil)

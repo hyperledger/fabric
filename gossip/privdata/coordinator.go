@@ -163,7 +163,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	c.logger.Debugf("Validating block [%d]", block.GetHeader().GetNumber())
 
 	validationStart := time.Now()
-	err := c.Validator.Validate(block)
+	err := c.Validate(block)
 	c.reportValidationDuration(time.Since(validationStart))
 	if err != nil {
 		c.logger.Errorf("Validation failed: %+v", err)
@@ -268,7 +268,7 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protou
 					Namespace:  ns.GetNamespace(),
 					Collection: col.GetCollectionName(),
 				}
-				sp, err := c.CollectionStore.RetrieveCollectionAccessPolicy(cc)
+				sp, err := c.RetrieveCollectionAccessPolicy(cc)
 				if err != nil {
 					c.logger.Warningf("Failed obtaining policy for collection criteria [%#v]: %s", cc, err)
 					continue
@@ -324,7 +324,7 @@ func (c *coordinator) getTxPvtdataInfoFromBlock(block *common.Block) ([]*ledger.
 					Collection: hashedCollection.CollectionName,
 				}
 
-				colConfig, err := c.CollectionStore.RetrieveCollectionConfig(cc)
+				colConfig, err := c.RetrieveCollectionConfig(cc)
 				if err != nil {
 					c.logger.Warningf("Failed to retrieve collection config for collection criteria [%#v]: %s", cc, err)
 					return nil, err

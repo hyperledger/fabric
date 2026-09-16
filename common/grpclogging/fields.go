@@ -19,7 +19,7 @@ type protoMarshaler struct {
 }
 
 func (m *protoMarshaler) MarshalJSON() ([]byte, error) {
-	out, err := m.Marshaler.MarshalToString(m.message)
+	out, err := m.MarshalToString(m.message)
 	if err != nil {
 		return nil, err
 	}
