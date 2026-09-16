@@ -9,10 +9,9 @@ package container_test
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/core/container"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/hyperledger/fabric/core/container"
 )
 
 var _ = Describe("BuildRegistry", func() {

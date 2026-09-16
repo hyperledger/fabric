@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/internal/ledgerutil/jsonrw"
 	"github.com/hyperledger/fabric/internal/ledgerutil/models"
 	"github.com/hyperledger/fabric/protoutil"
-
 	"github.com/pkg/errors"
 )
 

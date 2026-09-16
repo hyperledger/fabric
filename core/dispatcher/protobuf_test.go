@@ -7,13 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package dispatcher_test
 
 import (
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
+	"github.com/golang/protobuf/proto"
 	lc "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/core/dispatcher"
-
-	"github.com/golang/protobuf/proto"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("ProtobufImpl", func() {

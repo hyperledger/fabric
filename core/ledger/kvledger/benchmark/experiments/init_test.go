@@ -21,7 +21,7 @@ const chaincodeName = "testChaincode"
 var conf *configuration
 
 // TestMain loads the yaml file and parses the test parameters
-// the configration constructed from test parameters is stored in
+// the configuration constructed from test parameters is stored in
 // package level variable and is accessible to an expriment
 // The test params should be passed in the following format in the golang benchmark test command
 // "-testParams=-DataDir="myDir", -NumChains=10, ..."

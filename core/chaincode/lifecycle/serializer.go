@@ -11,10 +11,9 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/golang/protobuf/proto"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/util"
-
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
 

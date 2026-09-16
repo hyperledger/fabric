@@ -13,7 +13,6 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
-
 	"github.com/pkg/errors"
 )
 

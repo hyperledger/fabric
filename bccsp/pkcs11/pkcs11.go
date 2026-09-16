@@ -64,7 +64,7 @@ type Option func(p *Provider) error
 
 // WithKeyMapper returns an option that configures the Provider to use the
 // provided function to map a subject key identifier to a cryptoki CKA_ID
-// identifer.
+// identifier.
 func WithKeyMapper(mapper func([]byte) []byte) Option {
 	return func(p *Provider) error {
 		p.getKeyIDForSKI = mapper

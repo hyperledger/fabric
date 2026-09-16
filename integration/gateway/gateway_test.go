@@ -267,7 +267,7 @@ var _ = Describe("GatewayService", func() {
 			Expect(proto.Equal(response, expectedResponse)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", response, expectedResponse)
 		})
 
-		It("should responsd with system chaincode result", func() {
+		It("should response with system chaincode result", func() {
 			proposedTransaction, transactionID := NewProposedTransaction(signingIdentity, "testchannel", "qscc", "GetChainInfo", nil, []byte("testchannel"))
 
 			request := &gateway.EvaluateRequest{
