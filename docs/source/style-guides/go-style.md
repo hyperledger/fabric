@@ -13,7 +13,6 @@ We also recommend new contributors review the following before submitting pull r
 
 The following tools are executed against all pull requests. Any errors flagged by these tools must be addressed before the code will be merged:
 
-  - [gofumpt](https://github.com/mvdan/gofumpt)
   - [golangci-lint](https://golangci-lint.run/)
   - [staticcheck](https://staticcheck.io)
 

@@ -12,7 +12,6 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	validatorstate "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
-
 	"github.com/pkg/errors"
 )
 

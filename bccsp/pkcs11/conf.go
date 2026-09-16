@@ -35,7 +35,7 @@ type PKCS11Opts struct {
 }
 
 // A KeyIDMapping associates the CKA_ID attribute of a cryptoki object with a
-// subject key identifer.
+// subject key identifier.
 type KeyIDMapping struct {
 	SKI string `json:"ski,omitempty"`
 	ID  string `json:"id,omitempty"`

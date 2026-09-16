@@ -21,10 +21,9 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
 	dcli "github.com/moby/moby/client"
-	"github.com/tedsuo/ifrit"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/tedsuo/ifrit"
 )
 
 var _ = Describe("ConfigTx", func() {

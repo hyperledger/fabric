@@ -20,10 +20,9 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/pkg/errors"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 )
 
 var _ = Describe("ChaincodeParameters", func() {
@@ -1678,7 +1677,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("returns an error", func() {
-				cc, err := ef.QueryChaincodeDefinition("cc-name", fakePublicState) //, nil)
+				cc, err := ef.QueryChaincodeDefinition("cc-name", fakePublicState) // , nil)
 				Expect(err).To(MatchError("could not fetch metadata for namespace cc-name: could not query metadata for namespace namespaces/cc-name: metadata-error"))
 				Expect(cc).To(BeNil())
 			})

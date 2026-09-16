@@ -7,7 +7,7 @@
 # This makefile defines the following targets
 #
 #   - all (default) - builds all targets and runs all non-integration tests/checks
-#   - basic-checks - performs basic checks like license, spelling, trailing spaces and linter
+#   - basic-checks - performs basic checks like license, trailing spaces and linter
 #   - checks - runs all non-integration tests/checks
 #   - clean-all - superset of 'clean' that also removes persistent state
 #   - clean - cleans the build area
@@ -111,7 +111,7 @@ all: check-go-version native docker checks
 checks: basic-checks unit-test integration-test
 
 .PHONY: basic-checks
-basic-checks: check-go-version license spelling references trailing-spaces linter check-help-docs check-metrics-doc filename-spaces check-swagger
+basic-checks: check-go-version license references trailing-spaces linter check-help-docs check-metrics-doc filename-spaces check-swagger
 
 .PHONY: desk-checks
 desk-check: checks verify
@@ -123,10 +123,6 @@ help-docs: native
 .PHONY: check-help-docs
 check-help-docs: native
 	@scripts/help_docs.sh check
-
-.PHONY: spelling
-spelling: gotool.misspell
-	@scripts/check_spelling.sh
 
 .PHONY: references
 references:
@@ -183,7 +179,7 @@ profile: export JOB_TYPE=PROFILE
 profile: unit-test
 
 .PHONY: linter
-linter: gotool.gofumpt gotool.staticcheck gotool.golangci-lint
+linter: gotool.staticcheck gotool.golangci-lint
 	@echo "LINT: Running code checks.."
 	./scripts/golinter.sh
 

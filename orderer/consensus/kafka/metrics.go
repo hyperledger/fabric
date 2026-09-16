@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/metrics"
-
 	gometrics "github.com/rcrowley/go-metrics"
 )
 

@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-GOTOOLS = counterfeiter ginkgo gocov gocov-xml gofumpt golangci-lint govulncheck misspell mockery protoc-gen-go staticcheck swagger
+GOTOOLS = counterfeiter ginkgo gocov gocov-xml golangci-lint govulncheck mockery protoc-gen-go staticcheck swagger
 BUILD_DIR ?= build
 GOTOOLS_BINDIR ?= $(shell go env GOPATH)/bin
 
@@ -12,10 +12,8 @@ go.fqp.counterfeiter := github.com/maxbrunsfeld/counterfeiter/v6
 go.fqp.ginkgo        := github.com/onsi/ginkgo/v2/ginkgo
 go.fqp.gocov         := github.com/axw/gocov/gocov
 go.fqp.gocov-xml     := github.com/AlekSi/gocov-xml
-go.fqp.gofumpt       := mvdan.cc/gofumpt
 go.fqp.golangci-lint := github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 go.fqp.govulncheck   := golang.org/x/vuln/cmd/govulncheck@latest
-go.fqp.misspell      := github.com/client9/misspell/cmd/misspell
 go.fqp.mockery       := github.com/vektra/mockery/v2
 go.fqp.protoc-gen-go := github.com/golang/protobuf/protoc-gen-go
 go.fqp.protoc-gen-go-grpc := google.golang.org/grpc/cmd/protoc-gen-go-grpc

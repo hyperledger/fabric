@@ -5,7 +5,6 @@ go 1.27.0
 tool (
 	github.com/AlekSi/gocov-xml
 	github.com/axw/gocov/gocov
-	github.com/client9/misspell/cmd/misspell
 	github.com/go-swagger/go-swagger/cmd/swagger
 	github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 	github.com/maxbrunsfeld/counterfeiter/v6
@@ -14,7 +13,6 @@ tool (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc
 	google.golang.org/protobuf/cmd/protoc-gen-go
 	honnef.co/go/tools/cmd/staticcheck
-	mvdan.cc/gofumpt
 )
 
 require (
@@ -75,7 +73,6 @@ require (
 	github.com/charmbracelet/x/windows v0.2.2 // indirect
 	github.com/chigopher/pathlib v0.19.1 // indirect
 	github.com/ckaznocha/intrange v0.3.1 // indirect
-	github.com/client9/misspell v0.3.4 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/curioswitch/go-reassign v0.3.0 // indirect

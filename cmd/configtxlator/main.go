@@ -15,6 +15,7 @@ import (
 	"reflect"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/gorilla/handlers"
 	"github.com/hyperledger/fabric-config/protolator"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	_ "github.com/hyperledger/fabric-protos-go/msp"
@@ -25,8 +26,6 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxlator/metadata"
 	"github.com/hyperledger/fabric/internal/configtxlator/rest"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
-
-	"github.com/gorilla/handlers"
 	"github.com/pkg/errors"
 	"gopkg.in/alecthomas/kingpin.v2"
 )

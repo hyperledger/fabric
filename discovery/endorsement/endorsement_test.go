@@ -10,10 +10,8 @@ import (
 	"fmt"
 	"testing"
 
-	common2 "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/policydsl"
-
 	"github.com/golang/protobuf/proto"
+	common2 "github.com/hyperledger/fabric-protos-go/common"
 	discoveryprotos "github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/msp"
@@ -21,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/policies/inquire"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"

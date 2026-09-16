@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/protoutil"
-
 	"github.com/pkg/errors"
 )
 
