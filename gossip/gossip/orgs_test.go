@@ -242,7 +242,7 @@ func TestMultipleOrgEndpointLeakage(t *testing.T) {
 
 	membershipCheck := func() bool {
 		for _, p := range peers {
-			peerNetMember := p.Node.selfNetworkMember()
+			peerNetMember := p.selfNetworkMember()
 			pkiID := peerNetMember.PKIid
 			peersKnown := p.Peers()
 			peersToKnow := expectedMembershipSize[string(pkiID)]
@@ -399,7 +399,7 @@ func TestConfidentiality(t *testing.T) {
 	for _, p := range peers {
 		wg.Add(1)
 		_, msgs := p.Accept(msgSelector, true)
-		peerNetMember := p.Node.selfNetworkMember()
+		peerNetMember := p.selfNetworkMember()
 		targetORg := string(cs.OrgByPeerIdentity(api.PeerIdentityType(peerNetMember.InternalEndpoint)))
 		go func(targetOrg string, msgs <-chan protoext.ReceivedMessage) {
 			defer wg.Done()
@@ -455,7 +455,7 @@ func TestConfidentiality(t *testing.T) {
 			for i, p := range orgs2Peers[org] {
 				members := p.Peers()
 				expMemberSize := expectedMembershipSize(peersInOrg, externalEndpointsInOrg, org, i < externalEndpointsInOrg)
-				peerNetMember := p.Node.selfNetworkMember()
+				peerNetMember := p.selfNetworkMember()
 				membersCount := len(members)
 				if membersCount < expMemberSize {
 					return false
@@ -588,7 +588,7 @@ func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor, peers
 		// If this is an identity snapshot, make sure that only identities of peers
 		// with external endpoints pass between the organizations.
 		isIdentityPull := protoext.IsPullMsg(msg.GossipMessage) && protoext.GetPullMsgType(msg.GossipMessage) == proto.PullMsgType_IDENTITY_MSG
-		if !(isIdentityPull && protoext.IsDataUpdate(msg.GossipMessage)) {
+		if !isIdentityPull || !protoext.IsDataUpdate(msg.GossipMessage) {
 			continue
 		}
 		for _, envp := range msg.GetDataUpdate().GetData() {

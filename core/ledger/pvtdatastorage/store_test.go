@@ -1863,7 +1863,7 @@ func testPurgeMarkerForReconExists(t *testing.T, s *Store, p *purgeMarkerKey) bo
 func testWaitForPurgerRoutineToFinish(s *Store) {
 	time.Sleep(1 * time.Second)
 	s.purgerLock.Lock()
-	s.purgerLock.Unlock() //lint:ignore SA2001 syncpoint
+	s.purgerLock.Unlock() //nolint:staticcheck
 }
 
 func testutilWaitForCollElgProcToFinish(s *Store) {

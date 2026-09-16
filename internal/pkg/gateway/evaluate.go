@@ -69,10 +69,10 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 				if result, err := getResultFromProposalResponse(pr); err == nil {
 					response.Payload = result
 				} else {
-					logger.Warnw("Successful proposal response contained no transaction result", "error", err.Error(), "chaincode", chaincodeID, "channel", channel, "txID", request.GetTransactionId(), "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", response.GetStatus(), "message", response.GetMessage())
+					logger.Warnw("Successful proposal response contained no transaction result", "error", err.Error(), "chaincode", chaincodeID, "channel", channel, "txID", request.GetTransactionId(), "endorserAddress", endorser.address, "endorserMspid", endorser.mspid, "status", response.GetStatus(), "message", response.GetMessage())
 				}
 			} else {
-				logger.Debugw("Evaluate call to endorser failed", "chaincode", chaincodeID, "channel", channel, "txID", request.GetTransactionId(), "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "error", message)
+				logger.Debugw("Evaluate call to endorser failed", "chaincode", chaincodeID, "channel", channel, "txID", request.GetTransactionId(), "endorserAddress", endorser.address, "endorserMspid", endorser.mspid, "error", message)
 				errDetails = append(errDetails, errorDetail(endorser.endpointConfig, message))
 				if remove {
 					gs.registry.removeEndorser(endorser)
@@ -106,7 +106,7 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 		Result: response,
 	}
 
-	logger.Debugw("Evaluate call to endorser returned success", "channel", request.GetChannelId(), "txID", request.GetTransactionId(), "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", response.GetStatus(), "message", response.GetMessage())
+	logger.Debugw("Evaluate call to endorser returned success", "channel", request.GetChannelId(), "txID", request.GetTransactionId(), "endorserAddress", endorser.address, "endorserMspid", endorser.mspid, "status", response.GetStatus(), "message", response.GetMessage())
 	return evaluateResponse, nil
 }
 

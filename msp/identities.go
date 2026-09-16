@@ -268,7 +268,7 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 	// Ideally this method should be algorithm agnostic
 	// but golang requires the hash for ecdsa and requires
 	// the full message for ed25519
-	if id.identity.cert.PublicKeyAlgorithm != x509.Ed25519 {
+	if id.cert.PublicKeyAlgorithm != x509.Ed25519 {
 		hashOpt, err := id.getHashOpt(id.msp.cryptoConfig.GetSignatureHashFamily())
 		if err != nil {
 			return nil, errors.WithMessage(err, "failed getting hash function options")
@@ -285,7 +285,7 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 	} else {
 		mspIdentityLogger.Debugf("Sign: plaintext: %X...%X \n", msg[0:16], msg[len(msg)-16:])
 	}
-	if id.identity.cert.PublicKeyAlgorithm != x509.Ed25519 {
+	if id.cert.PublicKeyAlgorithm != x509.Ed25519 {
 		mspIdentityLogger.Debugf("Sign: digest: %X \n", digestOrMsg)
 	}
 	// Sign digest for ECDSA or msg for ED25519

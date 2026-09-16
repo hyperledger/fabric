@@ -195,7 +195,7 @@ func (bprs *blockAndPrivateDataResponseSender) getPrivateData(
 		return nil, err
 	}
 
-	identityDeserializer, err := bprs.IdentityDeserializerManager.Deserializer(channelID)
+	identityDeserializer, err := bprs.Deserializer(channelID)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +210,7 @@ func (bprs *blockAndPrivateDataResponseSender) getPrivateData(
 			for _, col := range ns.GetCollectionPvtRwset() {
 				logger.Debugf("Checking policy for namespace %s, collection %s", ns.GetNamespace(), col.GetCollectionName())
 
-				eligible, err := bprs.CollectionPolicyChecker.CheckCollectionPolicy(block.GetHeader().GetNumber(),
+				eligible, err := bprs.CheckCollectionPolicy(block.GetHeader().GetNumber(),
 					ns.GetNamespace(), col.GetCollectionName(), configHistoryRetriever, identityDeserializer, signedData)
 				if err != nil {
 					return nil, err

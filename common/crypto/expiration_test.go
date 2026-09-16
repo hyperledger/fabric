@@ -220,9 +220,9 @@ func TestLogNonPubKeyMismatchErr(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := &bytes.Buffer{}
-	expected.WriteString(fmt.Sprintf("Failed determining if public key of %s matches public key of %s: foo",
+	fmt.Fprintf(expected, "Failed determining if public key of %s matches public key of %s: foo",
 		string(aliceKeyPair.Cert),
-		string(bobKeyPair.Cert)))
+		string(bobKeyPair.Cert))
 
 	b := &bytes.Buffer{}
 	f := func(template string, args ...any) {

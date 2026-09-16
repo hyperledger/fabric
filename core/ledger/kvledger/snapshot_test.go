@@ -661,7 +661,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		require.NoError(t, err)
 		require.NoError(t, os.WriteFile(signableMetadataFile, signaleMetadataJSON, 0o600))
 
-		metadata.snapshotAdditionalMetadata.SnapshotHashInHex = computeHashForTest(t, provider, signaleMetadataJSON)
+		metadata.SnapshotHashInHex = computeHashForTest(t, provider, signaleMetadataJSON)
 		additionalMetadataJSON, err := metadata.snapshotAdditionalMetadata.ToJSON()
 		require.NoError(t, err)
 		require.NoError(t, os.WriteFile(additionalMetadataFile, additionalMetadataJSON, 0o600))
@@ -670,7 +670,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 	overwriteDataFile := func(fileName string, content []byte) {
 		filePath := filepath.Join(snapshotDirForTest, fileName)
 		require.NoError(t, os.WriteFile(filePath, content, 0o600))
-		metadata.SnapshotSignableMetadata.FilesAndHashes[fileName] = computeHashForTest(t, provider, content)
+		metadata.FilesAndHashes[fileName] = computeHashForTest(t, provider, content)
 		overwriteModifiedSignableMetadata()
 	}
 
@@ -781,7 +781,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		metadata.SnapshotSignableMetadata.LastBlockHashInHex = "invalid-hex"
+		metadata.LastBlockHashInHex = "invalid-hex"
 		overwriteModifiedSignableMetadata()
 
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
@@ -793,7 +793,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		metadata.SnapshotSignableMetadata.PreviousBlockHashInHex = "invalid-hex"
+		metadata.PreviousBlockHashInHex = "invalid-hex"
 		overwriteModifiedSignableMetadata()
 
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)

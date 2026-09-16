@@ -2241,14 +2241,15 @@ func TestChangesInPeers(t *testing.T) {
 			getPeersToTrackCallCount := 0
 			getListOfPeers := func() []discovery.NetworkMember {
 				var members []discovery.NetworkMember
-				if getPeersToTrackCallCount == 0 {
+				switch getPeersToTrackCallCount {
+				case 0:
 					members = buildMembers(test.oldMembers)
 					getPeersToTrackCallCount++
-				} else if getPeersToTrackCallCount == 1 {
+				case 1:
 					members = buildMembers(test.newMembers)
 					getPeersToTrackCallCount++
 					close(stopChan) // no more ticks, stop tracking changes
-				} else {
+				default:
 					t.Fatal("getPeersToTrack called too many times")
 				}
 				return members

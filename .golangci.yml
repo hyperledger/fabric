@@ -46,7 +46,7 @@ linters:
     - reassign
     - sloglint
     - spancheck
-#    - staticcheck
+    - staticcheck
     - testableexamples
 #    - testifylint
 #    - tparallel

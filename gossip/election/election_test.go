@@ -122,7 +122,7 @@ func (p *peer) Peers() []Peer {
 }
 
 func (p *peer) ReportMetrics(isLeader bool) {
-	p.Mock.Called(isLeader)
+	p.Called(isLeader)
 }
 
 func (p *peer) leaderCallback(isLeader bool) {

@@ -1263,7 +1263,7 @@ func (p *purgeUpdatesProcessor) process(hashedIndexKey, hashedIndexVal []byte) e
 		if err != nil {
 			return err
 		}
-		logger.Infow("Purging private data from private data storage", "channel", p.ledgerid, "chaincode", decodedDataKey.nsCollBlk.ns, "collection", decodedDataKey.nsCollBlk.coll, "key", string(hashedIndexVal), "blockNum", decodedDataKey.nsCollBlk.blkNum, "tranNum", decodedDataKey.txNum)
+		logger.Infow("Purging private data from private data storage", "channel", p.ledgerid, "chaincode", decodedDataKey.ns, "collection", decodedDataKey.coll, "key", string(hashedIndexVal), "blockNum", decodedDataKey.blkNum, "tranNum", decodedDataKey.txNum)
 	}
 
 	p.batch.Delete(hashedIndexKey)

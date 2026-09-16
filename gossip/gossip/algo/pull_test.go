@@ -164,7 +164,7 @@ func TestPullEngine_Add(t *testing.T) {
 	defer inst1.Stop()
 	inst1.Add("0")
 	inst1.Add("0")
-	require.True(t, inst1.PullEngine.state.Exists("0"))
+	require.True(t, inst1.state.Exists("0"))
 }
 
 func TestPullEngine_Remove(t *testing.T) {
@@ -172,11 +172,11 @@ func TestPullEngine_Remove(t *testing.T) {
 	inst1 := newPushPullTestInstance("p1", peers)
 	defer inst1.Stop()
 	inst1.Add("0")
-	require.True(t, inst1.PullEngine.state.Exists("0"))
+	require.True(t, inst1.state.Exists("0"))
 	inst1.Remove("0")
-	require.False(t, inst1.PullEngine.state.Exists("0"))
+	require.False(t, inst1.state.Exists("0"))
 	inst1.Remove("0") // remove twice
-	require.False(t, inst1.PullEngine.state.Exists("0"))
+	require.False(t, inst1.state.Exists("0"))
 }
 
 func TestPullEngine_Stop(t *testing.T) {
@@ -493,7 +493,7 @@ func TestFilter(t *testing.T) {
 	defer inst2.stop()
 	defer inst3.stop()
 
-	inst1.PullEngine.digFilter = func(context any) func(digestItem string) bool {
+	inst1.digFilter = func(context any) func(digestItem string) bool {
 		return func(digestItem string) bool {
 			n, _ := strconv.ParseInt(digestItem, 10, 64)
 			if context == "p2" {

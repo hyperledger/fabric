@@ -44,7 +44,7 @@ func init() {
 
 func (cs *naiveCryptoService) OrgByPeerIdentity(id api.PeerIdentityType) api.OrgIdentityType {
 	found := false
-	for _, call := range cs.Mock.ExpectedCalls {
+	for _, call := range cs.ExpectedCalls {
 		if call.Method == "OrgByPeerIdentity" {
 			found = true
 		}

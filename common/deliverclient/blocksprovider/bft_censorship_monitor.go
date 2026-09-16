@@ -267,7 +267,7 @@ func (m *BFTCensorshipMonitor) detectBlockCensorship() bool {
 	if m.logger.IsEnabledFor(zapcore.DebugLevel) {
 		var b strings.Builder
 		for _, tn := range ahead {
-			b.WriteString(fmt.Sprintf("(t: %s, n: %d); ", tn.t.Format(logTimeFormat), tn.n))
+			fmt.Fprintf(&b, "(t: %s, n: %d); ", tn.t.Format(logTimeFormat), tn.n)
 		}
 		m.logger.Debugf("[%s] %d header receivers are ahead of block receiver, out of %d endpoints; ahead: %s", m.chainID, len(ahead), len(m.fetchSources), b.String())
 	}

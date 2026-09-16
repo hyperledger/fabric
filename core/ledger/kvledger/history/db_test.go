@@ -584,10 +584,7 @@ func testutilCheckKeyNotInRange(t *testing.T, hqe ledger.HistoryQueryExecutor, n
 	require.NoError(t, err, "Error upon GetHistoryForKey()")
 	scanner := itr.(*historyScanner)
 	rangeScanKeys := constructRangeScan(ns, falseKey)
-	for {
-		if !scanner.dbItr.Next() {
-			break
-		}
+	for scanner.dbItr.Next() {
 		historyKey := scanner.dbItr.Key()
 		if bytes.Contains(historyKey, rangeScanKeys.startKey) {
 			require.Failf(t, "false key %s should not be returned in range query for key %s", falseKey, desiredKey)

@@ -46,12 +46,12 @@ type BroadcastOrdererClient interface {
 
 // Broadcast returns a broadcast client for the AtomicBroadcast service
 func (oc *OrdererClient) Broadcast() (BroadcastOrdererClient, error) {
-	return newMulticastBroadcastClient(oc.address, oc.CommonClient.clientConfig.Dial)
+	return newMulticastBroadcastClient(oc.address, oc.clientConfig.Dial)
 }
 
 // Deliver returns a deliver client for the AtomicBroadcast service
 func (oc *OrdererClient) Deliver() (ab.AtomicBroadcast_DeliverClient, error) {
-	conn, err := oc.CommonClient.clientConfig.Dial(oc.address)
+	conn, err := oc.Dial(oc.address)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "orderer client failed to connect to %s", oc.address)
 	}

@@ -523,7 +523,7 @@ func (gc *gossipChannel) PeerFilter(messagePredicate api.SubChannelSelectionCrit
 		if len(peerIdentity) == 0 {
 			return false
 		}
-		msg := gc.stateInfoMsgStore.MembershipStore.MsgByID(member.PKIid)
+		msg := gc.stateInfoMsgStore.MsgByID(member.PKIid)
 		if msg == nil {
 			return false
 		}
@@ -1046,7 +1046,7 @@ func (cache *stateInfoCache) validate(orgs []api.OrgIdentityType) {
 // and if the message was added, also indexes it.
 // Message must be a StateInfo message.
 func (cache *stateInfoCache) Add(msg *protoext.SignedGossipMessage) bool {
-	if !cache.MessageStore.CheckValid(msg) {
+	if !cache.CheckValid(msg) {
 		return false
 	}
 	if !cache.verify(msg) {
@@ -1055,7 +1055,7 @@ func (cache *stateInfoCache) Add(msg *protoext.SignedGossipMessage) bool {
 	added := cache.MessageStore.Add(msg)
 	if added {
 		pkiID := msg.GetStateInfo().GetPkiId()
-		cache.MembershipStore.Put(pkiID, msg)
+		cache.Put(pkiID, msg)
 	}
 	return added
 }

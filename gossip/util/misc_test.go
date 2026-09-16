@@ -56,7 +56,7 @@ type reader struct {
 }
 
 func (r *reader) Read(p []byte) (int, error) {
-	args := r.Mock.Called(p)
+	args := r.Called(p)
 	n := args.Get(0).(int)
 	err := args.Get(1)
 	if err == nil {

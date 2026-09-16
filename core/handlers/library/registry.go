@@ -113,16 +113,17 @@ func (r *registry) loadCompiled(handlerFactory string, handlerType HandlerType, 
 
 	inst := o.Call(nil)[0].Interface()
 
-	if handlerType == Auth {
+	switch handlerType {
+	case Auth:
 		r.filters = append(r.filters, inst.(auth.Filter))
-	} else if handlerType == Decoration {
+	case Decoration:
 		r.decorators = append(r.decorators, inst.(decoration.Decorator))
-	} else if handlerType == Endorsement {
+	case Endorsement:
 		if len(extraArgs) != 1 {
 			logger.Panicf("expected 1 argument in extraArgs")
 		}
 		r.endorsers[extraArgs[0]] = inst.(endorsement2.PluginFactory)
-	} else if handlerType == Validation {
+	case Validation:
 		if len(extraArgs) != 1 {
 			logger.Panicf("expected 1 argument in extraArgs")
 		}
@@ -133,15 +134,16 @@ func (r *registry) loadCompiled(handlerFactory string, handlerType HandlerType, 
 // Lookup returns a list of handlers with the given
 // type, or nil if none exist
 func (r *registry) Lookup(handlerType HandlerType) any {
-	if handlerType == Auth {
+	switch handlerType {
+	case Auth:
 		return r.filters
-	} else if handlerType == Decoration {
+	case Decoration:
 		return r.decorators
-	} else if handlerType == Endorsement {
+	case Endorsement:
 		return r.endorsers
-	} else if handlerType == Validation {
+	case Validation:
 		return r.validators
+	default:
+		return nil
 	}
-
-	return nil
 }

@@ -457,7 +457,7 @@ func (dig2f digestToFilterMapping) String() string {
 		collection2TxID[dig.Collection] = append(collection2TxID[dig.Collection], dig.TxId)
 	}
 	for col, txIDs := range collection2TxID {
-		buffer.WriteString(fmt.Sprintf("{%s: %v}", col, txIDs))
+		fmt.Fprintf(&buffer, "{%s: %v}", col, txIDs)
 	}
 	return buffer.String()
 }

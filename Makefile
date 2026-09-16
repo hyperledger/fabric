@@ -184,9 +184,9 @@ profile: export JOB_TYPE=PROFILE ## Runs unit tests for all packages in coverpro
 profile: unit-test # Runs unit tests for all packages in coverprofile mode (slow)
 
 .PHONY: linter
-linter: gotool.staticcheck gotool.golangci-lint ## Runs all code checks
+linter: gotool.golangci-lint ## Runs all code checks
 	@echo "LINT: Running code checks.."
-	./scripts/golinter.sh
+	$(GOTOOLS_BINDIR)/golangci-lint run ./...
 
 .PHONY: check-metrics-docs
 check-metrics-doc: gotool.gendoc ## Check for outdated reference documentation

@@ -26,7 +26,7 @@ func TestChainMgmt(t *testing.T) {
 	env := InitTestEnv(mgrConf, batchConf, ChainInitOpCreate)
 	require.NotNil(t, env.mgr)
 	require.Len(t, env.Chains(), 1)
-	bcInfo, err := env.Chains()[0].PeerLedger.GetBlockchainInfo()
+	bcInfo, err := env.Chains()[0].GetBlockchainInfo()
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), bcInfo.GetHeight())
 }

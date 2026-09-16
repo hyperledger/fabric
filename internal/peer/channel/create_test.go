@@ -67,8 +67,8 @@ func newOrderer(port int, t *testing.T) *timeoutOrderer {
 }
 
 func (o *timeoutOrderer) Shutdown() {
-	o.Server.Stop()
-	o.Listener.Close()
+	o.Stop()
+	o.Close()
 }
 
 func (*timeoutOrderer) Broadcast(orderer.AtomicBroadcast_BroadcastServer) error {

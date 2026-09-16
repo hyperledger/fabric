@@ -241,8 +241,8 @@ func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {
 	for _, i := range util.GetRandomIndices(k, n-1) {
 		pulledPeer := aliveMembersAsSlice[i].GetAliveMsg().GetMembership()
 		var internalEndpoint string
-		if aliveMembersAsSlice[i].Envelope.GetSecretEnvelope() != nil {
-			internalEndpoint = protoext.InternalEndpoint(aliveMembersAsSlice[i].Envelope.GetSecretEnvelope())
+		if aliveMembersAsSlice[i].GetSecretEnvelope() != nil {
+			internalEndpoint = protoext.InternalEndpoint(aliveMembersAsSlice[i].GetSecretEnvelope())
 		}
 		netMember := &NetworkMember{
 			Endpoint:         pulledPeer.GetEndpoint(),
@@ -602,8 +602,8 @@ func (d *gossipDiscoveryImpl) resurrectMember(am *protoext.SignedGossipMessage, 
 	if prevNetMem := d.id2Member[string(pkiID)]; prevNetMem != nil {
 		internalEndpoint = prevNetMem.InternalEndpoint
 	}
-	if am.Envelope.GetSecretEnvelope() != nil {
-		internalEndpoint = protoext.InternalEndpoint(am.Envelope.GetSecretEnvelope())
+	if am.GetSecretEnvelope() != nil {
+		internalEndpoint = protoext.InternalEndpoint(am.GetSecretEnvelope())
 	}
 
 	d.id2Member[string(pkiID)] = &NetworkMember{
@@ -813,7 +813,7 @@ func (d *gossipDiscoveryImpl) createSignedAliveMessage(includeInternalEndpoint b
 	}
 
 	if !includeInternalEndpoint {
-		signedMsg.Envelope.SecretEnvelope = nil
+		signedMsg.SecretEnvelope = nil
 	}
 
 	return signedMsg, nil
@@ -838,8 +838,8 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*protoext.SignedGo
 		if prevNetMem := d.id2Member[string(am.GetMembership().GetPkiId())]; prevNetMem != nil {
 			internalEndpoint = prevNetMem.InternalEndpoint
 		}
-		if m.Envelope.GetSecretEnvelope() != nil {
-			internalEndpoint = protoext.InternalEndpoint(m.Envelope.GetSecretEnvelope())
+		if m.GetSecretEnvelope() != nil {
+			internalEndpoint = protoext.InternalEndpoint(m.GetSecretEnvelope())
 		}
 
 		// update member's data
@@ -918,8 +918,8 @@ func (d *gossipDiscoveryImpl) learnNewMembers(aliveMembers []*protoext.SignedGos
 			}
 
 			var internalEndpoint string
-			if m.Envelope.GetSecretEnvelope() != nil {
-				internalEndpoint = protoext.InternalEndpoint(m.Envelope.GetSecretEnvelope())
+			if m.GetSecretEnvelope() != nil {
+				internalEndpoint = protoext.InternalEndpoint(m.GetSecretEnvelope())
 			}
 
 			if prevNetMem := d.id2Member[string(member.GetMembership().GetPkiId())]; prevNetMem != nil {

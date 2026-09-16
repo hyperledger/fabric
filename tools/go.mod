@@ -13,7 +13,6 @@ tool (
 	github.com/vektra/mockery/v2
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc
 	google.golang.org/protobuf/cmd/protoc-gen-go
-	honnef.co/go/tools/cmd/staticcheck
 )
 
 require (

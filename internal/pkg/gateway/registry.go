@@ -323,10 +323,10 @@ func (reg *registry) orderers(channel string) ([]*orderer, int, error) {
 				err = client.closeConnection()
 				if err != nil {
 					// Failed to close this new connection.  Log the problem.
-					reg.logger.Warnw("Failed to close connection to orderer", "address", client.endpointConfig.logAddress, "err", err)
+					reg.logger.Warnw("Failed to close connection to orderer", "address", client.logAddress, "err", err)
 				}
 			} else {
-				reg.logger.Infow("Added orderer to registry", "address", client.endpointConfig.logAddress)
+				reg.logger.Infow("Added orderer to registry", "address", client.logAddress)
 			}
 		}
 		orderers = append(orderers, entry.(*orderer))
