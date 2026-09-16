@@ -84,7 +84,7 @@ func privateKeyToPEM(privateKey any, pwd []byte) ([]byte, error) {
 
 		// based on https://golang.org/src/crypto/x509/sec1.go
 		privateKeyBytes := k.D.Bytes()
-		paddedPrivateKey := make([]byte, (k.Curve.Params().N.BitLen()+7)/8)
+		paddedPrivateKey := make([]byte, (k.Params().N.BitLen()+7)/8)
 		copy(paddedPrivateKey[len(paddedPrivateKey)-len(privateKeyBytes):], privateKeyBytes)
 		// omit NamedCurveOID for compatibility as it's optional
 		asn1Bytes, err := asn1.Marshal(ecPrivateKey{

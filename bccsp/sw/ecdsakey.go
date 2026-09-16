@@ -43,7 +43,7 @@ func (k *ecdsaPrivateKey) SKI() []byte {
 	}
 
 	// Marshall the public key
-	raw := elliptic.Marshal(k.privKey.Curve, k.privKey.PublicKey.X, k.privKey.PublicKey.Y)
+	raw := elliptic.Marshal(k.privKey.Curve, k.privKey.X, k.privKey.Y)
 
 	// Hash it
 	hash := sha256.New()

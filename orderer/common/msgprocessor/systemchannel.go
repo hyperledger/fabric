@@ -136,7 +136,7 @@ func (s *SystemChannel) ProcessConfigUpdateMsg(envConfigUpdate *cb.Envelope) (co
 	// check, which although not strictly necessary, is a good sanity check, in case the orderer
 	// has not been configured with the right cert material.  The additional overhead of the signature
 	// check is negligible, as this is the channel creation path and not the normal path.
-	err = s.StandardChannel.filters.Apply(wrappedOrdererTransaction)
+	err = s.filters.Apply(wrappedOrdererTransaction)
 	if err != nil {
 		return nil, 0, err
 	}

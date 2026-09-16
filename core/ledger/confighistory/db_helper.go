@@ -53,7 +53,7 @@ func newDBProvider(dbPath string) (*dbProvider, error) {
 }
 
 func (d *db) newBatch() *batch {
-	return &batch{d.DBHandle.NewUpdateBatch()}
+	return &batch{d.NewUpdateBatch()}
 }
 
 func (p *dbProvider) getDB(id string) *db {

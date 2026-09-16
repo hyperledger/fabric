@@ -210,5 +210,5 @@ func tamperBytes(original []byte) []byte {
 }
 
 func channelNameForTest(t *testing.T) string {
-	return fmt.Sprintf("%s.channel", strings.Replace(strings.ToLower(t.Name()), "/", ".", -1))
+	return fmt.Sprintf("%s.channel", strings.ReplaceAll(strings.ToLower(t.Name()), "/", "."))
 }

@@ -165,7 +165,7 @@ func (h HashedUpdateBatch) Put(ns, coll string, key []byte, value []byte, versio
 // PutValHashAndMetadata adds a key with value and metadata
 // TODO introducing a new function to limit the refactoring. Later in a separate CR, the 'Put' function above should be removed
 func (h HashedUpdateBatch) PutValHashAndMetadata(ns, coll string, key []byte, value []byte, metadata []byte, version *version.Height) {
-	h.UpdateMap.PutValAndMetadata(ns, coll, string(key), value, metadata, version)
+	h.PutValAndMetadata(ns, coll, string(key), value, metadata, version)
 }
 
 // Delete overrides the function in UpdateMap for allowing the key to be a []byte instead of a string

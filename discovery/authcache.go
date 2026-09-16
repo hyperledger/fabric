@@ -103,7 +103,7 @@ func (cache *accessCache) EligibleForService(data protoutil.SignedData) error {
 		logger.Warningf("Failed computing key of signed data: +%v", err)
 		return errors.Wrap(err, "failed computing key of signed data")
 	}
-	currSeq := cache.ac.acSupport.ConfigSequence(cache.channel)
+	currSeq := cache.ac.ConfigSequence(cache.channel)
 	if cache.isValid(currSeq) {
 		foundInCache, isEligibleErr := cache.lookup(key)
 		if foundInCache {
@@ -123,7 +123,7 @@ func (cache *accessCache) EligibleForService(data protoutil.SignedData) error {
 	cache.Lock()
 	defer cache.Unlock()
 	// Check if the sequence hasn't changed since last time
-	if currSeq != cache.ac.acSupport.ConfigSequence(cache.channel) {
+	if currSeq != cache.ac.ConfigSequence(cache.channel) {
 		// The sequence at which we computed the eligibility might have changed,
 		// so we can't put it into the cache because a more fresh computation result
 		// might already be present in the cache by now, and we don't want to override it

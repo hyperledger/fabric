@@ -179,9 +179,9 @@ profile: export JOB_TYPE=PROFILE
 profile: unit-test
 
 .PHONY: linter
-linter: gotool.staticcheck gotool.golangci-lint
+linter: gotool.golangci-lint
 	@echo "LINT: Running code checks.."
-	./scripts/golinter.sh
+	$(GOTOOLS_BINDIR)/golangci-lint run ./...
 
 .PHONY: check-metrics-docs
 check-metrics-doc:

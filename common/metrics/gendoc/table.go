@@ -268,7 +268,7 @@ func (c Cell) Field(f Field) string {
 	}
 }
 
-func (c Cell) Name() string        { return strings.Replace(c.namer.FullyQualifiedName(), ".", "_", -1) }
+func (c Cell) Name() string        { return strings.ReplaceAll(c.namer.FullyQualifiedName(), ".", "_") }
 func (c Cell) Type() string        { return c.meterType }
 func (c Cell) Description() string { return c.description }
 

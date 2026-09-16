@@ -14,7 +14,6 @@ We also recommend new contributors review the following before submitting pull r
 The following tools are executed against all pull requests. Any errors flagged by these tools must be addressed before the code will be merged:
 
   - [golangci-lint](https://golangci-lint.run/)
-  - [staticcheck](https://staticcheck.io)
 
 ## Additional guidelines for Hyperledger Fabric codebase
 In this section we add further guidelines for Hyperledger Fabric codebase. Specifically, we add details to the standard guidelines e.g., when to apply some of the patterns and when to avoid them. Most of the guidelines in this section are based on the lessons learnt after having applied some of the patterns in a wrong context.

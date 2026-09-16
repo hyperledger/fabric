@@ -90,7 +90,7 @@ func (l *Logging) Apply(c Config) error {
 		c.LogSpec = defaultLevel.String()
 	}
 
-	err = l.LoggerLevels.ActivateSpec(c.LogSpec)
+	err = l.ActivateSpec(c.LogSpec)
 	if err != nil {
 		return err
 	}

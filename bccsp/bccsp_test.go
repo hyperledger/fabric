@@ -84,8 +84,8 @@ func TestECDSAOpts(t *testing.T) {
 
 func TestHashOpts(t *testing.T) {
 	for _, ho := range []HashOpts{&SHA256Opts{}, &SHA384Opts{}, &SHA3_256Opts{}, &SHA3_384Opts{}} {
-		s := strings.Replace(reflect.TypeOf(ho).String(), "*bccsp.", "", -1)
-		algorithm := strings.Replace(s, "Opts", "", -1)
+		s := strings.ReplaceAll(reflect.TypeOf(ho).String(), "*bccsp.", "")
+		algorithm := strings.ReplaceAll(s, "Opts", "")
 		require.Equal(t, algorithm, ho.Algorithm())
 		ho2, err := GetHashOpt(algorithm)
 		require.NoError(t, err)

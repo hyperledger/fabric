@@ -65,7 +65,7 @@ func (s *DiscoverySupport) PeersOfChannel(chain common.ChannelID) discovery.Memb
 // Peers returns the NetworkMembers considered alive
 func (s *DiscoverySupport) Peers() discovery.Members {
 	peers := s.Gossip.Peers()
-	peers = append(peers, s.Gossip.SelfMembershipInfo())
+	peers = append(peers, s.SelfMembershipInfo())
 	// Return only the peers that have an external endpoint, and sanitizes the envelopes.
 	return discovery.Members(peers).Filter(discovery.HasExternalEndpoint).Map(sanitizeEnvelope)
 }
@@ -77,8 +77,8 @@ func sanitizeEnvelope(member discovery.NetworkMember) discovery.NetworkMember {
 		return returnedMember
 	}
 	returnedMember.Envelope = &gossip.Envelope{
-		Payload:   member.Envelope.GetPayload(),
-		Signature: member.Envelope.GetSignature(),
+		Payload:   member.GetPayload(),
+		Signature: member.GetSignature(),
 	}
 	return returnedMember
 }

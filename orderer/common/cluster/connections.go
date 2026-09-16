@@ -132,5 +132,5 @@ func (cmg *connMapperReporter) Remove(cert []byte) {
 }
 
 func (cmg *connMapperReporter) reportSize() {
-	cmg.tlsConnectionCountMetrics.Set(float64(cmg.ConnectionMapper.Size()))
+	cmg.tlsConnectionCountMetrics.Set(float64(cmg.Size()))
 }

@@ -102,7 +102,7 @@ func (s *txSimulator) DeleteStateMetadata(namespace, key string) error {
 
 // SetPrivateData implements method in interface `ledger.TxSimulator`
 func (s *txSimulator) SetPrivateData(ns, coll, key string, value []byte) error {
-	if err := s.queryExecutor.validateCollName(ns, coll); err != nil {
+	if err := s.validateCollName(ns, coll); err != nil {
 		return err
 	}
 	if err := s.checkWritePrecondition(key, value); err != nil {
@@ -120,7 +120,7 @@ func (s *txSimulator) DeletePrivateData(ns, coll, key string) error {
 
 // PurgePrivateData implements method in interface `ledger.TxSimulator`
 func (s *txSimulator) PurgePrivateData(ns, coll, key string) error {
-	if err := s.queryExecutor.validateCollName(ns, coll); err != nil {
+	if err := s.validateCollName(ns, coll); err != nil {
 		return err
 	}
 	if err := s.checkWritePrecondition(key, nil); err != nil {
@@ -151,7 +151,7 @@ func (s *txSimulator) GetPrivateDataRangeScanIterator(namespace, collection, sta
 
 // SetPrivateDataMetadata implements method in interface `ledger.TxSimulator`
 func (s *txSimulator) SetPrivateDataMetadata(namespace, collection, key string, metadata map[string][]byte) error {
-	if err := s.queryExecutor.validateCollName(namespace, collection); err != nil {
+	if err := s.validateCollName(namespace, collection); err != nil {
 		return err
 	}
 	if err := s.checkWritePrecondition(key, nil); err != nil {
@@ -199,10 +199,10 @@ func (s *txSimulator) GetTxSimulationResults() (*ledger.TxSimulationResults, err
 	}
 	defer func() { s.simulationResultsComputed = true }()
 	logger.Debugf("Simulation completed, getting simulation results")
-	if s.queryExecutor.err != nil {
-		return nil, s.queryExecutor.err
+	if s.err != nil {
+		return nil, s.err
 	}
-	s.queryExecutor.addRangeQueryInfo()
+	s.addRangeQueryInfo()
 	simResults, err := s.rwsetBuilder.GetTxSimulationResults()
 	if err != nil {
 		return nil, err
@@ -229,7 +229,7 @@ func (s *txSimulator) checkWritePrecondition(key string, value []byte) error {
 		return err
 	}
 	s.writePerformed = true
-	return s.queryExecutor.txmgr.db.ValidateKeyValue(key, value)
+	return s.txmgr.db.ValidateKeyValue(key, value)
 }
 
 func (s *txSimulator) checkBeforePvtdataQueries() error {

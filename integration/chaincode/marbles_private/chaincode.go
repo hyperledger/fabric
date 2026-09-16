@@ -569,11 +569,9 @@ func (t *MarblesPrivateChaincode) getMarblesByRange(stub shim.ChaincodeStubInter
 			buffer.WriteString(",")
 		}
 
-		buffer.WriteString(
-			fmt.Sprintf(
-				`{"Key":"%s", "Record":%s}`,
-				queryResponse.GetKey(), queryResponse.GetValue(),
-			),
+		fmt.Fprintf(&buffer,
+			`{"Key":"%s", "Record":%s}`,
+			queryResponse.GetKey(), queryResponse.GetValue(),
 		)
 		bArrayMemberAlreadyWritten = true
 	}

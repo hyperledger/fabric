@@ -560,7 +560,7 @@ type rwsetKeys map[rwSetKey]rwsetInfo
 func (s rwsetKeys) String() string {
 	var buffer bytes.Buffer
 	for k := range s {
-		buffer.WriteString(fmt.Sprintf("%s\n", k.String()))
+		fmt.Fprintf(&buffer, "%s\n", k.String())
 	}
 	return buffer.String()
 }

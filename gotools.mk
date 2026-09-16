@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-GOTOOLS = counterfeiter ginkgo gocov gocov-xml golangci-lint govulncheck mockery protoc-gen-go staticcheck swagger
+GOTOOLS = counterfeiter ginkgo gocov gocov-xml golangci-lint govulncheck mockery protoc-gen-go swagger
 BUILD_DIR ?= build
 GOTOOLS_BINDIR ?= $(shell go env GOPATH)/bin
 
@@ -17,7 +17,6 @@ go.fqp.govulncheck   := golang.org/x/vuln/cmd/govulncheck@latest
 go.fqp.mockery       := github.com/vektra/mockery/v2
 go.fqp.protoc-gen-go := github.com/golang/protobuf/protoc-gen-go
 go.fqp.protoc-gen-go-grpc := google.golang.org/grpc/cmd/protoc-gen-go-grpc
-go.fqp.staticcheck   := honnef.co/go/tools/cmd/staticcheck
 go.fqp.swagger       := github.com/go-swagger/go-swagger/cmd/swagger
 
 .PHONY: gotools-install

@@ -166,7 +166,7 @@ func (ca *CA) SignCertificate(
 // compute Subject Key Identifier using RFC 7093, Section 2, Method 4
 func computeSKI(privKey *ecdsa.PrivateKey) []byte {
 	// Marshall the public key
-	raw := elliptic.Marshal(privKey.Curve, privKey.PublicKey.X, privKey.PublicKey.Y)
+	raw := elliptic.Marshal(privKey.Curve, privKey.X, privKey.Y)
 
 	// Hash it
 	hash := sha256.Sum256(raw)
