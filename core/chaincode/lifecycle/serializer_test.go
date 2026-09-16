@@ -387,7 +387,7 @@ var _ = Describe("Serializer", func() {
 			}
 
 			fakeState.GetStateStub = func(key string) ([]byte, error) {
-				fmt.Println("returning", kvs[key], "for", key)
+				fmt.Println("returning", string(kvs[key]), "for", key)
 				return kvs[key], nil
 			}
 		})

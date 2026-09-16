@@ -217,8 +217,8 @@ func testV11CommitHashes(t *testing.T,
 
 	bcInfo, err := h.lgr.GetBlockchainInfo()
 	require.NoError(t, err)
-	h.committer.blkgen.lastNum = bcInfo.GetHeight() - 1
-	h.committer.blkgen.lastHash = bcInfo.GetCurrentBlockHash()
+	h.blkgen.lastNum = bcInfo.GetHeight() - 1
+	h.blkgen.lastHash = bcInfo.GetCurrentBlockHash()
 
 	h.simulateDataTx("txid1_with_new_binary", func(s *simulator) {
 		s.setState("cc1", "new_key", "new_value")

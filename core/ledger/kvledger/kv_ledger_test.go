@@ -1512,7 +1512,7 @@ func checkBCSummaryForTest(t *testing.T, l ledger.PeerLedger, expectedBCSummary 
 		require.Equal(t, expectedBCSummary.stateDBSavePoint, actualStateDBSavepoint.BlockNum)
 	}
 
-	if !(expectedBCSummary.stateDBKVs == nil && expectedBCSummary.stateDBPvtKVs == nil) {
+	if expectedBCSummary.stateDBKVs != nil || expectedBCSummary.stateDBPvtKVs != nil {
 		checkStateDBForTest(t, l, expectedBCSummary.stateDBKVs, expectedBCSummary.stateDBPvtKVs)
 	}
 

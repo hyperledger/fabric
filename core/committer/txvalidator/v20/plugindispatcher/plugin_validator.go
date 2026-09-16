@@ -234,7 +234,7 @@ type identity struct {
 }
 
 func (i *identity) GetIdentityIdentifier() *vi.IdentityIdentifier {
-	identifier := i.Identity.GetIdentifier()
+	identifier := i.GetIdentifier()
 	return &vi.IdentityIdentifier{
 		Id:    identifier.Id,
 		Mspid: identifier.Mspid,

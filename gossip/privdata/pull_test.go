@@ -200,7 +200,7 @@ func (msg *receivedMsg) GetSourceEnvelope() *proto.Envelope {
 
 func (msg *receivedMsg) GetConnectionInfo() *protoext.ConnectionInfo {
 	return &protoext.ConnectionInfo{
-		Identity: api.PeerIdentityType(msg.RemotePeer.PKIID),
+		Identity: api.PeerIdentityType(msg.PKIID),
 		Auth: &protoext.AuthInfo{
 			SignedData: []byte{},
 			Signature:  []byte{},
@@ -223,7 +223,7 @@ func newMockGossip(id *comm.RemotePeer) *mockGossip {
 }
 
 func (g *mockGossip) PeerFilter(channel common.ChannelID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
-	for _, call := range g.Mock.ExpectedCalls {
+	for _, call := range g.ExpectedCalls {
 		if call.Method == "PeerFilter" {
 			args := g.Called(channel, messagePredicate)
 			if args.Get(1) != nil {

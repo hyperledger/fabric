@@ -1864,7 +1864,7 @@ func refreshOrdererPEMs(n *nwo.Network) []*certificateChange {
 		if strings.Contains(path, "new") {
 			fileChanges = append(fileChanges, &certificateChange{
 				srcFile: path,
-				dstFile: strings.Replace(path, "new", "", -1),
+				dstFile: strings.ReplaceAll(path, "new", ""),
 			})
 		}
 		return nil
@@ -1889,7 +1889,7 @@ func refreshOrdererPEMs(n *nwo.Network) []*certificateChange {
 		}
 
 		// Read the previous key file
-		previousKeyBytes, err := os.ReadFile(strings.Replace(certChange.dstFile, "server.crt", "server.key", -1))
+		previousKeyBytes, err := os.ReadFile(strings.ReplaceAll(certChange.dstFile, "server.crt", "server.key"))
 		Expect(err).NotTo(HaveOccurred())
 
 		serverCertChanges = append(serverCertChanges, certChange)

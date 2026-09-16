@@ -881,7 +881,7 @@ func (dbclient *couchDatabase) readDocRange(startKey, endKey string, limit int32
 			log.Fatal(err2)
 		}
 		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
-		couchdbLogger.Debugf("[%s] HTTP Response: %s", dbclient.dbName, bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
+		couchdbLogger.Debugf("[%s] HTTP Response: %s", dbclient.dbName, bytes.ReplaceAll(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}))
 	}
 
 	// handle as JSON document
@@ -1015,7 +1015,7 @@ func (dbclient *couchDatabase) queryDocuments(query string) ([]*queryResult, str
 			log.Fatal(err2)
 		}
 		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
-		couchdbLogger.Debugf("[%s] HTTP Response: %s", dbclient.dbName, bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
+		couchdbLogger.Debugf("[%s] HTTP Response: %s", dbclient.dbName, bytes.ReplaceAll(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}))
 	}
 
 	// handle as JSON document
@@ -1351,7 +1351,7 @@ func (dbclient *couchDatabase) batchRetrieveDocumentMetadata(keys []string) ([]*
 	if couchdbLogger.IsEnabledFor(zapcore.DebugLevel) {
 		dump, _ := httputil.DumpResponse(resp, false)
 		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
-		couchdbLogger.Debugf("[%s] HTTP Response: %s", dbclient.dbName, bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
+		couchdbLogger.Debugf("[%s] HTTP Response: %s", dbclient.dbName, bytes.ReplaceAll(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}))
 	}
 
 	// handle as JSON document
@@ -1475,7 +1475,7 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 	if couchdbLogger.IsEnabledFor(zapcore.DebugLevel) {
 		dump, _ := httputil.DumpResponse(resp, false)
 		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
-		couchdbLogger.Debugf("[%s] HTTP Response: %s", dbclient.dbName, bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
+		couchdbLogger.Debugf("[%s] HTTP Response: %s", dbclient.dbName, bytes.ReplaceAll(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}))
 	}
 
 	// handle as JSON document
@@ -1773,8 +1773,8 @@ func encodePathElement(str string) string {
 	u := &url.URL{}
 	u.Path = str
 	encodedStr := u.EscapedPath() // url encode using golang url path encoding rules
-	encodedStr = strings.Replace(encodedStr, "/", "%2F", -1)
-	encodedStr = strings.Replace(encodedStr, "+", "%2B", -1)
+	encodedStr = strings.ReplaceAll(encodedStr, "/", "%2F")
+	encodedStr = strings.ReplaceAll(encodedStr, "+", "%2B")
 
 	return encodedStr
 }

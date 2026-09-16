@@ -823,7 +823,7 @@ func TestDissemination(t *testing.T) {
 	incTime := uint64(time.Now().UnixNano())
 	t3 := time.Now()
 
-	leadershipMsg := createLeadershipMsg(true, common.ChannelID("A"), incTime, uint64(seqNum), boot.Node.comm.GetPKIid())
+	leadershipMsg := createLeadershipMsg(true, common.ChannelID("A"), incTime, uint64(seqNum), boot.comm.GetPKIid())
 	boot.Gossip(leadershipMsg)
 
 	waitUntilOrFailBlocking(t, wgLeadership.Wait, "waiting to get all leadership messages")

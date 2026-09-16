@@ -198,7 +198,7 @@ func NewGossipStateProvider(
 	remoteStateMsgFilter := func(message any) bool {
 		receivedMsg := message.(protoext.ReceivedMessage)
 		msg := receivedMsg.GetGossipMessage()
-		if !(protoext.IsRemoteStateMessage(msg.GossipMessage) || msg.GetPrivateData() != nil) {
+		if !protoext.IsRemoteStateMessage(msg.GossipMessage) && msg.GetPrivateData() == nil {
 			return false
 		}
 		// Ensure we deal only with messages that belong to this channel

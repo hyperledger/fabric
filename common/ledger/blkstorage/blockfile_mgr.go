@@ -417,7 +417,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 			return err
 		}
 		startFileNum = flp.fileSuffixNum
-		startOffset = flp.locPointer.offset
+		startOffset = flp.offset
 		skipFirstBlock = true
 	}
 

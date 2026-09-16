@@ -159,9 +159,9 @@ func (ac *AuthCommMgr) updateStubInMapping(channel string, mapping MemberMapping
 
 func (ac *AuthCommMgr) createRemoteContext(stub *Stub, channel string) func() (*RemoteContext, error) {
 	return func() (*RemoteContext, error) {
-		ac.Logger.Debugf("Connecting to node: %v for channel: %v", stub.RemoteNode.NodeAddress, channel)
+		ac.Logger.Debugf("Connecting to node: %v for channel: %v", stub.NodeAddress, channel)
 
-		conn, err := ac.Connections.Connect(stub.Endpoint, stub.RemoteNode.ServerRootCA)
+		conn, err := ac.Connections.Connect(stub.Endpoint, stub.ServerRootCA)
 		if err != nil {
 			ac.Logger.Warningf("Unable to obtain connection to %d(%s) (channel %s): %v", stub.ID, stub.Endpoint, channel, err)
 			return nil, err

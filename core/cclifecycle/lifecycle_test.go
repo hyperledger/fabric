@@ -494,8 +494,8 @@ func (mds sortedMetadataSet) Len() int {
 }
 
 func (mds sortedMetadataSet) Less(i, j int) bool {
-	eI := strings.Replace(mds[i].Name, "cc", "", -1)
-	eJ := strings.Replace(mds[j].Name, "cc", "", -1)
+	eI := strings.ReplaceAll(mds[i].Name, "cc", "")
+	eJ := strings.ReplaceAll(mds[j].Name, "cc", "")
 	nI, _ := strconv.ParseInt(eI, 10, 32)
 	nJ, _ := strconv.ParseInt(eJ, 10, 32)
 	return nI < nJ

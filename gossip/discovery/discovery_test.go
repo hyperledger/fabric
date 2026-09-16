@@ -280,7 +280,7 @@ func (g *gossipInstance) initiateSync(frequency time.Duration, peerNum int) {
 		for {
 			select {
 			case <-g.syncInitiator.C:
-				g.Discovery.InitiateSync(peerNum)
+				g.InitiateSync(peerNum)
 			case <-g.stopChan:
 				g.syncInitiator.Stop()
 				return
@@ -589,7 +589,7 @@ func TestConnect(t *testing.T) {
 	require.Len(t, firstSentMemReqMsgs, 10)
 	close(firstSentMemReqMsgs)
 	for firstSentSelfMsg := range firstSentMemReqMsgs {
-		require.Nil(t, firstSentSelfMsg.Envelope.GetSecretEnvelope())
+		require.Nil(t, firstSentSelfMsg.GetSecretEnvelope())
 	}
 }
 

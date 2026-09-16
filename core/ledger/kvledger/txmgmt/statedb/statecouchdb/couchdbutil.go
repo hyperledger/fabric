@@ -293,7 +293,7 @@ func mapAndValidateDatabaseName(databaseName string) (string, error) {
 	}
 	// replace all '.' to '$'. The databaseName passed in will never contain an '$'.
 	// So, this translation will not cause collisions
-	databaseName = strings.Replace(databaseName, ".", "$", -1)
+	databaseName = strings.ReplaceAll(databaseName, ".", "$")
 	return databaseName, nil
 }
 

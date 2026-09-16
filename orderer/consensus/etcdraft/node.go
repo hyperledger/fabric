@@ -161,7 +161,7 @@ func (n *node) run(campaign bool) {
 			}
 
 			if campaign && rd.SoftState != nil {
-				leader := atomic.LoadUint64(&rd.SoftState.Lead) // etcdraft requires atomic access to this var
+				leader := atomic.LoadUint64(&rd.Lead) // etcdraft requires atomic access to this var
 				if leader != raft.None {
 					n.logger.Infof("Leader %d is present, quit campaign", leader)
 					campaign = false

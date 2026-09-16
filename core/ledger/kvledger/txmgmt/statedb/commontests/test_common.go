@@ -1047,10 +1047,10 @@ func TestDataExportImport(
 				switch {
 				case i < 3:
 					binaryVal := fmt.Sprintf("value-for-key-%d-for-%s", i, ns)
-					sampleKV.VersionedValue.Value = []byte(binaryVal)
+					sampleKV.Value = []byte(binaryVal)
 				default:
 					jsonVal := fmt.Sprintf(`{"color":"blue,"marble":"m%d", "namespace":"%s"}`, i, ns)
-					sampleKV.VersionedValue.Value = []byte(jsonVal)
+					sampleKV.Value = []byte(jsonVal)
 				}
 
 				sampleData = append(sampleData, sampleKV)

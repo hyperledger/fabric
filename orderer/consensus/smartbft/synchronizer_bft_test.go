@@ -484,20 +484,22 @@ func TestBFTSynchronizer(t *testing.T) {
 				return nil
 			},
 			OnCommit: func(block *cb.Block) types.Reconfig {
-				if block == b101 {
+				switch block {
+				case b101:
 					return types.Reconfig{
 						InLatestDecision: true,
 						CurrentNodes:     []uint64{1, 2, 3, 4},
 						CurrentConfig:    types.Configuration{SelfID: 1},
 					}
-				} else if block == b102 {
+				case b102:
 					return types.Reconfig{
 						InLatestDecision: false,
 						CurrentNodes:     []uint64{1, 2, 3, 4},
 						CurrentConfig:    types.Configuration{SelfID: 1},
 					}
+				default:
+					return types.Reconfig{}
 				}
-				return types.Reconfig{}
 			},
 			Support:             fakeCS,
 			ClusterDialer:       &cluster.PredicateDialer{Config: comm.ClientConfig{}},

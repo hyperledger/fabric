@@ -306,13 +306,13 @@ func TestRevocation(t *testing.T) {
 	require.Equal(t, firstCount, secondCount)
 
 	// Now, increment the config sequence
-	oldSeq := service.sup.sequenceWrapper.Sequence()
+	oldSeq := service.sup.Sequence()
 	v := &mocks.ConfigtxValidator{}
 	v.SequenceReturns(oldSeq + 1)
-	service.sup.sequenceWrapper.instance.Store(v)
+	service.sup.instance.Store(v)
 
 	// Revoke all identities inside the MSP manager
-	atomic.AddUint32(&service.sup.mspWrapper.blocks, uint32(1))
+	atomic.AddUint32(&service.sup.blocks, uint32(1))
 
 	// Send the query for the third time
 	res, err = client.Send(context.Background(), req, client.AuthInfo)

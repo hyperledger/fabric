@@ -705,9 +705,10 @@ func prepareTransition(
 	if toConsensusType == "BFT" {
 		// 1: updating valid consenters mapping
 		// 2: updating invalid consenters mapping
-		if toConsenterMapping == 1 {
+		switch toConsenterMapping {
+		case 1:
 			updateBFTOrderersConfig(network, updated)
-		} else if toConsenterMapping == 2 {
+		case 2:
 			updateInvalidBFTOrderersConfig(network, updated)
 		}
 	}

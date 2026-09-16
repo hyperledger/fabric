@@ -174,7 +174,7 @@ type fakeEndorsementPlugin struct {
 }
 
 func (fep *fakeEndorsementPlugin) Endorse(payload []byte, sp *peer.SignedProposal) (*peer.Endorsement, []byte, error) {
-	state, _ := fep.StateFetcher.FetchState()
+	state, _ := fep.FetchState()
 	txrws, _ := state.GetTransientByTXID("tx")
 	b, _ := proto.Marshal(txrws[0])
 	return nil, b, nil

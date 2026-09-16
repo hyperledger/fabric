@@ -97,7 +97,7 @@ func newChainSupport(
 		cs.StatusReporter = consensus.StaticStatusReporter{ConsensusRelation: types.ConsensusRelationOther, Status: types.StatusActive}
 	}
 
-	clusterRelation, status := cs.StatusReporter.StatusReport()
+	clusterRelation, status := cs.StatusReport()
 	registrar.ReportConsensusRelationAndStatusMetrics(cs.ChannelID(), clusterRelation, status)
 
 	logger.Debugf("[channel: %s] Done creating channel support resources", cs.ChannelID())
@@ -115,7 +115,7 @@ func (cs *ChainSupport) Signer() identity.SignerSerializer {
 }
 
 func (cs *ChainSupport) start() {
-	cs.Chain.Start()
+	cs.Start()
 }
 
 // BlockCutter returns the blockcutter.Receiver instance for this channel.
@@ -175,10 +175,4 @@ func (cs *ChainSupport) ConfigProto() *cb.Config {
 // Sequence passes through to the underlying configtx.Validator
 func (cs *ChainSupport) Sequence() uint64 {
 	return cs.ConfigtxValidator().Sequence()
-}
-
-// Append appends a new block to the ledger in its raw form,
-// unlike WriteBlock that also mutates its metadata.
-func (cs *ChainSupport) Append(block *cb.Block) error {
-	return cs.ledgerResources.ReadWriter.Append(block)
 }

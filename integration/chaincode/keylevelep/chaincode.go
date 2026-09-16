@@ -74,11 +74,12 @@ func addOrgs(stub shim.ChaincodeStubInterface) *pb.Response {
 	// get the endorsement policy for the key
 	var epBytes []byte
 	var err error
-	if parameters[0] == "pub" {
+	switch parameters[0] {
+	case "pub":
 		epBytes, err = stub.GetStateValidationParameter("pub")
-	} else if parameters[0] == "priv" {
+	case "priv":
 		epBytes, err = stub.GetPrivateDataValidationParameter("col", "priv")
-	} else {
+	default:
 		return shim.Error("Unknown key specified")
 	}
 	if err != nil {
@@ -100,9 +101,10 @@ func addOrgs(stub shim.ChaincodeStubInterface) *pb.Response {
 	}
 
 	// set the modified endorsement policy for the key
-	if parameters[0] == "pub" {
+	switch parameters[0] {
+	case "pub":
 		err = stub.SetStateValidationParameter("pub", epBytes)
-	} else if parameters[0] == "priv" {
+	case "priv":
 		err = stub.SetPrivateDataValidationParameter("col", "priv", epBytes)
 	}
 	if err != nil {
@@ -148,9 +150,10 @@ func delOrgs(stub shim.ChaincodeStubInterface) *pb.Response {
 	}
 
 	// set the modified endorsement policy for the key
-	if parameters[0] == "pub" {
+	switch parameters[0] {
+	case "pub":
 		err = stub.SetStateValidationParameter("pub", epBytes)
-	} else if parameters[0] == "priv" {
+	case "priv":
 		err = stub.SetPrivateDataValidationParameter("col", "priv", epBytes)
 	}
 	if err != nil {
@@ -207,11 +210,12 @@ func delEP(stub shim.ChaincodeStubInterface) *pb.Response {
 
 	// set the modified endorsement policy for the key to nil
 	var err error
-	if parameters[0] == "pub" {
+	switch parameters[0] {
+	case "pub":
 		err = stub.SetStateValidationParameter("pub", nil)
-	} else if parameters[0] == "priv" {
+	case "priv":
 		err = stub.SetPrivateDataValidationParameter("col", "priv", nil)
-	} else {
+	default:
 		return shim.Error("Unknown key specified")
 	}
 	if err != nil {

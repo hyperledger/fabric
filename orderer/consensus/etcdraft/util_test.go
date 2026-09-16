@@ -376,7 +376,7 @@ func TestVerifyConfigMetadata(t *testing.T) {
 
 		clientCert := clientPair.TLSCert
 		clientCert.NotAfter = time.Now().Add(-24 * time.Hour)
-		clientCertBytes, err := x509.CreateCertificate(rand.Reader, clientCert, caRootCert, clientPair.Signer.Public(), tlsCA.Signer())
+		clientCertBytes, err := x509.CreateCertificate(rand.Reader, clientCert, caRootCert, clientPair.Public(), tlsCA.Signer())
 		require.NoError(t, err, "failed to create expired certificate")
 
 		clientCert, err = x509.ParseCertificate(clientCertBytes)

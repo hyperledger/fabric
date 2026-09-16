@@ -393,7 +393,7 @@ func (vm *DockerVM) Wait(ccid string) (int, error) {
 }
 
 func (vm *DockerVM) ccidToContainerID(ccid string) string {
-	return strings.Replace(vm.GetVMName(ccid), ":", "_", -1)
+	return strings.ReplaceAll(vm.GetVMName(ccid), ":", "_")
 }
 
 func (vm *DockerVM) stopInternal(id string) error {

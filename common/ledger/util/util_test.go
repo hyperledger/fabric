@@ -29,7 +29,7 @@ func TestBasicEncodingDecoding(t *testing.T) {
 	for i := range 10000 {
 		value := EncodeOrderPreservingVarUint64(uint64(i))
 		nextValue := EncodeOrderPreservingVarUint64(uint64(i + 1))
-		if !(bytes.Compare(value, nextValue) < 0) {
+		if bytes.Compare(value, nextValue) >= 0 {
 			t.Fatalf("A smaller integer should result into smaller bytes. Encoded bytes for [%d] is [%x] and for [%d] is [%x]",
 				i, i+1, value, nextValue)
 		}

@@ -56,7 +56,7 @@ func TestMembershipRequestToString(t *testing.T) {
 			},
 		},
 		Envelope: &gossip.Envelope{
-			Payload:   nn.Envelope.GetPayload(),
+			Payload:   nn.GetPayload(),
 			Signature: []byte{0, 1, 2},
 			SecretEnvelope: &gossip.SecretEnvelope{
 				Payload:   []byte{0, 1, 2, 3, 4, 5},

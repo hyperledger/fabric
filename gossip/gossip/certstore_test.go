@@ -336,10 +336,10 @@ func createBadlySignedUpdateMessage() *protoext.SignedGossipMessage {
 	}
 	sMsg.Sign(signer)
 	// This would simulate a bad sig
-	if sMsg.Envelope.GetSignature()[0] == 0 {
-		sMsg.Envelope.Signature[0] = 1
+	if sMsg.GetSignature()[0] == 0 {
+		sMsg.Signature[0] = 1
 	} else {
-		sMsg.Envelope.Signature[0] = 0
+		sMsg.Signature[0] = 0
 	}
 	return sMsg
 }

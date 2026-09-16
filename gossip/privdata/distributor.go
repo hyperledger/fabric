@@ -216,7 +216,7 @@ func (d *distributorImpl) getCollectionConfig(config *peer.CollectionConfigPacka
 func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAccessPolicy, colFilter privdata.Filter, pvtDataMsg *protoext.SignedGossipMessage) ([]*dissemination, error) {
 	var disseminationPlan []*dissemination
 
-	routingFilter, err := d.gossipAdapter.PeerFilter(gossipCommon.ChannelID(d.chainID), func(signature api.PeerSignature) bool {
+	routingFilter, err := d.PeerFilter(gossipCommon.ChannelID(d.chainID), func(signature api.PeerSignature) bool {
 		return colFilter(protoutil.SignedData{
 			Data:      signature.Message,
 			Signature: signature.Signature,
@@ -379,7 +379,7 @@ func (d *distributorImpl) identitiesOfEligiblePeersByOrg(eligiblePeers []discove
 
 func (d *distributorImpl) eligiblePeersOfChannel(routingFilter filter.RoutingFilter) []discovery.NetworkMember {
 	var eligiblePeers []discovery.NetworkMember
-	for _, peer := range d.gossipAdapter.PeersOfChannel(gossipCommon.ChannelID(d.chainID)) {
+	for _, peer := range d.PeersOfChannel(gossipCommon.ChannelID(d.chainID)) {
 		if routingFilter(peer) {
 			eligiblePeers = append(eligiblePeers, peer)
 		}

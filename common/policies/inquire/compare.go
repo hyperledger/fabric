@@ -168,10 +168,10 @@ func (cps ComparablePrincipalSet) String() string {
 		buff.WriteString(cp.mspID)
 		buff.WriteString(".")
 		if cp.role != nil {
-			buff.WriteString(fmt.Sprintf("%v", cp.role.GetRole()))
+			fmt.Fprintf(&buff, "%v", cp.role.GetRole())
 		}
 		if cp.ou != nil {
-			buff.WriteString(fmt.Sprintf("%v", cp.ou.GetOrganizationalUnitIdentifier()))
+			fmt.Fprintf(&buff, "%v", cp.ou.GetOrganizationalUnitIdentifier())
 		}
 		if i < len(cps)-1 {
 			buff.WriteString(", ")

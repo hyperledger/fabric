@@ -212,7 +212,7 @@ func (r *retrievedBlockAndPvtdata) hasNoPvtdata() {
 }
 
 func (r *retrievedBlockAndPvtdata) pvtdataShouldContain(txSeq int, ns, coll, key, value string) {
-	txPvtData := r.BlockAndPvtData.PvtData[uint64(txSeq)]
+	txPvtData := r.PvtData[uint64(txSeq)]
 	for _, nsdata := range txPvtData.WriteSet.GetNsPvtRwset() {
 		if nsdata.GetNamespace() == ns {
 			for _, colldata := range nsdata.GetCollectionPvtRwset() {
@@ -233,7 +233,7 @@ func (r *retrievedBlockAndPvtdata) pvtdataShouldContain(txSeq int, ns, coll, key
 }
 
 func (r *retrievedBlockAndPvtdata) pvtdataShouldNotContainKey(ns, coll, key string) {
-	allTxPvtData := r.BlockAndPvtData.PvtData
+	allTxPvtData := r.PvtData
 	for _, txPvtData := range allTxPvtData {
 		for _, nsdata := range txPvtData.WriteSet.GetNsPvtRwset() {
 			if nsdata.GetNamespace() == ns {
@@ -252,15 +252,15 @@ func (r *retrievedBlockAndPvtdata) pvtdataShouldNotContainKey(ns, coll, key stri
 }
 
 func (r *retrievedBlockAndPvtdata) pvtdataShouldNotContain(ns, coll string) {
-	allTxPvtData := r.BlockAndPvtData.PvtData
+	allTxPvtData := r.PvtData
 	for _, txPvtData := range allTxPvtData {
 		r.assert.False(txPvtData.Has(ns, coll))
 	}
 }
 
 func (r *retrievedBlockAndPvtdata) sameBlockHeaderAndData(expectedBlock *common.Block) {
-	r.assert.True(proto.Equal(expectedBlock.GetData(), r.BlockAndPvtData.Block.GetData()))
-	r.assert.True(proto.Equal(expectedBlock.GetHeader(), r.BlockAndPvtData.Block.GetHeader()))
+	r.assert.True(proto.Equal(expectedBlock.GetData(), r.Block.GetData()))
+	r.assert.True(proto.Equal(expectedBlock.GetHeader(), r.Block.GetHeader()))
 }
 
 func (r *retrievedBlockAndPvtdata) sameMetadata(expectedBlock *common.Block) {
@@ -287,9 +287,9 @@ func (r *retrievedBlockAndPvtdata) containsValidationCode(txSeq int, validationC
 }
 
 func (r *retrievedBlockAndPvtdata) samePvtdata(expectedPvtdata map[uint64]*ledger.TxPvtData) {
-	r.assert.Equal(len(expectedPvtdata), len(r.BlockAndPvtData.PvtData))
+	r.assert.Equal(len(expectedPvtdata), len(r.PvtData))
 	for txNum, pvtData := range expectedPvtdata {
-		actualPvtData := r.BlockAndPvtData.PvtData[txNum]
+		actualPvtData := r.PvtData[txNum]
 		r.assert.Equal(pvtData.SeqInBlock, actualPvtData.SeqInBlock)
 		r.assert.True(proto.Equal(pvtData.WriteSet, actualPvtData.WriteSet))
 	}

@@ -647,5 +647,5 @@ type statusError struct{ *status.Status }
 func (s *statusError) GRPCStatus() *status.Status { return s.Status }
 
 func (s *statusError) Error() string {
-	return fmt.Sprintf("🎶 I'm a little error, short and sweet. Here is my message: %s. Here is my code: %d.🎶", s.Status.Message(), s.Status.Code())
+	return fmt.Sprintf("🎶 I'm a little error, short and sweet. Here is my message: %s. Here is my code: %d.🎶", s.Message(), s.Code())
 }

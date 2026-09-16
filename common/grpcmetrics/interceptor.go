@@ -76,8 +76,8 @@ func StreamServerInterceptor(sm *StreamMetrics) grpc.StreamServerInterceptor {
 }
 
 func serviceMethod(fullMethod string) (service, method string) {
-	normalizedMethod := strings.Replace(fullMethod, ".", "_", -1)
-	parts := strings.SplitN(normalizedMethod, "/", -1)
+	normalizedMethod := strings.ReplaceAll(fullMethod, ".", "_")
+	parts := strings.Split(normalizedMethod, "/")
 	if len(parts) != 3 {
 		return "unknown", "unknown"
 	}

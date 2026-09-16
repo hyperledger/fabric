@@ -28,13 +28,14 @@ func (r *registry) loadPlugin(pluginPath string, handlerType HandlerType, extraA
 		logger.Panicf("Error opening plugin at path %s: %s", pluginPath, err)
 	}
 
-	if handlerType == Auth {
+	switch handlerType {
+	case Auth:
 		r.initAuthPlugin(p)
-	} else if handlerType == Decoration {
+	case Decoration:
 		r.initDecoratorPlugin(p)
-	} else if handlerType == Endorsement {
+	case Endorsement:
 		r.initEndorsementPlugin(p, extraArgs...)
-	} else if handlerType == Validation {
+	case Validation:
 		r.initValidationPlugin(p, extraArgs...)
 	}
 }

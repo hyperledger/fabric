@@ -286,7 +286,7 @@ func TestGoodWriteConfig(t *testing.T) {
 
 	// Wait for the commit to complete
 	bw.committingBlock.Lock()
-	bw.committingBlock.Unlock() //lint:ignore SA2001 syncpoint
+	bw.committingBlock.Unlock() //nolint:staticcheck
 
 	cBlock := blockledger.GetBlock(l, block.GetHeader().GetNumber())
 	require.Equal(t, block.GetHeader(), cBlock.GetHeader())
@@ -373,7 +373,7 @@ func TestMigrationWriteConfig(t *testing.T) {
 
 	// Wait for the commit to complete
 	bw.committingBlock.Lock()
-	bw.committingBlock.Unlock() //lint:ignore SA2001 syncpoint
+	bw.committingBlock.Unlock() //nolint:staticcheck
 
 	cBlock := blockledger.GetBlock(l, block.GetHeader().GetNumber())
 	require.Equal(t, block.GetHeader(), cBlock.GetHeader())
@@ -424,7 +424,7 @@ func TestRaceWriteConfig(t *testing.T) {
 
 	// Wait for the commit to complete
 	bw.committingBlock.Lock()
-	bw.committingBlock.Unlock() //lint:ignore SA2001 syncpoint
+	bw.committingBlock.Unlock() //nolint:staticcheck
 
 	cBlock := blockledger.GetBlock(l, block1.GetHeader().GetNumber())
 	require.Equal(t, block1.GetHeader(), cBlock.GetHeader())

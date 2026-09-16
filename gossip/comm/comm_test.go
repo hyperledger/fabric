@@ -166,7 +166,7 @@ type commGRPC struct {
 
 func (c *commGRPC) Stop() {
 	c.commImpl.Stop()
-	c.commImpl.idMapper.Stop()
+	c.idMapper.Stop()
 	c.gRPCServer.Stop()
 }
 
@@ -684,7 +684,7 @@ func (bp *nonResponsivePeer) GossipStream(stream proto.Gossip_GossipStreamServer
 }
 
 func (bp *nonResponsivePeer) stop() {
-	bp.Server.Stop()
+	bp.Stop()
 }
 
 func TestNonResponsivePing(t *testing.T) {
@@ -978,7 +978,7 @@ func TestSendBadEnvelope(t *testing.T) {
 
 	select {
 	case goodMsgReceived := <-inc:
-		require.Equal(t, goodMsg.Envelope.GetPayload(), goodMsgReceived.GetSourceEnvelope().GetPayload())
+		require.Equal(t, goodMsg.GetPayload(), goodMsgReceived.GetSourceEnvelope().GetPayload())
 	case <-time.After(time.Minute):
 		require.Fail(t, "Didn't receive message within a timely manner")
 		return
@@ -988,7 +988,7 @@ func TestSendBadEnvelope(t *testing.T) {
 	start := time.Now()
 	for {
 		badMsg := createGossipMsg()
-		badMsg.Envelope.Payload = []byte{1}
+		badMsg.Payload = []byte{1}
 		err = stream.Send(badMsg.Envelope)
 		if err != nil {
 			require.Equal(t, io.EOF, err)
