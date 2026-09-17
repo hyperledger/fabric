@@ -80,17 +80,17 @@ func (p *policyChecker) CheckPolicy(channelID, policyName string, signedProp *pb
 	// Prepare SignedData
 	proposal, err := protoutil.UnmarshalProposal(signedProp.GetProposalBytes())
 	if err != nil {
-		return fmt.Errorf("Failing extracting proposal during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
+		return fmt.Errorf("Failing extracting proposal during check policy on channel [%s] with policy [%s]: [%w]", channelID, policyName, err)
 	}
 
 	header, err := protoutil.UnmarshalHeader(proposal.GetHeader())
 	if err != nil {
-		return fmt.Errorf("Failing extracting header during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
+		return fmt.Errorf("Failing extracting header during check policy on channel [%s] with policy [%s]: [%w]", channelID, policyName, err)
 	}
 
 	shdr, err := protoutil.UnmarshalSignatureHeader(header.GetSignatureHeader())
 	if err != nil {
-		return fmt.Errorf("Invalid Proposal's SignatureHeader during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
+		return fmt.Errorf("Invalid Proposal's SignatureHeader during check policy on channel [%s] with policy [%s]: [%w]", channelID, policyName, err)
 	}
 
 	sd := []*protoutil.SignedData{{
@@ -115,37 +115,37 @@ func (p *policyChecker) CheckPolicyNoChannel(policyName string, signedProp *pb.S
 
 	proposal, err := protoutil.UnmarshalProposal(signedProp.GetProposalBytes())
 	if err != nil {
-		return fmt.Errorf("Failing extracting proposal during channelless check policy with policy [%s]: [%s]", policyName, err)
+		return fmt.Errorf("Failing extracting proposal during channelless check policy with policy [%s]: [%w]", policyName, err)
 	}
 
 	header, err := protoutil.UnmarshalHeader(proposal.GetHeader())
 	if err != nil {
-		return fmt.Errorf("Failing extracting header during channelless check policy with policy [%s]: [%s]", policyName, err)
+		return fmt.Errorf("Failing extracting header during channelless check policy with policy [%s]: [%w]", policyName, err)
 	}
 
 	shdr, err := protoutil.UnmarshalSignatureHeader(header.GetSignatureHeader())
 	if err != nil {
-		return fmt.Errorf("Invalid Proposal's SignatureHeader during channelless check policy with policy [%s]: [%s]", policyName, err)
+		return fmt.Errorf("Invalid Proposal's SignatureHeader during channelless check policy with policy [%s]: [%w]", policyName, err)
 	}
 
 	// Deserialize proposal's creator with the local MSP
 	id, err := p.localMSP.DeserializeIdentity(shdr.GetCreator())
 	if err != nil {
 		logger.Warnw("Failed deserializing proposal creator during channelless check policy", "error", err, "policyName", policyName, "identity", protoutil.LogMessageForSerializedIdentity(shdr.GetCreator()))
-		return fmt.Errorf("Failed deserializing proposal creator during channelless check policy with policy [%s]: [%s]", policyName, err)
+		return fmt.Errorf("Failed deserializing proposal creator during channelless check policy with policy [%s]: [%w]", policyName, err)
 	}
 
 	// Load MSPPrincipal for policy
 	principal, err := p.principalGetter.Get(policyName)
 	if err != nil {
-		return fmt.Errorf("Failed getting local MSP principal during channelless check policy with policy [%s]: [%s]", policyName, err)
+		return fmt.Errorf("Failed getting local MSP principal during channelless check policy with policy [%s]: [%w]", policyName, err)
 	}
 
 	// Verify that proposal's creator satisfies the principal
 	err = id.SatisfiesPrincipal(principal)
 	if err != nil {
 		logger.Warnw("Failed verifying that proposal's creator satisfies local MSP principal during channelless check policy", "error", err, "policyName", policyName, "requiredPrincipal", principal, "signingIdentity", protoutil.LogMessageForSerializedIdentity(shdr.GetCreator()))
-		return fmt.Errorf("Failed verifying that proposal's creator satisfies local MSP principal during channelless check policy with policy [%s]: [%s]", policyName, err)
+		return fmt.Errorf("Failed verifying that proposal's creator satisfies local MSP principal during channelless check policy with policy [%s]: [%w]", policyName, err)
 	}
 
 	// Verify the signature
@@ -180,7 +180,7 @@ func (p *policyChecker) CheckPolicyBySignedData(channelID, policyName string, sd
 	err := policy.EvaluateSignedData(sd)
 	if err != nil {
 		logger.Warnw("Failed evaluating policy on signed data", "error", err, "policyName", policyName, "identities", protoutil.LogMessageForSerializedIdentities(sd))
-		return fmt.Errorf("Failed evaluating policy on signed data during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
+		return fmt.Errorf("Failed evaluating policy on signed data during check policy on channel [%s] with policy [%s]: [%w]", channelID, policyName, err)
 	}
 
 	return nil
@@ -202,20 +202,20 @@ func (p *policyChecker) CheckPolicyNoChannelBySignedData(policyName string, sign
 		id, err := p.localMSP.DeserializeIdentity(data.Identity)
 		if err != nil {
 			logger.Warnw("Failed deserializing signed data identity during channelless check policy", "error", err, "policyName", policyName, "identity", protoutil.LogMessageForSerializedIdentity(data.Identity))
-			return fmt.Errorf("failed deserializing signed data identity during channelless check policy with policy [%s]: [%s]", policyName, err)
+			return fmt.Errorf("failed deserializing signed data identity during channelless check policy with policy [%s]: [%w]", policyName, err)
 		}
 
 		// Load MSPPrincipal for policy
 		principal, err := p.principalGetter.Get(policyName)
 		if err != nil {
-			return fmt.Errorf("failed getting local MSP principal during channelless check policy with policy [%s]: [%s]", policyName, err)
+			return fmt.Errorf("failed getting local MSP principal during channelless check policy with policy [%s]: [%w]", policyName, err)
 		}
 
 		// Verify that proposal's creator satisfies the principal
 		err = id.SatisfiesPrincipal(principal)
 		if err != nil {
 			logger.Warnw("failed verifying that the signed data identity satisfies local MSP principal during channelless check policy", "error", err, "policyName", policyName, "requiredPrincipal", principal, "identity", protoutil.LogMessageForSerializedIdentity(data.Identity))
-			return fmt.Errorf("failed verifying that the signed data identity satisfies local MSP principal during channelless check policy with policy [%s]: [%s]", policyName, err)
+			return fmt.Errorf("failed verifying that the signed data identity satisfies local MSP principal during channelless check policy with policy [%s]: [%w]", policyName, err)
 		}
 
 		// Verify the signature

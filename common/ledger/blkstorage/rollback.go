@@ -77,7 +77,7 @@ func newRollbackMgr(blockStorageDir, ledgerID string, indexConfig *IndexConfig, 
 
 func (r *rollbackMgr) rollbackBlockIndex() error {
 	lastBlockNumber, err := r.indexStore.getLastBlockIndexed()
-	if err == errIndexSavePointKeyNotPresent {
+	if errors.Is(err, errIndexSavePointKeyNotPresent) {
 		return nil
 	}
 	if err != nil {

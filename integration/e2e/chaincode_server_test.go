@@ -77,7 +77,7 @@ var _ = Describe("ChaincodeAsExternalServer", func() {
 			network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"),
 		)
 
-		// set to use the 'ccaas' builder rathern than binary
+		// set to use the 'ccaas' builder rathern than
 		// binary build remains as an example of a scripted approach
 		chaincode = nwo.Chaincode{
 			Name:            "mycc",

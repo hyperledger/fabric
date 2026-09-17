@@ -69,7 +69,7 @@ func DirEmpty(dirPath string) (bool, error) {
 	defer f.Close()
 
 	_, err = f.Readdir(1)
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return true, nil
 	}
 	err = errors.Wrapf(err, "error checking if dir [%s] is empty", dirPath)

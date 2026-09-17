@@ -759,11 +759,11 @@ func verifyBlockSequence(blockBuff []*common.Block, signatureVerifier protoutil.
 		}
 		configFromBlock, err := deliverclient.ConfigFromBlock(block)
 
-		if err != nil && err != deliverclient.ErrNotAConfig {
+		if err != nil && !errors.Is(err, deliverclient.ErrNotAConfig) {
 			return err
 		}
 
-		if err := VerifyBlockSignature(block, signatureVerifier); err != nil {
+		if err = VerifyBlockSignature(block, signatureVerifier); err != nil {
 			// Genesis blocks are not signed, so silently ignore the error
 			if block.GetHeader().GetNumber() > 0 {
 				return err

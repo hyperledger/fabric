@@ -628,7 +628,7 @@ func checkDeliverRequest(orderer *nwo.Orderer, submitter *nwo.Peer, network *nwo
 		if strings.Contains(err.Error(), "FORBIDDEN") {
 			return errors.New("FORBIDDEN")
 		} else {
-			return fmt.Errorf("Unexpected result: Err=%v", err)
+			return fmt.Errorf("Unexpected result: Err=%w", err)
 		}
 	}
 

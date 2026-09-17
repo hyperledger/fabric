@@ -8,6 +8,7 @@ package state
 
 import (
 	"bytes"
+	errors2 "errors"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -569,7 +570,7 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 					}
 				}
 				if err := s.commitBlock(rawBlock, p); err != nil {
-					if executionErr, isExecutionErr := err.(*vsccErrors.VSCCExecutionFailureError); isExecutionErr {
+					if executionErr, isExecutionErr := errors2.AsType[*vsccErrors.VSCCExecutionFailureError](err); isExecutionErr {
 						s.logger.Errorf("Failed executing VSCC due to %v. Aborting chain processing", executionErr)
 						return
 					}

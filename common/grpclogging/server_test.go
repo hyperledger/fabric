@@ -61,7 +61,7 @@ var _ = Describe("Server", func() {
 		}
 		fakeEchoService.EchoStreamStub = func(stream testpb.EchoService_EchoStreamServer) error {
 			msg, err := stream.Recv()
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return nil
 			}
 			if err != nil {

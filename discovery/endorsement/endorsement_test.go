@@ -60,7 +60,7 @@ func TestPeersForEndorsement(t *testing.T) {
 		}
 		return res
 	}
-	cc := "chaincode"
+	cc := "chaincode1"
 	g := &gossipMock{}
 	pf := &policyFetcherMock{}
 	ccWithMissingPolicy := "chaincodeWithMissingPolicy"
@@ -267,7 +267,7 @@ func TestPeersForEndorsement(t *testing.T) {
 			},
 		})
 		require.Nil(t, desc)
-		require.Equal(t, "No metadata was found for chaincode chaincode in channel test", err.Error())
+		require.Equal(t, "No metadata was found for chaincode chaincode1 in channel test", err.Error())
 	})
 
 	t.Run("Collections", func(t *testing.T) {

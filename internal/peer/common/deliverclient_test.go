@@ -45,7 +45,7 @@ func InitMSP() {
 func initMSP() {
 	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
-		panic(fmt.Errorf("Fatal error when reading MSP config: err %s", err))
+		panic(fmt.Errorf("Fatal error when reading MSP config: err %w", err))
 	}
 }
 

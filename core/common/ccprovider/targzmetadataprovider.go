@@ -9,6 +9,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 	"strings"
 )
@@ -44,7 +45,7 @@ func MetadataAsTarEntries(code []byte) ([]byte, error) {
 	// add it to the statedb artifact tar if it has "statedb" in the path
 	for {
 		header, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			// We only get here if there are no more entries to scan
 			break
 		}

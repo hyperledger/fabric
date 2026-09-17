@@ -78,11 +78,11 @@ func DockerBuild(opts DockerBuildOptions, client dcli.APIClient) error {
 
 		ipResp, err := client.ImagePull(context.Background(), opts.Image, dcli.ImagePullOptions{})
 		if err != nil {
-			return fmt.Errorf("Failed to pull %s: %s", opts.Image, err)
+			return fmt.Errorf("Failed to pull %s: %w", opts.Image, err)
 		}
 		err = ipResp.Wait(context.Background())
 		if err != nil {
-			return fmt.Errorf("Failed to wait pull %s: %s", opts.Image, err)
+			return fmt.Errorf("Failed to wait pull %s: %w", opts.Image, err)
 		}
 	}
 
@@ -99,7 +99,7 @@ func DockerBuild(opts DockerBuildOptions, client dcli.APIClient) error {
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("Error creating container: %s", err)
+		return fmt.Errorf("Error creating container: %w", err)
 	}
 	defer client.ContainerRemove(context.Background(), container.ID, dcli.ContainerRemoveOptions{})
 
@@ -112,7 +112,7 @@ func DockerBuild(opts DockerBuildOptions, client dcli.APIClient) error {
 		AllowOverwriteDirWithFile: true,
 	})
 	if err != nil {
-		return fmt.Errorf("Error uploading input to container: %s", err)
+		return fmt.Errorf("Error uploading input to container: %w", err)
 	}
 
 	// -----------------------------------------------------------------------------------
@@ -125,7 +125,7 @@ func DockerBuild(opts DockerBuildOptions, client dcli.APIClient) error {
 		Logs:   true,
 	})
 	if err != nil {
-		return fmt.Errorf("Error attaching to container: %s", err)
+		return fmt.Errorf("Error attaching to container: %w", err)
 	}
 
 	// -----------------------------------------------------------------------------------
@@ -135,7 +135,7 @@ func DockerBuild(opts DockerBuildOptions, client dcli.APIClient) error {
 	if err != nil {
 		buff, _ := io.ReadAll(cw.Reader)
 		cw.Close()
-		return fmt.Errorf("Error executing build: %s \"%s\"", err, string(buff))
+		return fmt.Errorf("Error executing build: %w \"%s\"", err, string(buff))
 	}
 
 	// -----------------------------------------------------------------------------------
@@ -147,7 +147,7 @@ func DockerBuild(opts DockerBuildOptions, client dcli.APIClient) error {
 	case res = <-resWait.Result:
 	case err = <-resWait.Error:
 		cw.Close()
-		return fmt.Errorf("Error waiting for container to complete: %s", err)
+		return fmt.Errorf("Error waiting for container to complete: %w", err)
 	}
 
 	// Wait for stream copying to complete before accessing stdout.
@@ -165,7 +165,7 @@ func DockerBuild(opts DockerBuildOptions, client dcli.APIClient) error {
 	// -----------------------------------------------------------------------------------
 	resCont, err := client.CopyFromContainer(context.Background(), container.ID, dcli.CopyFromContainerOptions{SourcePath: "/chaincode/output/."})
 	if err != nil {
-		return fmt.Errorf("Error downloading output: %s", err)
+		return fmt.Errorf("Error downloading output: %w", err)
 	}
 	defer resCont.Content.Close()
 	io.Copy(opts.OutputStream, resCont.Content)
@@ -189,11 +189,11 @@ func ParamsImage(client dcli.APIClient) (string, string, string, error) {
 
 		ipResp, err := client.ImagePull(context.Background(), image, dcli.ImagePullOptions{})
 		if err != nil {
-			return "", "", "", fmt.Errorf("Failed to pull %s: %s", image, err)
+			return "", "", "", fmt.Errorf("Failed to pull %s: %w", image, err)
 		}
 		err = ipResp.Wait(context.Background())
 		if err != nil {
-			return "", "", "", fmt.Errorf("Failed to wait pull %s: %s", image, err)
+			return "", "", "", fmt.Errorf("Failed to wait pull %s: %w", image, err)
 		}
 	}
 
@@ -209,7 +209,7 @@ func ParamsImage(client dcli.APIClient) (string, string, string, error) {
 		},
 	})
 	if err != nil {
-		return "", "", "", fmt.Errorf("Error creating container: %s", err)
+		return "", "", "", fmt.Errorf("Error creating container: %w", err)
 	}
 	defer client.ContainerRemove(context.Background(), container.ID, dcli.ContainerRemoveOptions{})
 
@@ -223,7 +223,7 @@ func ParamsImage(client dcli.APIClient) (string, string, string, error) {
 		Logs:   true,
 	})
 	if err != nil {
-		return "", "", "", fmt.Errorf("Error attaching to container: %s", err)
+		return "", "", "", fmt.Errorf("Error attaching to container: %w", err)
 	}
 
 	// -----------------------------------------------------------------------------------
@@ -233,7 +233,7 @@ func ParamsImage(client dcli.APIClient) (string, string, string, error) {
 	if err != nil {
 		buff, _ := io.ReadAll(cw.Reader)
 		cw.Close()
-		return "", "", "", fmt.Errorf("Error executing build: %s \"%s\"", err, string(buff))
+		return "", "", "", fmt.Errorf("Error executing build: %w \"%s\"", err, string(buff))
 	}
 
 	// -----------------------------------------------------------------------------------
@@ -245,7 +245,7 @@ func ParamsImage(client dcli.APIClient) (string, string, string, error) {
 	case res = <-resWait.Result:
 	case err = <-resWait.Error:
 		cw.Close()
-		return "", "", "", fmt.Errorf("Error waiting for container to complete: %s", err)
+		return "", "", "", fmt.Errorf("Error waiting for container to complete: %w", err)
 	}
 
 	// Wait for stream copying to complete before accessing stdout.

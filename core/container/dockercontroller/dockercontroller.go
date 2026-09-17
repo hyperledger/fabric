@@ -286,12 +286,12 @@ func (vm *DockerVM) Start(ccid string, ccType string, peerConnection *ccintf.Pee
 			TLSClientRootCertFile: peerConnection.TLSConfig.RootCert,
 		})
 		if err != nil {
-			return fmt.Errorf("error writing files to upload to Docker instance into a temporary tar blob: %s", err)
+			return fmt.Errorf("error writing files to upload to Docker instance into a temporary tar blob: %w", err)
 		}
 
 		// Write the tar file out
 		if err = tw.Close(); err != nil {
-			return fmt.Errorf("error writing files to upload to Docker instance into a temporary tar blob: %s", err)
+			return fmt.Errorf("error writing files to upload to Docker instance into a temporary tar blob: %w", err)
 		}
 
 		gw.Close()
@@ -302,7 +302,7 @@ func (vm *DockerVM) Start(ccid string, ccType string, peerConnection *ccintf.Pee
 			AllowOverwriteDirWithFile: true,
 		})
 		if err != nil {
-			return fmt.Errorf("Error uploading files to the container instance %s: %s", containerName, err)
+			return fmt.Errorf("Error uploading files to the container instance %s: %w", containerName, err)
 		}
 	}
 

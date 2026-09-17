@@ -39,7 +39,7 @@ func parseTestParams() []string {
 	flag.Parse()
 	regex, err := regexp.Compile(`,(\s+)?`)
 	if err != nil {
-		panic(fmt.Errorf("Error: %s", err))
+		panic(fmt.Errorf("Error: %w", err))
 	}
 	paramsArray := regex.Split(*testParams, -1)
 	return paramsArray

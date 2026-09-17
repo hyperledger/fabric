@@ -63,7 +63,7 @@ func TestWriteFileToPackage(t *testing.T) {
 	b := make([]byte, 5)
 	n, err := tr.Read(b)
 	require.Equal(t, 5, n)
-	require.True(t, err == nil || err == io.EOF, "Error reading file from the archive") // go1.10 returns io.EOF
+	require.True(t, err == nil || errors.Is(err, io.EOF), "Error reading file from the archive") // go1.10 returns io.EOF
 	require.Equal(t, filecontent, string(b), "file content from archive does not equal original content")
 
 	t.Run("non existent file", func(t *testing.T) {

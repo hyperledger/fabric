@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package plugindispatcher
 
 import (
+	errors2 "errors"
 	"fmt"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
@@ -207,8 +208,9 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 			PluginName: validationPlugin,
 		}
 		if err = v.invokeValidationPlugin(ctx); err != nil {
-			switch err.(type) {
-			case *commonerrors.VSCCEndorsementPolicyError:
+			var VSCCEndorsementPolicyError *commonerrors.VSCCEndorsementPolicyError
+			switch {
+			case errors2.As(err, &VSCCEndorsementPolicyError):
 				return peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE, err
 			default:
 				return peer.TxValidationCode_INVALID_OTHER_REASON, err
@@ -227,7 +229,7 @@ func (v *dispatcherImpl) invokeValidationPlugin(ctx *Context) error {
 		return nil
 	}
 	// If the error is a pluggable validation execution error, cast it to the common errors ExecutionFailureError.
-	if e, isExecutionError := err.(*validation.ExecutionFailureError); isExecutionError {
+	if e, isExecutionError := errors2.AsType[*validation.ExecutionFailureError](err); isExecutionError {
 		return &commonerrors.VSCCExecutionFailureError{Err: e}
 	}
 	// Else, treat it as an endorsement error.

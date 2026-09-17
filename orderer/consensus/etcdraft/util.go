@@ -9,6 +9,7 @@ package etcdraft
 import (
 	"crypto/x509"
 	"encoding/pem"
+	errors2 "errors"
 	"slices"
 	"time"
 
@@ -331,17 +332,17 @@ func validateConsenterTLSCerts(c *etcdraft.Consenter, opts x509.VerifyOptions, i
 
 	verify := func(certType string, cert *x509.Certificate, opts x509.VerifyOptions) error {
 		if _, err := cert.Verify(opts); err != nil {
-			if validationRes, ok := err.(x509.CertificateInvalidError); !ok || (!ignoreExpiration || validationRes.Reason != x509.Expired) {
+			if validationRes, ok := errors2.AsType[x509.CertificateInvalidError](err); !ok || (!ignoreExpiration || validationRes.Reason != x509.Expired) {
 				return errors.Wrapf(err, "verifying tls %s cert with serial number %d", certType, cert.SerialNumber)
 			}
 		}
 		return nil
 	}
 
-	if err := verify("client", clientCert, opts); err != nil {
+	if err = verify("client", clientCert, opts); err != nil {
 		return err
 	}
-	if err := verify("server", serverCert, opts); err != nil {
+	if err = verify("server", serverCert, opts); err != nil {
 		return err
 	}
 

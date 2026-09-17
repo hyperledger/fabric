@@ -316,13 +316,13 @@ func MarshalEtcdRaftMetadata(md *etcdraft.ConfigMetadata) ([]byte, error) {
 		// path where they are persisted locally, then load these files to memory.
 		clientCert, err := os.ReadFile(string(c.GetClientTlsCert()))
 		if err != nil {
-			return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+			return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %w", c.GetHost(), c.GetPort(), err)
 		}
 		c.ClientTlsCert = clientCert
 
 		serverCert, err := os.ReadFile(string(c.GetServerTlsCert()))
 		if err != nil {
-			return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+			return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %w", c.GetHost(), c.GetPort(), err)
 		}
 		c.ServerTlsCert = serverCert
 	}

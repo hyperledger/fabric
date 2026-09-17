@@ -166,7 +166,7 @@ func TestMultiLayoutFailures(t *testing.T) {
 	require.True(t, success)
 
 	// nothing more to try in this layout - get endorsers for next layout
-	// layout 2 requires a second endorsement from g2, but all g2 peers have been tried - only 1 succeeded
+	// 2 requires a second endorsement from g2, but all g2 peers have been tried - only 1 succeeded
 	// should return layout 3 which requires a second endorsement from g1
 	endorsers = plan.endorsers()
 	require.Len(t, endorsers, 1)
@@ -217,7 +217,7 @@ func TestMultiLayoutFailures1(t *testing.T) {
 	plan.abandonGroupRemoveLayouts(group)
 
 	// nothing more to try in this layout - get endorsers for next layout
-	// layout 2 requires a second endorsement from g2, but all g2 peers have been tried - only 1 succeeded
+	// 2 requires a second endorsement from g2, but all g2 peers have been tried - only 1 succeeded
 	// should return layout 3 which requires a second endorsement from g1
 	endorsers = plan.endorsers()
 	require.Len(t, endorsers, 1)

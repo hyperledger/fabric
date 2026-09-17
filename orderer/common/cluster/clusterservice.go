@@ -78,7 +78,7 @@ func (s *ClusterService) Step(stream orderer.ClusterNodeService_StepServer) erro
 
 	// On a new stream, auth request is the first msg
 	request, err := stream.Recv()
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		s.Logger.Debugf("%s(%s) disconnected well before establishing the stream", commonName, addr)
 		return nil
 	}
@@ -107,8 +107,8 @@ func (s *ClusterService) Step(stream orderer.ClusterNodeService_StepServer) erro
 	}()
 
 	for {
-		err := s.handleMessage(stream, addr, exp, authReq.GetChannel(), authReq.GetFromId(), streamID)
-		if err == io.EOF {
+		err = s.handleMessage(stream, addr, exp, authReq.GetChannel(), authReq.GetFromId(), streamID)
+		if errors.Is(err, io.EOF) {
 			s.Logger.Debugf("%s(%s) disconnected", commonName, addr)
 			return nil
 		}
@@ -182,7 +182,7 @@ func (s *ClusterService) VerifyAuthRequest(stream orderer.ClusterNodeService_Ste
 
 func (s *ClusterService) handleMessage(stream ClusterStepStream, addr string, exp *certificateExpirationCheck, channel string, sender uint64, streamID uint64) error {
 	request, err := stream.Recv()
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return err
 	}
 	if err != nil {

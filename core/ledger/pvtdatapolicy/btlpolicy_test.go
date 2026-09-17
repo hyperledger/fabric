@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatapolicy
 
 import (
+	"errors"
 	"math"
 	"testing"
 
@@ -31,7 +32,7 @@ func TestBTLPolicy(t *testing.T) {
 	require.Equal(t, defaultBTL, btl3)
 
 	_, err = btlPolicy.GetBTL("ns1", "coll4")
-	_, ok := err.(privdata.NoSuchCollectionError)
+	_, ok := errors.AsType[privdata.NoSuchCollectionError](err)
 	require.True(t, ok)
 }
 
@@ -51,7 +52,7 @@ func TestExpiringBlock(t *testing.T) {
 
 	_, err = btlPolicy.GetExpiringBlock("ns1", "coll4", 50)
 	require.Error(t, err)
-	_, ok := err.(privdata.NoSuchCollectionError)
+	_, ok := errors.AsType[privdata.NoSuchCollectionError](err)
 	require.True(t, ok)
 }
 

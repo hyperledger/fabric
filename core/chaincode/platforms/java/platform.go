@@ -37,7 +37,7 @@ func (p *Platform) ValidatePath(rawPath string) error {
 	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
 		logger.Errorf("invalid chaincode path %s %v", rawPath, err)
-		return fmt.Errorf("invalid path: %s", err)
+		return fmt.Errorf("invalid path: %w", err)
 	}
 
 	return nil
@@ -50,7 +50,7 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 	is := bytes.NewReader(code)
 	gr, err := gzip.NewReader(is)
 	if err != nil {
-		return fmt.Errorf("failure opening codepackage gzip stream: %s", err)
+		return fmt.Errorf("failure opening codepackage gzip stream: %w", err)
 	}
 	tr := tar.NewReader(gr)
 
@@ -109,7 +109,7 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 	err := util.WriteFolderToTarPackage(tw, path, excludedDirs, nil, excludedFileTypes)
 	if err != nil {
 		logger.Errorf("Error writing java project to tar package %s", err)
-		return nil, fmt.Errorf("failed to create chaincode package: %s", err)
+		return nil, fmt.Errorf("failed to create chaincode package: %w", err)
 	}
 
 	tw.Close()

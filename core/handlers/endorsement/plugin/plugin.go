@@ -41,18 +41,18 @@ type DefaultEndorsement struct {
 func (e *DefaultEndorsement) Endorse(prpBytes []byte, sp *peer.SignedProposal) (*peer.Endorsement, []byte, error) {
 	signer, err := e.SigningIdentityForRequest(sp)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed fetching signing identity: %v", err)
+		return nil, nil, fmt.Errorf("failed fetching signing identity: %w", err)
 	}
 	// serialize the signing identity
 	identityBytes, err := signer.Serialize()
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not serialize the signing identity: %v", err)
+		return nil, nil, fmt.Errorf("could not serialize the signing identity: %w", err)
 	}
 
 	// sign the concatenation of the proposal response and the serialized endorser identity with this endorser's key
 	signature, err := signer.Sign(append(prpBytes, identityBytes...))
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not sign the proposal response payload: %v", err)
+		return nil, nil, fmt.Errorf("could not sign the proposal response payload: %w", err)
 	}
 	endorsement := &peer.Endorsement{Signature: signature, Endorser: identityBytes}
 	return endorsement, prpBytes, nil

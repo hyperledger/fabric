@@ -490,7 +490,7 @@ func (p *Peer) Initialize(
 
 	ledgerIds, err := p.LedgerMgr.GetLedgerIDs()
 	if err != nil {
-		panic(fmt.Errorf("error in initializing ledgermgmt: %s", err))
+		panic(fmt.Errorf("error in initializing ledgermgmt: %w", err))
 	}
 
 	for _, cid := range ledgerIds {

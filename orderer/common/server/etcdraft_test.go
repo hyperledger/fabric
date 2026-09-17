@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package server_test
 
 import (
+	errors2 "errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -157,7 +158,7 @@ func testEtcdRaftOSNJoinAppChan(gt *GomegaWithT, configPath, configtxgen, ordere
 	// File was removed after on-boarding
 	_, err = os.Stat(joinBlockPath)
 	gt.Expect(err).To(HaveOccurred())
-	pathErr := err.(*os.PathError)
+	pathErr, _ := errors2.AsType[*os.PathError](err)
 	gt.Expect(pathErr.Err.Error()).To(Equal("no such file or directory"))
 	gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit())
 }

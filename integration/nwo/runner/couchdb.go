@@ -178,6 +178,9 @@ func endpointReady(ctx context.Context, url string) bool {
 	}
 
 	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
+	if err == nil {
+		resp.Body.Close()
+	}
 	return err == nil && resp.StatusCode == http.StatusOK
 }
 

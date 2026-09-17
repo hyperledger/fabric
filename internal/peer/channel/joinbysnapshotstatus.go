@@ -75,18 +75,18 @@ func (cc *endorserClient) joinBySnapshotStatus() (*pb.JoinBySnapshotStatus, erro
 	c, _ := cc.cf.Signer.Serialize()
 	prop, _, err = protoutil.CreateProposalFromCIS(common2.HeaderType_ENDORSER_TRANSACTION, "", invocation, c)
 	if err != nil {
-		return nil, fmt.Errorf("cannot create proposal, due to %s", err)
+		return nil, fmt.Errorf("cannot create proposal, due to %w", err)
 	}
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = protoutil.GetSignedProposal(prop, cc.cf.Signer)
 	if err != nil {
-		return nil, fmt.Errorf("cannot create signed proposal, due to %s", err)
+		return nil, fmt.Errorf("cannot create signed proposal, due to %w", err)
 	}
 
 	proposalResp, err := cc.cf.EndorserClient.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return nil, fmt.Errorf("failed sending proposal, due to %s", err)
+		return nil, fmt.Errorf("failed sending proposal, due to %w", err)
 	}
 
 	if proposalResp.GetResponse() == nil || proposalResp.GetResponse().GetStatus() != http.StatusOK {
@@ -96,7 +96,7 @@ func (cc *endorserClient) joinBySnapshotStatus() (*pb.JoinBySnapshotStatus, erro
 	joinbysnapshotStatus := &pb.JoinBySnapshotStatus{}
 	err = proto.Unmarshal(proposalResp.GetResponse().GetPayload(), joinbysnapshotStatus)
 	if err != nil {
-		return nil, fmt.Errorf("cannot query joinbysnapshot status, due to %s", err)
+		return nil, fmt.Errorf("cannot query joinbysnapshot status, due to %w", err)
 	}
 	return joinbysnapshotStatus, nil
 }

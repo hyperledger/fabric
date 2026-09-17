@@ -9,6 +9,7 @@ package golang
 import (
 	"context"
 	"encoding/json"
+	errors2 "errors"
 	"fmt"
 	"io"
 	"os"
@@ -94,7 +95,7 @@ func gopathDependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error
 }
 
 func wrapExitErr(err error, message string) error {
-	if ee, ok := err.(*exec.ExitError); ok {
+	if ee, ok := errors2.AsType[*exec.ExitError](err); ok {
 		return errors.Wrapf(err, message+" with: %s", strings.TrimRight(string(ee.Stderr), "\n\r\t"))
 	}
 	return errors.Wrap(err, message)

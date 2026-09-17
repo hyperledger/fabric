@@ -57,7 +57,7 @@ var _ = Describe("Interceptor", func() {
 		fakeEchoService.EchoStreamStub = func(stream testpb.EchoService_EchoStreamServer) error {
 			for {
 				msg, err := stream.Recv()
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					return nil
 				}
 				if err != nil {

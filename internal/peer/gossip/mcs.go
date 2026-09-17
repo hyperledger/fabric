@@ -105,7 +105,7 @@ func (s *MSPMessageCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 		return nil
 	}
 
-	// concatenate msp-id and idbytes
+	// concatenate msp-id and
 	// idbytes is the low-level representation of an identity.
 	// it is supposed to be already in its minimal representation
 
@@ -138,7 +138,7 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 	// - Extract channelID and compare with chainID
 	channelID, err := protoutil.GetChannelIDFromBlock(block)
 	if err != nil {
-		return fmt.Errorf("Failed getting channel id from block with id [%d] on channel [%s]: [%s]", block.GetHeader().GetNumber(), chainID, err)
+		return fmt.Errorf("Failed getting channel id from block with id [%d] on channel [%s]: [%w]", block.GetHeader().GetNumber(), chainID, err)
 	}
 
 	if channelID != string(chainID) {

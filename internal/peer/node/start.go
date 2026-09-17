@@ -250,7 +250,7 @@ func serve(args []string) error {
 
 	peerHost, _, err := net.SplitHostPort(coreConfig.PeerAddress)
 	if err != nil {
-		return fmt.Errorf("peer address is not in the format of host:port: %v", err)
+		return fmt.Errorf("peer address is not in the format of host:port: %w", err)
 	}
 
 	listenAddr := coreConfig.ListenAddress
@@ -878,7 +878,7 @@ func serve(args []string) error {
 	rootFSPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "ledgersData")
 	preResetHeights, err := kvledger.LoadPreResetHeight(rootFSPath, ledgerIDs)
 	if err != nil {
-		return fmt.Errorf("error loading prereset height: %s", err)
+		return fmt.Errorf("error loading prereset height: %w", err)
 	}
 
 	for cid, height := range preResetHeights {
@@ -926,7 +926,7 @@ func serve(args []string) error {
 	go func() {
 		var grpcErr error
 		if grpcErr = peerServer.Start(); grpcErr != nil {
-			grpcErr = fmt.Errorf("grpc server exited with error: %s", grpcErr)
+			grpcErr = fmt.Errorf("grpc server exited with error: %w", grpcErr)
 		}
 		serve <- grpcErr
 	}()

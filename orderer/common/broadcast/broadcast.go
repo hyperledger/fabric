@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package broadcast
 
 import (
+	errors2 "errors"
 	"io"
 	"time"
 
@@ -68,7 +69,7 @@ func (bh *Handler) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 	logger.Debugf("Starting new broadcast loop for %s", addr)
 	for {
 		msg, err := srv.Recv()
-		if errors.Is(err, io.EOF) {
+		if errors2.Is(err, io.EOF) {
 			logger.Debugf("Received EOF from %s, hangup", addr)
 			return nil
 		}
@@ -207,12 +208,12 @@ func (bh *Handler) ProcessMessage(msg *cb.Envelope, addr string) (resp *ab.Broad
 
 // ClassifyError converts an error type into a status code.
 func ClassifyError(err error) cb.Status {
-	switch errors.Cause(err) {
-	case msgprocessor.ErrChannelDoesNotExist:
+	switch err := errors.Cause(err); {
+	case errors2.Is(err, msgprocessor.ErrChannelDoesNotExist):
 		return cb.Status_NOT_FOUND
-	case msgprocessor.ErrPermissionDenied:
+	case errors2.Is(err, msgprocessor.ErrPermissionDenied):
 		return cb.Status_FORBIDDEN
-	case msgprocessor.ErrMaintenanceMode:
+	case errors2.Is(err, msgprocessor.ErrMaintenanceMode):
 		return cb.Status_SERVICE_UNAVAILABLE
 	default:
 		return cb.Status_BAD_REQUEST

@@ -244,7 +244,7 @@ func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
 		return false, errors.New("no orderer config in bundle")
 	}
 	configMetadata := &etcdraft.ConfigMetadata{}
-	if err := proto.Unmarshal(oc.ConsensusMetadata(), configMetadata); err != nil {
+	if err = proto.Unmarshal(oc.ConsensusMetadata(), configMetadata); err != nil {
 		return false, err
 	}
 
@@ -253,7 +253,7 @@ func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
 		return false, errors.Wrapf(err, "failed to create x509 verify options from orderer config")
 	}
 
-	if err := VerifyConfigMetadata(configMetadata, verifyOpts); err != nil {
+	if err = VerifyConfigMetadata(configMetadata, verifyOpts); err != nil {
 		return false, errors.Wrapf(err, "failed to validate config metadata of ordering config")
 	}
 
@@ -262,8 +262,8 @@ func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
 		consenters[uint64(i+1)] = c // the IDs don't matter
 	}
 
-	if _, err := c.detectSelfID(consenters); err != nil {
-		if err != cluster.ErrNotInChannel {
+	if _, err = c.detectSelfID(consenters); err != nil {
+		if !errors.Is(err, cluster.ErrNotInChannel) {
 			return false, errors.Wrapf(err, "failed to detect self ID by comparing public keys")
 		}
 		return false, nil
@@ -352,7 +352,7 @@ func createComm(clusterDialer *cluster.PredicateDialer, c *Consenter, config loc
 
 	compareCert := cluster.CachePublicKeyComparisons(func(a, b []byte) bool {
 		err := crypto.CertificatesWithSamePublicKey(a, b)
-		if err != nil && err != crypto.ErrPubKeyMismatch {
+		if err != nil && !errors.Is(err, crypto.ErrPubKeyMismatch) {
 			crypto.LogNonPubKeyMismatchErr(logger.Errorf, err, a, b)
 		}
 		return err == nil

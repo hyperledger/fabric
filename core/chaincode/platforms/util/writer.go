@@ -85,7 +85,7 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDirs []strin
 
 		err = WriteFileToPackage(localpath, packagepath, tw)
 		if err != nil {
-			return fmt.Errorf("Error writing file to package: %s", err)
+			return fmt.Errorf("Error writing file to package: %w", err)
 		}
 
 		success = true
@@ -108,18 +108,18 @@ func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) er
 	logger.Debug("Writing file to tarball:", packagepath)
 	fd, err := os.Open(localpath)
 	if err != nil {
-		return fmt.Errorf("%s: %s", localpath, err)
+		return fmt.Errorf("%s: %w", localpath, err)
 	}
 	defer fd.Close()
 
 	fi, err := fd.Stat()
 	if err != nil {
-		return fmt.Errorf("%s: %s", localpath, err)
+		return fmt.Errorf("%s: %w", localpath, err)
 	}
 
 	header, err := tar.FileInfoHeader(fi, localpath)
 	if err != nil {
-		return fmt.Errorf("failed calculating FileInfoHeader: %s", err)
+		return fmt.Errorf("failed calculating FileInfoHeader: %w", err)
 	}
 
 	// Take the variance out of the tar by using zero time and fixed uid/gid.
@@ -136,13 +136,13 @@ func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) er
 
 	err = tw.WriteHeader(header)
 	if err != nil {
-		return fmt.Errorf("failed to write header for %s: %s", localpath, err)
+		return fmt.Errorf("failed to write header for %s: %w", localpath, err)
 	}
 
 	is := bufio.NewReader(fd)
 	_, err = io.Copy(tw, is)
 	if err != nil {
-		return fmt.Errorf("failed to write %s as %s: %s", localpath, packagepath, err)
+		return fmt.Errorf("failed to write %s as %s: %w", localpath, packagepath, err)
 	}
 
 	return nil

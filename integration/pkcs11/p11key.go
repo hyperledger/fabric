@@ -43,12 +43,12 @@ func (k *P11ECDSAKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts
 
 	err = k.ctx.SignInit(k.session, mech, k.privateKeyHandle)
 	if err != nil {
-		return nil, fmt.Errorf("sign init failed: %s", err)
+		return nil, fmt.Errorf("sign init failed: %w", err)
 	}
 
 	signature, err = k.ctx.Sign(k.session, digest)
 	if err != nil {
-		return nil, fmt.Errorf("sign failed: %s", err)
+		return nil, fmt.Errorf("sign failed: %w", err)
 	}
 
 	type ECDSASignature struct{ R, S *big.Int }

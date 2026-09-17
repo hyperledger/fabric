@@ -626,14 +626,14 @@ func TestMembership(t *testing.T) {
 
 	t.Log("Updating metadata...")
 	// Change metadata in last node
-	peers[len(peers)-1].UpdateMetadata([]byte("bla bla"))
+	peers[len(peers)-1].UpdateMetadata([]byte("bla bla1"))
 
 	metaDataUpdated := func() bool {
-		if !bytes.Equal([]byte("bla bla"), metadataOfPeer(boot.Peers(), lastPeer)) {
+		if !bytes.Equal([]byte("bla bla1"), metadataOfPeer(boot.Peers(), lastPeer)) {
 			return false
 		}
 		for i := 0; i < n-1; i++ {
-			if !bytes.Equal([]byte("bla bla"), metadataOfPeer(peers[i].Peers(), lastPeer)) {
+			if !bytes.Equal([]byte("bla bla1"), metadataOfPeer(peers[i].Peers(), lastPeer)) {
 				return false
 			}
 		}

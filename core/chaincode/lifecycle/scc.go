@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
+	errors2 "errors"
 	"fmt"
 	"regexp"
 
@@ -235,8 +236,10 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 		},
 	)
 	if err != nil {
-		switch err.(type) {
-		case ErrNamespaceNotDefined, persistence.CodePackageNotFoundErr:
+		var errNamespaceNotDefined ErrNamespaceNotDefined
+		var codePackageNotFoundErr persistence.CodePackageNotFoundErr
+		switch {
+		case errors2.As(err, &errNamespaceNotDefined), errors2.As(err, &codePackageNotFoundErr):
 			return &pb.Response{
 				Status:  404,
 				Message: err.Error(),
