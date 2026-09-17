@@ -8,6 +8,7 @@ package txvalidator
 
 import (
 	"context"
+	errors2 "errors"
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
@@ -373,14 +374,16 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 			cde, err := v.Dispatcher.Dispatch(tIdx, payload, d, block)
 			if err != nil {
 				logger.Errorf("Dispatch for transaction txId = %s returned error: %s", txID, err)
-				switch err.(type) {
-				case *commonerrors.VSCCExecutionFailureError:
+				var VSCCExecutionFailureError *commonerrors.VSCCExecutionFailureError
+				var VSCCInfoLookupFailureError *commonerrors.VSCCInfoLookupFailureError
+				switch {
+				case errors2.As(err, &VSCCExecutionFailureError):
 					results <- &blockValidationResult{
 						tIdx: tIdx,
 						err:  err,
 					}
 					return
-				case *commonerrors.VSCCInfoLookupFailureError:
+				case errors2.As(err, &VSCCInfoLookupFailureError):
 					results <- &blockValidationResult{
 						tIdx: tIdx,
 						err:  err,

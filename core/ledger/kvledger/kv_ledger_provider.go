@@ -8,6 +8,7 @@ package kvledger
 
 import (
 	"bytes"
+	errors2 "errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -79,7 +80,7 @@ func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 	defer func() {
 		if e != nil {
 			p.Close()
-			if errFormatMismatch, ok := e.(*dataformat.ErrFormatMismatch); ok {
+			if errFormatMismatch, ok := errors2.AsType[*dataformat.ErrFormatMismatch](e); ok {
 				if errFormatMismatch.Format == dataformat.PreviousFormat && errFormatMismatch.ExpectedFormat == dataformat.CurrentFormat {
 					logger.Errorf("Please execute the 'peer node upgrade-dbs' command to upgrade the database format: %s", errFormatMismatch)
 				} else {

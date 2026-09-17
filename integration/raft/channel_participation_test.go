@@ -992,7 +992,7 @@ func channelparticipationJoinConnectFailure(n *nwo.Network, o *nwo.Orderer, chan
 	req := nwo.GenerateJoinRequest(url, channel, blockBytes)
 	authClient, _ := nwo.OrdererOperationalClients(n, o)
 
-	_, err = authClient.Do(req)
+	_, err = authClient.Do(req) //nolint:bodyclose
 	Expect(err).To(HaveOccurred())
 	Expect(err.Error()).To(ContainSubstring(expectedError))
 }

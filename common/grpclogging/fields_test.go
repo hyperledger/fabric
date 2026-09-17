@@ -55,11 +55,11 @@ var _ = Describe("Fields", func() {
 				MessageKey: "message",
 			})
 			buf, err := encoder.EncodeEntry(
-				zapcore.Entry{Message: "Oh là là"},
+				zapcore.Entry{Message: "Oh là"},
 				[]zapcore.Field{grpclogging.ProtoMessage("proto-message", message)},
 			)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(buf.String()).To(MatchJSON(`{"message": "Oh là là", "proto-message": {"message": "Je suis une pizza avec du fromage.", "sequence": 1337}}`))
+			Expect(buf.String()).To(MatchJSON(`{"message": "Oh là", "proto-message": {"message": "Je suis une pizza avec du fromage.", "sequence": 1337}}`))
 		})
 
 		Context("when marshaling the message fails", func() {

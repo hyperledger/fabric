@@ -267,7 +267,7 @@ func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy 
 			if bftEnabled && len(metadataSignature.GetSignatureHeader()) == 0 && len(metadataSignature.GetIdentifierHeader()) > 0 {
 				identifierHeader, err := UnmarshalIdentifierHeader(metadataSignature.GetIdentifierHeader())
 				if err != nil {
-					return fmt.Errorf("failed unmarshalling identifier header for block %d: %v", header.GetNumber(), err)
+					return fmt.Errorf("failed unmarshalling identifier header for block %d: %w", header.GetNumber(), err)
 				}
 				identifier := identifierHeader.GetIdentifier()
 				signerIdentity = searchConsenterIdentityByID(consenters, identifier)
@@ -279,7 +279,7 @@ func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy 
 			} else {
 				signatureHeader, err := UnmarshalSignatureHeader(metadataSignature.GetSignatureHeader())
 				if err != nil {
-					return fmt.Errorf("failed unmarshalling signature header for block %d: %v", header.GetNumber(), err)
+					return fmt.Errorf("failed unmarshalling signature header for block %d: %w", header.GetNumber(), err)
 				}
 
 				signedPayload = util.ConcatenateBytes(md.GetValue(), metadataSignature.GetSignatureHeader(), BlockHeaderBytes(header))
@@ -327,7 +327,7 @@ func VerifyTransactionsAreWellFormed(bd *cb.BlockData) error {
 	for i, rawTx := range bd.GetData() {
 		env := &cb.Envelope{}
 		if err := proto.Unmarshal(rawTx, env); err != nil {
-			return fmt.Errorf("transaction %d is invalid: %v", i, err)
+			return fmt.Errorf("transaction %d is invalid: %w", i, err)
 		}
 
 		if len(env.GetPayload()) == 0 {
@@ -340,7 +340,7 @@ func VerifyTransactionsAreWellFormed(bd *cb.BlockData) error {
 
 		expected, err := proto.Marshal(env)
 		if err != nil {
-			return fmt.Errorf("failed re-marshaling envelope: %v", err)
+			return fmt.Errorf("failed re-marshaling envelope: %w", err)
 		}
 
 		if len(expected) < len(rawTx) {

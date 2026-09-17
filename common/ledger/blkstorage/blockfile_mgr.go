@@ -543,7 +543,7 @@ func (mgr *blockfileMgr) retrieveBlockByNumber(blockNum uint64) (*common.Block, 
 func (mgr *blockfileMgr) retrieveBlockByTxID(txID string) (*common.Block, error) {
 	logger.Debugf("retrieveBlockByTxID() - txID = [%s]", txID)
 	loc, err := mgr.index.getBlockLocByTxID(txID)
-	if err == errNilValue {
+	if errors.Is(err, errNilValue) {
 		return nil, errors.Errorf(
 			"details for the TXID [%s] not available. Ledger bootstrapped from a snapshot. First available block = [%d]",
 			txID, mgr.firstPossibleBlockNumberInBlockFiles(),
@@ -558,7 +558,7 @@ func (mgr *blockfileMgr) retrieveBlockByTxID(txID string) (*common.Block, error)
 func (mgr *blockfileMgr) retrieveTxValidationCodeByTxID(txID string) (peer.TxValidationCode, uint64, error) {
 	logger.Debugf("retrieveTxValidationCodeByTxID() - txID = [%s]", txID)
 	validationCode, blkNum, err := mgr.index.getTxValidationCodeByTxID(txID)
-	if err == errNilValue {
+	if errors.Is(err, errNilValue) {
 		return peer.TxValidationCode(-1), 0, errors.Errorf(
 			"details for the TXID [%s] not available. Ledger bootstrapped from a snapshot. First available block = [%d]",
 			txID, mgr.firstPossibleBlockNumberInBlockFiles(),
@@ -607,7 +607,7 @@ func (mgr *blockfileMgr) txIDExists(txID string) (bool, error) {
 func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*common.Envelope, error) {
 	logger.Debugf("retrieveTransactionByID() - txId = [%s]", txID)
 	loc, err := mgr.index.getTxLoc(txID)
-	if err == errNilValue {
+	if errors.Is(err, errNilValue) {
 		return nil, errors.Errorf(
 			"details for the TXID [%s] not available. Ledger bootstrapped from a snapshot. First available block = [%d]",
 			txID, mgr.firstPossibleBlockNumberInBlockFiles(),
@@ -742,7 +742,7 @@ func scanForLastCompleteBlock(rootDir string, fileNum int, startingOffset int64)
 		lastBlockBytes = blockBytes
 		numBlocks++
 	}
-	if errRead == ErrUnexpectedEndOfBlockfile {
+	if errors.Is(errRead, ErrUnexpectedEndOfBlockfile) {
 		logger.Debugf(`Error:%s
 		The error may happen if a crash has happened during block appending.
 		Resetting error to nil and returning current offset as a last complete block's end offset`, errRead)

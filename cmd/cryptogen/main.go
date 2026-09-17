@@ -253,14 +253,14 @@ func getConfig() (*Config, error) {
 	if *genConfigFile != nil {
 		data, err := io.ReadAll(*genConfigFile)
 		if err != nil {
-			return nil, fmt.Errorf("Error reading configuration: %s", err)
+			return nil, fmt.Errorf("Error reading configuration: %w", err)
 		}
 
 		configData = string(data)
 	} else if *extConfigFile != nil {
 		data, err := io.ReadAll(*extConfigFile)
 		if err != nil {
-			return nil, fmt.Errorf("Error reading configuration: %s", err)
+			return nil, fmt.Errorf("Error reading configuration: %w", err)
 		}
 
 		configData = string(data)
@@ -271,7 +271,7 @@ func getConfig() (*Config, error) {
 	config := &Config{}
 	err := yaml.Unmarshal([]byte(configData), &config)
 	if err != nil {
-		return nil, fmt.Errorf("Error Unmarshalling YAML: %s", err)
+		return nil, fmt.Errorf("Error Unmarshalling YAML: %w", err)
 	}
 
 	return config, nil
@@ -422,13 +422,13 @@ func generate() {
 func parseTemplate(input string, data any) (string, error) {
 	t, err := template.New("parse").Parse(input)
 	if err != nil {
-		return "", fmt.Errorf("Error parsing template: %s", err)
+		return "", fmt.Errorf("Error parsing template: %w", err)
 	}
 
 	output := new(bytes.Buffer)
 	err = t.Execute(output, data)
 	if err != nil {
-		return "", fmt.Errorf("Error executing template: %s", err)
+		return "", fmt.Errorf("Error executing template: %w", err)
 	}
 
 	return output.String(), nil

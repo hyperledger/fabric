@@ -76,14 +76,14 @@ func (cbv *ConfigBlockValidator) ValidateConfig(envelope *common.Envelope) error
 
 	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
-		return fmt.Errorf("channel header unmarshalling error: %s", err)
+		return fmt.Errorf("channel header unmarshalling error: %w", err)
 	}
 
 	switch chdr.GetType() {
 	case int32(common.HeaderType_CONFIG):
 		configEnvelope := &common.ConfigEnvelope{}
 		if err = proto.Unmarshal(payload.GetData(), configEnvelope); err != nil {
-			return fmt.Errorf("data unmarshalling error: %s", err)
+			return fmt.Errorf("data unmarshalling error: %w", err)
 		}
 		return cbv.verifyConfigUpdateMsg(envelope, configEnvelope, chdr)
 	default:
@@ -174,12 +174,12 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *common.Config)
 
 	consensusTypeValue := &protosorderer.ConsensusType{}
 	if err := proto.Unmarshal(consensusTypeConfigValue.GetValue(), consensusTypeValue); err != nil {
-		return fmt.Errorf("invalid consensus type property in config: %v", err)
+		return fmt.Errorf("invalid consensus type property in config: %w", err)
 	}
 
 	configOptions := &smartbft.Options{}
 	if err := proto.Unmarshal(consensusTypeValue.GetMetadata(), configOptions); err != nil {
-		return fmt.Errorf("invalid options encoded in consensus metadata: %v", err)
+		return fmt.Errorf("invalid options encoded in consensus metadata: %w", err)
 	}
 
 	if configOptions.GetLeaderRotation() == smartbft.Options_ROTATION_ON {

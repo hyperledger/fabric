@@ -34,18 +34,18 @@ func TestRouter(t *testing.T) {
 
 	t.Run("v14 validator returns an error", func(t *testing.T) {
 		mcp.On("Capabilities").Return(c14).Once()
-		mv14.On("Validate", mock.Anything).Return(errors.New("uh uh")).Once()
+		mv14.On("Validate", mock.Anything).Return(errors.New("uh hu")).Once()
 
 		err := r.Validate(nil)
-		require.EqualError(t, err, "uh uh")
+		require.EqualError(t, err, "uh hu")
 	})
 
 	t.Run("v20 validator returns an error", func(t *testing.T) {
 		mcp.On("Capabilities").Return(c20).Once()
-		mv20.On("Validate", mock.Anything).Return(errors.New("uh uh")).Once()
+		mv20.On("Validate", mock.Anything).Return(errors.New("uh hu")).Once()
 
 		err := r.Validate(nil)
-		require.EqualError(t, err, "uh uh")
+		require.EqualError(t, err, "uh hu")
 	})
 
 	t.Run("v14 validator returns an error", func(t *testing.T) {

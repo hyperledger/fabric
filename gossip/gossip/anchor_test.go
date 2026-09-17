@@ -9,6 +9,7 @@ package gossip
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -42,7 +43,7 @@ func (p *peerMock) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	sessionCounter := 0
 	for {
 		envelope, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {

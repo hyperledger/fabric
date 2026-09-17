@@ -260,7 +260,7 @@ func consenterProtosFromConfig(consenterMapping []*genesisconfig.Consenter) ([]*
 		if consenter.ClientTLSCert != "" {
 			clientCert, err := os.ReadFile(consenter.ClientTLSCert)
 			if err != nil {
-				return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+				return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %w", c.GetHost(), c.GetPort(), err)
 			}
 			c.ClientTlsCert = clientCert
 		}
@@ -268,7 +268,7 @@ func consenterProtosFromConfig(consenterMapping []*genesisconfig.Consenter) ([]*
 		if consenter.ServerTLSCert != "" {
 			serverCert, err := os.ReadFile(consenter.ServerTLSCert)
 			if err != nil {
-				return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+				return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %w", c.GetHost(), c.GetPort(), err)
 			}
 			c.ServerTlsCert = serverCert
 		}
@@ -276,7 +276,7 @@ func consenterProtosFromConfig(consenterMapping []*genesisconfig.Consenter) ([]*
 		if consenter.Identity != "" {
 			identity, err := os.ReadFile(consenter.Identity)
 			if err != nil {
-				return nil, fmt.Errorf("cannot load identity for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+				return nil, fmt.Errorf("cannot load identity for consenter %s:%d: %w", c.GetHost(), c.GetPort(), err)
 			}
 			c.Identity = identity
 		}

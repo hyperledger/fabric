@@ -57,7 +57,7 @@ func TestEvaluator(t *testing.T) {
 	nokEval := &mocks.Policy{}
 
 	okEval.On("EvaluateSignedData", mock.Anything).Return(nil)
-	nokEval.On("EvaluateSignedData", mock.Anything).Return(errors.New("bad bad"))
+	nokEval.On("EvaluateSignedData", mock.Anything).Return(errors.New("bad bad1"))
 
 	spp := &mocks.SignaturePolicyProvider{}
 	cpp := &mocks.ChannelPolicyReferenceProvider{}
@@ -68,7 +68,7 @@ func TestEvaluator(t *testing.T) {
 
 	// SCENARIO: bad policy argument
 
-	err := ev.Evaluate([]byte("bad bad"), nil)
+	err := ev.Evaluate([]byte("bad bad1"), nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to unmarshal ApplicationPolicy bytes")
 
@@ -94,7 +94,7 @@ func TestEvaluator(t *testing.T) {
 	spp.On("NewPolicy", spenv).Return(nokEval, nil).Once()
 	err = ev.Evaluate(mspenv, nil)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "bad bad")
+	require.Contains(t, err.Error(), "bad bad1")
 	spp.On("NewPolicy", spenv).Return(nil, errors.New("bad policy")).Once()
 	err = ev.Evaluate(mspenv, nil)
 	require.Error(t, err)
@@ -114,7 +114,7 @@ func TestEvaluator(t *testing.T) {
 	cpp.On("NewPolicy", chrefstr).Return(nokEval, nil).Once()
 	err = ev.Evaluate(chrefstrEnv, nil)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "bad bad")
+	require.Contains(t, err.Error(), "bad bad1")
 	cpp.On("NewPolicy", chrefstr).Return(nil, errors.New("bad policy")).Once()
 	err = ev.Evaluate(chrefstrEnv, nil)
 	require.Error(t, err)

@@ -195,7 +195,7 @@ func secondPass(args ...any) (any, error) {
 			/* build the principal we've been told */
 			mspRole, err := proto.Marshal(&mb.MSPRole{MspIdentifier: subm[0][1], Role: r})
 			if err != nil {
-				return nil, fmt.Errorf("error marshalling msp role: %s", err)
+				return nil, fmt.Errorf("error marshalling msp role: %w", err)
 			}
 
 			p := &mb.MSPPrincipal{

@@ -438,8 +438,8 @@ func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error {
 		select {
 		case rmsg := <-msgAvail:
 			switch {
-			// Defer the deregistering of the this handler.
-			case rmsg.err == io.EOF:
+			// Defer the deregistering of the handler.
+			case errors.Is(rmsg.err, io.EOF):
 				chaincodeLogger.Debugf("received EOF, ending chaincode support stream: %s", rmsg.err)
 				return rmsg.err
 			case rmsg.err != nil:

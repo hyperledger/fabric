@@ -288,7 +288,7 @@ func getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus int32, ccRespPayl
 	// create a proposal from a ChaincodeInvocationSpec
 	prop, _, err := protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, "testchannelid", createCIS(), nil)
 	if err != nil {
-		return nil, fmt.Errorf("Could not create chaincode proposal, err %s\n", err)
+		return nil, fmt.Errorf("Could not create chaincode proposal, err %w\n", err)
 	}
 
 	response := &pb.Response{Status: ccRespStatus, Payload: ccRespPayload}
@@ -296,7 +296,7 @@ func getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus int32, ccRespPayl
 
 	mockRespFailure, err := protoutil.CreateProposalResponseFailure(prop.GetHeader(), prop.GetPayload(), response, result, nil, "foo")
 	if err != nil {
-		return nil, fmt.Errorf("Could not create proposal response failure, err %s\n", err)
+		return nil, fmt.Errorf("Could not create proposal response failure, err %w\n", err)
 	}
 
 	mockEndorserClients := []pb.EndorserClient{common.GetMockEndorserClient(mockRespFailure, nil)}

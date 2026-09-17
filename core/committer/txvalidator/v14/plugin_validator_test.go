@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package txvalidator_test
 
 import (
+	errors2 "errors"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -47,7 +48,8 @@ func TestValidateWithPlugin(t *testing.T) {
 	factory.On("New").Return(plugin)
 	pm["vscc"] = factory
 	err = v.ValidateWithPlugin(ctx)
-	require.Contains(t, err.(*validation.ExecutionFailureError).Error(), "failed initializing plugin: foo")
+	cerr, _ := errors2.AsType[*validation.ExecutionFailureError](err)
+	require.Contains(t, cerr.Error(), "failed initializing plugin: foo")
 
 	// Scenario III: The plugin initialization succeeds but an execution error occurs.
 	// The plugin should pass the error as is.

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package blocksprovider
 
 import (
+	errors2 "errors"
 	"fmt"
 	"sync"
 	"time"
@@ -262,16 +263,19 @@ func (d *BFTDeliverer) handleFetchAndCensorshipEvents() (stopLoop bool) {
 	case errFetch := <-d.fetchErrorsC:
 		d.Logger.Debugf("Error received from fetchErrorsC channel: %s", errFetch)
 
-		switch errFetch.(type) {
-		case *ErrStopping:
+		var errStopping *ErrStopping
+		var errRefreshEndpoint *errRefreshEndpoint
+		var errFatal *ErrFatal
+		switch {
+		case errors2.As(errFetch, &errStopping):
 			d.Logger.Debug("FetchBlocks received the stop signal")
 			return true
-		case *errRefreshEndpoint:
+		case errors2.As(errFetch, &errRefreshEndpoint):
 			d.Logger.Info("Refreshed endpoints, going to reassign block fetcher and censorship monitor, and reconnect to ordering service")
 			d.refreshSources()
 			d.resetFetchFailureCounter()
 			return false
-		case *ErrFatal:
+		case errors2.As(errFetch, &errFatal):
 			d.Logger.Errorf("Failure in FetchBlocks, something is critically wrong: %s", errFetch)
 			return true
 		default:
@@ -284,11 +288,14 @@ func (d *BFTDeliverer) handleFetchAndCensorshipEvents() (stopLoop bool) {
 	case errMonitor := <-d.censorshipMonitor.ErrorsChannel():
 		d.Logger.Debugf("Error received from censorshipMonitor.ErrorsChannel: %s", errMonitor)
 
-		switch errMonitor.(type) {
-		case *ErrStopping:
+		var errStopping *ErrStopping
+		var errCensorship *ErrCensorship
+		var errFatal *ErrFatal
+		switch {
+		case errors2.As(errMonitor, &errStopping):
 			d.Logger.Debug("CensorshipMonitor received the stop signal")
 			return true
-		case *ErrCensorship:
+		case errors2.As(errMonitor, &errCensorship):
 			d.Logger.Warningf("Censorship suspicion: %s; going to retry fetching blocks from another orderer", errMonitor)
 			d.mutex.Lock()
 			d.blockReceiver.Stop()
@@ -296,7 +303,7 @@ func (d *BFTDeliverer) handleFetchAndCensorshipEvents() (stopLoop bool) {
 			d.fetchSourceIndex = (d.fetchSourceIndex + 1) % len(d.fetchSources)
 			d.incFetchFailureCounter()
 			return false
-		case *ErrFatal:
+		case errors2.As(errMonitor, &errFatal):
 			d.Logger.Errorf("Failure in CensorshipMonitor, something is critically wrong: %s", errMonitor)
 			return true
 		default:
@@ -376,11 +383,13 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint, fetchErrorsC chan<
 
 		// Consume blocks from the `recvC` channel
 		if errProc := blockRcv.ProcessIncoming(d.onBlockProcessingSuccess); errProc != nil {
-			switch errProc.(type) {
-			case *ErrStopping:
+			var errStopping *ErrStopping
+			var errRefreshEndpoint *errRefreshEndpoint
+			switch {
+			case errors2.As(errProc, &errStopping):
 				// nothing to do
 				d.Logger.Debugf("BlockReceiver stopped while processing incoming blocks: %s", errProc)
-			case *errRefreshEndpoint:
+			case errors2.As(errProc, &errRefreshEndpoint):
 				d.Logger.Infof("Endpoint refreshed while processing incoming blocks: %s", errProc)
 				fetchErrorsC <- errProc
 			default:

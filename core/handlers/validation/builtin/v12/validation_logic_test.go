@@ -231,7 +231,7 @@ func getSignedByMSPMemberPolicy(mspID string) ([]byte, error) {
 
 	b, err := protoutil.Marshal(p)
 	if err != nil {
-		return nil, fmt.Errorf("Could not marshal policy, err %s", err)
+		return nil, fmt.Errorf("Could not marshal policy, err %w", err)
 	}
 
 	return b, err
@@ -250,7 +250,7 @@ func getSignedByOneMemberTwicePolicy(mspID string) ([]byte, error) {
 	}
 	b, err := protoutil.Marshal(p)
 	if err != nil {
-		return nil, fmt.Errorf("Could not marshal policy, err %s", err)
+		return nil, fmt.Errorf("Could not marshal policy, err %w", err)
 	}
 
 	return b, err
@@ -261,7 +261,7 @@ func getSignedByMSPAdminPolicy(mspID string) ([]byte, error) {
 
 	b, err := protoutil.Marshal(p)
 	if err != nil {
-		return nil, fmt.Errorf("Could not marshal policy, err %s", err)
+		return nil, fmt.Errorf("Could not marshal policy, err %w", err)
 	}
 
 	return b, err
@@ -576,7 +576,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	require.ErrorContains(t, err, "GetChaincodeDeploymentSpec error error unmarshalling ChaincodeDeploymentSpec")
+	require.ErrorContains(t, err, "GetChaincodeDeploymentSpec error: error unmarshalling ChaincodeDeploymentSpec")
 
 	/***********************/
 	/* test bad cc version */

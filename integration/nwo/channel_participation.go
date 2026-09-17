@@ -267,6 +267,7 @@ func Remove(n *Network, o *Orderer, channel string) {
 	resp, err := authClient.Do(req)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+	resp.Body.Close()
 }
 
 func ChannelListMatcher(list ChannelList, expectedChannels []string) {

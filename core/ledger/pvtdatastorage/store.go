@@ -1068,7 +1068,7 @@ func (s *Store) processCollElgEvents() error {
 						copy(nextKey, originalKey)
 						collItr.Release()
 						s.purgerLock.Unlock()
-						time.Sleep(sleepTime * time.Millisecond)
+						time.Sleep(sleepTime * time.Millisecond) //nolint:durationcheck
 						s.purgerLock.Lock()
 						collItr, err = s.db.GetIterator(nextKey, endKey)
 						if err != nil {

@@ -72,6 +72,6 @@ func createTxEnv(simulationResults []byte) (*common.Envelope, error) {
 
 func panicOnError(err error) {
 	if err != nil {
-		panic(fmt.Errorf("Error:%s", err))
+		panic(fmt.Errorf("Error:%w", err))
 	}
 }

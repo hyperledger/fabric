@@ -152,7 +152,7 @@ func (vscc *Validator) extractValidationArtifacts(
 
 	pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(cap.GetAction().GetProposalResponsePayload())
 	if err != nil {
-		err = fmt.Errorf("GetProposalResponsePayload error %s", err)
+		err = fmt.Errorf("GetProposalResponsePayload error %w", err)
 		return nil, err
 	}
 	if pRespPayload.Extension == nil {
@@ -161,7 +161,7 @@ func (vscc *Validator) extractValidationArtifacts(
 	}
 	respPayload, err := protoutil.UnmarshalChaincodeAction(pRespPayload.GetExtension())
 	if err != nil {
-		err = fmt.Errorf("GetChaincodeAction error %s", err)
+		err = fmt.Errorf("GetChaincodeAction error %w", err)
 		return nil, err
 	}
 

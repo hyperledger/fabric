@@ -8,6 +8,7 @@ package validation
 
 import (
 	"bytes"
+	errors2 "errors"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -252,7 +253,7 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 				!doMVCCValidation,
 				customTxProcessors,
 			)
-			if _, ok := err.(*ledger.InvalidTxError); ok {
+			if _, ok := errors2.AsType[*ledger.InvalidTxError](err); ok {
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
 				continue
 			}

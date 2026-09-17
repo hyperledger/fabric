@@ -8,6 +8,7 @@ package blocksprovider
 
 import (
 	"context"
+	"errors"
 	"math"
 	"sync"
 	"time"
@@ -218,11 +219,13 @@ func (d *Deliverer) DeliverBlocks() {
 				d.orderers.Update(globalAddresses, orgAddresses)
 			}
 		}
-		if err := blockReceiver.ProcessIncoming(onSuccess); err != nil {
-			switch err.(type) {
-			case *errRefreshEndpoint:
+		if err = blockReceiver.ProcessIncoming(onSuccess); err != nil {
+			var errRefreshEndpoint *errRefreshEndpoint
+			var errStopping *ErrStopping
+			switch {
+			case errors.As(err, &errRefreshEndpoint):
 				// Don't count it as an error, we'll reconnect immediately.
-			case *ErrStopping:
+			case errors.As(err, &errStopping):
 				// Don't count it as an error, it is a signal to stop.
 			default:
 				d.Logger.Warningf("Failure in processing incoming messages: %s", err)

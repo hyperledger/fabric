@@ -179,13 +179,13 @@ func OwnerCreateSignedCCDepSpec(cds *peer.ChaincodeDeploymentSpec, instPolicy *c
 		// serialize the signing identity
 		endorser, err := owner.Serialize()
 		if err != nil {
-			return nil, fmt.Errorf("Could not serialize the signing identity: %s", err)
+			return nil, fmt.Errorf("Could not serialize the signing identity: %w", err)
 		}
 
 		// sign the concatenation of cds, instpolicy and the serialized endorser identity with this endorser's key
 		signature, err := owner.Sign(append(cdsbytes, append(instpolicybytes, endorser...)...))
 		if err != nil {
-			return nil, fmt.Errorf("Could not sign the ccpackage, err %s", err)
+			return nil, fmt.Errorf("Could not sign the ccpackage, err %w", err)
 		}
 
 		// each owner starts off the endorsements with one element. All such endorsed
@@ -221,13 +221,13 @@ func SignExistingPackage(env *common.Envelope, owner identity.SignerSerializer) 
 	// serialize the signing identity
 	endorser, err := owner.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("Could not serialize the signing identity: %s", err)
+		return nil, fmt.Errorf("Could not serialize the signing identity: %w", err)
 	}
 
 	// sign the concatenation of cds, instpolicy and the serialized endorser identity with this endorser's key
 	signature, err := owner.Sign(append(sdepspec.ChaincodeDeploymentSpec, append(sdepspec.InstantiationPolicy, endorser...)...))
 	if err != nil {
-		return nil, fmt.Errorf("Could not sign the ccpackage, err %s", err)
+		return nil, fmt.Errorf("Could not sign the ccpackage, err %w", err)
 	}
 
 	endorsements := append(sdepspec.OwnerEndorsements, &peer.Endorsement{Signature: signature, Endorser: endorser})

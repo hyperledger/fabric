@@ -450,10 +450,11 @@ func (couchInstance *couchInstance) healthCheck(ctx context.Context) error {
 		couchdbLogger.Errorf("URL parse error: %s", err)
 		return errors.Wrapf(err, "error parsing CouchDB URL: %s", couchInstance.url())
 	}
-	_, _, err = couchInstance.handleRequest(ctx, http.MethodHead, "", "HealthCheck", connectURL, nil, "", "", 0, true, nil)
+	resp, _, err := couchInstance.handleRequest(ctx, http.MethodHead, "", "HealthCheck", connectURL, nil, "", "", 0, true, nil)
 	if err != nil {
-		return fmt.Errorf("failed to connect to couch db [%s]", err)
+		return fmt.Errorf("failed to connect to couch db [%w]", err)
 	}
+	resp.Body.Close()
 	return nil
 }
 

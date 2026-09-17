@@ -32,7 +32,7 @@ func SetupTestConfig(t *testing.T) {
 
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {             // Handle errors reading the config file
-		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+		panic(fmt.Errorf("Fatal error config file: %w \n", err))
 	}
 
 	// Init the BCCSP
@@ -48,6 +48,6 @@ func SetupTestConfig(t *testing.T) {
 
 	err = factory.InitFactories(bccspConfig)
 	if err != nil {
-		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%w]", err))
 	}
 }

@@ -60,6 +60,7 @@ func (c *Components) Build(path string) string {
 
 	body, err := io.ReadAll(resp.Body)
 	Expect(err).NotTo(HaveOccurred())
+	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		Expect(resp.StatusCode).To(Equal(http.StatusOK), string(body))

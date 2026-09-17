@@ -61,7 +61,7 @@ func TestErrorConversion(t *testing.T) {
 
 	// Scenario I: An error that isn't *commonerrors.ExecutionFailureError or *commonerrors.VSCCEndorsementPolicyError
 	// should cause a panic
-	validator.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("bla bla")).Once()
+	validator.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("bla bla1")).Once()
 	require.Panics(t, func() {
 		validation.Validate(block, "", 0, 0, plugin.SerializedPolicy("policy"))
 	})

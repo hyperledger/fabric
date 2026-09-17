@@ -87,8 +87,8 @@ func trackCertExpiration(rawCert []byte, certRole string, info MessageFunc, warn
 	info("The %s certificate will expire on %s", certRole, expirationTime)
 
 	if timeLeftUntilExpiration < oneWeek {
-		days := timeLeftUntilExpiration / (time.Hour * 24)
-		hours := (timeLeftUntilExpiration - (days * time.Hour * 24)) / time.Hour
+		days := int(timeLeftUntilExpiration.Hours()) / 24
+		hours := int(timeLeftUntilExpiration.Hours()) % 24
 		warn("The %s certificate expires within %d days and %d hours", certRole, days, hours)
 		return
 	}

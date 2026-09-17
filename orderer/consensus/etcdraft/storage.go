@@ -76,7 +76,7 @@ func CreateStorage(
 
 	snapshot, err := sn.Load()
 	if err != nil {
-		if err == snap.ErrNoSnapshot {
+		if errors.Is(err, snap.ErrNoSnapshot) {
 			lg.Debugf("No snapshot found at %s", snapDir)
 		} else {
 			return nil, errors.Errorf("failed to load snapshot: %s", err)
@@ -177,7 +177,7 @@ func createOrReadWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.
 		// TODO(jay_guo) add metadata to be persisted with wal once we need it.
 		// use case could be data dump and restore on a new node.
 		w, err := wal.Create(lg.Zap(), walDir, nil)
-		if err == os.ErrExist {
+		if errors.Is(err, os.ErrExist) {
 			lg.Fatalf("programming error, we've just checked that WAL does not exist")
 		}
 
@@ -213,7 +213,7 @@ func createOrReadWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.
 			}
 
 			// only repair UnexpectedEOF and only repair once
-			if repaired || err != io.ErrUnexpectedEOF {
+			if repaired || err != io.ErrUnexpectedEOF { //nolint:errorlint
 				return nil, st, nil, errors.Errorf("failed to read WAL and cannot repair: %s", err)
 			}
 
@@ -251,7 +251,7 @@ func (rs *RaftStorage) Store(entries []*raftpb.Entry, hardstate *raftpb.HardStat
 		}
 
 		if err := rs.ram.ApplySnapshot(snapshot); err != nil {
-			if err == raft.ErrSnapOutOfDate {
+			if errors.Is(err, raft.ErrSnapOutOfDate) {
 				rs.lg.Warnf("Attempted to apply out-of-date snapshot at Term %d and Index %d",
 					snapshot.GetMetadata().GetTerm(), snapshot.GetMetadata().GetIndex())
 			} else {
@@ -314,7 +314,7 @@ func (rs *RaftStorage) TakeSnapshot(i uint64, cs *raftpb.ConfState, data []byte)
 		compacti := i - rs.SnapshotCatchUpEntries
 		rs.lg.Debugf("Purging in-memory raft entries prior to %d", compacti)
 		if err = rs.ram.Compact(compacti); err != nil {
-			if err == raft.ErrCompacted {
+			if errors.Is(err, raft.ErrCompacted) {
 				rs.lg.Warnf("Raft entries prior to %d are already purged", compacti)
 			} else {
 				rs.lg.Fatalf("Failed to purge raft entries: %s", err)
@@ -430,7 +430,7 @@ func (rs *RaftStorage) purge(files []string) {
 // ApplySnapshot applies snapshot to local memory storage
 func (rs *RaftStorage) ApplySnapshot(snap *raftpb.Snapshot) {
 	if err := rs.ram.ApplySnapshot(snap); err != nil {
-		if err == raft.ErrSnapOutOfDate {
+		if errors.Is(err, raft.ErrSnapOutOfDate) {
 			rs.lg.Warnf("Attempted to apply out-of-date snapshot at Term %d and Index %d",
 				snap.GetMetadata().GetTerm(), snap.GetMetadata().GetIndex())
 		} else {

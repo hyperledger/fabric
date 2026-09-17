@@ -1731,7 +1731,8 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 	// We suppose to get the error which indicates we cannot commit the block
 	assertion.Error(err)
 	// The error exptected to be of type VSCCInfoLookupFailureError
-	assertion.NotNil(err.(*commonerrors.VSCCInfoLookupFailureError))
+	cerr, _ := errors.AsType[*commonerrors.VSCCInfoLookupFailureError](err)
+	assertion.NotNil(cerr)
 }
 
 func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
@@ -1886,7 +1887,7 @@ func TestValidationPluginExecutionError(t *testing.T) {
 	})
 
 	err := v.Validate(b)
-	executionErr := err.(*commonerrors.VSCCExecutionFailureError)
+	executionErr, _ := errors.AsType[*commonerrors.VSCCExecutionFailureError](err)
 	require.Contains(t, executionErr.Error(), "I/O error")
 }
 
@@ -1912,7 +1913,7 @@ func TestValidationPluginNotFound(t *testing.T) {
 		cryptoProvider,
 	)
 	err = validator.Validate(b)
-	executionErr := err.(*commonerrors.VSCCExecutionFailureError)
+	executionErr, _ := errors.AsType[*commonerrors.VSCCExecutionFailureError](err)
 	require.Contains(t, executionErr.Error(), "plugin with name vscc wasn't found")
 }
 

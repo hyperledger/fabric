@@ -84,7 +84,7 @@ func (mo *MockOrderer) Deliver(server ab.AtomicBroadcast_DeliverServer) error {
 
 	mo.logger.Infof("Attempting to read seek info message from %s", addr)
 	envelope, err := server.Recv()
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		mo.logger.Infof("Received EOF from %s, hangup", addr)
 		return nil
 	}

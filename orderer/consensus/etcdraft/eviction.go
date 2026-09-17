@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -117,7 +118,7 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 	es.logger.Infof("Last config block was found to be block [%d]", lastConfigBlock.GetHeader().GetNumber())
 
 	err = es.amIInChannel(lastConfigBlock)
-	if err != cluster.ErrNotInChannel && err != cluster.ErrForbidden {
+	if !errors.Is(err, cluster.ErrNotInChannel) && !errors.Is(err, cluster.ErrForbidden) {
 		details := fmt.Sprintf(", our certificate was found in config block with sequence %d", lastConfigBlock.GetHeader().GetNumber())
 		if err != nil {
 			details = fmt.Sprintf(": %s", err.Error())

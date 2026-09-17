@@ -163,17 +163,17 @@ func makeCodePackage(pfiles []*packageFile) ([]byte, error) {
 			Mode: f.mode,
 			Size: int64(len(contents)),
 		}); err != nil {
-			return nil, fmt.Errorf("Error write header: %s", err)
+			return nil, fmt.Errorf("Error write header: %w", err)
 		}
 
 		if _, err := tw.Write(contents); err != nil {
-			return nil, fmt.Errorf("Error writing contents: %s", err)
+			return nil, fmt.Errorf("Error writing contents: %w", err)
 		}
 	}
 
 	// Write the tar file out
 	if err := tw.Close(); err != nil {
-		return nil, fmt.Errorf("Error writing Chaincode package contents: %s", err)
+		return nil, fmt.Errorf("Error writing Chaincode package contents: %w", err)
 	}
 
 	gw.Close()

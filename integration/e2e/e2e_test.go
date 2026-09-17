@@ -787,6 +787,7 @@ func CheckPeerOperationEndpoints(network *nwo.Network, peer *nwo.Peer) {
 	resp, err := unauthClient.Get(logspecURL)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
+	resp.Body.Close()
 
 	By("ensuring health checks do not require a client cert")
 	CheckHealthEndpoint(unauthClient, healthURL)
@@ -807,6 +808,7 @@ func CheckOrdererOperationEndpoints(network *nwo.Network, orderer *nwo.Orderer) 
 	resp, err := unauthClient.Get(logspecURL)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
+	resp.Body.Close()
 
 	By("ensuring health checks do not require a client cert")
 	CheckHealthEndpoint(unauthClient, healthURL)

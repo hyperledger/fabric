@@ -249,7 +249,7 @@ func (c *configCache) load() (*TopLevel, error) {
 	config.SetConfigName("orderer")
 
 	if err := config.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("Error reading configuration: %s", err)
+		return nil, fmt.Errorf("Error reading configuration: %w", err)
 	}
 
 	c.mutex.Lock()
@@ -258,7 +258,7 @@ func (c *configCache) load() (*TopLevel, error) {
 	if !ok {
 		err := config.EnhancedExactUnmarshal(&uconf)
 		if err != nil {
-			return nil, fmt.Errorf("Error unmarshalling config into struct: %s", err)
+			return nil, fmt.Errorf("Error unmarshalling config into struct: %w", err)
 		}
 
 		serializedConf, err = json.Marshal(uconf)

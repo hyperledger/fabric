@@ -59,7 +59,7 @@ func (s *Service) Step(stream orderer.Cluster_StepServer) error {
 	defer s.Logger.Debugf("Closing connection from %s(%s)", commonName, addr)
 	for {
 		err := s.handleMessage(stream, addr, exp)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			s.Logger.Debugf("%s(%s) disconnected", commonName, addr)
 			return nil
 		}
@@ -72,7 +72,7 @@ func (s *Service) Step(stream orderer.Cluster_StepServer) error {
 
 func (s *Service) handleMessage(stream StepStream, addr string, exp *certificateExpirationCheck) error {
 	request, err := stream.Recv()
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return err
 	}
 	if err != nil {

@@ -509,7 +509,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 
 	stepMsg := &raftpb.Message{}
 	if err := proto.Unmarshal(req.GetPayload(), stepMsg); err != nil {
-		return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
+		return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %w", err)
 	}
 
 	if stepMsg.GetTo() != c.raftID {
@@ -519,7 +519,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	}
 
 	if err := c.Node.Step(context.TODO(), stepMsg); err != nil {
-		return fmt.Errorf("failed to process Raft Step message: %s", err)
+		return fmt.Errorf("failed to process Raft Step message: %w", err)
 	}
 
 	if len(req.GetMetadata()) == 0 || atomic.LoadUint64(&c.lastKnownLeader) != sender { // ignore metadata from non-leader
