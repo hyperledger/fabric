@@ -8,6 +8,7 @@ package v12
 
 import (
 	"bytes"
+	errors2 "errors"
 	"fmt"
 	"regexp"
 
@@ -159,10 +160,10 @@ func (vscc *Validator) Validate(
 	if err != nil {
 		logger.Warningf("Endorsement policy failure for transaction txid=%s, err: %s", chdr.GetTxId(), err.Error())
 		if len(signatureSet) < len(cap.GetAction().GetEndorsements()) {
-			// Warning: duplicated identities exist, endorsement failure might be cause by this reason
+			// Warning: duplicated identities exist, endorsement failure might because by this reason
 			return policyErr(errors.New(DUPLICATED_IDENTITY_ERROR))
 		}
-		return policyErr(fmt.Errorf("VSCC error: endorsement policy failure, err: %s", err))
+		return policyErr(fmt.Errorf("VSCC error: endorsement policy failure, err: %w", err))
 	}
 
 	// do some extra validation that is specific to lscc
@@ -194,7 +195,7 @@ func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.En
 	}}
 	err = vscc.policyEvaluator.Evaluate(instantiationPolicy, sd)
 	if err != nil {
-		return policyErr(fmt.Errorf("chaincode instantiation policy violated, error %s", err))
+		return policyErr(fmt.Errorf("chaincode instantiation policy violated, error %w", err))
 	}
 	return nil
 }
@@ -401,7 +402,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 
 	channelState, err := vscc.stateFetcher.FetchState()
 	if err != nil {
-		return &commonerrors.VSCCExecutionFailureError{Err: fmt.Errorf("failed obtaining query executor: %v", err)}
+		return &commonerrors.VSCCExecutionFailureError{Err: fmt.Errorf("failed obtaining query executor: %w", err)}
 	}
 	defer channelState.Done()
 
@@ -416,7 +417,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 			// fail if we get any error other than NoSuchCollectionError
 			// because it means something went wrong while looking up the
 			// older collection
-			if _, ok := err.(privdata.NoSuchCollectionError); !ok {
+			if _, ok := errors2.AsType[privdata.NoSuchCollectionError](err); !ok {
 				return &commonerrors.VSCCExecutionFailureError{
 					Err: fmt.Errorf("unable to check whether collection existed earlier for chaincode %s:%s",
 						cdRWSet.Name, cdRWSet.Version),
@@ -457,9 +458,9 @@ func (vscc *Validator) validateRWSetAndCollection(
 				// fail if we get any error other than NoSuchCollectionError
 				// because it means something went wrong while looking up the
 				// older collection
-				if _, ok := err.(privdata.NoSuchCollectionError); !ok {
+				if _, ok := errors2.AsType[privdata.NoSuchCollectionError](err); !ok {
 					return &commonerrors.VSCCExecutionFailureError{
-						Err: fmt.Errorf("unable to check whether collection existed earlier for chaincode %s:%s: %v",
+						Err: fmt.Errorf("unable to check whether collection existed earlier for chaincode %s:%s: %w",
 							cdRWSet.Name, cdRWSet.Version, err),
 					}
 				}
@@ -526,7 +527,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 
 		cdsArgs, err := protoutil.UnmarshalChaincodeDeploymentSpec(lsccArgs[1])
 		if err != nil {
-			return policyErr(fmt.Errorf("GetChaincodeDeploymentSpec error %s", err))
+			return policyErr(fmt.Errorf("GetChaincodeDeploymentSpec error: %w", err))
 		}
 
 		if cdsArgs == nil || cdsArgs.GetChaincodeSpec() == nil || cdsArgs.GetChaincodeSpec().GetChaincodeId() == nil ||
@@ -561,18 +562,18 @@ func (vscc *Validator) ValidateLSCCInvocation(
 		// get the rwset
 		pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(cap.GetAction().GetProposalResponsePayload())
 		if err != nil {
-			return policyErr(fmt.Errorf("GetProposalResponsePayload error %s", err))
+			return policyErr(fmt.Errorf("GetProposalResponsePayload error %w", err))
 		}
 		if pRespPayload.Extension == nil {
 			return policyErr(fmt.Errorf("nil pRespPayload.Extension"))
 		}
 		respPayload, err := protoutil.UnmarshalChaincodeAction(pRespPayload.GetExtension())
 		if err != nil {
-			return policyErr(fmt.Errorf("GetChaincodeAction error %s", err))
+			return policyErr(fmt.Errorf("GetChaincodeAction error %w", err))
 		}
 		txRWSet := &rwsetutil.TxRwSet{}
 		if err = txRWSet.FromProtoBytes(respPayload.GetResults()); err != nil {
-			return policyErr(fmt.Errorf("txRWSet.FromProtoBytes error %s", err))
+			return policyErr(fmt.Errorf("txRWSet.FromProtoBytes error %w", err))
 		}
 
 		// extract the rwset for lscc
@@ -610,7 +611,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 		cdRWSet := &ccprovider.ChaincodeData{}
 		err = proto.Unmarshal(lsccrwset.GetWrites()[0].GetValue(), cdRWSet)
 		if err != nil {
-			return policyErr(fmt.Errorf("unmarshalling of ChaincodeData failed, error %s", err))
+			return policyErr(fmt.Errorf("unmarshalling of ChaincodeData failed, error %w", err))
 		}
 		// the chaincode name in the lsccwriteset must match the chaincode name in the deployment spec
 		if cdRWSet.Name != cdsArgs.GetChaincodeSpec().GetChaincodeId().GetName() {
@@ -750,14 +751,14 @@ func (vscc *Validator) ValidateLSCCInvocation(
 func (vscc *Validator) getInstantiatedCC(chid, ccid string) (cd *ccprovider.ChaincodeData, exists bool, err error) {
 	qe, err := vscc.stateFetcher.FetchState()
 	if err != nil {
-		err = fmt.Errorf("could not retrieve QueryExecutor for channel %s, error %s", chid, err)
+		err = fmt.Errorf("could not retrieve QueryExecutor for channel %s, error %w", chid, err)
 		return
 	}
 	defer qe.Done()
 	channelState := &state{qe}
 	bytes, err := channelState.GetState("lscc", ccid)
 	if err != nil {
-		err = fmt.Errorf("could not retrieve state for chaincode %s on channel %s, error %s", ccid, chid, err)
+		err = fmt.Errorf("could not retrieve state for chaincode %s on channel %s, error %w", ccid, chid, err)
 		return
 	}
 
@@ -768,7 +769,7 @@ func (vscc *Validator) getInstantiatedCC(chid, ccid string) (cd *ccprovider.Chai
 	cd = &ccprovider.ChaincodeData{}
 	err = proto.Unmarshal(bytes, cd)
 	if err != nil {
-		err = fmt.Errorf("unmarshalling ChaincodeQueryResponse failed, error %s", err)
+		err = fmt.Errorf("unmarshalling ChaincodeQueryResponse failed, error %w", err)
 		return
 	}
 
@@ -789,7 +790,7 @@ func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*p
 		serializedIdentity := &msp.SerializedIdentity{}
 		if err := proto.Unmarshal(endorsement.GetEndorser(), serializedIdentity); err != nil {
 			logger.Errorf("Unmarshal endorser error: %s", err)
-			return nil, policyErr(fmt.Errorf("Unmarshal endorser error: %s", err))
+			return nil, policyErr(fmt.Errorf("Unmarshal endorser error: %w", err))
 		}
 		identity := serializedIdentity.GetMspid() + string(serializedIdentity.GetIdBytes())
 		if _, ok := signatureMap[identity]; ok {

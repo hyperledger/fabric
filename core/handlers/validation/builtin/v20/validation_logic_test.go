@@ -78,7 +78,7 @@ func getSignedByMSPMemberPolicy(mspID string) ([]byte, error) {
 
 	b, err := protoutil.Marshal(p)
 	if err != nil {
-		return nil, fmt.Errorf("Could not marshal policy, err %s", err)
+		return nil, fmt.Errorf("Could not marshal policy, err %w", err)
 	}
 
 	return b, err

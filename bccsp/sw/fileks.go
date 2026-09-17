@@ -127,7 +127,7 @@ func (ks *fileBasedKeyStore) GetKey(ski []byte) (bccsp.Key, error) {
 		// Load the key
 		key, err := ks.loadKey(hex.EncodeToString(ski))
 		if err != nil {
-			return nil, fmt.Errorf("failed loading key [%x] [%s]", ski, err)
+			return nil, fmt.Errorf("failed loading key [%x] [%w]", ski, err)
 		}
 
 		return &aesPrivateKey{key, false}, nil
@@ -135,7 +135,7 @@ func (ks *fileBasedKeyStore) GetKey(ski []byte) (bccsp.Key, error) {
 		// Load the private key
 		key, err := ks.loadPrivateKey(hex.EncodeToString(ski))
 		if err != nil {
-			return nil, fmt.Errorf("failed loading secret key [%x] [%s]", ski, err)
+			return nil, fmt.Errorf("failed loading secret key [%x] [%w]", ski, err)
 		}
 
 		switch k := key.(type) {
@@ -148,7 +148,7 @@ func (ks *fileBasedKeyStore) GetKey(ski []byte) (bccsp.Key, error) {
 		// Load the public key
 		key, err := ks.loadPublicKey(hex.EncodeToString(ski))
 		if err != nil {
-			return nil, fmt.Errorf("failed loading public key [%x] [%s]", ski, err)
+			return nil, fmt.Errorf("failed loading public key [%x] [%w]", ski, err)
 		}
 
 		switch k := key.(type) {
@@ -176,19 +176,19 @@ func (ks *fileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 	case *ecdsaPrivateKey:
 		err = ks.storePrivateKey(hex.EncodeToString(k.SKI()), kk.privKey)
 		if err != nil {
-			return fmt.Errorf("failed storing ECDSA private key [%s]", err)
+			return fmt.Errorf("failed storing ECDSA private key [%w]", err)
 		}
 
 	case *ecdsaPublicKey:
 		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.pubKey)
 		if err != nil {
-			return fmt.Errorf("failed storing ECDSA public key [%s]", err)
+			return fmt.Errorf("failed storing ECDSA public key [%w]", err)
 		}
 
 	case *aesPrivateKey:
 		err = ks.storeKey(hex.EncodeToString(k.SKI()), kk.privKey)
 		if err != nil {
-			return fmt.Errorf("failed storing AES key [%s]", err)
+			return fmt.Errorf("failed storing AES key [%w]", err)
 		}
 
 	default:
@@ -417,7 +417,7 @@ func dirEmpty(path string) (bool, error) {
 	defer f.Close()
 
 	_, err = f.Readdir(1)
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return true, nil
 	}
 	return false, err

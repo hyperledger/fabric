@@ -8,6 +8,7 @@ package channelparticipation
 
 import (
 	"encoding/json"
+	errors2 "errors"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -342,21 +343,21 @@ func (h *HTTPHandler) extractChannelID(req *http.Request, resp http.ResponseWrit
 
 func (h *HTTPHandler) sendJoinError(err error, resp http.ResponseWriter) {
 	h.logger.Debugf("Failed to JoinChannel: %s", err)
-	switch err {
-	case types.ErrSystemChannelExists:
+	switch {
+	case errors2.Is(err, types.ErrSystemChannelExists):
 		// The client is trying to join an app-channel, but the system channel exists: only GET is allowed on app channels.
 		h.sendResponseNotAllowed(resp, errors.WithMessage(err, "cannot join"), http.MethodGet)
-	case types.ErrChannelAlreadyExists:
+	case errors2.Is(err, types.ErrChannelAlreadyExists):
 		// The client is trying to join an app-channel that exists, but the system channel does not;
 		// The client is trying to join the system-channel, and it exists. GET & DELETE are allowed on the channel.
 		h.sendResponseNotAllowed(resp, errors.WithMessage(err, "cannot join"), http.MethodGet, http.MethodDelete)
-	case types.ErrAppChannelsAlreadyExists:
+	case errors2.Is(err, types.ErrAppChannelsAlreadyExists):
 		// The client is trying to join the system-channel that does not exist, but app channels exist.
 		h.sendResponseJsonError(resp, http.StatusForbidden, errors.WithMessage(err, "cannot join"))
-	case types.ErrChannelPendingRemoval:
+	case errors2.Is(err, types.ErrChannelPendingRemoval):
 		// The client is trying to join a channel that is currently being removed.
 		h.sendResponseJsonError(resp, http.StatusConflict, errors.WithMessage(err, "cannot join"))
-	case types.ErrChannelRemovalFailure:
+	case errors2.Is(err, types.ErrChannelRemovalFailure):
 		h.sendResponseJsonError(resp, http.StatusInternalServerError, errors.WithMessage(err, "cannot join"))
 	default:
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.WithMessage(err, "cannot join"))
@@ -385,12 +386,12 @@ func (h *HTTPHandler) serveRemove(resp http.ResponseWriter, req *http.Request) {
 
 	h.logger.Debugf("Failed to remove channel: %s, err: %s", channelID, err)
 
-	switch err {
-	case types.ErrSystemChannelExists:
+	switch {
+	case errors2.Is(err, types.ErrSystemChannelExists):
 		h.sendResponseNotAllowed(resp, errors.WithMessage(err, "cannot remove"), http.MethodGet)
-	case types.ErrChannelNotExist:
+	case errors2.Is(err, types.ErrChannelNotExist):
 		h.sendResponseJsonError(resp, http.StatusNotFound, errors.WithMessage(err, "cannot remove"))
-	case types.ErrChannelPendingRemoval:
+	case errors2.Is(err, types.ErrChannelPendingRemoval):
 		h.sendResponseJsonError(resp, http.StatusConflict, errors.WithMessage(err, "cannot remove"))
 	default:
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.WithMessage(err, "cannot remove"))

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package ccmetadata
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,7 +43,7 @@ func TestBadIndexJSON(t *testing.T) {
 	require.Error(t, err, "Should have received an InvalidIndexContentError")
 
 	// Type assertion on InvalidIndexContentError
-	_, ok := err.(*InvalidIndexContentError)
+	_, ok := errors.AsType[*InvalidIndexContentError](err)
 	require.True(t, ok, "Should have received an InvalidIndexContentError")
 
 	t.Log("SAMPLE ERROR STRING:", err.Error())
@@ -60,7 +61,7 @@ func TestIndexWrongLocation(t *testing.T) {
 	require.Error(t, err, "Should have received an UnhandledDirectoryError")
 
 	// Type assertion on UnhandledDirectoryError
-	_, ok := err.(*UnhandledDirectoryError)
+	_, ok := errors.AsType[*UnhandledDirectoryError](err)
 	require.True(t, ok, "Should have received an UnhandledDirectoryError")
 
 	t.Log("SAMPLE ERROR STRING:", err.Error())
@@ -78,7 +79,7 @@ func TestInvalidMetadataType(t *testing.T) {
 	require.Error(t, err, "Should have received an UnhandledDirectoryError")
 
 	// Type assertion on UnhandledDirectoryError
-	_, ok := err.(*UnhandledDirectoryError)
+	_, ok := errors.AsType[*UnhandledDirectoryError](err)
 	require.True(t, ok, "Should have received an UnhandledDirectoryError")
 }
 

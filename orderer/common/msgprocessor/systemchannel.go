@@ -165,7 +165,7 @@ func (s *SystemChannel) ProcessConfigMsg(env *cb.Envelope) (*cb.Envelope, uint64
 
 	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
-		return nil, 0, fmt.Errorf("Abort processing config msg because channel header unmarshalling error: %s", err)
+		return nil, 0, fmt.Errorf("Abort processing config msg because channel header unmarshalling error: %w", err)
 	}
 
 	switch chdr.GetType() {
@@ -180,13 +180,13 @@ func (s *SystemChannel) ProcessConfigMsg(env *cb.Envelope) (*cb.Envelope, uint64
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
 		env, err := protoutil.UnmarshalEnvelope(payload.GetData())
 		if err != nil {
-			return nil, 0, fmt.Errorf("Abort processing config msg because payload data unmarshalling error: %s", err)
+			return nil, 0, fmt.Errorf("Abort processing config msg because payload data unmarshalling error: %w", err)
 		}
 
 		configEnvelope := &cb.ConfigEnvelope{}
 		_, err = protoutil.UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, configEnvelope)
 		if err != nil {
-			return nil, 0, fmt.Errorf("Abort processing config msg because payload data unmarshalling error: %s", err)
+			return nil, 0, fmt.Errorf("Abort processing config msg because payload data unmarshalling error: %w", err)
 		}
 
 		return s.ProcessConfigUpdateMsg(configEnvelope.GetLastUpdate())
@@ -229,12 +229,12 @@ func NewDefaultTemplator(support DefaultTemplatorSupport, bccsp bccsp.BCCSP) *De
 func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (channelconfig.Resources, error) {
 	configUpdatePayload, err := protoutil.UnmarshalPayload(envConfigUpdate.GetPayload())
 	if err != nil {
-		return nil, fmt.Errorf("Failing initial channel config creation because of payload unmarshalling error: %s", err)
+		return nil, fmt.Errorf("Failing initial channel config creation because of payload unmarshalling error: %w", err)
 	}
 
 	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(configUpdatePayload.GetData())
 	if err != nil {
-		return nil, fmt.Errorf("Failing initial channel config creation because of config update envelope unmarshalling error: %s", err)
+		return nil, fmt.Errorf("Failing initial channel config creation because of config update envelope unmarshalling error: %w", err)
 	}
 
 	if configUpdatePayload.GetHeader() == nil {
@@ -243,12 +243,12 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 
 	channelHeader, err := protoutil.UnmarshalChannelHeader(configUpdatePayload.GetHeader().GetChannelHeader())
 	if err != nil {
-		return nil, fmt.Errorf("Failed initial channel config creation because channel header was malformed: %s", err)
+		return nil, fmt.Errorf("Failed initial channel config creation because channel header was malformed: %w", err)
 	}
 
 	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.GetConfigUpdate())
 	if err != nil {
-		return nil, fmt.Errorf("Failing initial channel config creation because of config update unmarshalling error: %s", err)
+		return nil, fmt.Errorf("Failing initial channel config creation because of config update unmarshalling error: %w", err)
 	}
 
 	if configUpdate.GetChannelId() != channelHeader.GetChannelId() {
@@ -275,7 +275,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 	consortium := &cb.Consortium{}
 	err = proto.Unmarshal(consortiumConfigValue.GetValue(), consortium)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading unmarshalling consortium name: %s", err)
+		return nil, fmt.Errorf("Error reading unmarshalling consortium name: %w", err)
 	}
 
 	applicationGroup := protoutil.NewConfigGroup()

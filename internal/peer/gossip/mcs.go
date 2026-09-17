@@ -100,7 +100,7 @@ func (s *MSPMessageCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 		return nil
 	}
 
-	// concatenate msp-id and idbytes
+	// concatenate msp-id and
 	// idbytes is the low-level representation of an identity.
 	// it is supposed to be already in its minimal representation
 
@@ -133,7 +133,7 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 	// - Extract channelID and compare with chainID
 	channelID, err := protoutil.GetChannelIDFromBlock(block)
 	if err != nil {
-		return fmt.Errorf("Failed getting channel id from block with id [%d] on channel [%s]: [%s]", block.GetHeader().GetNumber(), chainID, err)
+		return fmt.Errorf("Failed getting channel id from block with id [%d] on channel [%s]: [%w]", block.GetHeader().GetNumber(), chainID, err)
 	}
 
 	if channelID != string(chainID) {
@@ -147,11 +147,11 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 
 	metadata, err := protoutil.GetMetadataFromBlock(block, pcommon.BlockMetadataIndex_SIGNATURES)
 	if err != nil {
-		return fmt.Errorf("Failed unmarshalling medatata for signatures [%s]", err)
+		return fmt.Errorf("Failed unmarshalling medatata for signatures [%w]", err)
 	}
 
 	if err := protoutil.VerifyTransactionsAreWellFormed(block); err != nil {
-		return fmt.Errorf("block has malformed transactions: %v", err)
+		return fmt.Errorf("block has malformed transactions: %w", err)
 	}
 
 	// - Verify that Header.DataHash is equal to the hash of block.Data
@@ -179,7 +179,7 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 	for _, metadataSignature := range metadata.GetSignatures() {
 		shdr, err := protoutil.UnmarshalSignatureHeader(metadataSignature.GetSignatureHeader())
 		if err != nil {
-			return fmt.Errorf("Failed unmarshalling signature header for block with id [%d] on channel [%s]: [%s]", block.GetHeader().GetNumber(), chainID, err)
+			return fmt.Errorf("Failed unmarshalling signature header for block with id [%d] on channel [%s]: [%w]", block.GetHeader().GetNumber(), chainID, err)
 		}
 		signatureSet = append(
 			signatureSet,

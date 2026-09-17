@@ -41,7 +41,7 @@ func signECDSA(k *ecdsa.PrivateKey, digest []byte, opts bccsp.SignerOpts) ([]byt
 func verifyECDSA(k *ecdsa.PublicKey, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
 	r, s, err := utils.UnmarshalECDSASignature(signature)
 	if err != nil {
-		return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
+		return false, fmt.Errorf("Failed unmashalling signature [%w]", err)
 	}
 
 	lowS, err := utils.IsLowS(k, s)

@@ -220,7 +220,7 @@ func VerifyBlocks(blockBuff []*common.Block, signatureVerifier BlockVerifier) er
 	// during iteration over the block batch.
 	for _, block := range blockBuff {
 		configFromBlock, err := ConfigFromBlock(block)
-		if err == errNotAConfig {
+		if errors.Is(err, errNotAConfig) {
 			isLastBlockConfigBlock = false
 			continue
 		}
@@ -228,7 +228,7 @@ func VerifyBlocks(blockBuff []*common.Block, signatureVerifier BlockVerifier) er
 			return err
 		}
 		// The block is a configuration block, so verify it
-		if err := VerifyBlockSignature(block, signatureVerifier, config); err != nil {
+		if err = VerifyBlockSignature(block, signatureVerifier, config); err != nil {
 			return err
 		}
 		config = configFromBlock
@@ -300,7 +300,7 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 	seq := block.GetHeader().GetNumber()
 
 	if err := protoutil.VerifyTransactionsAreWellFormed(block); err != nil && block.GetHeader().GetNumber() > 0 {
-		return fmt.Errorf("block has malformed transactions: %v", err)
+		return fmt.Errorf("block has malformed transactions: %w", err)
 	}
 
 	dataHash := protoutil.BlockDataHash(block.GetData())
@@ -541,7 +541,7 @@ func (vr *VerificationRegistry) RetrieveVerifier(channel string) BlockVerifier {
 func (vr *VerificationRegistry) BlockCommitted(block *common.Block, channel string) {
 	conf, err := ConfigFromBlock(block)
 	// The block doesn't contain a config block, but is a valid block
-	if err == errNotAConfig {
+	if errors.Is(err, errNotAConfig) {
 		vr.Logger.Debugf("Committed block [%d] for channel %s that is not a config block",
 			block.GetHeader().GetNumber(), channel)
 		return

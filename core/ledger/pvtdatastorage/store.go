@@ -1046,7 +1046,7 @@ func (s *Store) processCollElgEvents() error {
 						logger.Infof("Going to sleep for %d milliseconds between batches. Entries for [ns=%s, coll=%s] converted so far = %d",
 							sleepTime, ns, coll, collEntriesConverted)
 						s.purgerLock.Unlock()
-						time.Sleep(sleepTime * time.Millisecond)
+						time.Sleep(sleepTime * time.Millisecond) //nolint:durationcheck
 						s.purgerLock.Lock()
 					}
 				} // entry loop

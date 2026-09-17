@@ -222,8 +222,10 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		},
 	)
 	if err != nil {
-		switch err.(type) {
-		case ErrNamespaceNotDefined, persistence.CodePackageNotFoundErr:
+		var errNamespaceNotDefined ErrNamespaceNotDefined
+		var codePackageNotFoundErr persistence.CodePackageNotFoundErr
+		switch {
+		case errors.As(err, &errNamespaceNotDefined), errors.As(err, &codePackageNotFoundErr):
 			return pb.Response{
 				Status:  404,
 				Message: err.Error(),

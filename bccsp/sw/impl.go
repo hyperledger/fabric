@@ -307,7 +307,7 @@ func (csp *CSP) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts
 }
 
 // AddWrapper binds the passed type to the passed wrapper.
-// Notice that that wrapper must be an instance of one of the following interfaces:
+// Notice that wrapper must be an instance of one of the following interfaces:
 // KeyGenerator, KeyDeriver, KeyImporter, Encryptor, Decryptor, Signer, Verifier, Hasher.
 func (csp *CSP) AddWrapper(t reflect.Type, w any) error {
 	if t == nil {

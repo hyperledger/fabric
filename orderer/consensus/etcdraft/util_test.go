@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -383,7 +384,7 @@ func TestVerifyConfigMetadata(t *testing.T) {
 
 		_, err = clientCert.Verify(goodVerifyingOpts)
 		require.Error(t, err, "expected certificate verification to fail")
-		cie, ok := err.(x509.CertificateInvalidError)
+		cie, ok := errors.AsType[x509.CertificateInvalidError](err)
 		require.True(t, ok, "expected an x509.CertificateInvalidError but got %T", err)
 		require.Equal(t, x509.Expired, cie.Reason)
 

@@ -123,10 +123,10 @@ func TestInitializeProfilingService(t *testing.T) {
 		},
 	)
 	time.Sleep(500 * time.Millisecond)
-	if _, err := http.Get("http://" + listenAddr + "/" + "/debug/"); err != nil {
+	if _, err := http.Get("http://" + listenAddr + "/" + "/debug/"); err != nil { //nolint:bodyclose
 		t.Logf("Expected pprof to be up (will retry again in 3 seconds): %s", err)
 		time.Sleep(3 * time.Second)
-		if _, err := http.Get("http://" + listenAddr + "/" + "/debug/"); err != nil {
+		if _, err := http.Get("http://" + listenAddr + "/" + "/debug/"); err != nil { //nolint:bodyclose
 			t.Fatalf("Expected pprof to be up: %s", err)
 		}
 	}

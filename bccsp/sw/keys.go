@@ -93,7 +93,7 @@ func privateKeyToPEM(privateKey any, pwd []byte) ([]byte, error) {
 			PublicKey:  asn1.BitString{Bytes: elliptic.Marshal(k.Curve, k.X, k.Y)},
 		})
 		if err != nil {
-			return nil, fmt.Errorf("error marshaling EC key to asn1: [%s]", err)
+			return nil, fmt.Errorf("error marshaling EC key to asn1: [%w]", err)
 		}
 
 		var pkcs8Key pkcs8Info
@@ -105,7 +105,7 @@ func privateKeyToPEM(privateKey any, pwd []byte) ([]byte, error) {
 
 		pkcs8Bytes, err := asn1.Marshal(pkcs8Key)
 		if err != nil {
-			return nil, fmt.Errorf("error marshaling EC key to asn1: [%s]", err)
+			return nil, fmt.Errorf("error marshaling EC key to asn1: [%w]", err)
 		}
 		return pem.EncodeToMemory(
 			&pem.Block{
@@ -187,7 +187,7 @@ func pemToPrivateKey(raw []byte, pwd []byte) (any, error) {
 
 		decrypted, err := x509.DecryptPEMBlock(block, pwd)
 		if err != nil {
-			return nil, fmt.Errorf("failed PEM decryption: [%s]", err)
+			return nil, fmt.Errorf("failed PEM decryption: [%w]", err)
 		}
 
 		key, err := derToPrivateKey(decrypted)
@@ -220,7 +220,7 @@ func pemToAES(raw []byte, pwd []byte) ([]byte, error) {
 
 		decrypted, err := x509.DecryptPEMBlock(block, pwd)
 		if err != nil {
-			return nil, fmt.Errorf("failed PEM decryption: [%s]", err)
+			return nil, fmt.Errorf("failed PEM decryption: [%w]", err)
 		}
 		return decrypted, nil
 	}
@@ -328,7 +328,7 @@ func pemToPublicKey(raw []byte, pwd []byte) (any, error) {
 
 		decrypted, err := x509.DecryptPEMBlock(block, pwd)
 		if err != nil {
-			return nil, fmt.Errorf("failed PEM decryption: [%s]", err)
+			return nil, fmt.Errorf("failed PEM decryption: [%w]", err)
 		}
 
 		key, err := derToPublicKey(decrypted)

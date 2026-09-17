@@ -88,16 +88,15 @@ func (ess *emptyServiceServer) EmptyCall(context.Context, *testpb.Empty) (*testp
 func (esss *emptyServiceServer) EmptyStream(stream testpb.EmptyService_EmptyStreamServer) error {
 	for {
 		_, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		if err := stream.Send(&testpb.Empty{}); err != nil {
+		if err = stream.Send(&testpb.Empty{}); err != nil {
 			return err
 		}
-
 	}
 }
 
@@ -147,7 +146,7 @@ func invokeEmptyStream(address string, dialOptions ...grpc.DialOption) (*testpb.
 	go func() {
 		for {
 			in, err := stream.Recv()
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				close(waitc)
 				return
 			}
@@ -165,8 +164,8 @@ func invokeEmptyStream(address string, dialOptions ...grpc.DialOption) (*testpb.
 	// the server side has already terminated. Whether or not we get an error
 	// depends on timing.
 	err = stream.Send(&testpb.Empty{})
-	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("stream send failed: %s", err)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("stream send failed: %w", err)
 	}
 
 	stream.CloseSend()
@@ -1047,7 +1046,7 @@ func TestUpdateTLSCert(t *testing.T) {
 		fName := filepath.Join("testdata", "dynamic_cert_update", path)
 		data, err := os.ReadFile(fName)
 		if err != nil {
-			panic(fmt.Errorf("Failed reading %s: %v", fName, err))
+			panic(fmt.Errorf("Failed reading %s: %w", fName, err))
 		}
 		return data
 	}

@@ -32,7 +32,7 @@ type ecdsaKeyGenerator struct {
 func (kg *ecdsaKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 	privKey, err := ecdsa.GenerateKey(kg.curve, rand.Reader)
 	if err != nil {
-		return nil, fmt.Errorf("Failed generating ECDSA key for [%v]: [%s]", kg.curve, err)
+		return nil, fmt.Errorf("Failed generating ECDSA key for [%v]: [%w]", kg.curve, err)
 	}
 
 	return &ecdsaPrivateKey{privKey}, nil
@@ -45,7 +45,7 @@ type aesKeyGenerator struct {
 func (kg *aesKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 	lowLevelKey, err := GetRandomBytes(int(kg.length))
 	if err != nil {
-		return nil, fmt.Errorf("Failed generating AES %d key [%s]", kg.length, err)
+		return nil, fmt.Errorf("Failed generating AES %d key [%w]", kg.length, err)
 	}
 
 	return &aesPrivateKey{lowLevelKey, false}, nil

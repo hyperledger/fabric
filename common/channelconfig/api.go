@@ -67,7 +67,7 @@ type Channel interface {
 	// Merkle tree to compute the BlockData hash
 	BlockDataHashingStructureWidth() uint32
 
-	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
+	// OrdererAddresses returns the list of valid orderer addresses to connect to invoke Broadcast/Deliver
 	OrdererAddresses() []string
 
 	// Capabilities defines the capabilities for a channel

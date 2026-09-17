@@ -162,7 +162,7 @@ func (r *Replicator) ReplicateChains() []string {
 	}
 
 	// Last, pull the system chain.
-	if err := r.PullChannel(r.SystemChannel); err != nil && err != ErrSkipped {
+	if err := r.PullChannel(r.SystemChannel); err != nil && !errors.Is(err, ErrSkipped) {
 		r.Logger.Panicf("Failed pulling system channel: %v", err)
 	}
 	return replicatedChains
@@ -305,18 +305,18 @@ func (r *Replicator) channelsToPull(channels GenesisBlocks) channelPullHints {
 		puller.Close()
 		// Restore the previous buffer size
 		puller.MaxTotalBufferBytes = bufferSize
-		if err == ErrNotInChannel || err == ErrForbidden {
+		if errors.Is(err, ErrNotInChannel) || errors.Is(err, ErrForbidden) {
 			r.Logger.Infof("I do not belong to channel %s or am forbidden pulling it (%v), skipping chain retrieval", channel.ChannelName, err)
 			channelsNotToPull = append(channelsNotToPull, channel)
 			continue
 		}
-		if err == ErrServiceUnavailable {
+		if errors.Is(err, ErrServiceUnavailable) {
 			r.Logger.Infof("All orderers in the system channel are either down,"+
 				"or do not service channel %s (%v), skipping chain retrieval", channel.ChannelName, err)
 			channelsNotToPull = append(channelsNotToPull, channel)
 			continue
 		}
-		if err == ErrRetryCountExhausted {
+		if errors.Is(err, ErrRetryCountExhausted) {
 			r.Logger.Warningf("Could not obtain blocks needed for classifying whether I am in the channel,"+
 				"skipping the retrieval of the chan %s", channel.ChannelName)
 			channelsNotToPull = append(channelsNotToPull, channel)

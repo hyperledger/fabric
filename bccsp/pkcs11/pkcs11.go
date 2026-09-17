@@ -12,6 +12,7 @@ import (
 	"crypto/sha256"
 	"encoding/asn1"
 	"encoding/hex"
+	errors2 "errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -311,7 +312,7 @@ func (csp *Provider) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Si
 func (csp *Provider) verifyECDSA(k ecdsaPublicKey, signature, digest []byte) (bool, error) {
 	r, s, err := utils.UnmarshalECDSASignature(signature)
 	if err != nil {
-		return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
+		return false, fmt.Errorf("Failed unmashalling signature [%w]", err)
 	}
 
 	lowS, err := utils.IsLowS(k.pub, s)
@@ -361,7 +362,7 @@ func (csp *Provider) createSession() (pkcs11.SessionHandle, error) {
 	}
 
 	err = csp.ctx.Login(sess, pkcs11.CKU_USER, csp.pin)
-	if err != nil && err != pkcs11.Error(pkcs11.CKR_USER_ALREADY_LOGGED_IN) {
+	if err != nil && !errors2.Is(err, pkcs11.Error(pkcs11.CKR_USER_ALREADY_LOGGED_IN)) {
 		csp.ctx.CloseSession(sess)
 		return 0, errors.Wrap(err, "Login failed")
 	}
@@ -415,12 +416,12 @@ func (csp *Provider) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool,
 
 	publicKey, err := csp.findKeyPairFromSKI(session, ski, publicKeyType)
 	if err != nil {
-		return nil, false, fmt.Errorf("public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
+		return nil, false, fmt.Errorf("public key not found [%w] for SKI [%s]", err, hex.EncodeToString(ski))
 	}
 
 	ecpt, marshaledOid, err := csp.ecPoint(session, publicKey)
 	if err != nil {
-		return nil, false, fmt.Errorf("public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
+		return nil, false, fmt.Errorf("public key not found [%w] for SKI [%s]", err, hex.EncodeToString(ski))
 	}
 
 	curveOid := new(asn1.ObjectIdentifier)
@@ -535,12 +536,12 @@ func (csp *Provider) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) 
 		prvkeyT,
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("P11: keypair generate failed [%s]", err)
+		return nil, nil, fmt.Errorf("P11: keypair generate failed [%w]", err)
 	}
 
 	ecpt, _, err := csp.ecPoint(session, pub)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error querying EC-point: [%s]", err)
+		return nil, nil, fmt.Errorf("Error querying EC-point: [%w]", err)
 	}
 	hash := sha256.Sum256(ecpt)
 	ski = hash[:]
@@ -554,12 +555,12 @@ func (csp *Provider) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) 
 	logger.Infof("Generated new P11 key, SKI %x\n", ski)
 	err = csp.ctx.SetAttributeValue(session, pub, setskiT)
 	if err != nil {
-		return nil, nil, fmt.Errorf("P11: set-ID-to-SKI[public] failed [%s]", err)
+		return nil, nil, fmt.Errorf("P11: set-ID-to-SKI[public] failed [%w]", err)
 	}
 
 	err = csp.ctx.SetAttributeValue(session, prv, setskiT)
 	if err != nil {
-		return nil, nil, fmt.Errorf("P11: set-ID-to-SKI[private] failed [%s]", err)
+		return nil, nil, fmt.Errorf("P11: set-ID-to-SKI[private] failed [%w]", err)
 	}
 
 	// Set CKA_Modifible to false for both public key and private keys
@@ -570,21 +571,21 @@ func (csp *Provider) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) 
 
 		_, pubCopyerror := csp.ctx.CopyObject(session, pub, setCKAModifiable)
 		if pubCopyerror != nil {
-			return nil, nil, fmt.Errorf("P11: Public Key copy failed with error [%s] . Please contact your HSM vendor", pubCopyerror)
+			return nil, nil, fmt.Errorf("P11: Public Key copy failed with error [%w] . Please contact your HSM vendor", pubCopyerror)
 		}
 
 		pubKeyDestroyError := csp.ctx.DestroyObject(session, pub)
 		if pubKeyDestroyError != nil {
-			return nil, nil, fmt.Errorf("P11: Public Key destroy failed with error [%s]. Please contact your HSM vendor", pubCopyerror)
+			return nil, nil, fmt.Errorf("P11: Public Key destroy failed with error [%w]. Please contact your HSM vendor", pubCopyerror)
 		}
 
 		_, prvCopyerror := csp.ctx.CopyObject(session, prv, setCKAModifiable)
 		if prvCopyerror != nil {
-			return nil, nil, fmt.Errorf("P11: Private Key copy failed with error [%s]. Please contact your HSM vendor", prvCopyerror)
+			return nil, nil, fmt.Errorf("P11: Private Key copy failed with error [%w]. Please contact your HSM vendor", prvCopyerror)
 		}
 		prvKeyDestroyError := csp.ctx.DestroyObject(session, prv)
 		if prvKeyDestroyError != nil {
-			return nil, nil, fmt.Errorf("P11: Private Key destroy failed with error [%s]. Please contact your HSM vendor", prvKeyDestroyError)
+			return nil, nil, fmt.Errorf("P11: Private Key destroy failed with error [%w]. Please contact your HSM vendor", prvKeyDestroyError)
 		}
 	}
 
@@ -616,19 +617,19 @@ func (csp *Provider) signP11ECDSA(ski []byte, msg []byte) (R, S *big.Int, err er
 
 	privateKey, err := csp.findKeyPairFromSKI(session, ski, privateKeyType)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Private key not found [%s]", err)
+		return nil, nil, fmt.Errorf("Private key not found [%w]", err)
 	}
 
 	err = csp.ctx.SignInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)}, privateKey)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Sign-initialize  failed [%s]", err)
+		return nil, nil, fmt.Errorf("Sign-initialize  failed [%w]", err)
 	}
 
 	var sig []byte
 
 	sig, err = csp.ctx.Sign(session, msg)
 	if err != nil {
-		return nil, nil, fmt.Errorf("P11: sign failed [%s]", err)
+		return nil, nil, fmt.Errorf("P11: sign failed [%w]", err)
 	}
 
 	R = new(big.Int)
@@ -650,7 +651,7 @@ func (csp *Provider) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteS
 
 	publicKey, err := csp.findKeyPairFromSKI(session, ski, publicKeyType)
 	if err != nil {
-		return false, fmt.Errorf("Public key not found [%s]", err)
+		return false, fmt.Errorf("Public key not found [%w]", err)
 	}
 
 	r := R.Bytes()
@@ -667,14 +668,14 @@ func (csp *Provider) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteS
 		publicKey,
 	)
 	if err != nil {
-		return false, fmt.Errorf("PKCS11: Verify-initialize [%s]", err)
+		return false, fmt.Errorf("PKCS11: Verify-initialize [%w]", err)
 	}
 	err = csp.ctx.Verify(session, msg, sig)
-	if err == pkcs11.Error(pkcs11.CKR_SIGNATURE_INVALID) {
+	if errors.Is(err, pkcs11.Error(pkcs11.CKR_SIGNATURE_INVALID)) {
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("PKCS11: Verify failed [%s]", err)
+		return false, fmt.Errorf("PKCS11: Verify failed [%w]", err)
 	}
 
 	return true, nil
@@ -799,7 +800,7 @@ func (csp *Provider) ecPoint(session pkcs11.SessionHandle, key pkcs11.ObjectHand
 
 	attr, err := csp.ctx.GetAttributeValue(session, key, template)
 	if err != nil {
-		return nil, nil, fmt.Errorf("PKCS11: get(EC point) [%s]", err)
+		return nil, nil, fmt.Errorf("PKCS11: get(EC point) [%w]", err)
 	}
 
 	for _, a := range attr {

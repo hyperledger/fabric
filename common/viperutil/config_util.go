@@ -382,7 +382,7 @@ func kafkaVersionDecodeHook(f reflect.Type, t reflect.Type, data any) (any, erro
 
 	v, err := version.NewVersion(data.(string))
 	if err != nil {
-		return nil, fmt.Errorf("Unable to parse Kafka version: %s", err)
+		return nil, fmt.Errorf("Unable to parse Kafka version: %w", err)
 	}
 
 	for kafkaVersion, constraints := range kafkaVersionConstraints {

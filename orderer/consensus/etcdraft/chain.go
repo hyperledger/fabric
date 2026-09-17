@@ -505,7 +505,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 
 	stepMsg := &raftpb.Message{}
 	if err := proto.Unmarshal(req.GetPayload(), stepMsg); err != nil {
-		return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
+		return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %w", err)
 	}
 
 	if stepMsg.GetTo() != c.raftID {
@@ -515,7 +515,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	}
 
 	if err := c.Node.Step(context.TODO(), stepMsg); err != nil {
-		return fmt.Errorf("failed to process Raft Step message: %s", err)
+		return fmt.Errorf("failed to process Raft Step message: %w", err)
 	}
 
 	if len(req.GetMetadata()) == 0 || atomic.LoadUint64(&c.lastKnownLeader) != sender { // ignore metadata from non-leader
@@ -947,12 +947,12 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 					if err := c.Node.abdicateLeadership(); err != nil {
 						// If there is no leader, abort and do not retry.
 						// Return early to prevent re-submission of the transaction
-						if err == ErrNoLeader || err == ErrChainHalting {
+						if errors.Is(err, ErrNoLeader) || errors.Is(err, ErrChainHalting) {
 							return
 						}
 
 						// If the error isn't any of the below, it's a programming error, so panic.
-						if err != ErrNoAvailableLeaderCandidate && err != ErrTimedOutLeaderTransfer {
+						if !errors.Is(err, ErrNoAvailableLeaderCandidate) && !errors.Is(err, ErrTimedOutLeaderTransfer) {
 							c.logger.Panicf("Programming error, abdicateLeader() returned with an unexpected error: %v", err)
 						}
 
