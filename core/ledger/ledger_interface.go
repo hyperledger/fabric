@@ -98,6 +98,12 @@ type CouchDBConfig struct {
 	// UserCacheSizeMBs needs to be a multiple of 32 MB. If it is not a multiple of 32 MB,
 	// the peer would round the size to the next multiple of 32 MB.
 	UserCacheSizeMBs int
+	// TLSEnabled enables TLS for CouchDB connection.
+	TLSEnabled bool
+	// TLSCACertFile is the path to the CA certificate file for verifying the CouchDB server certificate.
+	TLSCACertFile string
+	// TLSSkipVerify skips server certificate verification (insecure, for testing only).
+	TLSSkipVerify bool
 }
 
 // PrivateDataConfig is a structure used to configure a private data storage provider.
