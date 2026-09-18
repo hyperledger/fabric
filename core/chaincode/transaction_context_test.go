@@ -119,7 +119,7 @@ var _ = Describe("TransactionContext", func() {
 	})
 
 	Describe("CleanupQueryContext", func() {
-		It("removes references to the the iterator and results", func() {
+		It("removes references to the iterator and results", func() {
 			transactionContext.InitializeQueryContext("query-id", resultsIterator)
 			transactionContext.CleanupQueryContext("query-id")
 

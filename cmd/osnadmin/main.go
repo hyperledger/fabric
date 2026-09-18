@@ -77,7 +77,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 		caCertPool = x509.NewCertPool()
 		caFilePEM, err := os.ReadFile(*caFile)
 		if err != nil {
-			return "", 1, fmt.Errorf("reading orderer CA certificate: %s", err)
+			return "", 1, fmt.Errorf("reading orderer CA certificate: %w", err)
 		}
 		if !caCertPool.AppendCertsFromPEM(caFilePEM) {
 			return "", 1, fmt.Errorf("failed to add ca-file PEM to cert pool")
@@ -85,7 +85,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 
 		tlsClientCert, err = tls.LoadX509KeyPair(*clientCert, *clientKey)
 		if err != nil {
-			return "", 1, fmt.Errorf("loading client cert/key pair: %s", err)
+			return "", 1, fmt.Errorf("loading client cert/key pair: %w", err)
 		}
 	} else { // TLS disabled
 		osnURL = fmt.Sprintf("http://%s", *orderer)
@@ -95,7 +95,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	if *configBlockPath != "" {
 		marshaledConfigBlock, err = os.ReadFile(*configBlockPath)
 		if err != nil {
-			return "", 1, fmt.Errorf("reading config block: %s", err)
+			return "", 1, fmt.Errorf("reading config block: %w", err)
 		}
 
 		err = validateBlockChannelID(marshaledConfigBlock, *joinChannelID)
@@ -124,6 +124,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	if err != nil {
 		return errorOutput(err), 1, nil
 	}
+	defer resp.Body.Close()
 
 	bodyBytes, err := readBodyBytes(resp.Body)
 	if err != nil {
@@ -154,9 +155,8 @@ func responseOutput(showStatus bool, statusCode int, responseBody []byte) (strin
 func readBodyBytes(body io.ReadCloser) ([]byte, error) {
 	bodyBytes, err := io.ReadAll(body)
 	if err != nil {
-		return nil, fmt.Errorf("reading http response body: %s", err)
+		return nil, fmt.Errorf("reading http response body: %w", err)
 	}
-	body.Close()
 
 	return bodyBytes, nil
 }
@@ -169,7 +169,7 @@ func validateBlockChannelID(blockBytes []byte, channelID string) error {
 	block := &common.Block{}
 	err := proto.Unmarshal(blockBytes, block)
 	if err != nil {
-		return fmt.Errorf("unmarshalling block: %s", err)
+		return fmt.Errorf("unmarshalling block: %w", err)
 	}
 
 	blockChannelID, err := protoutil.GetChannelIDFromBlock(block)

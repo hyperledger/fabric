@@ -81,19 +81,19 @@ func executeJoin(cf *ChannelCmdFactory, spec *pb.ChaincodeSpec) (err error) {
 
 	creator, err := cf.Signer.Serialize()
 	if err != nil {
-		return fmt.Errorf("Error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
+		return fmt.Errorf("Error serializing identity for %s: %w", cf.Signer.GetIdentifier(), err)
 	}
 
 	var prop *pb.Proposal
 	prop, _, err = protoutil.CreateProposalFromCIS(pcommon.HeaderType_CONFIG, "", invocation, creator)
 	if err != nil {
-		return fmt.Errorf("Error creating proposal for join %s", err)
+		return fmt.Errorf("Error creating proposal for join %w", err)
 	}
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = protoutil.GetSignedProposal(prop, cf.Signer)
 	if err != nil {
-		return fmt.Errorf("Error creating signed proposal %s", err)
+		return fmt.Errorf("Error creating signed proposal %w", err)
 	}
 
 	var proposalResp *pb.ProposalResponse

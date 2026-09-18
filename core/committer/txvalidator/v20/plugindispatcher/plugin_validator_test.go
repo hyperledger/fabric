@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package plugindispatcher_test
 
 import (
+	errors2 "errors"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -51,8 +52,8 @@ func TestValidateWithPlugin(t *testing.T) {
 	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("foo")).Once()
 	factory.On("New").Return(plugin)
 	pm["vscc"] = factory
-	err = v.ValidateWithPlugin(ctx)
-	require.Contains(t, err.(*validation.ExecutionFailureError).Error(), "failed initializing plugin: foo")
+	err, _ = errors2.AsType[*validation.ExecutionFailureError](v.ValidateWithPlugin(ctx))
+	require.Contains(t, err.Error(), "failed initializing plugin: foo")
 
 	// Scenario III: The plugin initialization succeeds but an execution error occurs.
 	// The plugin should pass the error as is.

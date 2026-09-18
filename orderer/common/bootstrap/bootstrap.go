@@ -14,7 +14,7 @@ type Helper interface {
 	GenesisBlock() *ab.Block
 }
 
-// Replacer provides the ability to to replace the current genesis block used
+// Replacer provides the ability to replace the current genesis block used
 // for bootstrapping with the supplied block. It is used during consensus-type
 // migration in order to replace the original genesis block used for
 // bootstrapping with the latest config block of the system channel, which

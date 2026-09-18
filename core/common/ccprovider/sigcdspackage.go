@@ -153,7 +153,7 @@ func (ccpack *SignedCDSPackage) getCDSData(scds *pb.SignedChaincodeDeploymentSpe
 	}
 
 	if err = factory.InitFactories(nil); err != nil {
-		return nil, nil, nil, fmt.Errorf("Internal error, BCCSP could not be initialized : %s", err)
+		return nil, nil, nil, fmt.Errorf("Internal error, BCCSP could not be initialized : %w", err)
 	}
 
 	// get the hash object

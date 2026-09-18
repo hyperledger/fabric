@@ -34,7 +34,7 @@ func (k *rsaPublicKey) Bytes() (raw []byte, err error) {
 	}
 	raw, err = x509.MarshalPKIXPublicKey(k.pubKey)
 	if err != nil {
-		return nil, fmt.Errorf("Failed marshalling key [%s]", err)
+		return nil, fmt.Errorf("Failed marshalling key [%w]", err)
 	}
 	return
 }

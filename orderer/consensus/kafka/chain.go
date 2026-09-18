@@ -232,7 +232,7 @@ func (chain *chainImpl) Configure(config *cb.Envelope, configSeq uint64) error {
 func (chain *chainImpl) configure(config *cb.Envelope, configSeq uint64, originalOffset int64) error {
 	marshaledConfig, err := protoutil.Marshal(config)
 	if err != nil {
-		return fmt.Errorf("cannot enqueue, unable to marshal config because %s", err)
+		return fmt.Errorf("cannot enqueue, unable to marshal config because %w", err)
 	}
 	if !chain.enqueue(newConfigMessage(marshaledConfig, configSeq, originalOffset)) {
 		return fmt.Errorf("cannot enqueue")
@@ -278,7 +278,7 @@ func (chain *chainImpl) HealthCheck(ctx context.Context) error {
 	_, _, err = chain.producer.SendMessage(message)
 	if err != nil {
 		logger.Warnf("[channel %s] Cannot post CONNECT message = %s", chain.channel.topic(), err)
-		if err == sarama.ErrNotEnoughReplicas {
+		if errors.Is(err, sarama.ErrNotEnoughReplicas) {
 			errMsg := fmt.Sprintf("[replica ids: %d]", chain.replicaIDs)
 			return errors.WithMessage(err, errMsg)
 		}
@@ -377,8 +377,8 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 			case <-chain.errorChan: // If already closed, don't do anything
 			default:
 
-				switch kafkaErr.Err {
-				case sarama.ErrOffsetOutOfRange:
+				switch {
+				case errors.Is(kafkaErr.Err, sarama.ErrOffsetOutOfRange):
 					// the kafka consumer will auto retry for all errors except for ErrOffsetOutOfRange
 					logger.Errorf("[channel: %s] Unrecoverable error during consumption: %s", chain.ChannelID(), kafkaErr)
 					close(chain.errorChan)
@@ -722,7 +722,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 	env := &cb.Envelope{}
 	if err := proto.Unmarshal(regularMessage.GetPayload(), env); err != nil {
 		// This shouldn't happen, it should be filtered at ingress
-		return fmt.Errorf("failed to unmarshal payload of regular message because = %s", err)
+		return fmt.Errorf("failed to unmarshal payload of regular message because = %w", err)
 	}
 
 	logger.Debugf("[channel: %s] Processing regular Kafka message of type %s", chain.ChannelID(), regularMessage.GetClass().String())
@@ -740,21 +740,21 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 
 		chdr, err := protoutil.ChannelHeader(env)
 		if err != nil {
-			return fmt.Errorf("discarding bad config message because of channel header unmarshalling error = %s", err)
+			return fmt.Errorf("discarding bad config message because of channel header unmarshalling error = %w", err)
 		}
 
 		class := chain.ClassifyMsg(chdr)
 		switch class {
 		case msgprocessor.ConfigMsg:
-			if _, _, err := chain.ProcessConfigMsg(env); err != nil {
-				return fmt.Errorf("discarding bad config message because = %s", err)
+			if _, _, err = chain.ProcessConfigMsg(env); err != nil {
+				return fmt.Errorf("discarding bad config message because = %w", err)
 			}
 
 			commitConfigMsg(env, chain.lastOriginalOffsetProcessed)
 
 		case msgprocessor.NormalMsg:
-			if _, err := chain.ProcessNormalMsg(env); err != nil {
-				return fmt.Errorf("discarding bad normal message because = %s", err)
+			if _, err = chain.ProcessNormalMsg(env); err != nil {
+				return fmt.Errorf("discarding bad normal message because = %w", err)
 			}
 
 			commitNormalMsg(env, chain.lastOriginalOffsetProcessed)
@@ -800,15 +800,15 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			logger.Debugf("[channel: %s] Config sequence has advanced since this normal message got validated, re-validating", chain.ChannelID())
 			configSeq, err := chain.ProcessNormalMsg(env)
 			if err != nil {
-				return fmt.Errorf("discarding bad normal message because = %s", err)
+				return fmt.Errorf("discarding bad normal message because = %w", err)
 			}
 
 			logger.Debugf("[channel: %s] Normal message is still valid, re-submit", chain.ChannelID())
 
 			// For both messages that are ordered for the first time or re-ordered, we set original offset
 			// to current received offset and re-order it.
-			if err := chain.order(env, configSeq, receivedOffset); err != nil {
-				return fmt.Errorf("error re-submitting normal message because = %s", err)
+			if err = chain.order(env, configSeq, receivedOffset); err != nil {
+				return fmt.Errorf("error re-submitting normal message because = %w", err)
 			}
 
 			return nil
@@ -864,13 +864,13 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			logger.Debugf("[channel: %s] Config sequence has advanced since this config message got validated, re-validating", chain.ChannelID())
 			configEnv, configSeq, err := chain.ProcessConfigMsg(env)
 			if err != nil {
-				return fmt.Errorf("rejecting config message because = %s", err)
+				return fmt.Errorf("rejecting config message because = %w", err)
 			}
 
 			// For both messages that are ordered for the first time or re-ordered, we set original offset
 			// to current received offset and re-order it.
-			if err := chain.configure(configEnv, configSeq, receivedOffset); err != nil {
-				return fmt.Errorf("error re-submitting config message because = %s", err)
+			if err = chain.configure(configEnv, configSeq, receivedOffset); err != nil {
+				return fmt.Errorf("error re-submitting config message because = %w", err)
 			}
 
 			logger.Debugf("[channel: %s] Resubmitted config message with offset %d, block ingress messages", chain.ChannelID(), receivedOffset)

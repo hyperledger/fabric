@@ -224,7 +224,7 @@ func (oc *OrdererConfig) validateBatchTimeout() error {
 	var err error
 	oc.batchTimeout, err = time.ParseDuration(oc.protos.BatchTimeout.GetTimeout())
 	if err != nil {
-		return fmt.Errorf("Attempted to set the batch timeout to a invalid value: %s", err)
+		return fmt.Errorf("Attempted to set the batch timeout to a invalid value: %w", err)
 	}
 	if oc.batchTimeout <= 0 {
 		return fmt.Errorf("Attempted to set the batch timeout to a non-positive value: %s", oc.batchTimeout)

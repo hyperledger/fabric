@@ -537,7 +537,7 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 
 		snapshotDataImporter.rowsSorter.dbProvider.Close()
 		err = snapshotDataImporter.Done()
-		require.EqualError(t, err, "error writing batch to leveldb: leveldb: closed")
+		require.EqualError(t, err, "error writing batch to leveldb: leveldb: closed") //nolint:dupword
 	})
 
 	t.Run("error-when-retrieving-iterator-during-done", func(t *testing.T) {

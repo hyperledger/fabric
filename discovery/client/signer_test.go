@@ -51,7 +51,6 @@ func TestDifferentMessages(t *testing.T) {
 		var wg sync.WaitGroup
 		wg.Add(int(end - start))
 		for i := start; i < end; i++ {
-			i := i
 			go func() {
 				defer wg.Done()
 				sig, err := ms.Sign([]byte{byte(i)})

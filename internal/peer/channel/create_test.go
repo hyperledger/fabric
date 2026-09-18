@@ -140,7 +140,7 @@ func InitMSP() {
 func initMSP() {
 	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
-		panic(fmt.Errorf("Fatal error when reading MSP config: err %s", err))
+		panic(fmt.Errorf("Fatal error when reading MSP config: err %w", err))
 	}
 }
 
@@ -558,7 +558,7 @@ func TestCreateChainInvalidTx(t *testing.T) {
 
 	if err = cmd.Execute(); err == nil {
 		t.Errorf("expected error")
-	} else if _, ok := err.(InvalidCreateTx); !ok {
+	} else if _, ok := errors.AsType[InvalidCreateTx](err); !ok {
 		t.Errorf("invalid error")
 	}
 
@@ -569,7 +569,7 @@ func TestCreateChainInvalidTx(t *testing.T) {
 
 	if err = cmd.Execute(); err == nil {
 		t.Errorf("expected error")
-	} else if _, ok := err.(InvalidCreateTx); !ok {
+	} else if _, ok := errors.AsType[InvalidCreateTx](err); !ok {
 		t.Errorf("invalid error")
 	}
 
@@ -578,9 +578,9 @@ func TestCreateChainInvalidTx(t *testing.T) {
 		t.Fatalf("couldn't create tx file")
 	}
 
-	if err := cmd.Execute(); err == nil {
+	if err = cmd.Execute(); err == nil {
 		t.Errorf("expected error")
-	} else if _, ok := err.(InvalidCreateTx); !ok {
+	} else if _, ok := errors.AsType[InvalidCreateTx](err); !ok {
 		t.Errorf("invalid error")
 	}
 }

@@ -6,7 +6,10 @@ SPDX-License-Identifier: Apache-2.0
 
 package dataformat
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // The data format stored in ledger databases may be changed in a new release to
 // support new features. This file defines the constants to check whether or not
@@ -38,6 +41,6 @@ func (e *ErrFormatMismatch) Error() string {
 
 // IsVersionMismatch returns true if err is an ErrFormatMismatch
 func IsVersionMismatch(err error) bool {
-	_, ok := err.(*ErrFormatMismatch)
+	_, ok := errors.AsType[*ErrFormatMismatch](err)
 	return ok
 }

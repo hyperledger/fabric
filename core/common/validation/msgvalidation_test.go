@@ -20,19 +20,19 @@ import (
 func createTestTransactionEnvelope(channel string, response *peer.Response, simRes []byte) (*common.Envelope, error) {
 	prop, err := createTestProposalAndSignedProposal(channel)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create test proposal and signed proposal, err %s", err)
+		return nil, fmt.Errorf("failed to create test proposal and signed proposal, err %w", err)
 	}
 
 	// endorse it to get a proposal response
 	presp, err := protoutil.CreateProposalResponse(prop.GetHeader(), prop.GetPayload(), response, simRes, nil, getChaincodeID(), signer)
 	if err != nil {
-		return nil, fmt.Errorf("CreateProposalResponse failed, err %s", err)
+		return nil, fmt.Errorf("CreateProposalResponse failed, err %w", err)
 	}
 
 	// assemble a transaction from that proposal and endorsement
 	tx, err := protoutil.CreateSignedTx(prop, signer, presp)
 	if err != nil {
-		return nil, fmt.Errorf("CreateSignedTx failed, err %s", err)
+		return nil, fmt.Errorf("CreateSignedTx failed, err %w", err)
 	}
 
 	return tx, nil
@@ -42,7 +42,7 @@ func createTestProposalAndSignedProposal(channel string) (*peer.Proposal, error)
 	// get a toy proposal
 	prop, err := getProposal(channel)
 	if err != nil {
-		return nil, fmt.Errorf("getProposal failed, err %s", err)
+		return nil, fmt.Errorf("getProposal failed, err %w", err)
 	}
 
 	return prop, nil

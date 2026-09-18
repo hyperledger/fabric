@@ -72,7 +72,7 @@ func update(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	var broadcastClient common.BroadcastClient
 	broadcastClient, err = cf.BroadcastFactory()
 	if err != nil {
-		return fmt.Errorf("Error getting broadcast client: %s", err)
+		return fmt.Errorf("Error getting broadcast client: %w", err)
 	}
 
 	defer broadcastClient.Close()

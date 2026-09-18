@@ -110,7 +110,7 @@ func mockChaincodeCmdFactoryForTest(sign bool) (*ChaincodeCmdFactory, error) {
 	if sign {
 		signer, err = common.GetDefaultSigner()
 		if err != nil {
-			return nil, fmt.Errorf("Get default signer error: %v", err)
+			return nil, fmt.Errorf("Get default signer error: %w", err)
 		}
 	}
 

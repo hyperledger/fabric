@@ -49,19 +49,19 @@ func (p *Platform) Name() string {
 func (p *Platform) ValidatePath(rawPath string) error {
 	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
-		return fmt.Errorf("invalid path: %s", err)
+		return fmt.Errorf("invalid path: %w", err)
 	}
 
 	// Treat empty scheme as a local filesystem path
 	if path.Scheme == "" {
 		pathToCheck, err := filepath.Abs(rawPath)
 		if err != nil {
-			return fmt.Errorf("error obtaining absolute path of the chaincode: %s", err)
+			return fmt.Errorf("error obtaining absolute path of the chaincode: %w", err)
 		}
 
 		exists, err := pathExists(pathToCheck)
 		if err != nil {
-			return fmt.Errorf("error validating chaincode path: %s", err)
+			return fmt.Errorf("error validating chaincode path: %w", err)
 		}
 		if !exists {
 			return fmt.Errorf("path to chaincode does not exist: %s", rawPath)
@@ -82,7 +82,7 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 	is := bytes.NewReader(code)
 	gr, err := gzip.NewReader(is)
 	if err != nil {
-		return fmt.Errorf("failure opening codepackage gzip stream: %s", err)
+		return fmt.Errorf("failure opening codepackage gzip stream: %w", err)
 	}
 	tr := tar.NewReader(gr)
 
@@ -148,12 +148,12 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
 	if err = util.WriteFolderToTarPackage(tw, folder, []string{"node_modules"}, nil, nil); err != nil {
 		logger.Errorf("Error writing folder to tar package %s", err)
-		return nil, fmt.Errorf("Error writing Chaincode package contents: %s", err)
+		return nil, fmt.Errorf("Error writing Chaincode package contents: %w", err)
 	}
 
 	// Write the tar file out
-	if err := tw.Close(); err != nil {
-		return nil, fmt.Errorf("Error writing Chaincode package contents: %s", err)
+	if err = tw.Close(); err != nil {
+		return nil, fmt.Errorf("Error writing Chaincode package contents: %w", err)
 	}
 
 	tw.Close()

@@ -200,7 +200,8 @@ var _ = Describe("System", func() {
 
 			_, err = unauthClient.Get(fmt.Sprintf("https://%s/healthz", system.Addr()))
 			Expect(err).To(BeAssignableToTypeOf(&url.Error{}))
-			Expect(err.(*url.Error).Err.Error()).To(ContainSubstring("remote error: tls: certificate required"))
+			urlError, _ := errors.AsType[*url.Error](err)
+			Expect(urlError.Err.Error()).To(ContainSubstring("remote error: tls: certificate required"))
 		})
 	})
 
@@ -389,7 +390,7 @@ var _ = Describe("System", func() {
 
 			conn.SetReadDeadline(time.Now().Add(time.Minute))
 			_, err = io.Copy(w, conn)
-			if err != nil && err != io.EOF {
+			if err != nil && !errors.Is(err, io.EOF) {
 				Expect(err).NotTo(HaveOccurred())
 			}
 		}

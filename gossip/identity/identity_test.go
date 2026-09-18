@@ -145,10 +145,10 @@ func TestVerify(t *testing.T) {
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
 	pkiID2 := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity2))
 	idStore.Put(pkiID, api.PeerIdentityType(identity))
-	signed, err := idStore.Sign([]byte("bla bla"))
+	signed, err := idStore.Sign([]byte("bla bla1"))
 	require.NoError(t, err)
-	require.NoError(t, idStore.Verify(pkiID, signed, []byte("bla bla")))
-	require.Error(t, idStore.Verify(pkiID2, signed, []byte("bla bla")))
+	require.NoError(t, idStore.Verify(pkiID, signed, []byte("bla bla1")))
+	require.Error(t, idStore.Verify(pkiID2, signed, []byte("bla bla1")))
 }
 
 func TestListInvalidIdentities(t *testing.T) {

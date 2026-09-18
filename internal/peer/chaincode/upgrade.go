@@ -62,30 +62,30 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 
 	cds, err := getChaincodeDeploymentSpec(spec, false)
 	if err != nil {
-		return nil, fmt.Errorf("error getting chaincode code %s: %s", chaincodeName, err)
+		return nil, fmt.Errorf("error getting chaincode code %s: %w", chaincodeName, err)
 	}
 
 	creator, err := cf.Signer.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("error serializing identity: %s", err)
+		return nil, fmt.Errorf("error serializing identity: %w", err)
 	}
 
 	prop, _, err := protoutil.CreateUpgradeProposalFromCDS(channelID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc), collectionConfigBytes)
 	if err != nil {
-		return nil, fmt.Errorf("error creating proposal %s: %s", chainFuncName, err)
+		return nil, fmt.Errorf("error creating proposal %s: %w", chainFuncName, err)
 	}
 	logger.Debugf("Get upgrade proposal for chaincode <%v>", spec.GetChaincodeId())
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = protoutil.GetSignedProposal(prop, cf.Signer)
 	if err != nil {
-		return nil, fmt.Errorf("error creating signed proposal  %s: %s", chainFuncName, err)
+		return nil, fmt.Errorf("error creating signed proposal  %s: %w", chainFuncName, err)
 	}
 
 	// upgrade is currently only supported for one peer
 	proposalResponse, err := cf.EndorserClients[0].ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return nil, fmt.Errorf("error endorsing %s: %s", chainFuncName, err)
+		return nil, fmt.Errorf("error endorsing %s: %w", chainFuncName, err)
 	}
 
 	if proposalResponse != nil {
@@ -93,7 +93,7 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 		// assemble a signed transaction (it's an Envelope message)
 		env, err := protoutil.CreateSignedTx(prop, cf.Signer, proposalResponse)
 		if err != nil {
-			return nil, fmt.Errorf("could not assemble transaction, err %s", err)
+			return nil, fmt.Errorf("could not assemble transaction, err %w", err)
 		}
 		logger.Debug("Get Signed envelope")
 		return env, nil

@@ -418,7 +418,7 @@ func createObjects(updateFactory func(uint64) protoext.ReceivedMessage, msgCons 
 	}
 	sender := &senderMock{}
 	memberSvc := &membershipSvcMock{}
-	memberSvc.On("GetMembership").Return([]discovery.NetworkMember{{PKIid: []byte("bla bla"), Endpoint: "127.0.0.1:5611"}})
+	memberSvc.On("GetMembership").Return([]discovery.NetworkMember{{PKIid: []byte("bla bla1"), Endpoint: "127.0.0.1:5611"}})
 
 	var certStore *certStore
 	adapter := &pull.PullAdapter{

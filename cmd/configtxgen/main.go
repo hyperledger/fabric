@@ -51,7 +51,7 @@ func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock 
 	logger.Info("Writing genesis block")
 	err = writeFile(outputBlock, protoutil.MarshalOrPanic(genesisBlock), 0o640)
 	if err != nil {
-		return fmt.Errorf("error writing genesis block: %s", err)
+		return fmt.Errorf("error writing genesis block: %w", err)
 	}
 	return nil
 }
@@ -73,7 +73,7 @@ func doOutputChannelCreateTx(conf, baseProfile *genesisconfig.Profile, channelID
 	logger.Info("Writing new channel tx")
 	err = writeFile(outputChannelCreateTx, protoutil.MarshalOrPanic(configtx), 0o640)
 	if err != nil {
-		return fmt.Errorf("error writing channel create tx: %s", err)
+		return fmt.Errorf("error writing channel create tx: %w", err)
 	}
 	return nil
 }
@@ -125,7 +125,7 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 	logger.Info("Writing anchor peer update")
 	err = writeFile(outputAnchorPeersUpdate, protoutil.MarshalOrPanic(updateTx), 0o640)
 	if err != nil {
-		return fmt.Errorf("Error writing channel anchor peer update: %s", err)
+		return fmt.Errorf("Error writing channel anchor peer update: %w", err)
 	}
 	return nil
 }
@@ -140,11 +140,11 @@ func doInspectBlock(inspectBlock string) error {
 	logger.Info("Parsing genesis block")
 	block, err := protoutil.UnmarshalBlock(data)
 	if err != nil {
-		return fmt.Errorf("error unmarshalling to block: %s", err)
+		return fmt.Errorf("error unmarshalling to block: %w", err)
 	}
 	err = protolator.DeepMarshalJSON(os.Stdout, block)
 	if err != nil {
-		return fmt.Errorf("malformed block contents: %s", err)
+		return fmt.Errorf("malformed block contents: %w", err)
 	}
 	return nil
 }
@@ -153,18 +153,18 @@ func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 	logger.Info("Inspecting transaction")
 	data, err := os.ReadFile(inspectChannelCreateTx)
 	if err != nil {
-		return fmt.Errorf("could not read channel create tx: %s", err)
+		return fmt.Errorf("could not read channel create tx: %w", err)
 	}
 
 	logger.Info("Parsing transaction")
 	env, err := protoutil.UnmarshalEnvelope(data)
 	if err != nil {
-		return fmt.Errorf("Error unmarshalling envelope: %s", err)
+		return fmt.Errorf("Error unmarshalling envelope: %w", err)
 	}
 
 	err = protolator.DeepMarshalJSON(os.Stdout, env)
 	if err != nil {
-		return fmt.Errorf("malformed transaction contents: %s", err)
+		return fmt.Errorf("malformed transaction contents: %w", err)
 	}
 
 	return nil

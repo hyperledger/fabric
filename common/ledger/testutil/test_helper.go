@@ -31,11 +31,11 @@ func init() {
 	// setup the MSP manager so that we can sign/verify
 	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
-		panic(fmt.Errorf("Could not load msp config, err %s", err))
+		panic(fmt.Errorf("Could not load msp config, err %w", err))
 	}
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	if err != nil {
-		panic(fmt.Errorf("Initialize cryptoProvider failed: %s", err))
+		panic(fmt.Errorf("Initialize cryptoProvider failed: %w", err))
 	}
 	signer, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {

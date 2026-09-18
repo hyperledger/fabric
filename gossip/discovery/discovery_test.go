@@ -9,6 +9,7 @@ package discovery
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand/v2"
@@ -290,7 +291,7 @@ func (g *gossipInstance) initiateSync(frequency time.Duration, peerNum int) {
 func (g *gossipInstance) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	for {
 		envelope, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {
@@ -811,13 +812,13 @@ func TestUpdate(t *testing.T) {
 
 	waitUntilOrFail(t, fullMembership)
 
-	instances[0].UpdateMetadata([]byte("bla bla"))
+	instances[0].UpdateMetadata([]byte("bla bla1"))
 	instances[nodeNum-1].UpdateEndpoint("localhost:5511")
 
 	checkMembership := func() bool {
 		for _, member := range instances[nodeNum-1].GetMembership() {
 			if string(member.PKIid) == instances[0].comm.id {
-				if string(member.Metadata) != "bla bla" {
+				if string(member.Metadata) != "bla bla1" {
 					return false
 				}
 			}
@@ -1469,7 +1470,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 		defer instances[index].discoveryImpl().lock.RUnlock()
 		require.Empty(t, instances[index].discoveryImpl().aliveLastTS, fmt.Sprint(step, " Data from alive msg still exists in aliveLastTS of discovery inst ", index))
 		require.Empty(t, instances[index].discoveryImpl().deadLastTS, fmt.Sprint(step, " Data from alive msg still exists in deadLastTS of discovery inst ", index))
-		require.Empty(t, instances[index].discoveryImpl().id2Member, fmt.Sprint(step, " id2Member mapping still still contains data related to Alive msg: discovery inst ", index))
+		require.Empty(t, instances[index].discoveryImpl().id2Member, fmt.Sprint(step, " id2Member mapping still contains data related to Alive msg: discovery inst ", index))
 		require.Empty(t, instances[index].discoveryImpl().msgStore.Get(), fmt.Sprint(step, " Expired Alive msg still stored in store of discovery inst ", index))
 		require.Zero(t, instances[index].discoveryImpl().aliveMembership.Size(), fmt.Sprint(step, " Alive membership list is not empty, discovery instance", index))
 		require.Zero(t, instances[index].discoveryImpl().deadMembership.Size(), fmt.Sprint(step, " Dead membership list is not empty, discovery instance", index))

@@ -182,7 +182,7 @@ func (cn *clusterNode) unfreeze() {
 func (cn *clusterNode) resurrect() {
 	gRPCServer, err := comm_utils.NewGRPCServer(cn.bindAddress, cn.serverConfig)
 	if err != nil {
-		panic(fmt.Errorf("failed starting gRPC server: %v", err))
+		panic(fmt.Errorf("failed starting gRPC server: %w", err))
 	}
 	cn.srv = gRPCServer
 	orderer.RegisterClusterServer(gRPCServer.Server(), cn.dispatcher)
@@ -197,11 +197,11 @@ func (cn *clusterNode) stop() {
 func (cn *clusterNode) renewCertificates() {
 	clientKeyPair, err := ca.NewClientCertKeyPair()
 	if err != nil {
-		panic(fmt.Errorf("failed creating client certificate %v", err))
+		panic(fmt.Errorf("failed creating client certificate %w", err))
 	}
 	serverKeyPair, err := ca.NewServerCertKeyPair("127.0.0.1")
 	if err != nil {
-		panic(fmt.Errorf("failed creating server certificate %v", err))
+		panic(fmt.Errorf("failed creating server certificate %w", err))
 	}
 
 	cn.nodeInfo.ClientTLSCert = clientKeyPair.TLSCert.Raw

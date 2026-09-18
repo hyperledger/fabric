@@ -723,7 +723,7 @@ var _ = Describe("ValidatorCommitter", func() {
 		})
 
 		Context("when the chaincode does not exist in the new lifecycle", func() {
-			It("returns nil nil nil", func() {
+			It("returns 3 nils", func() {
 				ep, uErr, vErr := vc.CollectionValidationInfo("channel-id", "missing-name", "collection-name", fakeValidationState)
 				Expect(uErr).NotTo(HaveOccurred())
 				Expect(vErr).NotTo(HaveOccurred())

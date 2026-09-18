@@ -25,13 +25,13 @@ func (msp *bccspmsp) getCertifiersIdentifier(certRaw []byte) ([]byte, error) {
 	// 1. check that certificate is registered in msp.rootCerts or msp.intermediateCerts
 	cert, err := msp.getCertFromPem(certRaw)
 	if err != nil {
-		return nil, fmt.Errorf("Failed getting certificate for [%v]: [%s]", certRaw, err)
+		return nil, fmt.Errorf("Failed getting certificate for [%v]: [%w]", certRaw, err)
 	}
 
 	// 2. Sanitize it to ensure like for like comparison
 	cert, err = msp.sanitizeCert(cert)
 	if err != nil {
-		return nil, fmt.Errorf("sanitizeCert failed %s", err)
+		return nil, fmt.Errorf("sanitizeCert failed %w", err)
 	}
 
 	found := false
@@ -66,14 +66,14 @@ func (msp *bccspmsp) getCertifiersIdentifier(certRaw []byte) ([]byte, error) {
 	} else {
 		chain, err = msp.getValidationChain(cert, true)
 		if err != nil {
-			return nil, fmt.Errorf("Failed computing validation chain for [%v]. [%s]", cert, err)
+			return nil, fmt.Errorf("Failed computing validation chain for [%v]. [%w]", cert, err)
 		}
 	}
 
 	// 4. compute the hash of the certification path
 	certifiersIdentifier, err = msp.getCertificationChainIdentifierFromChain(chain)
 	if err != nil {
-		return nil, fmt.Errorf("Failed computing Certifiers Identifier for [%v]. [%s]", certRaw, err)
+		return nil, fmt.Errorf("Failed computing Certifiers Identifier for [%v]. [%w]", certRaw, err)
 	}
 
 	return certifiersIdentifier, nil

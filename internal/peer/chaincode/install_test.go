@@ -152,8 +152,8 @@ func installCC(t *testing.T) error {
 	args := []string{"-n", "mychaincode", "-p", "github.com/hyperledger/fabric/internal/peer/chaincode/testdata/src/chaincodes/noop", "-v", "anotherversion"}
 	cmd.SetArgs(args)
 
-	if err := cmd.Execute(); err != nil {
-		return fmt.Errorf("Run chaincode upgrade cmd error:%v", err)
+	if err = cmd.Execute(); err != nil {
+		return fmt.Errorf("Run chaincode upgrade cmd error:%w", err)
 	}
 
 	return nil

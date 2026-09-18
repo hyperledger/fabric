@@ -23,7 +23,7 @@ import (
 func signExistingPackage(env *pcommon.Envelope, infile, outfile string, cryptoProvider bccsp.BCCSP) error {
 	signer, err := common.GetDefaultSigner()
 	if err != nil {
-		return fmt.Errorf("Get default signer error: %v", err)
+		return fmt.Errorf("Get default signer error: %w", err)
 	}
 
 	mockCF := &ChaincodeCmdFactory{Signer: signer}

@@ -29,13 +29,13 @@ func fieldBytes(fieldName string, r *http.Request) ([]byte, error) {
 func fieldConfigProto(fieldName string, r *http.Request) (*cb.Config, error) {
 	fieldBytes, err := fieldBytes(fieldName, r)
 	if err != nil {
-		return nil, fmt.Errorf("error reading field bytes: %s", err)
+		return nil, fmt.Errorf("error reading field bytes: %w", err)
 	}
 
 	config := &cb.Config{}
 	err = proto.Unmarshal(fieldBytes, config)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling field bytes: %s", err)
+		return nil, fmt.Errorf("error unmarshalling field bytes: %w", err)
 	}
 
 	return config, nil
