@@ -131,7 +131,7 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 		t,
 		int32(shim.OK),
 		res.GetStatus(),
-		"invoke invoke expected wrong function name provided",
+		"invoke expected wrong function name provided",
 	)
 	require.Equal(t, "Requested function fooFunction not found.", res.GetMessage())
 

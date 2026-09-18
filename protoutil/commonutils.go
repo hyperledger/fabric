@@ -166,7 +166,7 @@ func NewSignatureHeaderOrPanic(id identity.Serializer) *cb.SignatureHeader {
 
 	signatureHeader, err := NewSignatureHeader(id)
 	if err != nil {
-		panic(fmt.Errorf("failed generating a new SignatureHeader: %s", err))
+		panic(fmt.Errorf("failed generating a new SignatureHeader: %w", err))
 	}
 
 	return signatureHeader
@@ -180,7 +180,7 @@ func SignOrPanic(signer identity.Signer, msg []byte) []byte {
 
 	sigma, err := signer.Sign(msg)
 	if err != nil {
-		panic(fmt.Errorf("failed generating signature: %s", err))
+		panic(fmt.Errorf("failed generating signature: %w", err))
 	}
 	return sigma
 }

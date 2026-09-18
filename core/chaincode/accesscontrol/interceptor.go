@@ -46,7 +46,7 @@ func (i *interceptor) Register(stream pb.ChaincodeSupport_RegisterServer) error 
 	}
 	msg, err := stream.Recv()
 	if err != nil {
-		return fmt.Errorf("Recv() error: %v, closing connection", err)
+		return fmt.Errorf("Recv() error: %w, closing connection", err)
 	}
 	err = is.auth(msg, is.ServerStream)
 	if err != nil {

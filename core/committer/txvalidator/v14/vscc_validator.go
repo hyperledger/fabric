@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package txvalidator
 
 import (
+	errors2 "errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -218,8 +219,9 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 				VSCCName:  vscc.ChaincodeName,
 			}
 			if err = v.VSCCValidateTxForCC(ctx); err != nil {
-				switch err.(type) {
-				case *commonerrors.VSCCEndorsementPolicyError:
+				var VSCCEndorsementPolicyError *commonerrors.VSCCEndorsementPolicyError
+				switch {
+				case errors.As(err, &VSCCEndorsementPolicyError):
 					return peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE, err
 				default:
 					return peer.TxValidationCode_INVALID_OTHER_REASON, err
@@ -259,8 +261,9 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 			VSCCName:  vscc.ChaincodeName,
 		}
 		if err = v.VSCCValidateTxForCC(ctx); err != nil {
-			switch err.(type) {
-			case *commonerrors.VSCCEndorsementPolicyError:
+			var VSCCEndorsementPolicyError *commonerrors.VSCCEndorsementPolicyError
+			switch {
+			case errors.As(err, &VSCCEndorsementPolicyError):
 				return peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE, err
 			default:
 				return peer.TxValidationCode_INVALID_OTHER_REASON, err
@@ -278,7 +281,7 @@ func (v *VsccValidatorImpl) VSCCValidateTxForCC(ctx *Context) error {
 		return nil
 	}
 	// If the error is a pluggable validation execution error, cast it to the common errors ExecutionFailureError.
-	if e, isExecutionError := err.(*validation.ExecutionFailureError); isExecutionError {
+	if e, isExecutionError := errors2.AsType[*validation.ExecutionFailureError](err); isExecutionError {
 		return &commonerrors.VSCCExecutionFailureError{Err: e}
 	}
 	// Else, treat it as an endorsement error.

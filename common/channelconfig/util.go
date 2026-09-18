@@ -173,7 +173,7 @@ func MSPValue(mspDef *mspprotos.MSPConfig) *StandardConfigValue {
 	}
 }
 
-// CapabilitiesValue returns the config definition for a a set of capabilities.
+// CapabilitiesValue returns the config definition for a set of capabilities.
 // It is a value for the /Channel/Orderer, Channel/Application/, and /Channel groups.
 func CapabilitiesValue(capabilities map[string]bool) *StandardConfigValue {
 	c := &cb.Capabilities{
@@ -316,13 +316,13 @@ func MarshalEtcdRaftMetadata(md *etcdraft.ConfigMetadata) ([]byte, error) {
 		// path where they are persisted locally, then load these files to memory.
 		clientCert, err := os.ReadFile(string(c.GetClientTlsCert()))
 		if err != nil {
-			return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+			return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %w", c.GetHost(), c.GetPort(), err)
 		}
 		c.ClientTlsCert = clientCert
 
 		serverCert, err := os.ReadFile(string(c.GetServerTlsCert()))
 		if err != nil {
-			return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+			return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %w", c.GetHost(), c.GetPort(), err)
 		}
 		c.ServerTlsCert = serverCert
 	}

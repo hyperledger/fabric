@@ -9,6 +9,7 @@ package e2e
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -109,7 +110,7 @@ func (mr *MetricsReader) handleConnection(c net.Conn) {
 			c.Close()
 		default:
 			data, err := br.ReadBytes('\n')
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return
 			}
 			Expect(err).NotTo(HaveOccurred())
@@ -125,7 +126,7 @@ func (mr *MetricsReader) Close() error {
 		close(mr.doneCh)
 		err := mr.listener.Close()
 		mr.err = <-mr.errCh
-		if mr.err == nil && err != nil && err != io.EOF {
+		if mr.err == nil && err != nil && !errors.Is(err, io.EOF) {
 			mr.err = err
 		}
 	})

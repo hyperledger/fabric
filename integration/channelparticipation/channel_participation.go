@@ -149,6 +149,9 @@ func Remove(n *nwo.Network, o *nwo.Orderer, channel string) {
 	resp, err := authClient.Do(req)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+	if err == nil {
+		resp.Body.Close()
+	}
 }
 
 func ChannelListMatcher(list ChannelList, expectedChannels []string, systemChannel ...string) {

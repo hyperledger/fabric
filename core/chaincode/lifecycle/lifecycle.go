@@ -36,7 +36,7 @@ const (
 	NamespacesName = "namespaces"
 
 	// ChaincodeSourcesName is the namespace reserved for storing the information about where
-	// to find the chaincode (such as as a package on the local filesystem, or in the future,
+	// to find the chaincode (such as a package on the local filesystem, or in the future,
 	// at some network resource). This namespace is only populated in the org implicit collection.
 	ChaincodeSourcesName = "chaincode-sources"
 

@@ -77,7 +77,7 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 	is := bytes.NewReader(code)
 	gr, err := gzip.NewReader(is)
 	if err != nil {
-		return fmt.Errorf("failure opening codepackage gzip stream: %s", err)
+		return fmt.Errorf("failure opening codepackage gzip stream: %w", err)
 	}
 
 	re := regexp.MustCompile(`^(src|META-INF)/`)
@@ -172,7 +172,7 @@ func (p *Platform) GetDeploymentPayload(codepath string) ([]byte, error) {
 	for _, file := range fileMap.Sources() {
 		err = util.WriteFileToPackage(file.Path, file.Name, tw)
 		if err != nil {
-			return nil, fmt.Errorf("Error writing %s to tar: %s", file.Name, err)
+			return nil, fmt.Errorf("Error writing %s to tar: %w", file.Name, err)
 		}
 	}
 

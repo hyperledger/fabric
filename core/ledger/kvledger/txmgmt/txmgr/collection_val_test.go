@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package txmgr
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger"
@@ -33,19 +34,19 @@ func TestCollectionValidation(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = sim.GetPrivateData("ns3", "coll1", "key1")
-	_, ok := err.(*ledger.CollConfigNotDefinedError)
+	_, ok := errors.AsType[*ledger.CollConfigNotDefinedError](err)
 	require.True(t, ok)
 
 	err = sim.SetPrivateData("ns3", "coll1", "key1", []byte("val1"))
-	_, ok = err.(*ledger.CollConfigNotDefinedError)
+	_, ok = errors.AsType[*ledger.CollConfigNotDefinedError](err)
 	require.True(t, ok)
 
 	_, err = sim.GetPrivateData("ns1", "coll3", "key1")
-	_, ok = err.(*ledger.InvalidCollNameError)
+	_, ok = errors.AsType[*ledger.InvalidCollNameError](err)
 	require.True(t, ok)
 
 	err = sim.SetPrivateData("ns1", "coll3", "key1", []byte("val1"))
-	_, ok = err.(*ledger.InvalidCollNameError)
+	_, ok = errors.AsType[*ledger.InvalidCollNameError](err)
 	require.True(t, ok)
 
 	err = sim.SetPrivateData("ns1", "coll1", "key1", []byte("val1"))

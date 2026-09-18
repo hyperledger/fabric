@@ -55,7 +55,7 @@ func (sf *SigFilter) Apply(message *cb.Envelope) error {
 
 	signedData, err := protoutil.EnvelopeAsSignedData(message)
 	if err != nil {
-		return fmt.Errorf("could not convert message to signedData: %s", err)
+		return fmt.Errorf("could not convert message to signedData: %w", err)
 	}
 
 	// In maintenance mode, we typically require the signature of /Channel/Orderer/Writers.

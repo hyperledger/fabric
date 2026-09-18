@@ -161,7 +161,7 @@ func (h *Handler) Handle(ctx context.Context, srv *Server) error {
 	for {
 		logger.Debugf("Attempting to read seek info message from %s", addr)
 		envelope, err := srv.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			logger.Debugf("Received EOF from %s, hangup", addr)
 			return nil
 		}

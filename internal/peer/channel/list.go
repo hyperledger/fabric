@@ -54,18 +54,18 @@ func (cc *endorserClient) getChannels() ([]*pb.ChannelInfo, error) {
 	c, _ := cc.cf.Signer.Serialize()
 	prop, _, err = protoutil.CreateProposalFromCIS(common2.HeaderType_ENDORSER_TRANSACTION, "", invocation, c)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot create proposal, due to %s", err)
+		return nil, fmt.Errorf("Cannot create proposal, due to %w", err)
 	}
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = protoutil.GetSignedProposal(prop, cc.cf.Signer)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot create signed proposal, due to %s", err)
+		return nil, fmt.Errorf("Cannot create signed proposal, due to %w", err)
 	}
 
 	proposalResp, err := cc.cf.EndorserClient.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return nil, fmt.Errorf("Failed sending proposal, got %s", err)
+		return nil, fmt.Errorf("Failed sending proposal, got %w", err)
 	}
 
 	if proposalResp.GetResponse() == nil || proposalResp.GetResponse().GetStatus() != 200 {
@@ -75,7 +75,7 @@ func (cc *endorserClient) getChannels() ([]*pb.ChannelInfo, error) {
 	var channelQueryResponse pb.ChannelQueryResponse
 	err = proto.Unmarshal(proposalResp.GetResponse().GetPayload(), &channelQueryResponse)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot read channels list response, %s", err)
+		return nil, fmt.Errorf("Cannot read channels list response, %w", err)
 	}
 
 	return channelQueryResponse.GetChannels(), nil

@@ -564,7 +564,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	}
 	connInfo, err := c.authenticateRemotePeer(stream, false, false)
 
-	if err == errProbe {
+	if errors.Is(err, errProbe) {
 		c.logger.Infof("Peer %s (%s) probed us", connInfo.ID, connInfo.Endpoint)
 		return nil
 	}

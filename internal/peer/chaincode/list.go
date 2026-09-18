@@ -71,7 +71,7 @@ func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory, cryptoProvider b
 
 	creator, err := cf.Signer.Serialize()
 	if err != nil {
-		return fmt.Errorf("error serializing identity: %s", err)
+		return fmt.Errorf("error serializing identity: %w", err)
 	}
 
 	var proposal *pb.Proposal

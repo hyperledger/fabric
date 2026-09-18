@@ -235,7 +235,7 @@ func VerifyTransactionsAreWellFormed(block *cb.Block) error {
 	for i, rawTx := range block.GetData().GetData() {
 		env := &cb.Envelope{}
 		if err := proto.Unmarshal(rawTx, env); err != nil {
-			return fmt.Errorf("transaction %d is invalid: %v", i, err)
+			return fmt.Errorf("transaction %d is invalid: %w", i, err)
 		}
 
 		if len(env.GetPayload()) == 0 {
@@ -248,7 +248,7 @@ func VerifyTransactionsAreWellFormed(block *cb.Block) error {
 
 		expected, err := proto.Marshal(env)
 		if err != nil {
-			return fmt.Errorf("failed re-marshaling envelope: %v", err)
+			return fmt.Errorf("failed re-marshaling envelope: %w", err)
 		}
 
 		if len(expected) < len(rawTx) {

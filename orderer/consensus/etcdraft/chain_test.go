@@ -1539,7 +1539,7 @@ var _ = Describe("Chain", func() {
 			c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 				stepMsg := &raftpb.Message{}
 				if err := proto.Unmarshal(msg.GetPayload(), stepMsg); err != nil {
-					return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
+					return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %w", err)
 				}
 
 				if stepMsg.GetType() == raftpb.MsgTimeoutNow && atomic.CompareAndSwapUint32(&messageOmission, 0, 1) {

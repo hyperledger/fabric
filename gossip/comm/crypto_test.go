@@ -114,7 +114,7 @@ func TestCertificateExtraction(t *testing.T) {
 	require.Equal(t, clientCertHash, srv.remoteCertHash, "Server side and client hash aren't equal")
 }
 
-// GenerateCertificatesOrPanic generates a a random pair of public and private keys
+// GenerateCertificatesOrPanic generates a random pair of public and private keys
 // and return TLS certificate.
 func GenerateCertificatesOrPanic() tls.Certificate {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

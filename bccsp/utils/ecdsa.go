@@ -43,7 +43,7 @@ func UnmarshalECDSASignature(raw []byte) (*big.Int, *big.Int, error) {
 	sig := new(ECDSASignature)
 	_, err := asn1.Unmarshal(raw, sig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed unmashalling signature [%s]", err)
+		return nil, nil, fmt.Errorf("failed unmashalling signature [%w]", err)
 	}
 
 	// Validate sig

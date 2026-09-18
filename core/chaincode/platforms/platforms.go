@@ -88,7 +88,7 @@ func (r *Registry) GenerateDockerfile(ccType string) (string, error) {
 	// ----------------------------------------------------------------------------------------------------
 	base, err := platform.GenerateDockerfile()
 	if err != nil {
-		return "", fmt.Errorf("Failed to generate platform-specific Dockerfile: %s", err)
+		return "", fmt.Errorf("Failed to generate platform-specific Dockerfile: %w", err)
 	}
 	buf = append(buf, base)
 	buf = append(buf, fmt.Sprintf(`LABEL %s.chaincode.type="%s" \`, metadata.BaseDockerLabel, ccType))
@@ -125,7 +125,7 @@ func (r *Registry) StreamDockerBuild(ccType, path string, codePackage io.Reader,
 	for name, data := range inputFiles {
 		err = r.PackageWriter.Write(name, data, tw)
 		if err != nil {
-			return fmt.Errorf(`Failed to inject "%s": %s`, name, err)
+			return fmt.Errorf(`Failed to inject "%s": %w`, name, err)
 		}
 	}
 
@@ -184,7 +184,7 @@ func (r *Registry) GenerateDockerBuild(ccType, path string, codePackage io.Reade
 	// ----------------------------------------------------------------------------------------------------
 	dockerFile, err := r.GenerateDockerfile(ccType)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to generate a Dockerfile: %s", err)
+		return nil, fmt.Errorf("Failed to generate a Dockerfile: %w", err)
 	}
 
 	inputFiles["Dockerfile"] = []byte(dockerFile)

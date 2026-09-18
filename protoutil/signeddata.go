@@ -75,7 +75,7 @@ func EnvelopeAsSignedData(env *common.Envelope) ([]*SignedData, error) {
 	shdr := &common.SignatureHeader{}
 	err = proto.Unmarshal(payload.GetHeader().GetSignatureHeader(), shdr)
 	if err != nil {
-		return nil, fmt.Errorf("GetSignatureHeaderFromBytes failed, err %s", err)
+		return nil, fmt.Errorf("GetSignatureHeaderFromBytes failed, err %w", err)
 	}
 
 	return []*SignedData{{

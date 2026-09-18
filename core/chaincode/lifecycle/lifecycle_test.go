@@ -1010,12 +1010,12 @@ var _ = Describe("ExternalFunctions", func() {
 
 		Context("when IsSerialized fails", func() {
 			BeforeEach(func() {
-				fakeOrgStates[0].GetStateHashReturns(nil, errors.New("bad bad failure"))
+				fakeOrgStates[0].GetStateHashReturns(nil, errors.New("bad failure"))
 			})
 
 			It("wraps and returns an error", func() {
 				_, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
-				Expect(err).To(MatchError(ContainSubstring("serialization check failed for key cc-name#5: could not get value for key namespaces/metadata/cc-name#5: bad bad failure")))
+				Expect(err).To(MatchError(ContainSubstring("serialization check failed for key cc-name#5: could not get value for key namespaces/metadata/cc-name#5: bad failure")))
 			})
 		})
 
@@ -1467,12 +1467,12 @@ var _ = Describe("ExternalFunctions", func() {
 
 		Context("when IsSerialized fails", func() {
 			BeforeEach(func() {
-				fakeOrgStates[0].GetStateHashReturns(nil, errors.New("bad bad failure"))
+				fakeOrgStates[0].GetStateHashReturns(nil, errors.New("bad failure"))
 			})
 
 			It("wraps and returns an error", func() {
 				_, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
-				Expect(err).To(MatchError(ContainSubstring("serialization check failed for key cc-name#5: could not get value for key namespaces/metadata/cc-name#5: bad bad failure")))
+				Expect(err).To(MatchError(ContainSubstring("serialization check failed for key cc-name#5: could not get value for key namespaces/metadata/cc-name#5: bad failure")))
 			})
 		})
 

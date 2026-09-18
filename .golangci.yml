@@ -20,27 +20,27 @@ linters:
   default: none
   enable:
     - asciicheck
-    #    - bodyclose
-    #    - copyloopvar
+    - bodyclose
+    - copyloopvar
     - decorder
     - depguard
-    #    - dupword
-    #    - durationcheck
-    #    - errorlint
+    - dupword
+    - durationcheck
+    - errorlint
     - gocheckcompilerdirectives
     - goheader
     - gomodguard_v2
     - goprintffuncname
     - govet
     - grouper
-    #    - ineffassign
-    #    - intrange
+    # - ineffassign
+    # - intrange
     - loggercheck
     - misspell
-    #    - modernize
+    # - modernize
     - nolintlint
     - nosprintfhostport
-    #    - perfsprint
+    # - perfsprint
     - promlinter
     - protogetter
     - reassign

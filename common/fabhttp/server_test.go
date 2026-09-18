@@ -8,6 +8,7 @@ package fabhttp_test
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -171,7 +172,8 @@ var _ = Describe("Server", func() {
 
 			_, err = unauthClient.Get(fmt.Sprintf("https://%s/healthz", server.Addr()))
 			Expect(err).To(BeAssignableToTypeOf(&url.Error{}))
-			Expect(err.(*url.Error).Err.Error()).To(ContainSubstring("remote error: tls: certificate required"))
+			urlError, _ := errors.AsType[*url.Error](err)
+			Expect(urlError.Err.Error()).To(ContainSubstring("remote error: tls: certificate required"))
 		})
 	})
 

@@ -8,6 +8,7 @@ package externalbuilder
 
 import (
 	"encoding/json"
+	errors2 "errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -184,7 +185,7 @@ func (i *Instance) Wait() (int, error) {
 
 	err := i.Session.Wait()
 	err = errors.Wrapf(err, "builder '%s' run failed", i.Builder.Name)
-	if exitErr, ok := errors.Cause(err).(*exec.ExitError); ok {
+	if exitErr, ok := errors2.AsType[*exec.ExitError](errors.Cause(err)); ok {
 		return exitErr.ExitCode(), err
 	}
 	return 0, err

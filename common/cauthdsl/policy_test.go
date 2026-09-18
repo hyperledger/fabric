@@ -32,7 +32,7 @@ func init() {
 func marshalOrPanic(msg proto.Message) []byte {
 	data, err := proto.Marshal(msg)
 	if err != nil {
-		panic(fmt.Errorf("Error marshaling messages: %s, %s", msg, err))
+		panic(fmt.Errorf("Error marshaling messages: %s, %w", msg, err))
 	}
 	return data
 }

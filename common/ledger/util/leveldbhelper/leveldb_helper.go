@@ -107,7 +107,7 @@ func (dbInst *DB) Get(key []byte) ([]byte, error) {
 	dbInst.mutex.RLock()
 	defer dbInst.mutex.RUnlock()
 	value, err := dbInst.db.Get(key, dbInst.readOpts)
-	if err == leveldb.ErrNotFound {
+	if errors.Is(err, leveldb.ErrNotFound) {
 		value = nil
 		err = nil
 	}
@@ -206,7 +206,7 @@ func (f *FileLock) Lock() error {
 	}
 	dbOpts.ErrorIfMissing = !dirEmpty
 	db, err := leveldb.OpenFile(f.filePath, dbOpts)
-	if err != nil && err == syscall.EAGAIN {
+	if err != nil && errors.Is(err, syscall.EAGAIN) {
 		return errors.Errorf("lock is already acquired on file %s", f.filePath)
 	}
 	if err != nil {

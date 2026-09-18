@@ -63,36 +63,36 @@ func instantiate(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envel
 
 	cds, err := getChaincodeDeploymentSpec(spec, false)
 	if err != nil {
-		return nil, fmt.Errorf("error getting chaincode code %s: %s", chaincodeName, err)
+		return nil, fmt.Errorf("error getting chaincode code %s: %w", chaincodeName, err)
 	}
 
 	creator, err := cf.Signer.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("error serializing identity: %s", err)
+		return nil, fmt.Errorf("error serializing identity: %w", err)
 	}
 
 	prop, _, err := protoutil.CreateDeployProposalFromCDS(channelID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc), collectionConfigBytes)
 	if err != nil {
-		return nil, fmt.Errorf("error creating proposal  %s: %s", chainFuncName, err)
+		return nil, fmt.Errorf("error creating proposal  %s: %w", chainFuncName, err)
 	}
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = protoutil.GetSignedProposal(prop, cf.Signer)
 	if err != nil {
-		return nil, fmt.Errorf("error creating signed proposal  %s: %s", chainFuncName, err)
+		return nil, fmt.Errorf("error creating signed proposal  %s: %w", chainFuncName, err)
 	}
 
 	// instantiate is currently only supported for one peer
 	proposalResponse, err := cf.EndorserClients[0].ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return nil, fmt.Errorf("error endorsing %s: %s", chainFuncName, err)
+		return nil, fmt.Errorf("error endorsing %s: %w", chainFuncName, err)
 	}
 
 	if proposalResponse != nil {
 		// assemble a signed transaction (it's an Envelope message)
 		env, err := protoutil.CreateSignedTx(prop, cf.Signer, proposalResponse)
 		if err != nil {
-			return nil, fmt.Errorf("could not assemble transaction, err %s", err)
+			return nil, fmt.Errorf("could not assemble transaction, err %w", err)
 		}
 
 		return env, nil

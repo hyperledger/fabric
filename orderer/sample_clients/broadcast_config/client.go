@@ -66,11 +66,11 @@ func init() {
 	// Load local MSP
 	mspConfig, err := msp.GetLocalMspConfig(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
 	if err != nil {
-		panic(fmt.Errorf("Failed to load MSP config: %s", err))
+		panic(fmt.Errorf("Failed to load MSP config: %w", err))
 	}
 	err = mspmgmt.GetLocalMSP(factory.GetDefault()).Setup(mspConfig)
 	if err != nil {
-		panic(fmt.Errorf("failed to initialize local MSP: %s", err))
+		panic(fmt.Errorf("failed to initialize local MSP: %w", err))
 	}
 }
 

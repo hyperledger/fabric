@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package fileledger
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -59,7 +60,7 @@ func (f *fileLedgerFactory) Remove(channelID string) error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
-	if err := f.removeFileRepo.Save(channelID, []byte{}); err != nil && err != os.ErrExist {
+	if err := f.removeFileRepo.Save(channelID, []byte{}); err != nil && !errors.Is(err, os.ErrExist) {
 		return err
 	}
 

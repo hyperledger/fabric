@@ -137,7 +137,7 @@ type MSPIDsGetter func(string) []string
 // IDMSPManagerGetters used to get the MSP Manager for a channel.
 type MSPManagerGetter func(string) msp.MSPManager
 
-//---------- the LSCC -----------------
+// ---------- the LSCC -----------------
 
 // SCC implements chaincode lifecycle and policies around it
 type SCC struct {
@@ -541,7 +541,7 @@ func (lscc *SCC) getCCCode(ccname string, cdbytes []byte) (*pb.ChaincodeDeployme
 	}
 
 	// this is the big test and the reason every launch should go through
-	// getChaincode call. We validate the chaincode entry against the
+	// getChaincode call. We validate the chaincode entry against
 	// the chaincode in FS
 	if err = ccpack.ValidateCC(cd); err != nil {
 		return nil, nil, InvalidCCOnFSError(err.Error())
@@ -932,7 +932,7 @@ func (lscc *SCC) executeUpgrade(stub shim.ChaincodeStubInterface, chainName stri
 	return cdfs, nil
 }
 
-//-------------- the chaincode stub interface implementation ----------
+// -------------- the chaincode stub interface implementation ----------
 
 // Init is mostly useless for SCC
 func (lscc *SCC) Init(stub shim.ChaincodeStubInterface) pb.Response {

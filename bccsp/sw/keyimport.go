@@ -65,7 +65,7 @@ func (*ecdsaPKIXPublicKeyImportOptsKeyImporter) KeyImport(raw any, opts bccsp.Ke
 
 	lowLevelKey, err := derToPublicKey(der)
 	if err != nil {
-		return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
+		return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%w]", err)
 	}
 
 	ecdsaPK, ok := lowLevelKey.(*ecdsa.PublicKey)
@@ -90,7 +90,7 @@ func (*ecdsaPrivateKeyImportOptsKeyImporter) KeyImport(raw any, opts bccsp.KeyIm
 
 	lowLevelKey, err := derToPrivateKey(der)
 	if err != nil {
-		return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
+		return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%w]", err)
 	}
 
 	ecdsaSK, ok := lowLevelKey.(*ecdsa.PrivateKey)
