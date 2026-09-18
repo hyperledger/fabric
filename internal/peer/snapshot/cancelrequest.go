@@ -17,7 +17,7 @@ import (
 )
 
 // cancelRequestCmd returns the cobra command for snapshot cancelrequest command
-func cancelRequestCmd(cl *client, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func cancelRequestCmd(cl *client, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	snapshotCancelRequestCmd := &cobra.Command{
 		Use:   "cancelrequest",
 		Short: "Cancel a request for a snapshot at the specified block.",
@@ -25,6 +25,11 @@ func cancelRequestCmd(cl *client, cryptoProvider bccsp.BCCSP) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cancelRequest(cmd, cl, cryptoProvider)
 		},
+	}
+
+	if !isNew {
+		snapshotCancelRequestCmd.Short = "[DEPRECATED] Cancel a request for a snapshot at the specified block (use the \"peercli snapshot cancelrequest\")"
+		snapshotCancelRequestCmd.Long = "[DEPRECATED] Cancel a request for a snapshot at the specified block. Instead of this command, use \"peercli snapshot cancelrequest\"."
 	}
 
 	flagList := []string{
