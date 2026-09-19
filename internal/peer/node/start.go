@@ -554,14 +554,15 @@ func serve(args []string) error {
 		}
 
 		dockerVM := &dockercontroller.DockerVM{
-			PeerID:        coreConfig.PeerID,
-			NetworkID:     coreConfig.NetworkID,
-			BuildMetrics:  dockercontroller.NewBuildMetrics(opsSystem.Provider),
-			Client:        client,
-			AttachStdOut:  coreConfig.VMDockerAttachStdout,
-			HostConfig:    getDockerHostConfig(),
-			ChaincodePull: coreConfig.ChaincodePull,
-			NetworkMode:   coreConfig.VMNetworkMode,
+			PeerID:           coreConfig.PeerID,
+			NetworkID:        coreConfig.NetworkID,
+			BuildMetrics:     dockercontroller.NewBuildMetrics(opsSystem.Provider),
+			Client:           client,
+			AttachStdOut:     coreConfig.VMDockerAttachStdout,
+			HostConfig:       getDockerHostConfig(),
+			ChaincodePull:    coreConfig.ChaincodePull,
+			NetworkMode:      coreConfig.VMNetworkMode,
+			AuthConfigLoader: dockercontroller.LoadDockerAuthConfigs,
 			PlatformBuilder: &platforms.Builder{
 				Registry: platformRegistry,
 				Client:   client,

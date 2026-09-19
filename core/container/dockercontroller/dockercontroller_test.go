@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller/mock"
 	dcontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/registry"
 	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -398,10 +399,19 @@ func Test_buildImage(t *testing.T) {
 	rc.ReadReturns(0, io.EOF)
 	client := &mock.DockerClient{}
 	client.ImageBuildReturns(dcli.ImageBuildResult{Body: rc}, nil)
+	authConfigs := map[string]registry.AuthConfig{
+		"registry.example.com": {
+			Username: "alice",
+			Password: "secret",
+		},
+	}
 	dvm := DockerVM{
 		BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
 		Client:       client,
 		NetworkMode:  "network-mode",
+		AuthConfigLoader: func() (map[string]registry.AuthConfig, error) {
+			return authConfigs, nil
+		},
 	}
 
 	err := dvm.buildImage("simple", &bytes.Buffer{})
@@ -412,7 +422,23 @@ func Test_buildImage(t *testing.T) {
 	require.Equal(t, "simple-a7a39b72f29718e653e73503210fbb597057b7a1c77d1fe321a1afcff041d4e1", opts.Tags[0])
 	require.Equal(t, dvm.ChaincodePull, opts.PullParent)
 	require.Equal(t, "network-mode", opts.NetworkMode)
+	require.Equal(t, authConfigs, opts.AuthConfigs)
 	require.Equal(t, &bytes.Buffer{}, in)
+}
+
+func Test_buildImageAuthConfigFailure(t *testing.T) {
+	client := &mock.DockerClient{}
+	dvm := DockerVM{
+		BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
+		Client:       client,
+		AuthConfigLoader: func() (map[string]registry.AuthConfig, error) {
+			return nil, errors.New("bad config")
+		},
+	}
+
+	err := dvm.buildImage("simple", &bytes.Buffer{})
+	require.EqualError(t, err, "failed to load Docker registry credentials: bad config")
+	require.Equal(t, 0, client.ImageBuildCallCount())
 }
 
 func Test_buildImageFailure(t *testing.T) {
