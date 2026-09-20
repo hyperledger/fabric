@@ -125,8 +125,7 @@ func TestSeekHelper(t *testing.T) {
 
 func TestNewOrdererDeliverClient(t *testing.T) {
 	defer viper.Reset()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	InitMSP()
 
 	// failure - rootcert file doesn't exist
@@ -140,8 +139,7 @@ func TestNewOrdererDeliverClient(t *testing.T) {
 
 func TestNewDeliverClientForPeer(t *testing.T) {
 	defer viper.Reset()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	InitMSP()
 
 	// failure - rootcert file doesn't exist

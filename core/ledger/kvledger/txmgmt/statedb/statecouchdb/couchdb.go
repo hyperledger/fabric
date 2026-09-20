@@ -240,12 +240,12 @@ func (dbclient *couchDatabase) createDatabaseIfNotExist() error {
 
 	dbInfo, couchDBReturn, err := dbclient.getDatabaseInfo()
 	if err != nil {
-		if couchDBReturn == nil || couchDBReturn.StatusCode != 404 {
+		if couchDBReturn == nil || couchDBReturn.StatusCode != http.StatusNotFound {
 			return err
 		}
 	}
 
-	if dbInfo == nil || couchDBReturn.StatusCode == 404 {
+	if dbInfo == nil || couchDBReturn.StatusCode == http.StatusNotFound {
 		couchdbLogger.Debugf("[%s] Database does not exist.", dbclient.dbName)
 
 		connectURL, err := url.Parse(dbclient.couchInstance.url())
@@ -266,7 +266,7 @@ func (dbclient *couchDatabase) createDatabaseIfNotExist() error {
 			// returned due to a timeout or race condition.
 			// Do a final check to see if the database really got created.
 			dbInfo, couchDBReturn, dbInfoErr := dbclient.getDatabaseInfo()
-			if dbInfoErr != nil || dbInfo == nil || couchDBReturn.StatusCode == 404 {
+			if dbInfoErr != nil || dbInfo == nil || couchDBReturn.StatusCode == http.StatusNotFound {
 				return err
 			}
 		}
@@ -496,7 +496,7 @@ func (dbclient *couchDatabase) dropDatabase() error {
 
 	resp, couchdbReturn, err := dbclient.handleRequest(http.MethodDelete, "DropDatabase", connectURL, nil, "", "", maxRetries, true, nil)
 	defer closeResponseBody(resp)
-	if couchdbReturn != nil && couchdbReturn.StatusCode == 404 {
+	if couchdbReturn != nil && couchdbReturn.StatusCode == http.StatusNotFound {
 		couchdbLogger.Debugf("[%s] Exiting DropDatabase(), database does not exist", dbclient.dbName)
 		return nil
 	}
@@ -721,7 +721,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 
 	resp, couchDBReturn, err := dbclient.handleRequest(http.MethodGet, "ReadDoc", readURL, nil, "", "", maxRetries, true, &query, id)
 	if err != nil {
-		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
+		if couchDBReturn != nil && couchDBReturn.StatusCode == http.StatusNotFound {
 			couchdbLogger.Debugf("[%s] Document not found (404), returning nil value instead of 404 error", dbclient.dbName)
 			// non-existent document should return nil value instead of a 404 error
 			// for details see https://github.com/hyperledger-archives/fabric/issues/936
@@ -972,7 +972,7 @@ func (dbclient *couchDatabase) deleteDoc(id, rev string) error {
 	resp, couchDBReturn, err := dbclient.handleRequestWithRevisionRetry(id, http.MethodDelete, dbName, "DeleteDoc",
 		deleteURL, nil, "", "", maxRetries, true, nil)
 	if err != nil {
-		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
+		if couchDBReturn != nil && couchDBReturn.StatusCode == http.StatusNotFound {
 			couchdbLogger.Debugf("[%s] Document not found (404), returning nil value instead of 404 error", dbclient.dbName)
 			// non-existent document should return nil value instead of a 404 error
 			// for details see https://github.com/hyperledger-archives/fabric/issues/936
@@ -1179,7 +1179,7 @@ func (dbclient *couchDatabase) createIndex(indexdefinition string) (*createIndex
 
 	couchDBReturn := &createIndexResponse{}
 
-	jsonBytes := []byte(respBody)
+	jsonBytes := respBody
 
 	// unmarshal the response
 	err = json.Unmarshal(jsonBytes, &couchDBReturn)
@@ -1526,7 +1526,7 @@ func (dbclient *couchDatabase) handleRequestWithRevisionRetry(id, method, dbName
 
 		// If there was a 409 conflict error during the save/delete, log it and retry it.
 		// Otherwise, break out of the retry loop
-		if couchDBReturn != nil && couchDBReturn.StatusCode == 409 {
+		if couchDBReturn != nil && couchDBReturn.StatusCode == http.StatusConflict {
 			couchdbLogger.Warningf("CouchDB document revision conflict detected, retrying. Attempt:%v", attempts+1)
 			revisionConflictDetected = true
 		} else {
@@ -1654,7 +1654,7 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 				}
 				defer closeResponseBody(resp)
 
-				errorBytes := []byte(jsonError)
+				errorBytes := jsonError
 				// Unmarshal the response
 				err = json.Unmarshal(errorBytes, &couchDBReturn)
 				if err != nil {
@@ -1687,7 +1687,7 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 					return nil, nil, errors.Wrap(err, "error reading response body")
 				}
 
-				errorBytes := []byte(jsonError)
+				errorBytes := jsonError
 				// Unmarshal the response
 				err = json.Unmarshal(errorBytes, &couchDBReturn)
 				if err != nil {

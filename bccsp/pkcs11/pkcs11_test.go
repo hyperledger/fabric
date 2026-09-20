@@ -39,17 +39,16 @@ func defaultOptions() PKCS11Opts {
 	}
 }
 
-func newKeyStore(t *testing.T) (bccsp.KeyStore, func()) {
-	tempDir, err := os.MkdirTemp("", "pkcs11_ks")
-	require.NoError(t, err)
+func newKeyStore(t *testing.T) bccsp.KeyStore {
+	tempDir := t.TempDir()
 	ks, err := sw.NewFileBasedKeyStore(nil, tempDir, false)
 	require.NoError(t, err)
 
-	return ks, func() { os.RemoveAll(tempDir) }
+	return ks
 }
 
 func newSWProvider(t *testing.T) bccsp.BCCSP {
-	ks, _ := newKeyStore(t)
+	ks := newKeyStore(t)
 	swCsp, err := sw.NewDefaultSecurityLevelWithKeystore(ks)
 	require.NoError(t, err)
 
@@ -57,20 +56,18 @@ func newSWProvider(t *testing.T) bccsp.BCCSP {
 }
 
 func newProvider(t *testing.T, opts PKCS11Opts, options ...Option) (*Provider, func()) {
-	ks, ksCleanup := newKeyStore(t)
+	ks := newKeyStore(t)
 	csp, err := New(opts, ks, options...)
 	require.NoError(t, err)
 
 	cleanup := func() {
 		csp.ctx.Destroy()
-		ksCleanup()
 	}
 	return csp, cleanup
 }
 
 func TestNew(t *testing.T) {
-	ks, cleanup := newKeyStore(t)
-	defer cleanup()
+	ks := newKeyStore(t)
 
 	t.Run("DefaultConfig", func(t *testing.T) {
 		opts := defaultOptions()
@@ -111,8 +108,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestInvalidNewParameter(t *testing.T) {
-	ks, cleanup := newKeyStore(t)
-	defer cleanup()
+	ks := newKeyStore(t)
 
 	t.Run("BadSecurityLevel", func(t *testing.T) {
 		opts := defaultOptions()
@@ -152,16 +148,10 @@ func TestFindPKCS11LibEnvVars(t *testing.T) {
 		dummy_PKCS11_LABEL = "testing"
 	)
 
-	// Set environment variables used for test and preserve
-	// original values for restoration after test completion
-	orig_PKCS11_LIB := os.Getenv("PKCS11_LIB")
-	orig_PKCS11_PIN := os.Getenv("PKCS11_PIN")
-	orig_PKCS11_LABEL := os.Getenv("PKCS11_LABEL")
-
 	t.Run("ExplicitEnvironment", func(t *testing.T) {
-		os.Setenv("PKCS11_LIB", dummy_PKCS11_LIB)
-		os.Setenv("PKCS11_PIN", dummy_PKCS11_PIN)
-		os.Setenv("PKCS11_LABEL", dummy_PKCS11_LABEL)
+		t.Setenv("PKCS11_LIB", dummy_PKCS11_LIB)
+		t.Setenv("PKCS11_PIN", dummy_PKCS11_PIN)
+		t.Setenv("PKCS11_LABEL", dummy_PKCS11_LABEL)
 
 		lib, pin, label := FindPKCS11Lib()
 		require.EqualValues(t, dummy_PKCS11_LIB, lib, "FindPKCS11Lib did not return expected library")
@@ -178,10 +168,6 @@ func TestFindPKCS11LibEnvVars(t *testing.T) {
 		require.EqualValues(t, "98765432", pin, "FindPKCS11Lib did not return expected pin")
 		require.EqualValues(t, "ForFabric", label, "FindPKCS11Lib did not return expected label")
 	})
-
-	os.Setenv("PKCS11_LIB", orig_PKCS11_LIB)
-	os.Setenv("PKCS11_PIN", orig_PKCS11_PIN)
-	os.Setenv("PKCS11_LABEL", orig_PKCS11_LABEL)
 }
 
 func TestInvalidSKI(t *testing.T) {
@@ -634,7 +620,7 @@ func TestPKCS11GetSession(t *testing.T) {
 
 	sessionCacheSize := opts.sessionCacheSize
 	var sessions []pkcs11.SessionHandle
-	for i := 0; i < 3*sessionCacheSize; i++ {
+	for range 3 * sessionCacheSize {
 		session, err := csp.getSession()
 		require.NoError(t, err)
 		sessions = append(sessions, session)
@@ -647,7 +633,7 @@ func TestPKCS11GetSession(t *testing.T) {
 
 	// Should be able to get sessionCacheSize cached sessions
 	sessions = nil
-	for i := 0; i < sessionCacheSize; i++ {
+	for range sessionCacheSize {
 		session, err := csp.getSession()
 		require.NoError(t, err)
 		sessions = append(sessions, session)

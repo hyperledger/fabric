@@ -50,16 +50,10 @@ func initInstallTest(t *testing.T, fsPath string, ec pb.EndorserClient, mockResp
 	return cmd, mockCF
 }
 
-func cleanupInstallTest(fsPath string) {
-	os.RemoveAll(fsPath)
-}
-
 func TestInstallBadVersion(t *testing.T) {
-	fsPath, err := os.MkdirTemp("", "installbadversion")
-	require.NoError(t, err)
+	fsPath := t.TempDir()
 
 	cmd, _ := initInstallTest(t, fsPath, nil, nil)
-	defer cleanupInstallTest(fsPath)
 
 	args := []string{"-n", "mychaincode", "-p", "github.com/hyperledger/fabric/internal/peer/chaincode/testdata/src/chaincodes/noop"}
 	cmd.SetArgs(args)
@@ -70,11 +64,9 @@ func TestInstallBadVersion(t *testing.T) {
 }
 
 func TestInstallNonExistentCC(t *testing.T) {
-	fsPath, err := os.MkdirTemp("", "install-nonexistentcc")
-	require.NoError(t, err)
+	fsPath := t.TempDir()
 
 	cmd, _ := initInstallTest(t, fsPath, nil, nil)
-	defer cleanupInstallTest(fsPath)
 
 	args := []string{"-n", "badmychaincode", "-p", "github.com/hyperledger/fabric/internal/peer/chaincode/testdata/src/chaincodes/bad_mychaincode", "-v", "testversion"}
 	cmd.SetArgs(args)
@@ -90,7 +82,6 @@ func TestInstallNonExistentCC(t *testing.T) {
 
 func TestInstallFromPackage(t *testing.T) {
 	pdir := newTempDir()
-	defer os.RemoveAll(pdir)
 
 	ccpackfile := pdir + "/ccpack.file"
 	err := createSignedCDSPackage(t, []string{"-n", "somecc", "-p", "some/go/package", "-v", "0", ccpackfile}, false)
@@ -101,7 +92,7 @@ func TestInstallFromPackage(t *testing.T) {
 	fsPath := "/tmp/installtest"
 
 	cmd, mockCF := initInstallTest(t, fsPath, nil, nil)
-	defer cleanupInstallTest(fsPath)
+	defer os.RemoveAll(fsPath)
 
 	mockResponse := &pb.ProposalResponse{
 		Response:    &pb.Response{Status: 200},
@@ -113,14 +104,13 @@ func TestInstallFromPackage(t *testing.T) {
 	args := []string{ccpackfile}
 	cmd.SetArgs(args)
 
-	if err := cmd.Execute(); err != nil {
+	if err = cmd.Execute(); err != nil {
 		t.Fatal("error executing install command from package")
 	}
 }
 
 func TestInstallFromBadPackage(t *testing.T) {
 	pdir := newTempDir()
-	defer os.RemoveAll(pdir)
 
 	ccpackfile := pdir + "/ccpack.file"
 	err := os.WriteFile(ccpackfile, []byte("really bad CC package"), 0o700)
@@ -131,7 +121,7 @@ func TestInstallFromBadPackage(t *testing.T) {
 	fsPath := "/tmp/installtest"
 
 	cmd, _ := initInstallTest(t, fsPath, nil, nil)
-	defer cleanupInstallTest(fsPath)
+	defer os.RemoveAll(fsPath)
 
 	args := []string{ccpackfile}
 	cmd.SetArgs(args)
@@ -144,15 +134,13 @@ func TestInstallFromBadPackage(t *testing.T) {
 func installCC(t *testing.T) error {
 	defer viper.Reset()
 
-	fsPath, err := os.MkdirTemp("", "installLegacyEx02")
-	require.NoError(t, err)
+	fsPath := t.TempDir()
 	cmd, _ := initInstallTest(t, fsPath, nil, nil)
-	defer cleanupInstallTest(fsPath)
 
 	args := []string{"-n", "mychaincode", "-p", "github.com/hyperledger/fabric/internal/peer/chaincode/testdata/src/chaincodes/noop", "-v", "anotherversion"}
 	cmd.SetArgs(args)
 
-	if err = cmd.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		return fmt.Errorf("Run chaincode upgrade cmd error:%w", err)
 	}
 

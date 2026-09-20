@@ -142,21 +142,16 @@ func TestIdentifyTxs(t *testing.T) {
 	for testName, testCase := range testCases {
 		t.Run(testName, func(t *testing.T) {
 			// Temporary directory for identifytxs results
-			outputDir, err := os.MkdirTemp("", "result")
-			require.NoError(t, err)
-			defer os.RemoveAll(outputDir)
+			outputDir := t.TempDir()
 			// Temporary directory for file system
 			var fsDir string
 			if testCase.expectedOutputType == "empty-bs-error" {
-				fsDir, err = os.MkdirTemp("", "sample_prod_empty")
-				require.NoError(t, err)
-				err = os.MkdirAll(filepath.Join(fsDir, "ledgersData", "chains"), 0o700)
+				fsDir = t.TempDir()
+				err := os.MkdirAll(filepath.Join(fsDir, "ledgersData", "chains"), 0o700)
 				require.NoError(t, err)
 			} else {
-				fsDir, err = os.MkdirTemp("", "fs-copy")
-				require.NoError(t, err)
-				defer os.RemoveAll(fsDir)
-				err = testutil.CopyDir(testCase.sampleFileSystemPath, fsDir, false)
+				fsDir = t.TempDir()
+				err := testutil.CopyDir(testCase.sampleFileSystemPath, fsDir, false)
 				require.NoError(t, err)
 			}
 			// Check identifytxs returned values

@@ -53,7 +53,7 @@ func (d *Dispatcher) Dispatch(inputBytes []byte, methodName string, receiver any
 	}
 
 	inputValue := reflect.New(inputType.Elem())
-	inputMsg, ok := inputValue.Interface().(proto.Message)
+	inputMsg, ok := reflect.TypeAssert[proto.Message](inputValue)
 	if !ok {
 		return nil, errors.Errorf("receiver %T.%s does not accept a proto.Message as its argument, it is '%T'", receiver, methodName, inputValue.Interface())
 	}

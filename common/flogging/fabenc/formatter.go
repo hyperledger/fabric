@@ -235,10 +235,10 @@ func (m ModuleFormatter) Format(w io.Writer, entry zapcore.Entry, fields []zapco
 
 // sequence maintains the global sequence number shared by all SequeneFormatter
 // instances.
-var sequence uint64
+var sequence atomic.Uint64
 
 // SetSequence explicitly sets the global sequence number.
-func SetSequence(s uint64) { atomic.StoreUint64(&sequence, s) }
+func SetSequence(s uint64) { sequence.Store(s) }
 
 // SequenceFormatter formats a global sequence number.
 type SequenceFormatter struct{ FormatVerb string }
@@ -250,7 +250,7 @@ func newSequenceFormatter(f string) SequenceFormatter {
 // SequenceFormatter increments a global sequence number and writes it to the
 // provided writer.
 func (s SequenceFormatter) Format(w io.Writer, entry zapcore.Entry, fields []zapcore.Field) {
-	fmt.Fprintf(w, s.FormatVerb, atomic.AddUint64(&sequence, 1))
+	fmt.Fprintf(w, s.FormatVerb, sequence.Add(1))
 }
 
 // ShortFuncFormatter formats the name of the function creating the log record.

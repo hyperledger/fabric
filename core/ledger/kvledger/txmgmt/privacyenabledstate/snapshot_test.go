@@ -161,11 +161,7 @@ func testSnapshotWithSampleData(t *testing.T, env TestEnv,
 	require.NoError(t, err)
 
 	// export snapshot files from statedb
-	snapshotDirSrcDB, err := os.MkdirTemp("", "testsnapshot")
-	require.NoError(t, err)
-	defer func() {
-		os.RemoveAll(snapshotDirSrcDB)
-	}()
+	snapshotDirSrcDB := t.TempDir()
 
 	// verify exported snapshot files
 	filesAndHashesSrcDB, err := sourceDB.ExportPubStateAndPvtStateHashes(snapshotDirSrcDB, testNewHashFunc)
@@ -188,11 +184,7 @@ func testSnapshotWithSampleData(t *testing.T, env TestEnv,
 		publicState, pvtStateHashes, pvtState)
 
 	// export snapshot from the destination db
-	snapshotDirDestDB, err := os.MkdirTemp("", "testsnapshot")
-	require.NoError(t, err)
-	defer func() {
-		os.RemoveAll(snapshotDirDestDB)
-	}()
+	snapshotDirDestDB := t.TempDir()
 	filesAndHashesDestDB, err := destinationDB.ExportPubStateAndPvtStateHashes(snapshotDirDestDB, testNewHashFunc)
 	require.NoError(t, err)
 	require.Equal(t, filesAndHashesSrcDB, filesAndHashesDestDB)
@@ -303,11 +295,7 @@ func TestSnapshotImportMetadtaHintImport(t *testing.T) {
 	require.NoError(t, err)
 
 	// export snapshot files from statedb
-	snapshotDir, err := os.MkdirTemp("", "testsnapshot")
-	require.NoError(t, err)
-	defer func() {
-		os.RemoveAll(snapshotDir)
-	}()
+	snapshotDir := t.TempDir()
 	_, err = sourceDB.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
 	require.NoError(t, err)
 
@@ -332,9 +320,7 @@ func sha256ForFileForTest(t *testing.T, file string) []byte {
 }
 
 func TestSnapshotReaderNextFunction(t *testing.T) {
-	testdir, err := os.MkdirTemp("", "testsnapshot-WriterReader-")
-	require.NoError(t, err)
-	defer os.RemoveAll(testdir)
+	testdir := t.TempDir()
 
 	w, err := NewSnapshotWriter(testdir, "datafile", "metadatafile", testNewHashFunc)
 	require.NoError(t, err)
@@ -378,7 +364,7 @@ func TestMetadataCursor(t *testing.T) {
 	}
 
 	for _, m := range metadata {
-		for i := uint64(0); i < m.kvCounts; i++ {
+		for range m.kvCounts {
 			require.True(t, cursor.canMove())
 			require.True(t, cursor.move())
 			require.Equal(t, m.namespace, cursor.currentNamespace())
@@ -389,9 +375,7 @@ func TestMetadataCursor(t *testing.T) {
 }
 
 func TestLoadMetadata(t *testing.T) {
-	testdir, err := os.MkdirTemp("", "testsnapshot-metadata-")
-	require.NoError(t, err)
-	defer os.RemoveAll(testdir)
+	testdir := t.TempDir()
 
 	metadata := []*metadataRow{}
 	for i := 1; i <= 100; i++ {
@@ -432,11 +416,9 @@ func TestSnapshotExportErrorPropagation(t *testing.T) {
 		updateBatch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
 		updateBatch.HashUpdates.Put("ns1", "coll1", []byte("key1"), []byte("value1"), version.NewHeight(1, 1))
 		require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 1)))
-		snapshotDir, err = os.MkdirTemp("", "testsnapshot")
-		require.NoError(t, err)
+		snapshotDir = t.TempDir()
 		cleanup = func() {
 			dbEnv.Cleanup()
-			os.RemoveAll(snapshotDir)
 		}
 	}
 
@@ -508,13 +490,11 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 		updateBatch.PubUpdates.PutValAndMetadata("ns1", "key1", []byte("value1"), []byte("metadata"), version.NewHeight(1, 1))
 		updateBatch.HashUpdates.Put("ns1", "coll1", []byte("key1"), []byte("value1"), version.NewHeight(1, 1))
 		require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 1)))
-		snapshotDir, err = os.MkdirTemp("", "testsnapshot")
-		require.NoError(t, err)
-		_, err := db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
+		snapshotDir = t.TempDir()
+		_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
 		require.NoError(t, err)
 		cleanup = func() {
 			dbEnv.Cleanup()
-			os.RemoveAll(snapshotDir)
 		}
 	}
 
@@ -703,11 +683,9 @@ func testSnapshotImportPvtdataHashesConsumer(t *testing.T, dbEnv TestEnv) {
 	init := func() {
 		var err error
 		dbEnv.Init(t)
-		snapshotDir, err = os.MkdirTemp("", "testsnapshot")
 
 		t.Cleanup(func() {
 			dbEnv.Cleanup()
-			os.RemoveAll(snapshotDir)
 		})
 
 		require.NoError(t, err)
@@ -716,8 +694,7 @@ func testSnapshotImportPvtdataHashesConsumer(t *testing.T, dbEnv TestEnv) {
 		updateBatch.PubUpdates.Put("ns-1", "key-1", []byte("value-1"), version.NewHeight(1, 1))
 		updateBatch.HashUpdates.Put("ns-1", "coll-1", []byte("key-hash-1"), []byte("value-hash-1"), version.NewHeight(1, 1))
 		require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 1)))
-		snapshotDir, err = os.MkdirTemp("", "testsnapshot")
-		require.NoError(t, err)
+		snapshotDir = t.TempDir()
 		_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
 		require.NoError(t, err)
 	}

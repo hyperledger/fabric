@@ -43,7 +43,7 @@ var _ = Describe("CORS", func() {
 			address := regexp.MustCompile("127.0.0.1:[0-9]+").FindString(string(errBuffer.Contents()))
 			Expect(address).NotTo(BeEmpty())
 
-			req, err = http.NewRequest("OPTIONS", fmt.Sprintf("http://%s/protolator/encode/common.Block", address), nil)
+			req, err = http.NewRequest(http.MethodOptions, fmt.Sprintf("http://%s/protolator/encode/common.Block", address), nil)
 			Expect(err).NotTo(HaveOccurred())
 			req.Header.Add("Origin", "http://foo.com")
 			req.Header.Add("Access-Control-Request-Method", "POST")

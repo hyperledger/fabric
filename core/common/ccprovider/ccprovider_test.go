@@ -28,10 +28,6 @@ func TestInstalledCCs(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	defer func() {
-		os.RemoveAll(tmpDir)
-	}()
-
 	testCases := []struct {
 		name              string
 		directory         string
@@ -110,9 +106,7 @@ func TestInstalledCCs(t *testing.T) {
 }
 
 func TestSetGetChaincodeInstallPath(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "ccprovider")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
@@ -134,8 +128,7 @@ func setupDirectoryStructure(t *testing.T) (string, map[string][]byte) {
 		"example04.1",   // Version doesn't contain the '.' delimiter
 	}
 	hashes := map[string][]byte{}
-	tmp, err := os.MkdirTemp("", "test-installed-cc")
-	require.NoError(t, err)
+	tmp := t.TempDir()
 	dir := path.Join(tmp, "empty")
 	require.NoError(t, os.Mkdir(dir, 0o755))
 	dir = path.Join(tmp, "nonempty")
@@ -145,7 +138,7 @@ func setupDirectoryStructure(t *testing.T) (string, map[string][]byte) {
 	dir = path.Join(tmp, "nopermissionforfiles")
 	require.NoError(t, os.Mkdir(dir, 0o755))
 	noPermissionFile := path.Join(tmp, "nopermissionforfiles", "nopermission.1")
-	_, err = os.Create(noPermissionFile)
+	_, err := os.Create(noPermissionFile)
 	require.NoError(t, err)
 	dir = path.Join(tmp, "nonempty")
 	require.NoError(t, os.Mkdir(path.Join(tmp, "nonempty", "directory"), 0o755))

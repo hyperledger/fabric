@@ -106,7 +106,6 @@ func (ch *chain) main() {
 
 	for {
 		seq := ch.support.Sequence()
-		err = nil
 		select {
 		case msg := <-ch.sendChan:
 			if msg.configMsg == nil {

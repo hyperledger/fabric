@@ -51,7 +51,7 @@ var (
 	// is based on TLS pinning
 	ca = createCAOrPanic()
 
-	lastNodeID uint64
+	lastNodeID atomic.Uint64
 
 	testSubReq = &orderer.SubmitRequest{
 		Channel: "test",
@@ -96,7 +96,7 @@ var (
 )
 
 func nextUnusedID() uint64 {
-	return atomic.AddUint64(&lastNodeID, 1)
+	return lastNodeID.Add(1)
 }
 
 func createCAOrPanic() tlsgen.CA {

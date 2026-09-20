@@ -1208,15 +1208,13 @@ func newPeer(i int) *peerInfo {
 		IdBytes: []byte(p),
 	})
 	return &peerInfo{
-		pkiID:    common.PKIidType(p),
-		identity: api.PeerIdentityType(identity),
-		NetworkMember: discovery.NetworkMember{
-			PKIid:            common.PKIidType(p),
-			Endpoint:         p,
-			InternalEndpoint: p,
-			Envelope: &gossip.Envelope{
-				Payload: []byte(identity),
-			},
+		pkiID:            common.PKIidType(p),
+		identity:         identity,
+		PKIid:            common.PKIidType(p),
+		Endpoint:         p,
+		InternalEndpoint: p,
+		Envelope: &gossip.Envelope{
+			Payload: identity,
 		},
 	}
 }

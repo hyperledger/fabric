@@ -63,7 +63,7 @@ var _ = Describe("all shim APIs for non-private data", func() {
 		height := helper.getLedgerHeight(peer)
 
 		By("adding six marbles, marble-0 to marble-5")
-		for i := 0; i <= 5; i++ {
+		for i := range 6 {
 			helper.invokeMarblesChaincode(ccName, peer, "initMarble", fmt.Sprintf("marble-%d", i), "blue", "35", "tom")
 			helper.waitUntilAllPeersEqualLedgerHeight(height + i + 1)
 		}

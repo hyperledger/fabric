@@ -126,9 +126,7 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 	})
 
 	t.Run("create_ledger_from_nonexist_or_empty_dir_returns_error", func(t *testing.T) {
-		testDir, err := os.MkdirTemp("", "invalidsnapshotdir")
-		require.NoError(t, err)
-		defer os.RemoveAll(testDir)
+		testDir := t.TempDir()
 
 		nonExistDir := filepath.Join(testDir, "nonexistdir")
 		require.EqualError(t, lgrMgr.CreateLedgerFromSnapshot(nonExistDir, nil),
@@ -298,14 +296,12 @@ func TestChaincodeInfoProvider(t *testing.T) {
 }
 
 func setup(t *testing.T, basename string) (*Initializer, *LedgerMgr, func()) {
-	testDir, err := os.MkdirTemp("", basename)
-	require.NoError(t, err)
+	testDir := t.TempDir()
 	initializer, err := constructDefaultInitializer(testDir)
 	require.NoError(t, err)
 	ledgerMgr := NewLedgerMgr(initializer)
 	cleanup := func() {
 		ledgerMgr.Close()
-		os.Remove(testDir)
 	}
 	return initializer, ledgerMgr, cleanup
 }

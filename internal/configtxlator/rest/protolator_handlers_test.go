@@ -50,7 +50,7 @@ func TestProtolatorDecode(t *testing.T) {
 
 	url := fmt.Sprintf("/protolator/decode/%s", proto.MessageName(testProto))
 
-	req, _ := http.NewRequest("POST", url, bytes.NewReader(data))
+	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
 	rec := httptest.NewRecorder()
 	r := NewRouter()
 	r.ServeHTTP(rec, req)
@@ -66,7 +66,7 @@ func TestProtolatorDecode(t *testing.T) {
 func TestProtolatorEncode(t *testing.T) {
 	url := fmt.Sprintf("/protolator/encode/%s", proto.MessageName(testProto))
 
-	req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte(testOutput)))
+	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte(testOutput)))
 	rec := httptest.NewRecorder()
 	r := NewRouter()
 	r.ServeHTTP(rec, req)
@@ -81,7 +81,7 @@ func TestProtolatorEncode(t *testing.T) {
 }
 
 func TestProtolatorDecodeNonExistantProto(t *testing.T) {
-	req, _ := http.NewRequest("POST", "/protolator/decode/NonExistantMsg", bytes.NewReader([]byte{}))
+	req, _ := http.NewRequest(http.MethodPost, "/protolator/decode/NonExistantMsg", bytes.NewReader([]byte{}))
 	rec := httptest.NewRecorder()
 	r := NewRouter()
 	r.ServeHTTP(rec, req)
@@ -90,7 +90,7 @@ func TestProtolatorDecodeNonExistantProto(t *testing.T) {
 }
 
 func TestProtolatorEncodeNonExistantProto(t *testing.T) {
-	req, _ := http.NewRequest("POST", "/protolator/encode/NonExistantMsg", bytes.NewReader([]byte{}))
+	req, _ := http.NewRequest(http.MethodPost, "/protolator/encode/NonExistantMsg", bytes.NewReader([]byte{}))
 	rec := httptest.NewRecorder()
 	r := NewRouter()
 	r.ServeHTTP(rec, req)
@@ -101,7 +101,7 @@ func TestProtolatorEncodeNonExistantProto(t *testing.T) {
 func TestProtolatorDecodeBadData(t *testing.T) {
 	url := fmt.Sprintf("/protolator/decode/%s", proto.MessageName(testProto))
 
-	req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte("Garbage")))
+	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte("Garbage")))
 
 	rec := httptest.NewRecorder()
 	r := NewRouter()
@@ -113,7 +113,7 @@ func TestProtolatorDecodeBadData(t *testing.T) {
 func TestProtolatorEncodeBadData(t *testing.T) {
 	url := fmt.Sprintf("/protolator/encode/%s", proto.MessageName(testProto))
 
-	req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte("Garbage")))
+	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte("Garbage")))
 
 	rec := httptest.NewRecorder()
 	r := NewRouter()

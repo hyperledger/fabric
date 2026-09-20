@@ -382,7 +382,7 @@ var _ = Describe("EndToEnd", func() {
 				core := network.ReadPeerConfig(peer)
 				core.Peer.Gossip.UseLeaderElection = false
 				core.Peer.Gossip.OrgLeader = true
-				core.Peer.Deliveryclient.ReconnectTotalTimeThreshold = time.Duration(time.Second)
+				core.Peer.Deliveryclient.ReconnectTotalTimeThreshold = time.Second
 				network.WritePeerConfig(peer, core)
 			}
 			network.Bootstrap()

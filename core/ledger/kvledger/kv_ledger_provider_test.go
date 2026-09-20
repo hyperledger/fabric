@@ -53,9 +53,8 @@ func TestLedgerProvider(t *testing.T) {
 }
 
 func testLedgerProvider(t *testing.T, enableHistoryDB bool) {
-	conf, cleanup := testConfig(t)
+	conf := testConfig(t)
 	conf.HistoryDBConfig.Enabled = enableHistoryDB
-	defer cleanup()
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	numLedgers := 10
 	existingLedgerIDs, err := provider.List()
@@ -119,8 +118,7 @@ func testLedgerProvider(t *testing.T, enableHistoryDB bool) {
 }
 
 func TestGetLedger(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	inputTestData := map[string]msgs.Status{
@@ -154,8 +152,7 @@ func TestGetLedger(t *testing.T) {
 }
 
 func TestLedgerMetataDataUnmarshalError(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -175,8 +172,7 @@ func TestLedgerMetataDataUnmarshalError(t *testing.T) {
 }
 
 func TestNewProviderIdStoreFormatError(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 
 	require.NoError(t, testutil.Unzip("tests/testdata/v11/sample_ledgers/ledgersData.zip", conf.RootFSPath, false))
 
@@ -192,8 +188,7 @@ func TestNewProviderIdStoreFormatError(t *testing.T) {
 }
 
 func TestUpgradeIDStoreFormatDBError(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	provider.Close()
 
@@ -203,8 +198,7 @@ func TestUpgradeIDStoreFormatDBError(t *testing.T) {
 }
 
 func TestCheckUpgradeEligibilityV1x(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	dbPath := LedgerProviderPath(conf.RootFSPath)
 	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
 	idStore := &idStore{db, dbPath}
@@ -221,8 +215,7 @@ func TestCheckUpgradeEligibilityV1x(t *testing.T) {
 }
 
 func TestCheckUpgradeEligibilityCurrentVersion(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	dbPath := LedgerProviderPath(conf.RootFSPath)
 	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
 	idStore := &idStore{db, dbPath}
@@ -238,8 +231,7 @@ func TestCheckUpgradeEligibilityCurrentVersion(t *testing.T) {
 }
 
 func TestCheckUpgradeEligibilityBadFormat(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	dbPath := LedgerProviderPath(conf.RootFSPath)
 	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
 	idStore := &idStore{db, dbPath}
@@ -260,8 +252,7 @@ func TestCheckUpgradeEligibilityBadFormat(t *testing.T) {
 }
 
 func TestCheckUpgradeEligibilityEmptyDB(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	dbPath := LedgerProviderPath(conf.RootFSPath)
 	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
 	idStore := &idStore{db, dbPath}
@@ -304,9 +295,8 @@ func TestDeletionOfUnderConstructionLedgersAtStart(t *testing.T) {
 }
 
 func testDeletionOfUnderConstructionLedgersAtStart(t *testing.T, enableHistoryDB, mimicCrashAfterLedgerCreation bool) {
-	conf, cleanup := testConfig(t)
+	conf := testConfig(t)
 	conf.HistoryDBConfig.Enabled = enableHistoryDB
-	defer cleanup()
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	idStore := provider.idStore
 	ledgerID := "testLedger"
@@ -347,8 +337,7 @@ func testDeletionOfUnderConstructionLedgersAtStart(t *testing.T, enableHistoryDB
 }
 
 func TestLedgerCreationFailure(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	ledgerID := "testLedger"
 	defer func() {
@@ -365,8 +354,7 @@ func TestLedgerCreationFailure(t *testing.T) {
 }
 
 func TestLedgerCreationFailureDuringLedgerDeletion(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	ledgerID := "testLedger"
 	defer func() {
@@ -385,8 +373,7 @@ func TestLedgerCreationFailureDuringLedgerDeletion(t *testing.T) {
 }
 
 func TestMultipleLedgerBasicRW(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider1 := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider1.Close()
 
@@ -434,9 +421,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 
 func TestLedgerBackup(t *testing.T) {
 	ledgerid := "TestLedger"
-	basePath, err := os.MkdirTemp("", "kvledger")
-	require.NoError(t, err, "Failed to create ledger directory")
-	defer os.RemoveAll(basePath)
+	basePath := t.TempDir()
 	originalPath := filepath.Join(basePath, "kvledger1")
 	restorePath := filepath.Join(basePath, "kvledger2")
 
@@ -514,7 +499,7 @@ func TestLedgerBackup(t *testing.T) {
 	provider = testutilNewProvider(restoreConf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
-	_, err = provider.CreateFromGenesisBlock(gb)
+	_, err := provider.CreateFromGenesisBlock(gb)
 	require.EqualError(t, err, "ledger [TestLedger] already exists with state [ACTIVE]")
 
 	lgr, err = provider.Open(ledgerid)
@@ -596,10 +581,10 @@ func constructTestLedger(t *testing.T, provider *Provider, sequenceID int) strin
 	return ledgerID
 }
 
-func testConfig(t *testing.T) (conf *ledger.Config, cleanup func()) {
-	path, err := os.MkdirTemp("", "kvledger")
-	require.NoError(t, err, "Failed to create test ledger directory")
-	conf = &ledger.Config{
+func testConfig(t *testing.T) *ledger.Config {
+	path := t.TempDir()
+
+	conf := &ledger.Config{
 		RootFSPath:    path,
 		StateDBConfig: &ledger.StateDBConfig{},
 		PrivateDataConfig: &ledger.PrivateDataConfig{
@@ -615,11 +600,8 @@ func testConfig(t *testing.T) (conf *ledger.Config, cleanup func()) {
 			RootDir: filepath.Join(path, "snapshots"),
 		},
 	}
-	cleanup = func() {
-		os.RemoveAll(path)
-	}
 
-	return conf, cleanup
+	return conf
 }
 
 func testutilNewProvider(conf *ledger.Config, t *testing.T, ccInfoProvider *mock.DeployedChaincodeInfoProvider) *Provider {

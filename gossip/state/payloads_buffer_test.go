@@ -108,7 +108,7 @@ func TestPayloadsBufferImpl_ConcurrentPush(t *testing.T) {
 	concurrency := 10
 
 	buffer := NewPayloadsBuffer(nextSeqNum)
-	require.Equal(t, buffer.Next(), uint64(nextSeqNum))
+	require.Equal(t, buffer.Next(), nextSeqNum)
 
 	startWG := sync.WaitGroup{}
 	startWG.Add(1)

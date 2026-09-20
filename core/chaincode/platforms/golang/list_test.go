@@ -68,15 +68,7 @@ func TestPackageInfoFiles(t *testing.T) {
 }
 
 func Test_listModuleInfo(t *testing.T) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err, "failed to get working directory")
-	defer func() {
-		err := os.Chdir(cwd)
-		require.NoError(t, err)
-	}()
-
-	err = os.Chdir("testdata/ccmodule")
-	require.NoError(t, err, "failed to change to module directory")
+	t.Chdir("testdata/ccmodule")
 
 	moduleDir, err := os.Getwd()
 	require.NoError(t, err, "failed to get module working directory")
@@ -92,8 +84,7 @@ func Test_listModuleInfo(t *testing.T) {
 	}
 	require.Equal(t, expected, mi)
 
-	err = os.Chdir("nested")
-	require.NoError(t, err, "failed to change to module directory")
+	t.Chdir("nested")
 
 	mi, err = listModuleInfo("GOPROXY=https://proxy.golang.org")
 	require.NoError(t, err, "failed to get module info")
@@ -108,19 +99,11 @@ func Test_listModuleInfo(t *testing.T) {
 }
 
 func Test_listModuleInfoFailure(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "module")
-	require.NoError(t, err, "failed to create temporary directory")
+	tempDir := t.TempDir()
 
-	cwd, err := os.Getwd()
-	require.NoError(t, err, "failed to get working directory")
-	defer func() {
-		err := os.Chdir(cwd)
-		require.NoError(t, err)
-	}()
-	err = os.Chdir(tempDir)
-	require.NoError(t, err, "failed to change to temporary directory")
+	t.Chdir(tempDir)
 
-	_, err = listModuleInfo()
+	_, err := listModuleInfo()
 	require.ErrorContains(t, err, "'go list' failed with: go: ")
 	require.ErrorContains(t, err, "see 'go help modules': exit status 1")
 }

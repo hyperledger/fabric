@@ -8,7 +8,6 @@ package library
 
 import (
 	"context"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -51,9 +50,7 @@ func TestLoadAuthPluginNoCover(t *testing.T) {
 		t.Skip("plugins disabled")
 	}
 
-	testDir, err := os.MkdirTemp("", "")
-	require.NoError(t, err, "Could not create temp directory for plugins")
-	defer os.Remove(testDir)
+	testDir := t.TempDir()
 
 	pluginPath := filepath.Join(testDir, "authplugin.so")
 	buildPlugin(t, pluginPath, authPluginPackage)
@@ -76,9 +73,7 @@ func TestLoadDecoratorPluginNoCover(t *testing.T) {
 	testProposal := &peer.Proposal{Payload: []byte("test")}
 	testInput := &peer.ChaincodeInput{Args: [][]byte{[]byte("test")}}
 
-	testDir, err := os.MkdirTemp("", "")
-	require.NoError(t, err, "Could not create temp directory for plugins")
-	defer os.Remove(testDir)
+	testDir := t.TempDir()
 
 	pluginPath := filepath.Join(testDir, "decoratorplugin.so")
 	buildPlugin(t, pluginPath, decoratorPluginPackage)
@@ -96,9 +91,7 @@ func TestEndorsementPluginNoCover(t *testing.T) {
 		t.Skip("plugins disabled")
 	}
 
-	testDir, err := os.MkdirTemp("", "")
-	require.NoError(t, err, "Could not create temp directory for plugins")
-	defer os.Remove(testDir)
+	testDir := t.TempDir()
 
 	pluginPath := filepath.Join(testDir, "endorsementplugin.so")
 	buildPlugin(t, pluginPath, endorsementTestPlugin)
@@ -121,9 +114,7 @@ func TestValidationPluginNoCover(t *testing.T) {
 		t.Skip("plugins disabled")
 	}
 
-	testDir, err := os.MkdirTemp("", "")
-	require.NoError(t, err, "Could not create temp directory for plugins")
-	defer os.Remove(testDir)
+	testDir := t.TempDir()
 
 	pluginPath := filepath.Join(testDir, "validationplugin.so")
 	buildPlugin(t, pluginPath, validationTestPlugin)
@@ -136,7 +127,7 @@ func TestValidationPluginNoCover(t *testing.T) {
 	instance := factory.New()
 	require.NotNil(t, instance)
 	require.NoError(t, instance.Init())
-	err = instance.Validate(nil, "", 0, 0)
+	err := instance.Validate(nil, "", 0, 0)
 	require.NoError(t, err)
 }
 

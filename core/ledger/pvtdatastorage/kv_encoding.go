@@ -151,7 +151,7 @@ func encodeInelgMissingDataKey(key *missingDataKey) []byte {
 	encKey = append(encKey, nilByte)
 	encKey = append(encKey, []byte(key.coll)...)
 	encKey = append(encKey, nilByte)
-	return append(encKey, []byte(encodeReverseOrderVarUint64(key.blkNum))...)
+	return append(encKey, encodeReverseOrderVarUint64(key.blkNum)...)
 }
 
 func decodeInelgMissingDataKey(keyBytes []byte) *missingDataKey {
@@ -241,20 +241,16 @@ func createRangeScanKeysForElgMissingData(blkNum uint64, group []byte) ([]byte, 
 func createRangeScanKeysForInelgMissingData(maxBlkNum uint64, ns, coll string) ([]byte, []byte) {
 	startKey := encodeInelgMissingDataKey(
 		&missingDataKey{
-			nsCollBlk: nsCollBlk{
-				ns:     ns,
-				coll:   coll,
-				blkNum: maxBlkNum,
-			},
+			ns:     ns,
+			coll:   coll,
+			blkNum: maxBlkNum,
 		},
 	)
 	endKey := encodeInelgMissingDataKey(
 		&missingDataKey{
-			nsCollBlk: nsCollBlk{
-				ns:     ns,
-				coll:   coll,
-				blkNum: 0,
-			},
+			ns:     ns,
+			coll:   coll,
+			blkNum: 0,
 		},
 	)
 

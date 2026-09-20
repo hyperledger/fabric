@@ -336,7 +336,7 @@ func TestHandshake(t *testing.T) {
 	_, tempEndpoint, tempL := getAvailablePort(t)
 	acceptChan := handshaker(port, tempEndpoint, inst, t, mutator, none)
 	select {
-	case <-time.After(time.Duration(time.Second * 4)):
+	case <-time.After(time.Second * 4):
 		require.FailNow(t, "Didn't receive a message, seems like handshake failed")
 	case msg = <-acceptChan:
 	}
@@ -717,7 +717,7 @@ func TestResponses(t *testing.T) {
 			m.Respond(reply.GossipMessage)
 		}
 	}()
-	expectedNOnce := uint64(msg.Nonce + 1)
+	expectedNOnce := msg.Nonce + 1
 	responsesFromComm1 := comm2.Accept(acceptAll)
 
 	ticker := time.NewTicker(10 * time.Second)
@@ -1072,7 +1072,7 @@ func waitForMessages(t *testing.T, msgChan chan uint64, count int, errMsg string
 }
 
 func TestConcurrentCloseSend(t *testing.T) {
-	var stopping int32
+	var stopping atomic.Int32
 
 	comm1, _ := newCommInstance(t, naiveSec)
 	comm2, port2 := newCommInstance(t, naiveSec)
@@ -1087,12 +1087,12 @@ func TestConcurrentCloseSend(t *testing.T) {
 		comm1.Send(createGossipMsg(), remotePeer(port2))
 		close(ready)
 
-		for atomic.LoadInt32(&stopping) == int32(0) {
+		for stopping.Load() == int32(0) {
 			comm1.Send(createGossipMsg(), remotePeer(port2))
 		}
 	}()
 	<-ready
 	comm2.Stop()
-	atomic.StoreInt32(&stopping, int32(1))
+	stopping.Store(int32(1))
 	<-done
 }

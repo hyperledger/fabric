@@ -21,9 +21,7 @@ const (
 )
 
 func TestGenesisBlock(t *testing.T) {
-	testDir, err := os.MkdirTemp("", "unittest")
-	require.NoErrorf(t, err, "generate temporary test dir")
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	testFile := path.Join(testDir, file)
 
@@ -116,12 +114,10 @@ func TestReplaceGenesisBlockFile(t *testing.T) {
 	}
 	marshalledBlock, _ := proto.Marshal(block)
 
-	testDir, err := os.MkdirTemp("", "unittest")
-	require.NoErrorf(t, err, "generate temporary test dir")
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	testFile := path.Join(testDir, file)
-	err = os.WriteFile(testFile, marshalledBlock, 0o644)
+	err := os.WriteFile(testFile, marshalledBlock, 0o644)
 	require.NoErrorf(t, err, "generate temporary test file: %s", file)
 
 	testFileBak := path.Join(testDir, fileBak)
@@ -165,7 +161,7 @@ func TestReplaceGenesisBlockFile(t *testing.T) {
 
 		outHeader := outBlock.GetHeader()
 		require.Equal(t, expectedNumber2, outHeader.GetNumber(), "block header Number not read correctly.")
-		require.Equal(t, []uint8([]byte(nil)), outHeader.GetPreviousHash(), "block header PreviousHash not read correctly.")
+		require.Equal(t, []byte(nil), outHeader.GetPreviousHash(), "block header PreviousHash not read correctly.")
 		require.Equal(t, expectedBytes2, outHeader.GetDataHash(), "block header DataHash not read correctly.")
 
 		outData := outBlock.GetData()

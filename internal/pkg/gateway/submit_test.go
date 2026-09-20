@@ -443,7 +443,7 @@ func TestSubmit(t *testing.T) {
 			},
 			postTest: func(t *testing.T, def *preparedTest) {
 				var addresses []string
-				for i := 0; i < def.dialer.CallCount(); i++ {
+				for i := range def.dialer.CallCount() {
 					_, address, _ := def.dialer.ArgsForCall(i)
 					addresses = append(addresses, address)
 				}

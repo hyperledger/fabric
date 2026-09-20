@@ -39,8 +39,7 @@ import (
 )
 
 func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	snapshotRootDir := conf.SnapshotsConfig.RootDir
 	nsCollBtlConfs := []*nsCollBtlConfig{
 		{
@@ -209,9 +208,8 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 }
 
 func TestSnapshotDBTypeCouchDB(t *testing.T) {
-	conf, cleanup := testConfig(t)
+	conf := testConfig(t)
 	fmt.Printf("snapshotRootDir %s\n", conf.SnapshotsConfig.RootDir)
-	defer cleanup()
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -239,8 +237,7 @@ func TestSnapshotDBTypeCouchDB(t *testing.T) {
 
 func TestSnapshotCouchDBIndexCreation(t *testing.T) {
 	setup := func() (string, *ledger.CouchDBConfig, *Provider) {
-		conf, cleanup := testConfig(t)
-		t.Cleanup(cleanup)
+		conf := testConfig(t)
 
 		snapshotRootDir := conf.SnapshotsConfig.RootDir
 		provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
@@ -279,8 +276,7 @@ func TestSnapshotCouchDBIndexCreation(t *testing.T) {
 			RedoLogPath:         filepath.Join(conf.RootFSPath, "couchdbRedoLogs"),
 		}
 
-		destConf, destCleanup := testConfig(t)
-		t.Cleanup(destCleanup)
+		destConf := testConfig(t)
 		destConf.StateDBConfig = &ledger.StateDBConfig{
 			StateDatabase: ledger.CouchDB,
 			CouchDB:       couchDBConfig,
@@ -453,8 +449,7 @@ func TestSnapshotDirPaths(t *testing.T) {
 }
 
 func TestSnapshotDirPathsCreation(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer func() {
 		provider.Close()
@@ -507,16 +502,14 @@ func TestSnapshotsDirInitializingErrors(t *testing.T) {
 	}
 
 	t.Run("invalid-path", func(t *testing.T) {
-		conf, cleanup := testConfig(t)
-		defer cleanup()
+		conf := testConfig(t)
 		conf.SnapshotsConfig.RootDir = "./a-relative-path"
 		err := initKVLedgerProvider(conf)
 		require.EqualError(t, err, "invalid path: ./a-relative-path. The path for the snapshot dir is expected to be an absolute path")
 	})
 
 	t.Run("snapshots final dir creation returns error", func(t *testing.T) {
-		conf, cleanup := testConfig(t)
-		defer cleanup()
+		conf := testConfig(t)
 
 		completedSnapshotsPath := CompletedSnapshotsPath(conf.SnapshotsConfig.RootDir)
 		require.NoError(t, os.MkdirAll(filepath.Dir(completedSnapshotsPath), 0o755))
@@ -528,8 +521,7 @@ func TestSnapshotsDirInitializingErrors(t *testing.T) {
 }
 
 func TestGenerateSnapshotErrors(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer func() {
 		provider.Close()
@@ -621,7 +613,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 	var additionalMetadataFile string
 
 	init := func(t *testing.T) {
-		conf, cleanupFunc := testConfig(t)
+		conf := testConfig(t)
 		// make a copy of originalSnapshotDir
 		snapshotDirForTest = filepath.Join(conf.RootFSPath, "snapshot")
 		require.NoError(t, os.MkdirAll(snapshotDirForTest, 0o700))
@@ -645,7 +637,6 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		provider = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 		cleanup = func() {
 			provider.Close()
-			cleanupFunc()
 		}
 	}
 
@@ -917,8 +908,7 @@ func verifySnapshotOutput(
 }
 
 func testCreateLedgerFromSnapshot(t *testing.T, snapshotDir string, expectedChannelID string) *kvLedger {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	p := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	destLedger, channelID, err := p.CreateFromSnapshot(snapshotDir)
 	require.NoError(t, err)
@@ -1003,8 +993,7 @@ func addDummyEntryInCollectionConfigHistory(
 }
 
 func TestMostRecentCollectionConfigFetcher(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 
 	ledgerID := "test-ledger"
 	chaincodeName := "test-chaincode"

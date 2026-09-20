@@ -207,13 +207,11 @@ func TestGetInstalledChaincodesErrorPaths(t *testing.T) {
 	defer SetChaincodesPath(cip)
 
 	// Create a temp dir and remove it at the end
-	dir, err := os.MkdirTemp(os.TempDir(), "chaincodes")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	// Set the above created directory as the chaincode install path
 	SetChaincodesPath(dir)
-	err = os.WriteFile(filepath.Join(dir, "idontexist.1.0"), []byte("test"), 0o777)
+	err := os.WriteFile(filepath.Join(dir, "idontexist.1.0"), []byte("test"), 0o777)
 	require.NoError(t, err)
 	resp, err := GetInstalledChaincodes()
 	require.NoError(t, err)
@@ -227,11 +225,7 @@ func TestChaincodePackageExists(t *testing.T) {
 }
 
 func TestSetChaincodesPath(t *testing.T) {
-	dir, err := os.MkdirTemp(os.TempDir(), "setchaincodes")
-	if err != nil {
-		require.Fail(t, err.Error(), "Unable to create temp dir")
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 	t.Logf("created temp dir %s", dir)
 
 	// Get the existing chaincode install path value and set it

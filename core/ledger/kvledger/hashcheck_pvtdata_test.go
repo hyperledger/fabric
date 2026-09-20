@@ -20,8 +20,7 @@ import (
 )
 
 func TestExtractValidPvtData(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 
 	nsCollBtlConfs := []*nsCollBtlConfig{
 		{
@@ -92,8 +91,7 @@ func TestExtractValidPvtData(t *testing.T) {
 
 	// generate snapshot at block-2
 	require.NoError(t, kvledger.generateSnapshot())
-	freshConf, cleanup := testConfig(t)
-	defer cleanup()
+	freshConf := testConfig(t)
 
 	freshProvider := testutilNewProviderWithCollectionConfig(
 		t,

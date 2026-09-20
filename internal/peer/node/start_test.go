@@ -8,7 +8,6 @@ package node
 
 import (
 	"bytes"
-	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -29,9 +28,7 @@ func TestStartCmd(t *testing.T) {
 	defer viper.Reset()
 	g := NewGomegaWithT(t)
 
-	tempDir, err := os.MkdirTemp("", "startcmd")
-	g.Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	viper.Set("peer.address", "localhost:6051")
 	viper.Set("peer.listenAddress", "0.0.0.0:6051")

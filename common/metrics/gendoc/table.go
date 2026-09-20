@@ -143,7 +143,7 @@ func (t Table) formatCell(cell Cell) string {
 	}
 
 	var c strings.Builder
-	for i := 0; i < lineCount; i++ {
+	for i := range lineCount {
 		endSplit := "|"
 		endPadding := " "
 		for _, col := range t.Columns {

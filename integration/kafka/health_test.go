@@ -76,7 +76,7 @@ var _ = Describe("Kafka Health", func() {
 			Eventually(zProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			// Start Kafka Brokers
-			for i := 0; i < network.Consensus.Brokers; i++ {
+			for i := range network.Consensus.Brokers {
 				kafkaRunner := network.BrokerRunner(i, zookeepers)
 				kp := ifrit.Invoke(kafkaRunner)
 				Eventually(kp.Ready(), network.EventuallyTimeout).Should(BeClosed())

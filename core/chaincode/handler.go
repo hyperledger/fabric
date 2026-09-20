@@ -982,7 +982,7 @@ func getQueryMetadataFromBytes(metadataBytes []byte) (*pb.QueryMetadata, error) 
 func (h *Handler) calculateTotalReturnLimit(metadata *pb.QueryMetadata) int32 {
 	totalReturnLimit := int32(h.TotalQueryLimit)
 	if metadata != nil {
-		pageSize := int32(metadata.GetPageSize())
+		pageSize := metadata.GetPageSize()
 		if pageSize > 0 && pageSize < totalReturnLimit {
 			totalReturnLimit = pageSize
 		}

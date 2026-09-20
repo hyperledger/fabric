@@ -116,9 +116,7 @@ func TestBinarySearchBlockFileNum(t *testing.T) {
 }
 
 func TestIsBootstrappedFromSnapshot(t *testing.T) {
-	testDir, err := os.MkdirTemp("", "isbootstrappedfromsnapshot")
-	require.NoError(t, err)
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	t.Run("no_bootstrapping_snapshot_info_file", func(t *testing.T) {
 		// create chains directory for the ledger without bootstrappingSnapshotInfoFile
@@ -145,9 +143,7 @@ func TestIsBootstrappedFromSnapshot(t *testing.T) {
 
 func TestGetLedgersBootstrappedFromSnapshot(t *testing.T) {
 	t.Run("no_bootstrapping_snapshot_info_file", func(t *testing.T) {
-		testDir, err := os.MkdirTemp("", "getledgersfromsnapshot_nosnapshot_info")
-		require.NoError(t, err)
-		defer os.RemoveAll(testDir)
+		testDir := t.TempDir()
 
 		// create chains directories for ledgers without bootstrappingSnapshotInfoFile
 		for i := range 5 {
@@ -160,9 +156,7 @@ func TestGetLedgersBootstrappedFromSnapshot(t *testing.T) {
 	})
 
 	t.Run("with_bootstrapping_snapshot_info_file", func(t *testing.T) {
-		testDir, err := os.MkdirTemp("", "getledgersfromsnapshot_snapshot_info")
-		require.NoError(t, err)
-		defer os.RemoveAll(testDir)
+		testDir := t.TempDir()
 
 		// create chains directories for ledgers
 		// also create bootstrappingSnapshotInfoFile for ledger_0 and ledger_1

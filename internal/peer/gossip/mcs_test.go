@@ -65,7 +65,7 @@ func TestPKIidOfCert(t *testing.T) {
 	require.NotNil(t, pkid, "PKID must be different from nil")
 	// Check that pkid is correctly computed
 	id, err := deserializersManager.Deserialize(peerIdentity)
-	require.NoError(t, err, "Failed getting validated identity from [% x]", []byte(peerIdentity))
+	require.NoError(t, err, "Failed getting validated identity from [% x]", peerIdentity)
 	idRaw := append([]byte(id.GetMspid()), id.GetIdBytes()...)
 	require.NoError(t, err, "Failed marshalling identity identifier [% x]: [%s]", peerIdentity, err)
 	h := sha256.New()

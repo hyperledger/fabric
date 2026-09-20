@@ -94,17 +94,13 @@ func copyYamlFiles(src, dst string) {
 }
 
 func TestInitializeLogging(t *testing.T) {
-	origEnvValue := os.Getenv("FABRIC_LOGGING_SPEC")
-	os.Setenv("FABRIC_LOGGING_SPEC", "foo=debug")
+	t.Setenv("FABRIC_LOGGING_SPEC", "foo=debug")
 	initializeLogging()
 	require.Equal(t, "debug", flogging.LoggerLevel("foo"))
-	os.Setenv("FABRIC_LOGGING_SPEC", origEnvValue)
 }
 
 func TestInitializeProfilingService(t *testing.T) {
-	origEnvValue := os.Getenv("FABRIC_LOGGING_SPEC")
-	defer os.Setenv("FABRIC_LOGGING_SPEC", origEnvValue)
-	os.Setenv("FABRIC_LOGGING_SPEC", "debug")
+	t.Setenv("FABRIC_LOGGING_SPEC", "debug")
 	// get a free random port
 	listenAddr := func() string {
 		l, _ := net.Listen("tcp", "localhost:0")
@@ -335,14 +331,12 @@ func TestInitializeServerConfig(t *testing.T) {
 }
 
 func TestInitializeBootstrapChannel(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	genesisFile := produceGenesisFile(t, genesisconfig.SampleSingleMSPSoloProfile, "testchannelid")
 	defer os.Remove(genesisFile)
 
-	fileLedgerLocation, _ := os.MkdirTemp("", "main_test-")
-	defer os.RemoveAll(fileLedgerLocation)
+	fileLedgerLocation := t.TempDir()
 
 	ledgerFactory, err := createLedgerFactory(
 		&localconfig.TopLevel{
@@ -369,8 +363,7 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 }
 
 func TestExtractBootstrapBlock(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	genesisFile := produceGenesisFile(t, genesisconfig.SampleSingleMSPSoloProfile, "testchannelid")
 	defer os.Remove(genesisFile)
@@ -399,8 +392,7 @@ func TestExtractBootstrapBlock(t *testing.T) {
 }
 
 func TestInitSystemChannelWithJoinBlock(t *testing.T) {
-	configPathCleanup := configtest.SetDevFabricConfigPath(t)
-	defer configPathCleanup()
+	configtest.SetDevFabricConfigPath(t)
 	genesisFile := produceGenesisFile(t, genesisconfig.SampleSingleMSPSoloProfile, "testchannelid")
 	defer os.Remove(genesisFile)
 
@@ -410,11 +402,11 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 		ledgerFactory  blockledger.Factory
 		fileRepo       *filerepo.Repo
 		genesisBytes   []byte
+		err            error
 	)
 
-	setup := func() func() {
-		fileLedgerLocation, err := os.MkdirTemp("", "main_test-")
-		require.NoError(t, err)
+	setup := func() {
+		fileLedgerLocation := t.TempDir()
 
 		config = &localconfig.TopLevel{
 			General: localconfig.General{
@@ -439,15 +431,10 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 		genesisBytes, err = os.ReadFile(genesisFile)
 		require.NoError(t, err)
 		require.NotNil(t, genesisBytes)
-
-		return func() {
-			os.RemoveAll(fileLedgerLocation)
-		}
 	}
 
 	t.Run("No join-block", func(t *testing.T) {
-		cleanup := setup()
-		defer cleanup()
+		setup()
 
 		bootstrapBlock := initSystemChannelWithJoinBlock(config, cryptoProvider, ledgerFactory)
 		require.Nil(t, bootstrapBlock)
@@ -457,8 +444,7 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 	})
 
 	t.Run("With genesis join-block", func(t *testing.T) {
-		cleanup := setup()
-		defer cleanup()
+		setup()
 
 		err := fileRepo.Save("testchannelid", genesisBytes)
 		require.NoError(t, err)
@@ -476,8 +462,7 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 	})
 
 	t.Run("With non-genesis join-block", func(t *testing.T) {
-		cleanup := setup()
-		defer cleanup()
+		setup()
 
 		block := protoutil.UnmarshalBlockOrPanic(genesisBytes)
 		block.Header.Number = 7
@@ -495,9 +480,7 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 func TestExtractSystemChannel(t *testing.T) {
 	cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 
-	tmpdir, err := os.MkdirTemp("", "main_test-")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 
 	rlf, err := fileledger.New(tmpdir, &disabled.Provider{})
 	require.NoError(t, err)
@@ -623,8 +606,7 @@ func TestLoadLocalMSP(t *testing.T) {
 }
 
 func TestInitializeMultichannelRegistrar(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	genesisFile := produceGenesisFile(t, genesisconfig.SampleDevModeSoloProfile, "testchannelid")
 	defer os.Remove(genesisFile)
 
@@ -634,8 +616,7 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 	signer := &server_mocks.SignerSerializer{}
 
 	t.Run("registrar with a system channel", func(t *testing.T) {
-		conf, ledgerDir := genesisConfig(t, genesisFile)
-		defer os.RemoveAll(ledgerDir)
+		conf := genesisConfig(t, genesisFile)
 		lf, err := createLedgerFactory(conf, &disabled.Provider{})
 		require.NoError(t, err)
 		bootBlock := file.New(genesisFile).GenesisBlock()
@@ -658,8 +639,7 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 	})
 
 	t.Run("registrar without a system channel", func(t *testing.T) {
-		conf, ledgerDir := genesisConfig(t, genesisFile)
-		defer os.RemoveAll(ledgerDir)
+		conf := genesisConfig(t, genesisFile)
 		conf.General.BootstrapMethod = "none"
 		conf.General.GenesisFile = ""
 		srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
@@ -691,7 +671,7 @@ func TestInitializeGrpcServer(t *testing.T) {
 		l.Close()
 		return l.Addr().String()
 	}()
-	host := strings.Split(listenAddr, ":")[0]
+	host, _, _ := strings.Cut(listenAddr, ":")
 	port, _ := strconv.ParseUint(strings.Split(listenAddr, ":")[1], 10, 16)
 	conf := &localconfig.TopLevel{
 		General: localconfig.General{
@@ -729,8 +709,7 @@ func generateCryptoMaterials(t *testing.T, cryptogen string) string {
 }
 
 func TestUpdateTrustedRoots(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	genesisFile := produceGenesisFile(t, genesisconfig.SampleDevModeSoloProfile, "testchannelid")
 	defer os.Remove(genesisFile)
@@ -745,8 +724,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		return l.Addr().String()
 	}()
 	port, _ := strconv.ParseUint(strings.Split(listenAddr, ":")[1], 10, 16)
-	tempDir, err := os.MkdirTemp("", "ledger-dir")
-	require.NoError(t, err)
+	tempDir := t.TempDir()
 	conf := &localconfig.TopLevel{
 		General: localconfig.General{
 			BootstrapMethod: "file",
@@ -782,8 +760,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	genConfig, ledgerDir := genesisConfig(t, genesisFile)
-	defer os.RemoveAll(ledgerDir)
+	genConfig := genesisConfig(t, genesisFile)
 
 	initializeMultichannelRegistrar(
 		bootBlock,
@@ -836,8 +813,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			caMgr.updateClusterDialer(predDialer, clusterConf.SecOpts.ServerRootCAs)
 		}
 	}
-	genConfig2, ledgerDir2 := genesisConfig(t, genesisFile)
-	defer os.RemoveAll(ledgerDir2)
+	genConfig2 := genesisConfig(t, genesisFile)
 
 	initializeMultichannelRegistrar(
 		bootBlock,
@@ -1109,9 +1085,7 @@ func TestReuseListener(t *testing.T) {
 func TestInitializeEtcdraftConsenter(t *testing.T) {
 	consenters := make(map[string]consensus.Consenter)
 
-	tmpdir, err := os.MkdirTemp("", "main_test-")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 	rlf, err := fileledger.New(tmpdir, &disabled.Provider{})
 	require.NoError(t, err)
 
@@ -1149,11 +1123,10 @@ func TestInitializeEtcdraftConsenter(t *testing.T) {
 	require.NotNil(t, consenters["etcdraft"])
 }
 
-func genesisConfig(t *testing.T, genesisFile string) (*localconfig.TopLevel, string) {
+func genesisConfig(t *testing.T, genesisFile string) *localconfig.TopLevel {
 	t.Helper()
 	localMSPDir := configtest.GetDevMspDir()
-	ledgerDir, err := os.MkdirTemp("", "genesis-config")
-	require.NoError(t, err)
+	ledgerDir := t.TempDir()
 
 	return &localconfig.TopLevel{
 		General: localconfig.General{
@@ -1172,7 +1145,7 @@ func genesisConfig(t *testing.T, genesisFile string) (*localconfig.TopLevel, str
 		FileLedger: localconfig.FileLedger{
 			Location: ledgerDir,
 		},
-	}, ledgerDir
+	}
 }
 
 func panicMsg(f func()) string {
@@ -1190,7 +1163,7 @@ func panicMsg(f func()) string {
 
 func produceGenesisFile(t *testing.T, profile, channelID string) string {
 	conf := genesisconfig.Load(profile, configtest.GetDevConfigDir())
-	f, err := os.CreateTemp("", fmt.Sprintf("%s-genesis_block-", t.Name()))
+	f, err := os.CreateTemp(t.TempDir(), fmt.Sprintf("%s-genesis_block-", t.Name()))
 	require.NoError(t, err)
 	_, err = f.Write(protoutil.MarshalOrPanic(encoder.New(conf).GenesisBlockForChannel(channelID)))
 	require.NoError(t, err)

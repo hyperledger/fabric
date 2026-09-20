@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
 	"sort"
 	"sync"
 
@@ -203,7 +204,7 @@ func (provider *VersionedDBProvider) Drop(dbName string) error {
 	metadataDBName := constructMetadataDBName(dbName)
 	couchDBDatabase := couchDatabase{couchInstance: provider.couchInstance, dbName: metadataDBName}
 	_, couchDBReturn, err := couchDBDatabase.getDatabaseInfo()
-	if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
+	if couchDBReturn != nil && couchDBReturn.StatusCode == http.StatusNotFound {
 		// db does not exist
 		return nil
 	}

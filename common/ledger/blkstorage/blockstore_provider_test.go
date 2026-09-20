@@ -115,7 +115,7 @@ func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store *BlockStore
 		retrievedBlock, _ = store.RetrieveBlockByHash(protoutil.BlockHeaderHash(block.GetHeader()))
 		require.Equal(t, block, retrievedBlock)
 
-		for txNum := 0; txNum < len(block.GetData().GetData()); txNum++ {
+		for txNum := range block.GetData().GetData() {
 			txEnvBytes := block.GetData().GetData()[txNum]
 			txEnv, _ := protoutil.GetEnvelopeFromBlock(txEnvBytes)
 			txid, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnvBytes)

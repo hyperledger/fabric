@@ -29,7 +29,7 @@ func NewBlock(seqNum uint64, previousHash []byte) *cb.Block {
 	block.Data = &cb.BlockData{}
 
 	var metadataContents [][]byte
-	for i := 0; i < len(cb.BlockMetadataIndex_name); i++ {
+	for range cb.BlockMetadataIndex_name {
 		metadataContents = append(metadataContents, []byte{})
 	}
 	block.Metadata = &cb.BlockMetadata{Metadata: metadataContents}
@@ -215,7 +215,7 @@ func InitBlockMetadata(block *cb.Block) {
 	if block.GetMetadata() == nil {
 		block.Metadata = &cb.BlockMetadata{Metadata: [][]byte{{}, {}, {}, {}, {}}}
 	} else if len(block.GetMetadata().GetMetadata()) < int(cb.BlockMetadataIndex_COMMIT_HASH+1) {
-		for i := int(len(block.GetMetadata().GetMetadata())); i <= int(cb.BlockMetadataIndex_COMMIT_HASH); i++ {
+		for i := len(block.GetMetadata().GetMetadata()); i <= int(cb.BlockMetadataIndex_COMMIT_HASH); i++ {
 			block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 		}
 	}

@@ -152,8 +152,7 @@ func TestCreateChain(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -193,8 +192,7 @@ func TestCreateChainWithOutputBlock(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -212,11 +210,7 @@ func TestCreateChainWithOutputBlock(t *testing.T) {
 	cmd := createCmd(mockCF)
 	AddFlags(cmd)
 
-	tempDir, err := os.MkdirTemp("", "create-output")
-	if err != nil {
-		t.Fatalf("failed to create temporary directory")
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	outputBlockPath := filepath.Join(tempDir, "output.block")
 	args := []string{"-c", mockchain, "-o", "localhost:7050", "--outputBlock", outputBlockPath}
@@ -234,8 +228,7 @@ func TestCreateChainWithDefaultAnchorPeers(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -267,8 +260,7 @@ func TestCreateChainWithWaitSuccess(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -301,8 +293,7 @@ func TestCreateChainWithTimeoutErr(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -348,8 +339,7 @@ func TestCreateChainBCFail(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -388,8 +378,7 @@ func TestCreateChainDeliverFail(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -452,15 +441,10 @@ func createTxFile(filename string, typ cb.HeaderType, channelID string) (*cb.Env
 func TestCreateChainFromTx(t *testing.T) {
 	defer resetFlags()
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchannel := "mockchannel"
-	dir, err := os.MkdirTemp("", "createtestfromtx-")
-	if err != nil {
-		t.Fatalf("couldn't create temp dir")
-	}
-	defer os.RemoveAll(dir) // clean up
+	dir := t.TempDir()
 
 	// this could be created by the create command
 	defer os.Remove(mockchannel + ".block")
@@ -514,17 +498,11 @@ func TestCreateChainInvalidTx(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchannel := "mockchannel"
 
-	dir, err := os.MkdirTemp("", "createinvaltest-")
-	if err != nil {
-		t.Fatalf("couldn't create temp dir")
-	}
-
-	defer os.RemoveAll(dir) // clean up
+	dir := t.TempDir()
 
 	// this is created by create command
 	defer os.Remove(mockchannel + ".block")
@@ -590,13 +568,10 @@ func TestCreateChainNilCF(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchannel := "mockchannel"
-	dir, err := os.MkdirTemp("", "createinvaltest-")
-	require.NoError(t, err, "Couldn't create temp dir")
-	defer os.RemoveAll(dir) // clean up
+	dir := t.TempDir()
 
 	// this is created by create command
 	defer os.Remove(mockchannel + ".block")
@@ -608,7 +583,7 @@ func TestCreateChainNilCF(t *testing.T) {
 	AddFlags(cmd)
 	args := []string{"-c", mockchannel, "-f", file, "-o", "localhost:7050"}
 	cmd.SetArgs(args)
-	err = cmd.Execute()
+	err := cmd.Execute()
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to create deliver client")
 
@@ -620,7 +595,6 @@ func TestCreateChainNilCF(t *testing.T) {
 	require.Contains(t, err.Error(), "ordering service endpoint localhost is not valid or missing")
 
 	// Error case: invalid ca file
-	defer os.RemoveAll(dir) // clean up
 	channelCmd.AddCommand(cmd)
 	args = []string{"create", "-c", mockchannel, "-f", file, "-o", "localhost:7050", "--tls", "true", "--cafile", dir + "/ca.pem"}
 	channelCmd.SetArgs(args)

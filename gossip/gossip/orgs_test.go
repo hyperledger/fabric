@@ -360,7 +360,7 @@ func TestConfidentiality(t *testing.T) {
 			externalEndpoint := ""
 			if j < externalEndpointsInOrg { // The first peers of each org would have an external endpoint
 				externalEndpoint = endpoint
-				peersWithExternalEndpoints[string(endpoint)] = struct{}{}
+				peersWithExternalEndpoints[endpoint] = struct{}{}
 			}
 			peer := newGossipInstanceWithGRPCWithExternalEndpoint(id, ports[id], grpcs[id], certs[id], secDialOpts[id],
 				cs, externalEndpoint)

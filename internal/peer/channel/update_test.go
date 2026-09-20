@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package channel
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -22,14 +21,10 @@ func TestUpdateChannel(t *testing.T) {
 	InitMSP()
 	resetFlags()
 
-	dir, err := os.MkdirTemp("/tmp", "createinvaltest-")
-	if err != nil {
-		t.Fatalf("couldn't create temp dir")
-	}
-	defer os.RemoveAll(dir) // clean up
+	dir := t.TempDir()
 
 	configtxFile := filepath.Join(dir, mockChannel)
-	if _, err = createTxFile(configtxFile, cb.HeaderType_CONFIG_UPDATE, mockChannel); err != nil {
+	if _, err := createTxFile(configtxFile, cb.HeaderType_CONFIG_UPDATE, mockChannel); err != nil {
 		t.Fatalf("couldn't create tx file")
 	}
 
@@ -108,14 +103,10 @@ func TestUpdateChannelMissingChannelID(t *testing.T) {
 	InitMSP()
 	resetFlags()
 
-	dir, err := os.MkdirTemp("/tmp", "createinvaltest-")
-	if err != nil {
-		t.Fatalf("couldn't create temp dir")
-	}
-	defer os.RemoveAll(dir) // clean up
+	dir := t.TempDir()
 
 	configtxFile := filepath.Join(dir, mockChannel)
-	if _, err = createTxFile(configtxFile, cb.HeaderType_CONFIG_UPDATE, mockChannel); err != nil {
+	if _, err := createTxFile(configtxFile, cb.HeaderType_CONFIG_UPDATE, mockChannel); err != nil {
 		t.Fatalf("couldn't create tx file")
 	}
 

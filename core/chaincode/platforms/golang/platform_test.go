@@ -100,9 +100,7 @@ func TestValidatePath(t *testing.T) {
 }
 
 func TestNormalizePath(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "normalize-path")
-	require.NoError(t, err, "failed to create temporary directory")
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	tests := []struct {
 		path   string

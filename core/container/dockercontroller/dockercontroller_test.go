@@ -187,10 +187,8 @@ func Test_Start(t *testing.T) {
 	conner := &mock.Conner{}
 	conner.ReadReturns(0, io.EOF)
 	dockerClient.ContainerAttachReturns(dcli.ContainerAttachResult{
-		HijackedResponse: dcli.HijackedResponse{
-			Reader: bufio.NewReader(conner),
-			Conn:   conner,
-		},
+		Reader: bufio.NewReader(conner),
+		Conn:   conner,
 	}, nil)
 	err = dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -211,10 +209,8 @@ func Test_streamOutput(t *testing.T) {
 		return len(s), io.EOF
 	}
 	client.ContainerAttachReturns(dcli.ContainerAttachResult{
-		HijackedResponse: dcli.HijackedResponse{
-			Reader: bufio.NewReader(conner),
-			Conn:   conner,
-		},
+		Reader: bufio.NewReader(conner),
+		Conn:   conner,
 	}, nil)
 
 	streamOutput(logger, client, "container-name", containerLogger)

@@ -26,9 +26,9 @@ func newCommInstanceWithMetrics(t *testing.T, sec *naiveSecProvider, metrics *me
 func TestMetrics(t *testing.T) {
 	testMetricProvider := mocks.TestUtilConstructMetricProvider()
 
-	var overflown uint32
+	var overflown atomic.Uint32
 	testMetricProvider.FakeBufferOverflow.AddStub = func(delta float64) {
-		atomic.StoreUint32(&overflown, uint32(1))
+		overflown.Store(uint32(1))
 	}
 
 	fakeCommMetrics := metrics.NewGossipMetrics(testMetricProvider.FakeProvider).CommMetrics
@@ -59,7 +59,7 @@ func TestMetrics(t *testing.T) {
 	// Send messages until the buffer overflow event emission is detected
 	for {
 		comm1.Send(createGossipMsg(), remotePeer(port2))
-		if atomic.LoadUint32(&overflown) == uint32(1) {
+		if overflown.Load() == uint32(1) {
 			t.Log("Buffer overflow detected")
 			break
 		}
@@ -80,5 +80,5 @@ func TestMetrics(t *testing.T) {
 		testMetricProvider.FakeBufferOverflow.AddArgsForCall(0),
 	)
 
-	require.Equal(t, uint32(1), atomic.LoadUint32(&overflown))
+	require.Equal(t, uint32(1), overflown.Load())
 }

@@ -36,7 +36,7 @@ var noopPurgeTrigger = func(_ common.PKIidType, _ api.PeerIdentityType) {}
 
 func init() {
 	util.SetupTestLogging()
-	msgCryptoService.On("Expiration", api.PeerIdentityType(dummyID)).Return(time.Now().Add(time.Hour), nil)
+	msgCryptoService.On("Expiration", dummyID).Return(time.Now().Add(time.Hour), nil)
 	msgCryptoService.On("Expiration", api.PeerIdentityType("yacovm")).Return(time.Now().Add(time.Hour), nil)
 	msgCryptoService.On("Expiration", api.PeerIdentityType("not-yacovm")).Return(time.Now().Add(time.Hour), nil)
 	msgCryptoService.On("Expiration", api.PeerIdentityType("invalidIdentity")).Return(time.Now().Add(time.Hour), nil)

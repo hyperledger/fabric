@@ -9,7 +9,6 @@ package pvtdatastorage
 import (
 	"fmt"
 	"math"
-	"os"
 	"path"
 	"testing"
 
@@ -41,8 +40,7 @@ func TestSnapshotImporter(t *testing.T) {
 	}()
 
 	setup := func() (*SnapshotDataImporter, *confighistorytest.Mgr, *dbEntriesVerifier) {
-		testDir := testDir(t)
-		t.Cleanup(func() { os.RemoveAll(testDir) })
+		testDir := t.TempDir()
 		dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: testDir})
 		require.NoError(t, err)
 		t.Cleanup(func() { dbProvider.Close() })
@@ -98,7 +96,7 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 
 		dbVerifier.verifyElgMissingDataEntry(
-			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: 20}},
+			&missingDataKey{ns: "ns", coll: "coll", blkNum: 20},
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -138,7 +136,7 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 
 		dbVerifier.verifyInelgMissingDataEntry(
-			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: 20}},
+			&missingDataKey{ns: "ns", coll: "coll", blkNum: 20},
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -178,7 +176,7 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 
 		dbVerifier.verifyElgMissingDataEntry(
-			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: 20}},
+			&missingDataKey{ns: "ns", coll: "coll", blkNum: 20},
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -232,7 +230,7 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 
 		dbVerifier.verifyInelgMissingDataEntry(
-			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: 20}},
+			&missingDataKey{ns: "ns", coll: "coll", blkNum: 20},
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -279,7 +277,7 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 
 		dbVerifier.verifyElgMissingDataEntry(
-			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: myImplicitColl, blkNum: 20}},
+			&missingDataKey{ns: "ns", coll: myImplicitColl, blkNum: 20},
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -312,7 +310,7 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 
 		dbVerifier.verifyInelgMissingDataEntry(
-			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: otherOrgImplicitColl, blkNum: 20}},
+			&missingDataKey{ns: "ns", coll: otherOrgImplicitColl, blkNum: 20},
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -382,7 +380,7 @@ func TestSnapshotImporter(t *testing.T) {
 				},
 			)
 			dbVerifier.verifyElgMissingDataEntry(
-				&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: myImplicitColl, blkNum: uint64(i)}},
+				&missingDataKey{ns: "ns", coll: myImplicitColl, blkNum: uint64(i)},
 				(&bitset.BitSet{}).Set(300).Set(301).Set(302),
 			)
 		}
@@ -421,8 +419,7 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 	myMSPID := "myOrg"
 
 	setup := func() (*SnapshotDataImporter, *confighistorytest.Mgr) {
-		testDir := testDir(t)
-		t.Cleanup(func() { os.RemoveAll(testDir) })
+		testDir := t.TempDir()
 		dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: testDir})
 		require.NoError(t, err)
 		t.Cleanup(func() { dbProvider.Close() })
@@ -579,8 +576,7 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 }
 
 func TestEligibilityAndBTLCacheLoadData(t *testing.T) {
-	testDir := testDir(t)
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	configHistoryMgr, err := confighistorytest.NewMgr(testDir)
 	require.NoError(t, err)
@@ -811,8 +807,7 @@ func (e eligibilityVal) sameAs(p *peer.CollectionPolicyConfig) bool {
 
 func TestDBUpdates(t *testing.T) {
 	setup := func() *leveldbhelper.Provider {
-		testDir := testDir(t)
-		t.Cleanup(func() { os.RemoveAll(testDir) })
+		testDir := t.TempDir()
 
 		p, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: testDir})
 		require.NoError(t, err)
@@ -975,12 +970,6 @@ func (v *dbEntriesVerifier) verifyNoExpiryEntries() {
 	require.NoError(v.t, iter.Error())
 }
 
-func testDir(t *testing.T) string {
-	dir, err := os.MkdirTemp("", "snapshot-data-importer-")
-	require.NoError(t, err)
-	return dir
-}
-
 func TestSnapshotRowsSorter(t *testing.T) {
 	testCases := []struct {
 		inputRows         []*snapshotRow
@@ -1094,9 +1083,7 @@ func TestSnapshotRowsSorter(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("testcase-%d", i), func(t *testing.T) {
-			dir, err := os.MkdirTemp("", "snapshot-row-sorter-")
-			require.NoError(t, err)
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 
 			sorter, err := newSnapshotRowsSorter(dir)
 			require.NoError(t, err)
@@ -1121,11 +1108,11 @@ func TestSnapshotRowsSorter(t *testing.T) {
 			}
 			require.Len(t, results, len(testCase.inputRows))
 
-			for i := 0; i < len(results); i++ {
+			for j := range results {
 				require.Equal(
 					t,
-					testCase.inputRows[testCase.expectedSortOrder[i]],
-					results[i],
+					testCase.inputRows[testCase.expectedSortOrder[j]],
+					results[j],
 				)
 			}
 		})
@@ -1133,9 +1120,7 @@ func TestSnapshotRowsSorter(t *testing.T) {
 }
 
 func TestSnapshotRowsSorterCleanup(t *testing.T) {
-	dir, err := os.MkdirTemp("", "snapshot-row-sorter-")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	sorter, err := newSnapshotRowsSorter(dir)
 	require.NoError(t, err)

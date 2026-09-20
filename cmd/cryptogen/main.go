@@ -463,7 +463,7 @@ func renderNodeSpec(domain string, spec *NodeSpec) error {
 
 func renderOrgSpec(orgSpec *OrgSpec, prefix string) error {
 	// First process all of our templated nodes
-	for i := 0; i < orgSpec.Template.Count; i++ {
+	for i := range orgSpec.Template.Count {
 		data := HostnameData{
 			Prefix: prefix,
 			Index:  i + orgSpec.Template.Start,

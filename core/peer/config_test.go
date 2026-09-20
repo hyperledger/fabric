@@ -94,9 +94,7 @@ func TestPeerAddress(t *testing.T) {
 }
 
 func TestGetServerConfig(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "peer-clientcert")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	// good config without TLS
 	viper.Set("peer.tls.enabled", false)
@@ -178,9 +176,7 @@ func TestGetServerConfig(t *testing.T) {
 }
 
 func TestGetClientCertificate(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "peer-clientcert")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	ca, err := tlsgen.NewCA()
 	require.NoError(t, err)

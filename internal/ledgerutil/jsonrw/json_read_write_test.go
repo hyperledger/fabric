@@ -152,8 +152,7 @@ func createTestJSONInput(input string) (string, error) {
 
 func TestJSONFileWriter(t *testing.T) {
 	// Temp directory and file for output json
-	outputDir, err := os.MkdirTemp("", "output")
-	require.NoError(t, err)
+	outputDir := t.TempDir()
 	fp := filepath.Join(outputDir, "testOutput.json")
 	// New JSONFileWriter
 	jsonFileWriter, err := NewJSONFileWriter(fp)

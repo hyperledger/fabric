@@ -87,12 +87,10 @@ func (kd *ecdsaPrivateKeyKeyDeriver) KeyDeriv(key bccsp.Key, opts bccsp.KeyDeriv
 	}
 
 	tempSK := &ecdsa.PrivateKey{
-		PublicKey: ecdsa.PublicKey{
-			Curve: ecdsaK.privKey.Curve,
-			X:     new(big.Int),
-			Y:     new(big.Int),
-		},
-		D: new(big.Int),
+		Curve: ecdsaK.privKey.Curve,
+		X:     new(big.Int),
+		Y:     new(big.Int),
+		D:     new(big.Int),
 	}
 
 	k := new(big.Int).SetBytes(reRandOpts.ExpansionValue())
