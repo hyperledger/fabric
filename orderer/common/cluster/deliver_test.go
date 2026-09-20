@@ -61,14 +61,14 @@ type wrappedBalancer struct {
 }
 
 func (wb *wrappedBalancer) Close() {
-	defer atomic.AddUint32(&wb.cd.connectionCount, ^uint32(0))
+	defer wb.cd.connectionCount.Add(^uint32(0))
 	wb.Balancer.Close()
 }
 
 type countingDialer struct {
 	name            string
 	baseBuilder     balancer.Builder
-	connectionCount uint32
+	connectionCount atomic.Uint32
 }
 
 func newCountingDialer() *countingDialer {
@@ -91,7 +91,7 @@ func newCountingDialer() *countingDialer {
 }
 
 func (d *countingDialer) Build(cc balancer.ClientConn, opts balancer.BuildOptions) balancer.Balancer {
-	defer atomic.AddUint32(&d.connectionCount, 1)
+	defer d.connectionCount.Add(1)
 	lb := d.baseBuilder.Build(cc, opts)
 	return &wrappedBalancer{
 		Balancer: lb,
@@ -105,10 +105,10 @@ func (d *countingDialer) Name() string {
 
 func (d *countingDialer) assertAllConnectionsClosed(t *testing.T) {
 	timeLimit := time.Now().Add(timeout)
-	for atomic.LoadUint32(&d.connectionCount) != uint32(0) && time.Now().Before(timeLimit) {
+	for d.connectionCount.Load() != uint32(0) && time.Now().Before(timeLimit) {
 		time.Sleep(time.Millisecond)
 	}
-	require.Equal(t, uint32(0), atomic.LoadUint32(&d.connectionCount))
+	require.Equal(t, uint32(0), d.connectionCount.Load())
 }
 
 func (d *countingDialer) Dial(address cluster.EndpointCriteria) (*grpc.ClientConn, error) {

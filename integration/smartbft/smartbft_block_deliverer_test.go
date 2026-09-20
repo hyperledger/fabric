@@ -46,7 +46,7 @@ func extractLedger(network *nwo.Network, orderer *nwo.Orderer, channelId string)
 	Expect(err).NotTo(HaveOccurred())
 	fileLedger := fileledger.NewFileLedger(blockStore)
 	var ledgerArray []*common.Block
-	for i := uint64(0); i < fileLedger.Height(); i++ {
+	for i := range fileLedger.Height() {
 		block, err := fileLedger.RetrieveBlockByNumber(i)
 		Expect(err).NotTo(HaveOccurred())
 		ledgerArray = append(ledgerArray, block)

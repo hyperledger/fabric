@@ -489,7 +489,7 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 
 		setup.logger.Info("Exponential backoff after every round, with saturation of 10s")
 		minDur := 100 * time.Millisecond
-		for i := 0; i < setup.fakeSleeper.SleepCallCount(); i++ {
+		for i := range setup.fakeSleeper.SleepCallCount() {
 			round := (i + 1) / 4
 			fDur := math.Min(float64(minDur.Nanoseconds())*math.Pow(2.0, float64(round)), float64(10*time.Second))
 			dur := time.Duration(fDur)
@@ -527,7 +527,7 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 		setup.logger.Info("Exponential backoff after every round, with saturation of 10s")
 		minDur := 100 * time.Millisecond
 		totalDur := time.Duration(0)
-		for i := 0; i < setup.fakeSleeper.SleepCallCount(); i++ {
+		for i := range setup.fakeSleeper.SleepCallCount() {
 			round := (i + 1) / 4
 			fDur := math.Min(float64(minDur.Nanoseconds())*math.Pow(2.0, float64(round)), float64(10*time.Second))
 			dur := time.Duration(fDur)
@@ -648,7 +648,7 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 
 		setup.logger.Info("Exponential backoff after every round, with saturation of 10s")
 		minDur := 100 * time.Millisecond
-		for i := 0; i < setup.fakeSleeper.SleepCallCount(); i++ {
+		for i := range setup.fakeSleeper.SleepCallCount() {
 			round := (i + 1) / 4
 			fDur := math.Min(float64(minDur.Nanoseconds())*math.Pow(2.0, float64(round)), float64(10*time.Second))
 			dur := time.Duration(fDur)

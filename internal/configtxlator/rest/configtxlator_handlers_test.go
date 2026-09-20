@@ -47,7 +47,7 @@ func TestProtolatorComputeConfigUpdate(t *testing.T) {
 	err = mpw.Close()
 	require.NoError(t, err)
 
-	req, err := http.NewRequest("POST", "/configtxlator/compute/update-from-configs", buffer)
+	req, err := http.NewRequest(http.MethodPost, "/configtxlator/compute/update-from-configs", buffer)
 	require.NoError(t, err)
 
 	req.Header.Set("Content-Type", mpw.FormDataContentType())
@@ -76,7 +76,7 @@ func TestProtolatorMissingOriginal(t *testing.T) {
 	err = mpw.Close()
 	require.NoError(t, err)
 
-	req, err := http.NewRequest("POST", "/configtxlator/compute/update-from-configs", buffer)
+	req, err := http.NewRequest(http.MethodPost, "/configtxlator/compute/update-from-configs", buffer)
 	require.NoError(t, err)
 
 	req.Header.Set("Content-Type", mpw.FormDataContentType())
@@ -105,7 +105,7 @@ func TestProtolatorMissingUpdated(t *testing.T) {
 	err = mpw.Close()
 	require.NoError(t, err)
 
-	req, err := http.NewRequest("POST", "/configtxlator/compute/update-from-configs", buffer)
+	req, err := http.NewRequest(http.MethodPost, "/configtxlator/compute/update-from-configs", buffer)
 	require.NoError(t, err)
 
 	req.Header.Set("Content-Type", mpw.FormDataContentType())
@@ -136,7 +136,7 @@ func TestProtolatorCorruptProtos(t *testing.T) {
 	err = mpw.Close()
 	require.NoError(t, err)
 
-	req, err := http.NewRequest("POST", "/configtxlator/compute/update-from-configs", buffer)
+	req, err := http.NewRequest(http.MethodPost, "/configtxlator/compute/update-from-configs", buffer)
 	require.NoError(t, err)
 
 	req.Header.Set("Content-Type", mpw.FormDataContentType())

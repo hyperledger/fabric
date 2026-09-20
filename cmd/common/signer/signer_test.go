@@ -92,7 +92,7 @@ ZsQXrlIqlmNalfYPX+NDDELqlpXQBeEqnA==
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
-			tmpFile, err := os.CreateTemp("", "key")
+			tmpFile, err := os.CreateTemp(t.TempDir(), "key")
 			require.NoError(t, err)
 
 			defer os.Remove(tmpFile.Name())

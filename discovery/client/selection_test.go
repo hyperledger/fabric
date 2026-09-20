@@ -24,7 +24,7 @@ func TestShuffle(t *testing.T) {
 	}
 
 	isHeightAscending := func(endorsers Endorsers) bool {
-		for i := 0; i < len(endorsers)-1; i++ {
+		for i := range len(endorsers) - 1 {
 			currHeight := endorsers[i].StateInfoMessage.GetStateInfo().GetProperties().GetLedgerHeight()
 			nextHeight := endorsers[i+1].StateInfoMessage.GetStateInfo().GetProperties().GetLedgerHeight()
 			if currHeight > nextHeight {

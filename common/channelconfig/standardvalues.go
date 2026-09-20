@@ -94,7 +94,7 @@ func (sv *StandardValues) initializeProtosStruct(objValue reflect.Value) error {
 			return fmt.Errorf("Bad type supplied: %s", structField.Type.Kind())
 		}
 
-		proto, ok := objValue.Elem().Field(i).Interface().(proto.Message)
+		proto, ok := reflect.TypeAssert[proto.Message](objValue.Elem().Field(i))
 		if !ok {
 			return fmt.Errorf("Field type %T does not implement proto.Message", objValue.Elem().Field(i))
 		}

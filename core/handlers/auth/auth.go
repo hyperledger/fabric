@@ -26,7 +26,7 @@ func ChainFilters(endorser peer.EndorserServer, filters ...Filter) peer.Endorser
 	}
 
 	// Each filter forwards to the next
-	for i := 0; i < len(filters)-1; i++ {
+	for i := range len(filters) - 1 {
 		filters[i].Init(filters[i+1])
 	}
 

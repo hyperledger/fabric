@@ -55,7 +55,7 @@ var _ = Describe("Chain", func() {
 			w.Write([]byte("Hello!,"))
 		})
 
-		req = httptest.NewRequest("GET", "/", nil)
+		req = httptest.NewRequest(http.MethodGet, "/", nil)
 		resp = httptest.NewRecorder()
 	})
 

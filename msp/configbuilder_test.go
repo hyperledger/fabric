@@ -93,7 +93,7 @@ func TestGetLocalMspConfigFails(t *testing.T) {
 }
 
 func TestGetPemMaterialFromDirWithFile(t *testing.T) {
-	tempFile, err := os.CreateTemp("", "fabric-msp-test")
+	tempFile, err := os.CreateTemp(t.TempDir(), "fabric-msp-test")
 	require.NoError(t, err)
 	err = tempFile.Close()
 	require.NoError(t, err)

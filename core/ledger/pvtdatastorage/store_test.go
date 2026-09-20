@@ -480,8 +480,8 @@ func TestStorePurge(t *testing.T) {
 	// write pvt data for block 2
 	require.NoError(t, s.Commit(2, nil, nil, nil))
 	// data for ns-1:coll-1 and ns-2:coll-2 should exist in store
-	ns1Coll1 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1", blkNum: 1}, txNum: 2}
-	ns2Coll2 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns-2", coll: "coll-2", blkNum: 1}, txNum: 2}
+	ns1Coll1 := &dataKey{ns: "ns-1", coll: "coll-1", blkNum: 1, txNum: 2}
+	ns2Coll2 := &dataKey{ns: "ns-2", coll: "coll-2", blkNum: 1, txNum: 2}
 
 	ns1Coll1Blk1Tx2HI := &hashedIndexKey{
 		ns:         "ns-1",
@@ -500,12 +500,12 @@ func TestStorePurge(t *testing.T) {
 	}
 
 	// eligible missingData entries for ns-1:coll-1, ns-1:coll-2 (neverExpires) should exist in store
-	ns1Coll1elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1", blkNum: 1}}
-	ns1Coll2elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: 1}}
+	ns1Coll1elgMD := &missingDataKey{ns: "ns-1", coll: "coll-1", blkNum: 1}
+	ns1Coll2elgMD := &missingDataKey{ns: "ns-1", coll: "coll-2", blkNum: 1}
 
 	// ineligible missingData entries for ns-3:col-1, ns-3:coll-2 (neverExpires) should exist in store
-	ns3Coll1inelgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-3", coll: "coll-1", blkNum: 1}}
-	ns3Coll2inelgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-3", coll: "coll-2", blkNum: 1}}
+	ns3Coll1inelgMD := &missingDataKey{ns: "ns-3", coll: "coll-1", blkNum: 1}
+	ns3Coll2inelgMD := &missingDataKey{ns: "ns-3", coll: "coll-2", blkNum: 1}
 
 	testWaitForPurgerRoutineToFinish(s)
 	require.True(t, testDataKeyExists(t, s, ns1Coll1))
@@ -597,7 +597,7 @@ func TestStorePurge(t *testing.T) {
 	require.False(t, testHashedIndexExists(t, s, ns2Coll2Blk1Tx2HI))
 
 	// "ns-2:coll-1" should never have been purged (because, it was no btl was declared for this)
-	require.True(t, testDataKeyExists(t, s, &dataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: 1}, txNum: 2}))
+	require.True(t, testDataKeyExists(t, s, &dataKey{ns: "ns-1", coll: "coll-2", blkNum: 1, txNum: 2}))
 	require.True(t, testHashedIndexExists(
 		t, s,
 		&hashedIndexKey{
@@ -749,7 +749,7 @@ func TestCollElgEnabled_PurgerDeletesDuringBatchSleep(t *testing.T) {
 
 	// Sanity-check: all three InelgMissing entries exist.
 	for blk := uint64(1); blk <= 3; blk++ {
-		key := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: blk}}
+		key := &missingDataKey{ns: "ns-1", coll: "coll-2", blkNum: blk}
 		require.True(t, testInelgMissingDataKeyExists(t, store, key),
 			"expected InelgMissing entry for blk %d before processing", blk)
 	}
@@ -767,7 +767,7 @@ func TestCollElgEnabled_PurgerDeletesDuringBatchSleep(t *testing.T) {
 		defer store.purgerLock.Unlock()
 		for _, blk := range []uint64{1, 2} {
 			key := encodeInelgMissingDataKey(
-				&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: blk}},
+				&missingDataKey{ns: "ns-1", coll: "coll-2", blkNum: blk},
 			)
 			err := store.db.Delete(key, true)
 			require.NoError(t, err)
@@ -785,7 +785,7 @@ func TestCollElgEnabled_PurgerDeletesDuringBatchSleep(t *testing.T) {
 	// blk 3 was the first entry processed (reverse-order iteration) and was
 	// converted to ElgPrio in the very first batch, before the simulated
 	// purger ran.
-	key3 := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: 3}}
+	key3 := &missingDataKey{ns: "ns-1", coll: "coll-2", blkNum: 3}
 	require.True(t, testElgPrioMissingDataKeyExists(t, store, key3),
 		"blk 3 should have been converted to ElgPrio")
 
@@ -793,7 +793,7 @@ func TestCollElgEnabled_PurgerDeletesDuringBatchSleep(t *testing.T) {
 	// between batches.  With the fix, the freshly-opened iterator reflects
 	// the purge and these entries are never re-inserted.
 	for _, blk := range []uint64{1, 2} {
-		key := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: blk}}
+		key := &missingDataKey{ns: "ns-1", coll: "coll-2", blkNum: blk}
 		require.False(t, testElgPrioMissingDataKeyExists(t, store, key),
 			"blk %d should NOT have been re-created as ElgPrio after purge", blk)
 		require.False(t, testInelgMissingDataKeyExists(t, store, key),
@@ -967,21 +967,17 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 
 	// following two datakeys and three hashed indexkeys should have been created
 	dataKeyColl1 := &dataKey{
-		nsCollBlk: nsCollBlk{
-			ns:     "ns-1",
-			coll:   "coll-1",
-			blkNum: 1,
-		},
-		txNum: 2,
+		ns:     "ns-1",
+		coll:   "coll-1",
+		blkNum: 1,
+		txNum:  2,
 	}
 
 	dataKeyColl2 := &dataKey{
-		nsCollBlk: nsCollBlk{
-			ns:     "ns-1",
-			coll:   "coll-2",
-			blkNum: 1,
-		},
-		txNum: 2,
+		ns:     "ns-1",
+		coll:   "coll-2",
+		blkNum: 1,
+		txNum:  2,
 	}
 
 	hashedIndexKey1 := &hashedIndexKey{
@@ -1244,21 +1240,17 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 
 	// following two datakeys and three hashed indexkeys should have been created
 	dataKeyColl1 := &dataKey{
-		nsCollBlk: nsCollBlk{
-			ns:     "ns-1",
-			coll:   "coll-1",
-			blkNum: 1,
-		},
-		txNum: 2,
+		ns:     "ns-1",
+		coll:   "coll-1",
+		blkNum: 1,
+		txNum:  2,
 	}
 
 	dataKeyColl2 := &dataKey{
-		nsCollBlk: nsCollBlk{
-			ns:     "ns-1",
-			coll:   "coll-2",
-			blkNum: 1,
-		},
-		txNum: 2,
+		ns:     "ns-1",
+		coll:   "coll-2",
+		blkNum: 1,
+		txNum:  2,
 	}
 
 	hashedIndexKey1 := &hashedIndexKey{
@@ -1367,7 +1359,7 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 		t,
 		s.Commit(
 			3,
-			// Add a delete for the private key to simulate the situation where this key
+			// Add a deleted for the private key to simulate the situation where this key
 			// is added along with the purge marker at the same transaction height
 			[]*ledger.TxPvtData{
 				{

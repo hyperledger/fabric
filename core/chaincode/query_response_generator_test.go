@@ -79,7 +79,7 @@ func TestBuildQueryResponse(t *testing.T) {
 
 			resultsIterator := &mock.QueryResultsIterator{}
 			transactionContext.InitializeQueryContext("query-id", resultsIterator)
-			for i := 0; i < tc.recordCount; i++ {
+			for i := range tc.recordCount {
 				resultsIterator.NextReturnsOnCall(i, queryResult, nil)
 			}
 			resultsIterator.NextReturnsOnCall(tc.recordCount, nil, nil)

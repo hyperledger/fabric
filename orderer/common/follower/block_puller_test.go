@@ -114,20 +114,20 @@ func TestBlockPullerFactory_BlockPuller(t *testing.T) {
 
 func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 	// replaces cluster.VerifyBlocks, count blocks
-	var numBlocks int32
+	var numBlocks atomic.Int32
 	altVerifyBlocks := func(blockBuff []*cb.Block, signatureVerifier protoutil.BlockVerifierFunc, vb protoutil.VerifierBuilder) error { // replaces cluster.VerifyBlocks, count invocations
 		if len(blockBuff) == 0 {
 			return errors.New("buffer is empty")
 		}
 
 		require.NotNil(t, signatureVerifier)
-		atomic.StoreInt32(&numBlocks, int32(len(blockBuff)))
+		numBlocks.Store(int32(len(blockBuff)))
 		return nil
 	}
 
 	t.Run("skip genesis block, alone", func(t *testing.T) {
 		setupBlockPullerTest(t)
-		atomic.StoreInt32(&numBlocks, 0)
+		numBlocks.Store(0)
 		creator, err := follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, dialer, localconfig.Cluster{}, cryptoProv)
 		require.NotNil(t, creator)
 		require.NoError(t, err)
@@ -138,13 +138,13 @@ func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 
 		err = creator.VerifyBlockSequence(blocks, "")
 		require.NoError(t, err)
-		require.Equal(t, int32(0), atomic.LoadInt32(&numBlocks))
+		require.Equal(t, int32(0), numBlocks.Load())
 	})
 
 	t.Run("skip genesis block as part of a slice", func(t *testing.T) {
 		gb := generateJoinBlock(t, tlsCA, channelID, 0)
 		setupBlockPullerTest(t)
-		atomic.StoreInt32(&numBlocks, 0)
+		numBlocks.Store(0)
 		creator, err := follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, dialer, localconfig.Cluster{}, cryptoProv)
 		require.NotNil(t, creator)
 		require.NoError(t, err)
@@ -164,12 +164,12 @@ func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 
 		err = creator.VerifyBlockSequence(blocks, "")
 		require.NoError(t, err)
-		require.Equal(t, int32(2), atomic.LoadInt32(&numBlocks))
+		require.Equal(t, int32(2), numBlocks.Load())
 	})
 
 	t.Run("verify all blocks in slice", func(t *testing.T) {
 		setupBlockPullerTest(t)
-		atomic.StoreInt32(&numBlocks, 0)
+		numBlocks.Store(0)
 		creator, err := follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, dialer, localconfig.Cluster{}, cryptoProv)
 		require.NotNil(t, creator)
 		require.NoError(t, err)
@@ -183,7 +183,7 @@ func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 		creator.UpdateVerifierFromConfigBlock(generateJoinBlock(t, tlsCA, channelID, 0))
 		err = creator.VerifyBlockSequence(blocks, "")
 		require.NoError(t, err)
-		require.Equal(t, int32(3), atomic.LoadInt32(&numBlocks))
+		require.Equal(t, int32(3), numBlocks.Load())
 	})
 }
 

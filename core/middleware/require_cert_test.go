@@ -32,7 +32,7 @@ var _ = Describe("RequireCert", func() {
 		requireCert = middleware.RequireCert()
 		chain = requireCert(handler)
 
-		req = httptest.NewRequest("GET", "https:///", nil)
+		req = httptest.NewRequest(http.MethodGet, "https:///", nil)
 		req.TLS.VerifiedChains = [][]*x509.Certificate{{
 			&x509.Certificate{},
 		}}

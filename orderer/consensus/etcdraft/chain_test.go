@@ -1578,7 +1578,7 @@ var _ = Describe("Chain", func() {
 		It("can remove leader by retrying even if leadership transfer fails at first", func() {
 			network.elect(1)
 
-			var messageOmission uint32
+			var messageOmission atomic.Uint32
 
 			step1 := c1.getStepFunc()
 			c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
@@ -1587,7 +1587,7 @@ var _ = Describe("Chain", func() {
 					return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %w", err)
 				}
 
-				if stepMsg.GetType() == raftpb.MsgTimeoutNow && atomic.CompareAndSwapUint32(&messageOmission, 0, 1) {
+				if stepMsg.GetType() == raftpb.MsgTimeoutNow && messageOmission.CompareAndSwap(0, 1) {
 					return nil
 				}
 
@@ -3358,14 +3358,10 @@ func nodeConfigFromMetadata(consenterMetadata *raftprotos.ConfigMetadata) []clus
 		serverDER, _ := pem.Decode(consenter.GetServerTlsCert())
 		clientDER, _ := pem.Decode(consenter.GetClientTlsCert())
 		node := cluster.RemoteNode{
-			NodeAddress: cluster.NodeAddress{
-				ID:       uint64(i + 1),
-				Endpoint: "localhost:7050",
-			},
-			NodeCerts: cluster.NodeCerts{
-				ServerTLSCert: serverDER.Bytes,
-				ClientTLSCert: clientDER.Bytes,
-			},
+			ID:            uint64(i + 1),
+			Endpoint:      "localhost:7050",
+			ServerTLSCert: serverDER.Bytes,
+			ClientTLSCert: clientDER.Bytes,
 		}
 		nodes = append(nodes, node)
 	}

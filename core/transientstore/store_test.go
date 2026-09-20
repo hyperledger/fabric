@@ -135,7 +135,7 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 
 	// Persist simulation results into  store
 	var err error
-	for i := 0; i < len(endorsersResults); i++ {
+	for i := range endorsersResults {
 		err = testStore.Persist(txid, endorsersResults[i].ReceivedAtBlockHeight,
 			endorsersResults[i].PvtSimulationResultsWithConfig)
 		require.NoError(err)
@@ -272,7 +272,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	endorsersResults = append(endorsersResults, endorser5SimulationResults)
 
 	var err error
-	for i := 0; i < len(txids); i++ {
+	for i := range txids {
 		err = testStore.Persist(txids[i], endorsersResults[i].ReceivedAtBlockHeight,
 			endorsersResults[i].PvtSimulationResultsWithConfig)
 		require.NoError(err)

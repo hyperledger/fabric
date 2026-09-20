@@ -2096,7 +2096,7 @@ func configToGenesisBlock(configBlock *common.Block, channelId string) *common.B
 	genesisBlock.Header.PreviousHash = nil
 
 	var metadataContents [][]byte
-	for i := 0; i < len(common.BlockMetadataIndex_name); i++ {
+	for range common.BlockMetadataIndex_name {
 		metadataContents = append(metadataContents, []byte{})
 	}
 	genesisBlock.Metadata = &common.BlockMetadata{Metadata: metadataContents}

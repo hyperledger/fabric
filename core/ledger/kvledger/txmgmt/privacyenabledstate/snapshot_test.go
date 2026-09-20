@@ -369,7 +369,7 @@ func TestMetadataCursor(t *testing.T) {
 	}
 
 	for _, m := range metadata {
-		for i := uint64(0); i < m.kvCounts; i++ {
+		for range m.kvCounts {
 			require.True(t, cursor.canMove())
 			require.True(t, cursor.move())
 			require.Equal(t, m.namespace, cursor.currentNamespace())

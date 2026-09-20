@@ -30,7 +30,7 @@ type PeriodicCheck struct {
 	ReportCleared       func()
 	conditionHoldsSince time.Time
 	once                sync.Once // Used to prevent double initialization
-	stopped             uint32
+	stopped             atomic.Uint32
 }
 
 // Run runs the PeriodicCheck
@@ -41,11 +41,11 @@ func (pc *PeriodicCheck) Run() {
 // Stop stops the periodic checks
 func (pc *PeriodicCheck) Stop() {
 	pc.Logger.Info("Periodic check is stopping.")
-	atomic.AddUint32(&pc.stopped, 1)
+	pc.stopped.Add(1)
 }
 
 func (pc *PeriodicCheck) shouldRun() bool {
-	return atomic.LoadUint32(&pc.stopped) == 0
+	return pc.stopped.Load() == 0
 }
 
 func (pc *PeriodicCheck) check() {

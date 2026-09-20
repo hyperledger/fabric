@@ -153,7 +153,7 @@ func merkleSummariesEqual(ms, anotherMS *kvrwset.QueryReadsMerkleSummary) bool {
 		len(ms.GetMaxLevelHashes()) != len(anotherMS.GetMaxLevelHashes()) {
 		return false
 	}
-	for i := 0; i < len(ms.GetMaxLevelHashes()); i++ {
+	for i := range len(ms.GetMaxLevelHashes()) {
 		if !bytes.Equal(ms.GetMaxLevelHashes()[i], anotherMS.GetMaxLevelHashes()[i]) {
 			return false
 		}

@@ -37,18 +37,13 @@ const (
 )
 
 func TestLoadCertificateECDSA(t *testing.T) {
-	testDir := t.TempDir()
-
 	// generate private key
-	certDir, err := os.MkdirTemp(testDir, "certs")
-	if err != nil {
-		t.Fatalf("Failed to create certs directory: %s", err)
-	}
+	certDir := t.TempDir()
 	priv, err := csp.GeneratePrivateKey(certDir, ECDSA)
 	require.NoError(t, err, "Failed to generate signed certificate")
 
 	// create our CA
-	caDir := filepath.Join(testDir, "ca")
+	caDir := t.TempDir()
 	rootCA, err := ca.NewCA(
 		caDir,
 		testCA3Name,
@@ -154,19 +149,14 @@ func TestNewCA(t *testing.T) {
 }
 
 func TestGenerateSignCertificate(t *testing.T) {
-	testDir := t.TempDir()
-
 	// generate private key
-	certDir, err := os.MkdirTemp(testDir, "certs")
-	if err != nil {
-		t.Fatalf("Failed to create certs directory: %s", err)
-	}
+	certDir := t.TempDir()
 	privGeneric, err := csp.GeneratePrivateKey(certDir, ECDSA)
 	require.NoError(t, err, "Failed to generate signed certificate")
 	priv := privGeneric.(*ecdsa.PrivateKey)
 
 	// create our CA
-	caDir := filepath.Join(testDir, "ca")
+	caDir := t.TempDir()
 	rootCA, err := ca.NewCA(
 		caDir,
 		testCA2Name,

@@ -202,21 +202,16 @@ func (ac *AuthCommMgr) createRemoteContext(stub *Stub, channel string) func() (*
 			return stepClientStream, nil
 		}
 
-		workerCountReporter := workerCountReporter{
-			channel: channel,
-		}
-
 		rc := &RemoteContext{
-			Metrics:             ac.Metrics,
-			workerCountReporter: workerCountReporter,
-			Channel:             channel,
-			SendBuffSize:        ac.SendBufferSize,
-			endpoint:            stub.Endpoint,
-			Logger:              ac.Logger,
-			ProbeConn:           probeConnection,
-			conn:                conn,
-			GetStreamFunc:       getStepClientStream,
-			shutdownSignal:      ac.shutdownSignal,
+			Metrics:        ac.Metrics,
+			Channel:        channel,
+			SendBuffSize:   ac.SendBufferSize,
+			endpoint:       stub.Endpoint,
+			Logger:         ac.Logger,
+			ProbeConn:      probeConnection,
+			conn:           conn,
+			GetStreamFunc:  getStepClientStream,
+			shutdownSignal: ac.shutdownSignal,
 		}
 		return rc, nil
 	}

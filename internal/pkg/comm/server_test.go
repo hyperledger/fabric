@@ -610,7 +610,9 @@ func TestNewSecureGRPCServer(t *testing.T) {
 
 	// start the server
 	go srv.Start()
-	defer srv.Stop()
+	t.Cleanup(func() {
+		srv.Stop()
+	})
 
 	// should not be needed
 	time.Sleep(10 * time.Millisecond)
@@ -633,6 +635,7 @@ func TestNewSecureGRPCServer(t *testing.T) {
 	}
 	for name, tlsVersion := range tlsVersions {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			creds := credentials.NewTLS(&tls.Config{RootCAs: certPool, MinVersion: tlsVersion, MaxVersion: tlsVersion})
 			_, err := invokeEmptyCall(testAddress, grpc.WithTransportCredentials(creds), grpc.WithBlock())
 			require.NoError(t, err)
@@ -710,14 +713,18 @@ func TestVerifyCertificateCallback(t *testing.T) {
 		},
 	})
 	go gRPCServer.Start()
-	defer gRPCServer.Stop()
+	t.Cleanup(func() {
+		gRPCServer.Stop()
+	})
 
 	t.Run("Success path", func(t *testing.T) {
+		t.Parallel()
 		err = probeTLS(gRPCServer.Address(), authorizedClientKeyPair)
 		require.NoError(t, err)
 	})
 
 	t.Run("Failure path", func(t *testing.T) {
+		t.Parallel()
 		err = probeTLS(gRPCServer.Address(), notAuthorizedClientKeyPair)
 		require.EqualError(t, err, "remote error: tls: bad certificate")
 	})

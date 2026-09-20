@@ -292,7 +292,7 @@ func (c *BFTChain) pruneCommittedRequests(block *cb.Block) {
 	var wg sync.WaitGroup
 	wg.Add(len(workers))
 
-	for i := 0; i < len(workers); i++ {
+	for i := range workers {
 		go func(w *worker) {
 			defer wg.Done()
 			w.doWork()

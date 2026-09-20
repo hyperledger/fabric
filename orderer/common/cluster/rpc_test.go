@@ -213,7 +213,7 @@ func TestSend(t *testing.T) {
 
 	sent := make(chan struct{})
 
-	var sendCalls uint32
+	var sendCalls atomic.Uint32
 
 	for _, tst := range []testCase{
 		{
@@ -266,12 +266,12 @@ func TestSend(t *testing.T) {
 			fakeStream.On("Send", mock.Anything).Return(func(req *orderer.StepRequest) error {
 				l.Lock()
 				defer l.Unlock()
-				atomic.AddUint32(&sendCalls, 1)
+				sendCalls.Add(1)
 				sent <- struct{}{}
 				return testCase.sendReturns
 			})
 
-			atomic.StoreUint32(&sendCalls, 0)
+			sendCalls.Store(0)
 			isSend := testCase.receiveReturns == nil
 			comm := &mocks.Communicator{}
 
@@ -309,7 +309,7 @@ func TestSend(t *testing.T) {
 				<-sent
 
 				require.NoError(t, err)
-				require.Equal(t, 2, int(atomic.LoadUint32(&sendCalls)))
+				require.Equal(t, 2, int(sendCalls.Load()))
 			}
 		})
 	}

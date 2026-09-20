@@ -759,7 +759,7 @@ func blockWithGroups(groups *cb.ConfigGroup, channelID string, blockNumber uint6
 	block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&cb.Metadata{
 		Value: protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
 			LastConfig: &cb.LastConfig{
-				Index: uint64(blockNumber),
+				Index: blockNumber,
 			},
 		}),
 	})

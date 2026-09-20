@@ -30,16 +30,16 @@ func TestPeriodicCheck(t *testing.T) {
 
 	g := gomega.NewGomegaWithT(t)
 
-	var cond uint32
-	var checkNum uint32
+	var cond atomic.Uint32
+	var checkNum atomic.Uint32
 
 	fiveChecks := func() bool {
-		return atomic.LoadUint32(&checkNum) > uint32(5)
+		return checkNum.Load() > uint32(5)
 	}
 
 	condition := func() bool {
-		atomic.AddUint32(&checkNum, 1)
-		return atomic.LoadUint32(&cond) == uint32(1)
+		checkNum.Add(1)
+		return cond.Load() == uint32(1)
 	}
 
 	reports := make(chan time.Duration, 1000)
@@ -66,7 +66,7 @@ func TestPeriodicCheck(t *testing.T) {
 
 	g.Eventually(fiveChecks, time.Minute, time.Millisecond).Should(gomega.BeTrue())
 	// trigger condition to be true
-	atomic.StoreUint32(&cond, 1)
+	cond.Store(1)
 	g.Eventually(reports, time.Minute, time.Millisecond).Should(gomega.Not(gomega.BeEmpty()))
 	// read first report
 	firstReport := <-reports
@@ -79,7 +79,7 @@ func TestPeriodicCheck(t *testing.T) {
 	g.Eventually(func() int { return len(reports) }, time.Minute, time.Millisecond).Should(gomega.BeNumerically("==", 1000))
 
 	// trigger condition to be false
-	atomic.StoreUint32(&cond, 0)
+	cond.Store(0)
 
 	var lastReport time.Duration
 	// drain the reports channel
@@ -95,15 +95,15 @@ func TestPeriodicCheck(t *testing.T) {
 	g.Consistently(clears).ShouldNot(gomega.Receive())
 
 	// ensure the checks have been made
-	checksDoneSoFar := atomic.LoadUint32(&checkNum)
+	checksDoneSoFar := checkNum.Load()
 	g.Consistently(reports, time.Second*2, time.Millisecond).Should(gomega.BeEmpty())
-	checksDoneAfter := atomic.LoadUint32(&checkNum)
+	checksDoneAfter := checkNum.Load()
 	g.Expect(checksDoneAfter).To(gomega.BeNumerically(">", checksDoneSoFar))
 	// but nothing has been reported
 	g.Expect(reports).To(gomega.BeEmpty())
 
 	// trigger the condition again
-	atomic.StoreUint32(&cond, 1)
+	cond.Store(1)
 	g.Eventually(reports, time.Minute, time.Millisecond).Should(gomega.Not(gomega.BeEmpty()))
 	// The first report is smaller than the last report,
 	// so the countdown has been reset when the condition was reset
@@ -111,11 +111,11 @@ func TestPeriodicCheck(t *testing.T) {
 	g.Expect(lastReport).To(gomega.BeNumerically(">", firstReport))
 	// Stop the periodic check.
 	check.Stop()
-	checkCountAfterStop := atomic.LoadUint32(&checkNum)
+	checkCountAfterStop := checkNum.Load()
 	// Wait 50 times the check interval.
 	time.Sleep(check.CheckInterval * 50)
 	// Ensure that we cease checking the condition, hence the PeriodicCheck is stopped.
-	g.Expect(atomic.LoadUint32(&checkNum)).To(gomega.BeNumerically("<", checkCountAfterStop+2))
+	g.Expect(checkNum.Load()).To(gomega.BeNumerically("<", checkCountAfterStop+2))
 	g.Consistently(clears).ShouldNot(gomega.Receive())
 }
 
