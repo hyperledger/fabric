@@ -25,7 +25,7 @@ func TestRedoLogger(t *testing.T) {
 	records := []*redoRecord{}
 
 	verifyLogRecords := func() {
-		for i := 0; i < len(loggers); i++ {
+		for i := range loggers {
 			retrievedRec, err := loggers[i].load()
 			require.NoError(t, err)
 			require.Equal(t, records[i], retrievedRec)
@@ -150,15 +150,11 @@ func TestCouchdbRedoLogger(t *testing.T) {
 }
 
 func redologTestSetup(t *testing.T) (p *redoLoggerProvider, cleanup func()) {
-	dbPath, err := os.MkdirTemp("", "redolog")
-	if err != nil {
-		t.Fatalf("Failed to create redo log directory: %s", err)
-	}
-	p, err = newRedoLoggerProvider(dbPath)
+	dbPath := t.TempDir()
+	p, err := newRedoLoggerProvider(dbPath)
 	require.NoError(t, err)
 	cleanup = func() {
 		p.close()
-		require.NoError(t, os.RemoveAll(dbPath))
 	}
 	return
 }

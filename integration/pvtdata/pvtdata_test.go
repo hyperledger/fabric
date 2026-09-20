@@ -84,18 +84,16 @@ var _ bool = Describe("PrivateData", func() {
 		It("disseminates private data per collections_config1 (positive test) and collections_config8 (negative test)", func() {
 			By("deploying legacy chaincode and adding marble1")
 			testChaincode := chaincode{
-				Chaincode: nwo.Chaincode{
-					Name:    "marblesp",
-					Version: "1.0",
-					Path:    "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
-					Ctor:    `{"Args":["init"]}`,
-					Policy:  `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
-					// collections_config1.json defines the access as follows:
-					// 1. collectionMarbles - Org1, Org2 have access to this collection
-					// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
-					CollectionsConfig: CollectionConfig("collections_config1.json"),
-				},
-				isLegacy: true,
+				Name:    "marblesp",
+				Version: "1.0",
+				Path:    "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+				Ctor:    `{"Args":["init"]}`,
+				Policy:  `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+				// collections_config1.json defines the access as follows:
+				// 1. collectionMarbles - Org1, Org2 have access to this collection
+				// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
+				CollectionsConfig: CollectionConfig("collections_config1.json"),
+				isLegacy:          true,
 			}
 			deployChaincode(network, orderer, testChaincode)
 			marblechaincodeutil.AddMarble(network, orderer, channelID, testChaincode.Name,
@@ -107,15 +105,13 @@ var _ bool = Describe("PrivateData", func() {
 
 			By("deploying chaincode with RequiredPeerCount greater than number of peers, endorsement will fail")
 			testChaincodeHighRequiredPeerCount := chaincode{
-				Chaincode: nwo.Chaincode{
-					Name:              "marblespHighRequiredPeerCount",
-					Version:           "1.0",
-					Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
-					Ctor:              `{"Args":["init"]}`,
-					Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
-					CollectionsConfig: CollectionConfig("collections_config8_high_requiredPeerCount.json"),
-				},
-				isLegacy: true,
+				Name:              "marblespHighRequiredPeerCount",
+				Version:           "1.0",
+				Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+				Ctor:              `{"Args":["init"]}`,
+				Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+				CollectionsConfig: CollectionConfig("collections_config8_high_requiredPeerCount.json"),
+				isLegacy:          true,
 			}
 			deployChaincode(network, orderer, testChaincodeHighRequiredPeerCount)
 
@@ -141,18 +137,16 @@ var _ bool = Describe("PrivateData", func() {
 			It("disseminates private data per collections_config7 with default maxPeerCount and requiredPeerCount", func() {
 				By("deploying legacy chaincode and adding marble1")
 				testChaincode := chaincode{
-					Chaincode: nwo.Chaincode{
-						Name:    "marblesp",
-						Version: "1.0",
-						Path:    "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
-						Ctor:    `{"Args":["init"]}`,
-						Policy:  `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
-						// collections_config1.json defines the access as follows:
-						// 1. collectionMarbles - Org1, Org2 have access to this collection
-						// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
-						CollectionsConfig: CollectionConfig("collections_config7.json"),
-					},
-					isLegacy: true,
+					Name:    "marblesp",
+					Version: "1.0",
+					Path:    "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+					Ctor:    `{"Args":["init"]}`,
+					Policy:  `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+					// collections_config1.json defines the access as follows:
+					// 1. collectionMarbles - Org1, Org2 have access to this collection
+					// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
+					CollectionsConfig: CollectionConfig("collections_config7.json"),
+					isLegacy:          true,
 				}
 				deployChaincode(network, orderer, testChaincode)
 				peer := network.Peer("Org1", "peer0")
@@ -208,15 +202,13 @@ var _ bool = Describe("PrivateData", func() {
 
 			By("installing and instantiating chaincode on all peers")
 			testChaincode := chaincode{
-				Chaincode: nwo.Chaincode{
-					Name:              "marblesp",
-					Version:           "1.0",
-					Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
-					Ctor:              `{"Args":["init"]}`,
-					Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
-					CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config1.json"),
-				},
-				isLegacy: true,
+				Name:              "marblesp",
+				Version:           "1.0",
+				Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+				Ctor:              `{"Args":["init"]}`,
+				Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+				CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config1.json"),
+				isLegacy:          true,
 			}
 			deployChaincode(network, orderer, testChaincode)
 

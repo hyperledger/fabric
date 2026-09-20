@@ -43,14 +43,13 @@ type testConfig struct {
 	hashFamily    string
 }
 
-func (tc testConfig) Provider(t *testing.T) (bccsp.BCCSP, bccsp.KeyStore, func()) {
-	td, err := os.MkdirTemp(tempDir, "test")
-	require.NoError(t, err)
+func (tc testConfig) Provider(t *testing.T) (bccsp.BCCSP, bccsp.KeyStore) {
+	td := t.TempDir()
 	ks, err := NewFileBasedKeyStore(nil, td, false)
 	require.NoError(t, err)
 	p, err := NewWithParams(tc.securityLevel, tc.hashFamily, ks)
 	require.NoError(t, err)
-	return p, ks, func() { os.RemoveAll(td) }
+	return p, ks
 }
 
 func TestMain(m *testing.M) {
@@ -85,8 +84,7 @@ func TestMain(m *testing.M) {
 
 func TestInvalidNewParameter(t *testing.T) {
 	t.Parallel()
-	_, ks, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	_, ks := currentTestConfig.Provider(t)
 
 	r, err := NewWithParams(0, "SHA2", ks)
 	if err == nil {
@@ -131,8 +129,7 @@ func TestInvalidNewParameter(t *testing.T) {
 
 func TestInvalidSKI(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.GetKey(nil)
 	if err == nil {
@@ -153,8 +150,7 @@ func TestInvalidSKI(t *testing.T) {
 
 func TestKeyGenECDSAOpts(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	// Curve P256
 	k, err := provider.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
@@ -211,8 +207,7 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 
 func TestKeyGenAESOpts(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	// AES 128
 	k, err := provider.KeyGen(&bccsp.AES128KeyGenOpts{Temporary: false})
@@ -277,8 +272,7 @@ func TestKeyGenAESOpts(t *testing.T) {
 
 func TestECDSAKeyGenEphemeral(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: true})
 	if err != nil {
@@ -311,8 +305,7 @@ func TestECDSAKeyGenEphemeral(t *testing.T) {
 
 func TestECDSAPrivateKeySKI(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -327,8 +320,7 @@ func TestECDSAPrivateKeySKI(t *testing.T) {
 
 func TestECDSAKeyGenNonEphemeral(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -347,8 +339,7 @@ func TestECDSAKeyGenNonEphemeral(t *testing.T) {
 
 func TestECDSAGetKeyBySKI(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -377,8 +368,7 @@ func TestECDSAGetKeyBySKI(t *testing.T) {
 
 func TestECDSAPublicKeyFromPrivateKey(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -402,8 +392,7 @@ func TestECDSAPublicKeyFromPrivateKey(t *testing.T) {
 
 func TestECDSAPublicKeyBytes(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -426,8 +415,7 @@ func TestECDSAPublicKeyBytes(t *testing.T) {
 
 func TestECDSAPublicKeySKI(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -447,8 +435,7 @@ func TestECDSAPublicKeySKI(t *testing.T) {
 
 func TestECDSAKeyReRand(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -496,8 +483,7 @@ func TestECDSAKeyReRand(t *testing.T) {
 
 func TestECDSASign(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -522,8 +508,7 @@ func TestECDSASign(t *testing.T) {
 
 func TestECDSAVerify(t *testing.T) {
 	t.Parallel()
-	provider, ks, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, ks := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -585,8 +570,7 @@ func TestECDSAVerify(t *testing.T) {
 
 func TestECDSAKeyDeriv(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -621,8 +605,7 @@ func TestECDSAKeyDeriv(t *testing.T) {
 
 func TestECDSAKeyImportFromExportedKey(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	// Generate an ECDSA key
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
@@ -674,8 +657,7 @@ func TestECDSAKeyImportFromExportedKey(t *testing.T) {
 
 func TestECDSAKeyImportFromECDSAPublicKey(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	// Generate an ECDSA key
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
@@ -732,8 +714,7 @@ func TestECDSAKeyImportFromECDSAPublicKey(t *testing.T) {
 
 func TestECDSAKeyImportFromECDSAPrivateKey(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	// Generate an ECDSA key, default is P256
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -793,8 +774,7 @@ func TestECDSAKeyImportFromECDSAPrivateKey(t *testing.T) {
 
 func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	// Generate an ECDSA key
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
@@ -962,8 +942,7 @@ func TestECDSASignatureEncoding(t *testing.T) {
 
 func TestECDSALowS(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	// Ensure that signature with low-S are generated
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
@@ -1029,8 +1008,7 @@ func TestECDSALowS(t *testing.T) {
 
 func TestAESKeyGen(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.AESKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -1057,8 +1035,7 @@ func TestAESKeyGen(t *testing.T) {
 
 func TestAESEncrypt(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.AESKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -1076,8 +1053,7 @@ func TestAESEncrypt(t *testing.T) {
 
 func TestAESDecrypt(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.AESKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -1106,8 +1082,7 @@ func TestAESDecrypt(t *testing.T) {
 
 func TestHMACTruncated256KeyDerivOverAES256Key(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.AESKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -1157,8 +1132,7 @@ func TestHMACTruncated256KeyDerivOverAES256Key(t *testing.T) {
 
 func TestHMACKeyDerivOverAES256Key(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.AESKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -1189,8 +1163,7 @@ func TestHMACKeyDerivOverAES256Key(t *testing.T) {
 
 func TestAES256KeyImport(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	raw, err := GetRandomBytes(32)
 	if err != nil {
@@ -1240,8 +1213,7 @@ func TestAES256KeyImport(t *testing.T) {
 
 func TestAES256KeyImportBadPaths(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	_, err := provider.KeyImport(nil, &bccsp.AES256ImportKeyOpts{Temporary: false})
 	if err == nil {
@@ -1256,8 +1228,7 @@ func TestAES256KeyImportBadPaths(t *testing.T) {
 
 func TestAES256KeyGenSKI(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	k, err := provider.KeyGen(&bccsp.AESKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -1286,8 +1257,7 @@ func TestAES256KeyGenSKI(t *testing.T) {
 
 func TestSHA(t *testing.T) {
 	t.Parallel()
-	provider, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	provider, _ := currentTestConfig.Provider(t)
 
 	for i := range 100 {
 		b, err := GetRandomBytes(i)
@@ -1334,8 +1304,7 @@ func TestSHA(t *testing.T) {
 
 func TestAddWrapper(t *testing.T) {
 	t.Parallel()
-	p, _, cleanup := currentTestConfig.Provider(t)
-	defer cleanup()
+	p, _ := currentTestConfig.Provider(t)
 
 	sw, ok := p.(*CSP)
 	require.True(t, ok)
@@ -1359,7 +1328,7 @@ func TestAddWrapper(t *testing.T) {
 	tester(&mocks.Hasher{}, func(t reflect.Type) (any, bool) { o, ok := sw.Hashers[t]; return o, ok })
 
 	// Add invalid wrapper
-	err := sw.AddWrapper(reflect.TypeFor[func()](), cleanup)
+	err := sw.AddWrapper(reflect.TypeFor[func()](), func() {})
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "wrapper type not valid, must be on of: KeyGenerator, KeyDeriver, KeyImporter, Encryptor, Decryptor, Signer, Verifier, Hasher")
 }

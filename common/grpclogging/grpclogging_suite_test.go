@@ -77,7 +77,7 @@ type echoServiceServer interface {
 
 func newTemplate(subjectCN string, hosts ...string) x509.Certificate {
 	notBefore := time.Now().Add(-1 * time.Minute)
-	notAfter := time.Now().Add(time.Duration(365 * 24 * time.Hour))
+	notAfter := time.Now().Add(365 * 24 * time.Hour)
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)

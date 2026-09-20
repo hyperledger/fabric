@@ -20,7 +20,7 @@ const (
 
 	// PayloadLevel is used to log the extremely detailed message level debug
 	// information.
-	PayloadLevel = zapcore.Level(zapcore.DebugLevel - 1)
+	PayloadLevel = zapcore.DebugLevel - 1
 )
 
 // NameToLevel converts a level name to a zapcore.Level.  If the level name is

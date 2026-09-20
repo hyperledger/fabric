@@ -626,7 +626,7 @@ func TestMembership(t *testing.T) {
 		if !bytes.Equal([]byte("bla bla1"), metadataOfPeer(boot.Peers(), lastPeer)) {
 			return false
 		}
-		for i := 0; i < n-1; i++ {
+		for i := range n - 1 {
 			if !bytes.Equal([]byte("bla bla1"), metadataOfPeer(peers[i].Peers(), lastPeer)) {
 				return false
 			}
@@ -762,7 +762,7 @@ func TestDissemination(t *testing.T) {
 		if heightOfPeer(boot.PeersOfChannel(common.ChannelID("A")), lastPeer) != 2 {
 			return false
 		}
-		for i := 0; i < n-1; i++ {
+		for i := range n - 1 {
 			if heightOfPeer(peers[i].PeersOfChannel(common.ChannelID("A")), lastPeer) != 2 {
 				return false
 			}
@@ -1085,7 +1085,7 @@ func TestDataLeakage(t *testing.T) {
 	height := uint64(1)
 
 	for i, channel := range channels {
-		for j := 0; j < (n / 2); j++ {
+		for j := range n / 2 {
 			instanceIndex := (n/2)*i + j
 			peers[instanceIndex].JoinChan(&joinChanMsg{}, channel)
 			if i != 0 {
@@ -1133,7 +1133,7 @@ func TestDataLeakage(t *testing.T) {
 				go func(instanceIndex int, channel common.ChannelID) {
 					incMsgChan, _ := peers[instanceIndex].Accept(acceptData, false)
 					msg := <-incMsgChan
-					require.Equal(t, []byte(channel), []byte(msg.GetChannel()))
+					require.Equal(t, []byte(channel), msg.GetChannel())
 					wg.Done()
 				}(instanceIndex, channel)
 			}
@@ -1379,19 +1379,19 @@ func TestSendByCriteria(t *testing.T) {
 		}
 		f()
 	}
-	var messagesSent uint32
+	var messagesSent atomic.Uint32
 	go waitForMessage(ackChan2, func() {
-		atomic.AddUint32(&messagesSent, 1)
+		messagesSent.Add(1)
 	})
 	go waitForMessage(ackChan3, func() {
-		atomic.AddUint32(&messagesSent, 1)
+		messagesSent.Add(1)
 	})
 	err = g1.SendByCriteria(msg, criteria)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "timed out")
 	// Check how many messages were sent.
 	// Only 1 should have been sent
-	require.Equal(t, uint32(1), atomic.LoadUint32(&messagesSent))
+	require.Equal(t, uint32(1), messagesSent.Load())
 }
 
 func TestIdentityExpiration(t *testing.T) {

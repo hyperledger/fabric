@@ -605,7 +605,7 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 				continue
 			}
 
-			s.requestBlocksInRange(uint64(ourHeight), uint64(maxHeight)-1)
+			s.requestBlocksInRange(ourHeight, maxHeight-1)
 		}
 	}
 }

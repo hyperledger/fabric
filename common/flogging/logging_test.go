@@ -31,20 +31,15 @@ func TestNew(t *testing.T) {
 }
 
 func TestNewWithEnvironment(t *testing.T) {
-	oldSpec, set := os.LookupEnv("FABRIC_LOGGING_SPEC")
-	if set {
-		defer os.Setenv("FABRIC_LOGGING_SPEC", oldSpec)
-	}
-
-	os.Setenv("FABRIC_LOGGING_SPEC", "fatal")
+	os.Unsetenv("FABRIC_LOGGING_SPEC")
 	logging, err := flogging.New(flogging.Config{})
 	require.NoError(t, err)
-	require.Equal(t, zapcore.FatalLevel, logging.DefaultLevel())
+	require.Equal(t, zapcore.InfoLevel, logging.DefaultLevel())
 
-	os.Unsetenv("FABRIC_LOGGING_SPEC")
+	t.Setenv("FABRIC_LOGGING_SPEC", "fatal")
 	logging, err = flogging.New(flogging.Config{})
 	require.NoError(t, err)
-	require.Equal(t, zapcore.InfoLevel, logging.DefaultLevel())
+	require.Equal(t, zapcore.FatalLevel, logging.DefaultLevel())
 }
 
 //go:generate counterfeiter -o mock/write_syncer.go -fake-name WriteSyncer . writeSyncer

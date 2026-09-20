@@ -37,12 +37,10 @@ func TestJoin(t *testing.T) {
 	InitMSP()
 	resetFlags()
 
-	dir, err := os.MkdirTemp("/tmp", "jointest")
-	require.NoError(t, err, "Could not create the directory %s", dir)
+	dir := t.TempDir()
 	mockblockfile := filepath.Join(dir, "mockjointest.block")
-	err = os.WriteFile(mockblockfile, []byte(""), 0o644)
+	err := os.WriteFile(mockblockfile, []byte(""), 0o644)
 	require.NoError(t, err, "Could not write to the file %s", mockblockfile)
-	defer os.RemoveAll(dir)
 	signer, err := common.GetDefaultSigner()
 	require.NoError(t, err, "Get default signer error: %v", err)
 
@@ -148,17 +146,15 @@ func TestJoinNilCF(t *testing.T) {
 	InitMSP()
 	resetFlags()
 
-	dir, err := os.MkdirTemp("/tmp", "jointest")
-	require.NoError(t, err, "Could not create the directory %s", dir)
+	dir := t.TempDir()
 	mockblockfile := filepath.Join(dir, "mockjointest.block")
-	defer os.RemoveAll(dir)
 	viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 	cmd := joinCmd(nil)
 	AddFlags(cmd)
 	args := []string{"-b", mockblockfile}
 	cmd.SetArgs(args)
 
-	err = cmd.Execute()
+	err := cmd.Execute()
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "endorser client failed to connect to")
 }

@@ -345,7 +345,7 @@ func processDone(t *testing.T, done chan error, expecterr bool) {
 }
 
 func startTx(t *testing.T, peerInstance *peer.Peer, channelID string, cis *pb.ChaincodeInvocationSpec, txId string) (*ccprovider.TransactionParams, ledger.TxSimulator) {
-	creator := []byte([]byte("Alice"))
+	creator := []byte("Alice")
 	sprop, prop := protoutil.MockSignedEndorserProposalOrPanic(channelID, cis.GetChaincodeSpec(), creator, []byte("msg1"))
 	txsim, hqe, err := startTxSimulation(peerInstance, channelID, txId)
 	if err != nil {

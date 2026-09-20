@@ -49,7 +49,7 @@ type CertGenerator interface {
 func (r *RuntimeLauncher) ChaincodeClientInfo(ccid string) (*ccintf.PeerConnection, error) {
 	var tlsConfig *ccintf.TLSConfig
 	if r.CertGenerator != nil {
-		certKeyPair, err := r.CertGenerator.Generate(string(ccid))
+		certKeyPair, err := r.CertGenerator.Generate(ccid)
 		if err != nil {
 			return nil, errors.WithMessagef(err, "failed to generate TLS certificates for %s", ccid)
 		}

@@ -40,8 +40,7 @@ var (
 func BootstrapBlockstoreFromSnapshot(t *testing.T, ledgerName string, blocks []*common.Block) (*blkstorage.BlockStore, func()) {
 	require.NotEqual(t, 0, len(blocks))
 
-	testDir, err := os.MkdirTemp("", ledgerName)
-	require.NoError(t, err)
+	testDir := t.TempDir()
 	snapshotDir := filepath.Join(testDir, "snapshot")
 	require.NoError(t, os.Mkdir(snapshotDir, 0o755))
 
@@ -75,7 +74,6 @@ func BootstrapBlockstoreFromSnapshot(t *testing.T, ledgerName string, blocks []*
 
 	cleanup := func() {
 		provider.Close()
-		os.RemoveAll(testDir)
 	}
 	return blockStore, cleanup
 }

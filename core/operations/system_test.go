@@ -56,16 +56,14 @@ var _ = Describe("System", func() {
 
 		fakeLogger = &fakes.Logger{}
 		options = operations.Options{
-			Options: fabhttp.Options{
-				Logger:        fakeLogger,
-				ListenAddress: "127.0.0.1:0",
-				TLS: fabhttp.TLS{
-					Enabled:            true,
-					CertFile:           filepath.Join(tempDir, "server-cert.pem"),
-					KeyFile:            filepath.Join(tempDir, "server-key.pem"),
-					ClientCertRequired: false,
-					ClientCACertFiles:  []string{filepath.Join(tempDir, "client-ca.pem")},
-				},
+			Logger:        fakeLogger,
+			ListenAddress: "127.0.0.1:0",
+			TLS: fabhttp.TLS{
+				Enabled:            true,
+				CertFile:           filepath.Join(tempDir, "server-cert.pem"),
+				KeyFile:            filepath.Join(tempDir, "server-key.pem"),
+				ClientCertRequired: false,
+				ClientCACertFiles:  []string{filepath.Join(tempDir, "client-ca.pem")},
 			},
 			Metrics: operations.MetricsOptions{
 				Provider: "disabled",

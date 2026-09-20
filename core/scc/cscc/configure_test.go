@@ -235,9 +235,7 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 }
 
 func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
-	testDir, err := os.MkdirTemp("", "cscc_test")
-	require.NoError(t, err, "error in creating test dir")
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	ledgerInitializer := ledgermgmttest.NewInitializer(testDir)
 	ledgerInitializer.CustomTxProcessors = map[cb.HeaderType]ledger.CustomTxProcessor{
@@ -350,9 +348,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 }
 
 func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
-	testDir, err := os.MkdirTemp("", "cscc_test_bysnapshot")
-	require.NoError(t, err, "error in creating test dir")
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	ledgerInitializer := ledgermgmttest.NewInitializer(testDir)
 	ledgerInitializer.CustomTxProcessors = map[cb.HeaderType]ledger.CustomTxProcessor{
@@ -436,9 +432,7 @@ func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 }
 
 func TestConfigerInvokeGetChannelConfig(t *testing.T) {
-	testDir, err := os.MkdirTemp("", "cscc_test_GetChannelConfig")
-	require.NoError(t, err)
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	ledgerInitializer := ledgermgmttest.NewInitializer(testDir)
 	ledgerInitializer.CustomTxProcessors = map[cb.HeaderType]ledger.CustomTxProcessor{
@@ -537,7 +531,7 @@ func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	}
 	mockStub := &mocks.ChaincodeStub{}
 	// Failed path: wrong parameter type
-	args := [][]byte{[]byte("JoinChain"), []byte(blockBytes)}
+	args := [][]byte{[]byte("JoinChain"), blockBytes}
 	mockStub.GetArgsReturns(args)
 	mockStub.GetSignedProposalReturns(validSignedProposal(), nil)
 	res := cscc.Invoke(mockStub)

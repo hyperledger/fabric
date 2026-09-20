@@ -466,7 +466,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 		blockIdxInfo.blockNum = info.blockHeader.GetNumber()
 		blockIdxInfo.flp = &fileLocPointer{
 			fileSuffixNum: blockPlacementInfo.fileNum,
-			locPointer:    locPointer{offset: int(blockPlacementInfo.blockStartOffset)},
+			offset:        int(blockPlacementInfo.blockStartOffset),
 		}
 		blockIdxInfo.txOffsets = info.txOffsets
 		blockIdxInfo.metadata = info.metadata

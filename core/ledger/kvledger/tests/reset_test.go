@@ -91,7 +91,7 @@ func TestResetAllLedgers(t *testing.T) {
 	preResetHt, err = kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, newLedgerIDs)
 	require.NoError(t, err)
 	require.Equal(t, numLedgers-3, len(preResetHt))
-	for i := 0; i < len(preResetHt); i++ {
+	for i := range len(preResetHt) {
 		require.Contains(t, preResetHt, fmt.Sprintf("ledger-%d", i))
 	}
 	// verify preResetHt after ClearPreResetHeight

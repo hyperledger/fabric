@@ -162,7 +162,7 @@ func createCfgBlockWithSupportedCapabilities(t *testing.T) *cb.Block {
 	}
 	configBlock := &cb.Block{
 		Data: &cb.BlockData{
-			Data: [][]byte{[]byte(protoutil.MarshalOrPanic(env))},
+			Data: [][]byte{protoutil.MarshalOrPanic(env)},
 		},
 	}
 	return configBlock
@@ -276,7 +276,7 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 	}
 	configBlock := &cb.Block{
 		Data: &cb.BlockData{
-			Data: [][]byte{[]byte(protoutil.MarshalOrPanic(env))},
+			Data: [][]byte{protoutil.MarshalOrPanic(env)},
 		},
 	}
 	return configBlock
@@ -348,7 +348,7 @@ func TestMarshalEtcdRaftMetadata(t *testing.T) {
 
 	var outputCerts, inputCerts [3][]byte
 	for i := range unpacked.GetConsenters() {
-		outputCerts[i] = []byte(unpacked.GetConsenters()[i].GetClientTlsCert())
+		outputCerts[i] = unpacked.GetConsenters()[i].GetClientTlsCert()
 		inputCerts[i], _ = os.ReadFile(fmt.Sprintf("testdata/tls-client-%d.pem", i+1))
 
 	}

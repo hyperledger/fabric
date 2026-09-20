@@ -33,11 +33,11 @@ linters:
     - goprintffuncname
     - govet
     - grouper
-    # - ineffassign
-    # - intrange
+    - ineffassign
+    - intrange
     - loggercheck
     - misspell
-    # - modernize
+    - modernize
     - nolintlint
     - nosprintfhostport
     # - perfsprint
@@ -49,10 +49,10 @@ linters:
     - staticcheck
     - testableexamples
   #    - testifylint
-  #    - tparallel
-  #    - unconvert
-  #    - usestdlibvars
-  #    - usetesting
+    - tparallel
+    - unconvert
+    - usestdlibvars
+    - usetesting
   #    - whitespace
   settings:
     depguard:

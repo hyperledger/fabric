@@ -172,21 +172,21 @@ func (pe *PluginEndorser) getOrCreatePlugin(plugin PluginName, channel string) (
 		return nil, errors.Errorf("plugin with name %s wasn't found", plugin)
 	}
 
-	pluginsByChannel := pe.getOrCreatePluginChannelMapping(PluginName(plugin), pluginFactory)
+	pluginsByChannel := pe.getOrCreatePluginChannelMapping(plugin, pluginFactory)
 	return pluginsByChannel.createPluginIfAbsent(channel)
 }
 
 func (pe *PluginEndorser) getOrCreatePluginChannelMapping(plugin PluginName, pf endorsement.PluginFactory) *pluginsByChannel {
 	pe.Lock()
 	defer pe.Unlock()
-	endorserChannelMapping, exists := pe.pluginChannelMapping[PluginName(plugin)]
+	endorserChannelMapping, exists := pe.pluginChannelMapping[plugin]
 	if !exists {
 		endorserChannelMapping = &pluginsByChannel{
 			pluginFactory:    pf,
 			channels2Plugins: make(map[string]endorsement.Plugin),
 			pe:               pe,
 		}
-		pe.pluginChannelMapping[PluginName(plugin)] = endorserChannelMapping
+		pe.pluginChannelMapping[plugin] = endorserChannelMapping
 	}
 	return endorserChannelMapping
 }

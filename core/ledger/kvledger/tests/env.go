@@ -207,7 +207,7 @@ func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Init
 	}
 
 	if initializer.Config == nil || initializer.Config.RootFSPath == "" {
-		rootPath, err := os.MkdirTemp("/tmp", "ledgersData")
+		rootPath, err := os.MkdirTemp("/tmp", "ledgersData") //nolint:usetesting
 		if err != nil {
 			t.Fatalf("Failed to create root directory: %s", err)
 		}

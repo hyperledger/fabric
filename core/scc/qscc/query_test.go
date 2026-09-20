@@ -64,7 +64,7 @@ func setupTestLedger(chainid string, path string) (*shimtest.MockStub, *peer.Pee
 	}
 	stub := shimtest.NewMockStub("LedgerQuerier", lq)
 	if res := stub.MockInit("1", nil); res.GetStatus() != shim.OK {
-		return nil, peerInstance, cleanup, fmt.Errorf("Init failed for test ledger [%s] with message: %s", chainid, string(res.GetMessage()))
+		return nil, peerInstance, cleanup, fmt.Errorf("Init failed for test ledger [%s] with message: %s", chainid, res.GetMessage())
 	}
 	return stub, peerInstance, cleanup, nil
 }
@@ -88,16 +88,9 @@ func resetProvider(res, chainid string, prop *peer2.SignedProposal, retErr error
 	return prop
 }
 
-func tempDir(t *testing.T, stem string) string {
-	path, err := os.MkdirTemp("", "qscc-"+stem)
-	require.NoError(t, err)
-	return path
-}
-
 func TestQueryGetChainInfo(t *testing.T) {
 	chainid := "mytestchainid1"
-	path := tempDir(t, "test1")
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	stub, _, cleanup, err := setupTestLedger(chainid, path)
 	if err != nil {
@@ -121,8 +114,7 @@ func TestQueryGetChainInfo(t *testing.T) {
 
 func TestQueryGetTransactionByID(t *testing.T) {
 	chainid := "mytestchainid2"
-	path := tempDir(t, "test2")
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	stub, _, cleanup, err := setupTestLedger(chainid, path)
 	if err != nil {
@@ -147,8 +139,7 @@ func TestQueryGetTransactionByID(t *testing.T) {
 
 func TestQueryGetBlockByNumber(t *testing.T) {
 	chainid := "mytestchainid3"
-	path := tempDir(t, "test3")
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	stub, _, cleanup, err := setupTestLedger(chainid, path)
 	if err != nil {
@@ -175,8 +166,7 @@ func TestQueryGetBlockByNumber(t *testing.T) {
 
 func TestQueryGetBlockByHash(t *testing.T) {
 	chainid := "mytestchainid4"
-	path := tempDir(t, "test4")
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	stub, _, cleanup, err := setupTestLedger(chainid, path)
 	if err != nil {
@@ -196,8 +186,7 @@ func TestQueryGetBlockByHash(t *testing.T) {
 
 func TestQueryGetBlockByTxID(t *testing.T) {
 	chainid := "mytestchainid5"
-	path := tempDir(t, "test5")
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	stub, _, cleanup, err := setupTestLedger(chainid, path)
 	if err != nil {
@@ -250,8 +239,7 @@ func TestFailingCC2CC(t *testing.T) {
 
 func TestFailingAccessControl(t *testing.T) {
 	chainid := "mytestchainid6"
-	path := tempDir(t, "test6")
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	_, p, cleanup, err := setupTestLedger(chainid, path)
 	if err != nil {
@@ -371,8 +359,7 @@ func TestFailingAccessControl(t *testing.T) {
 
 func TestQueryNonexistentFunction(t *testing.T) {
 	chainid := "mytestchainid7"
-	path := tempDir(t, "test7")
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	stub, _, cleanup, err := setupTestLedger(chainid, path)
 	if err != nil {
@@ -390,8 +377,7 @@ func TestQueryNonexistentFunction(t *testing.T) {
 // that contains two transactions
 func TestQueryGeneratedBlock(t *testing.T) {
 	chainid := "mytestchainid8"
-	path := tempDir(t, "test8")
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	stub, p, cleanup, err := setupTestLedger(chainid, path)
 	if err != nil {

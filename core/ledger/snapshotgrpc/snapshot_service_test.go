@@ -9,7 +9,6 @@ package snapshotgrpc
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -34,8 +33,7 @@ type aclProvider interface {
 }
 
 func TestSnapshot(t *testing.T) {
-	testDir, err := os.MkdirTemp("", "snapshotgrpc")
-	require.NoError(t, err)
+	testDir := t.TempDir()
 
 	ledgerID := "testsnapshot"
 	ledgermgmtInitializer := ledgermgmttest.NewInitializer(testDir)

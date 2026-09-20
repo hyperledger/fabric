@@ -435,7 +435,7 @@ func (s *Store) getLastUpdatedOldBlocksList() ([]uint64, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i := 0; i < int(numBlks); i++ {
+	for range numBlks {
 		blkNum, err := buf.DecodeVarint()
 		if err != nil {
 			return nil, err

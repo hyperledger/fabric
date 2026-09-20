@@ -18,8 +18,7 @@ import (
 )
 
 func TestCreateLedgerFactory(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	testCases := []struct {
 		name        string
 		ledgerDir   string

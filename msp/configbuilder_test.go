@@ -93,7 +93,7 @@ func TestGetLocalMspConfigFails(t *testing.T) {
 }
 
 func TestGetPemMaterialFromDirWithFile(t *testing.T) {
-	tempFile, err := os.CreateTemp("", "fabric-msp-test")
+	tempFile, err := os.CreateTemp(t.TempDir(), "fabric-msp-test")
 	require.NoError(t, err)
 	err = tempFile.Close()
 	require.NoError(t, err)
@@ -105,12 +105,10 @@ func TestGetPemMaterialFromDirWithFile(t *testing.T) {
 
 func TestGetPemMaterialFromDirWithSymlinks(t *testing.T) {
 	mspDir := configtest.GetDevMspDir()
-	tempDir, err := os.MkdirTemp("", "fabric-msp-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	dirSymlinkName := filepath.Join(tempDir, "..data")
-	err = os.Symlink(filepath.Join(mspDir, "signcerts"), dirSymlinkName)
+	err := os.Symlink(filepath.Join(mspDir, "signcerts"), dirSymlinkName)
 	require.NoError(t, err)
 
 	fileSymlinkTarget := filepath.Join("..data", "peer.pem")

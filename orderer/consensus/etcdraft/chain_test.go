@@ -1533,7 +1533,7 @@ var _ = Describe("Chain", func() {
 		It("can remove leader by retrying even if leadership transfer fails at first", func() {
 			network.elect(1)
 
-			var messageOmission uint32
+			var messageOmission atomic.Uint32
 
 			step1 := c1.getStepFunc()
 			c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
@@ -1542,7 +1542,7 @@ var _ = Describe("Chain", func() {
 					return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %w", err)
 				}
 
-				if stepMsg.GetType() == raftpb.MsgTimeoutNow && atomic.CompareAndSwapUint32(&messageOmission, 0, 1) {
+				if stepMsg.GetType() == raftpb.MsgTimeoutNow && messageOmission.CompareAndSwap(0, 1) {
 					return nil
 				}
 
@@ -3284,7 +3284,7 @@ func nodeConfigFromMetadata(consenterMetadata *raftprotos.ConfigMetadata) []clus
 
 func createMetadata(nodeCount int, tlsCA tlsgen.CA) *raftprotos.ConfigMetadata {
 	md := &raftprotos.ConfigMetadata{Options: &raftprotos.Options{
-		TickInterval:      time.Duration(interval).String(),
+		TickInterval:      interval.String(),
 		ElectionTick:      ELECTION_TICK,
 		HeartbeatTick:     HEARTBEAT_TICK,
 		MaxInflightBlocks: 5,
@@ -3390,7 +3390,7 @@ func newChain(
 
 	opts := etcdraft.Options{
 		RPCTimeout:          timeout,
-		RaftID:              uint64(id),
+		RaftID:              id,
 		Clock:               clock,
 		TickInterval:        interval,
 		ElectionTick:        ELECTION_TICK,

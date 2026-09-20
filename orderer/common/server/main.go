@@ -869,16 +869,14 @@ func initializeEtcdraftConsenter(
 
 func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics) *operations.System {
 	return operations.NewSystem(operations.Options{
-		Options: fabhttp.Options{
-			Logger:        flogging.MustGetLogger("orderer.operations"),
-			ListenAddress: ops.ListenAddress,
-			TLS: fabhttp.TLS{
-				Enabled:            ops.TLS.Enabled,
-				CertFile:           ops.TLS.Certificate,
-				KeyFile:            ops.TLS.PrivateKey,
-				ClientCertRequired: ops.TLS.ClientAuthRequired,
-				ClientCACertFiles:  ops.TLS.ClientRootCAs,
-			},
+		Logger:        flogging.MustGetLogger("orderer.operations"),
+		ListenAddress: ops.ListenAddress,
+		TLS: fabhttp.TLS{
+			Enabled:            ops.TLS.Enabled,
+			CertFile:           ops.TLS.Certificate,
+			KeyFile:            ops.TLS.PrivateKey,
+			ClientCertRequired: ops.TLS.ClientAuthRequired,
+			ClientCACertFiles:  ops.TLS.ClientRootCAs,
 		},
 		Metrics: operations.MetricsOptions{
 			Provider: metrics.Provider,

@@ -248,7 +248,7 @@ var _ = Describe("Interceptor", func() {
 			}))
 
 			Expect(fakeMessagesSent.AddCallCount()).To(Equal(2))
-			for i := 0; i < fakeMessagesSent.AddCallCount(); i++ {
+			for range fakeMessagesSent.AddCallCount() {
 				Expect(fakeMessagesSent.AddArgsForCall(0)).To(BeNumerically("~", 1.0))
 			}
 		})
@@ -266,7 +266,7 @@ var _ = Describe("Interceptor", func() {
 			}))
 
 			Expect(fakeMessagesReceived.AddCallCount()).To(Equal(2))
-			for i := 0; i < fakeMessagesReceived.AddCallCount(); i++ {
+			for range fakeMessagesReceived.AddCallCount() {
 				Expect(fakeMessagesReceived.AddArgsForCall(0)).To(BeNumerically("~", 1.0))
 			}
 		})

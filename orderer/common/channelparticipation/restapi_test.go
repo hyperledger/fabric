@@ -40,7 +40,7 @@ func TestHTTPHandler_ServeHTTP_Disabled(t *testing.T) {
 	_, h := setup(config, t)
 
 	resp := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", channelparticipation.URLBaseV1, nil)
+	req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1, nil)
 	h.ServeHTTP(resp, req)
 	checkErrorResponse(t, http.StatusServiceUnavailable, "channel participation API is disabled", resp)
 }

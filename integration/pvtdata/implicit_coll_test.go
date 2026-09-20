@@ -62,16 +62,14 @@ var _ bool = Describe("Pvtdata dissemination for implicit collection", func() {
 
 		By("deploying new lifecycle chaincode")
 		testChaincode = chaincode{
-			Chaincode: nwo.Chaincode{
-				Name:        "kvexecutor",
-				Version:     "1.0",
-				Path:        components.Build("github.com/hyperledger/fabric/integration/chaincode/kvexecutor/cmd"),
-				Lang:        "binary",
-				PackageFile: filepath.Join(network.RootDir, "kvexecutor.tar.gz"),
-				Label:       "kvexecutor",
-				Sequence:    "1",
-			},
-			isLegacy: false,
+			Name:        "kvexecutor",
+			Version:     "1.0",
+			Path:        components.Build("github.com/hyperledger/fabric/integration/chaincode/kvexecutor/cmd"),
+			Lang:        "binary",
+			PackageFile: filepath.Join(network.RootDir, "kvexecutor.tar.gz"),
+			Label:       "kvexecutor",
+			Sequence:    "1",
+			isLegacy:    false,
 		}
 		nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
 

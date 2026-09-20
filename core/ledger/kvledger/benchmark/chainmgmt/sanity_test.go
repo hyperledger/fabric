@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package chainmgmt
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,10 +14,7 @@ import (
 
 // TestChainMgmt is a basic sanity check test to catch any errors that could be caused by changes in the ledgermgmt or kvledger packages
 func TestChainMgmt(t *testing.T) {
-	dataDir, err := os.MkdirTemp("", "ledgerbenchmark_sanitycheck")
-	require.NoError(t, err)
-	require.NoError(t, os.RemoveAll(dataDir))
-	defer os.RemoveAll(dataDir)
+	dataDir := t.TempDir()
 
 	mgrConf := &ChainMgrConf{
 		DataDir:   dataDir,

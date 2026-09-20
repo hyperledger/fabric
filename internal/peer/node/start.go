@@ -1263,16 +1263,14 @@ func initGossipService(
 
 func newOperationsSystem(coreConfig *peer.Config) *operations.System {
 	return operations.NewSystem(operations.Options{
-		Options: fabhttp.Options{
-			Logger:        flogging.MustGetLogger("peer.operations"),
-			ListenAddress: coreConfig.OperationsListenAddress,
-			TLS: fabhttp.TLS{
-				Enabled:            coreConfig.OperationsTLSEnabled,
-				CertFile:           coreConfig.OperationsTLSCertFile,
-				KeyFile:            coreConfig.OperationsTLSKeyFile,
-				ClientCertRequired: coreConfig.OperationsTLSClientAuthRequired,
-				ClientCACertFiles:  coreConfig.OperationsTLSClientRootCAs,
-			},
+		Logger:        flogging.MustGetLogger("peer.operations"),
+		ListenAddress: coreConfig.OperationsListenAddress,
+		TLS: fabhttp.TLS{
+			Enabled:            coreConfig.OperationsTLSEnabled,
+			CertFile:           coreConfig.OperationsTLSCertFile,
+			KeyFile:            coreConfig.OperationsTLSKeyFile,
+			ClientCertRequired: coreConfig.OperationsTLSClientAuthRequired,
+			ClientCACertFiles:  coreConfig.OperationsTLSClientRootCAs,
 		},
 		Metrics: operations.MetricsOptions{
 			Provider: coreConfig.MetricsProvider,
@@ -1312,31 +1310,29 @@ func getDockerHostConfig() *dcontainer.HostConfig {
 	}
 
 	return &dcontainer.HostConfig{
-		LogConfig:      logConfig,
-		NetworkMode:    dcontainer.NetworkMode(networkMode),
-		CapAdd:         viper.GetStringSlice(dockerKey("CapAdd")),
-		CapDrop:        viper.GetStringSlice(dockerKey("CapDrop")),
-		DNS:            dns,
-		DNSSearch:      viper.GetStringSlice(dockerKey("DnsSearch")),
-		ExtraHosts:     viper.GetStringSlice(dockerKey("ExtraHosts")),
-		IpcMode:        dcontainer.IpcMode(viper.GetString(dockerKey("IpcMode"))),
-		PidMode:        dcontainer.PidMode(viper.GetString(dockerKey("PidMode"))),
-		ReadonlyRootfs: viper.GetBool(dockerKey("ReadonlyRootfs")),
-		SecurityOpt:    viper.GetStringSlice(dockerKey("SecurityOpt")),
-		UTSMode:        dcontainer.UTSMode(viper.GetString(dockerKey("UTSMode"))),
-		Resources: dcontainer.Resources{
-			CPUShares:        getInt64("CpuShares"),
-			Memory:           getInt64("Memory"),
-			CgroupParent:     viper.GetString(dockerKey("CgroupParent")),
-			BlkioWeight:      uint16(getInt64("BlkioWeight")),
-			CPUPeriod:        getInt64("CpuPeriod"),
-			CPUQuota:         getInt64("CpuQuota"),
-			CpusetCpus:       viper.GetString(dockerKey("CpusetCPUs")),
-			CpusetMems:       viper.GetString(dockerKey("CpusetMEMs")),
-			MemorySwap:       getInt64("MemorySwap"),
-			MemorySwappiness: &memorySwappiness,
-			OomKillDisable:   &oomKillDisable,
-		},
+		LogConfig:        logConfig,
+		NetworkMode:      dcontainer.NetworkMode(networkMode),
+		CapAdd:           viper.GetStringSlice(dockerKey("CapAdd")),
+		CapDrop:          viper.GetStringSlice(dockerKey("CapDrop")),
+		DNS:              dns,
+		DNSSearch:        viper.GetStringSlice(dockerKey("DnsSearch")),
+		ExtraHosts:       viper.GetStringSlice(dockerKey("ExtraHosts")),
+		IpcMode:          dcontainer.IpcMode(viper.GetString(dockerKey("IpcMode"))),
+		PidMode:          dcontainer.PidMode(viper.GetString(dockerKey("PidMode"))),
+		ReadonlyRootfs:   viper.GetBool(dockerKey("ReadonlyRootfs")),
+		SecurityOpt:      viper.GetStringSlice(dockerKey("SecurityOpt")),
+		UTSMode:          dcontainer.UTSMode(viper.GetString(dockerKey("UTSMode"))),
+		CPUShares:        getInt64("CpuShares"),
+		Memory:           getInt64("Memory"),
+		CgroupParent:     viper.GetString(dockerKey("CgroupParent")),
+		BlkioWeight:      uint16(getInt64("BlkioWeight")),
+		CPUPeriod:        getInt64("CpuPeriod"),
+		CPUQuota:         getInt64("CpuQuota"),
+		CpusetCpus:       viper.GetString(dockerKey("CpusetCPUs")),
+		CpusetMems:       viper.GetString(dockerKey("CpusetMEMs")),
+		MemorySwap:       getInt64("MemorySwap"),
+		MemorySwappiness: &memorySwappiness,
+		OomKillDisable:   &oomKillDisable,
 	}
 }
 

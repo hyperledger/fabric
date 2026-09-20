@@ -34,7 +34,7 @@ var _ = Describe("SpecHandler", func() {
 	})
 
 	It("responds with the current logging spec", func() {
-		req := httptest.NewRequest("GET", "/ignored", nil)
+		req := httptest.NewRequest(http.MethodGet, "/ignored", nil)
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, req)
 
@@ -45,7 +45,7 @@ var _ = Describe("SpecHandler", func() {
 	})
 
 	It("sets the current logging spec", func() {
-		req := httptest.NewRequest("PUT", "/ignored", strings.NewReader(`{"spec": "updated-spec"}`))
+		req := httptest.NewRequest(http.MethodPut, "/ignored", strings.NewReader(`{"spec": "updated-spec"}`))
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, req)
 
@@ -56,7 +56,7 @@ var _ = Describe("SpecHandler", func() {
 
 	Context("when the update spec payload cannot be decoded", func() {
 		It("responds with an error payload", func() {
-			req := httptest.NewRequest("PUT", "/ignored", strings.NewReader(`goo`))
+			req := httptest.NewRequest(http.MethodPut, "/ignored", strings.NewReader(`goo`))
 			resp := httptest.NewRecorder()
 			handler.ServeHTTP(resp, req)
 
@@ -72,7 +72,7 @@ var _ = Describe("SpecHandler", func() {
 		})
 
 		It("responds with an error payload", func() {
-			req := httptest.NewRequest("PUT", "/ignored", strings.NewReader(`{}`))
+			req := httptest.NewRequest(http.MethodPut, "/ignored", strings.NewReader(`{}`))
 			resp := httptest.NewRecorder()
 			handler.ServeHTTP(resp, req)
 
@@ -83,7 +83,7 @@ var _ = Describe("SpecHandler", func() {
 
 	Context("when an unsupported method is used", func() {
 		It("responds with an error", func() {
-			req := httptest.NewRequest("POST", "/ignored", strings.NewReader(`{}`))
+			req := httptest.NewRequest(http.MethodPost, "/ignored", strings.NewReader(`{}`))
 			resp := httptest.NewRecorder()
 			handler.ServeHTTP(resp, req)
 
@@ -92,7 +92,7 @@ var _ = Describe("SpecHandler", func() {
 		})
 
 		It("doesn't use logging", func() {
-			req := httptest.NewRequest("POST", "/ignored", strings.NewReader(`{}`))
+			req := httptest.NewRequest(http.MethodPost, "/ignored", strings.NewReader(`{}`))
 			resp := httptest.NewRecorder()
 			handler.ServeHTTP(resp, req)
 

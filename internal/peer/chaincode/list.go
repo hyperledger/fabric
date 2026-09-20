@@ -147,7 +147,7 @@ func (cci ccInfo) String() string {
 	b := bytes.Buffer{}
 	md := reflect.ValueOf(*cci.ChaincodeInfo)
 	md2 := reflect.Indirect(reflect.ValueOf(*cci.ChaincodeInfo)).Type()
-	for i := 0; i < md.NumField(); i++ {
+	for i := range md.NumField() {
 		f := md.Field(i)
 		val := f.String()
 		if isBytes(f) {

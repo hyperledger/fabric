@@ -18,9 +18,8 @@ import (
 )
 
 func TestPauseAndResume(t *testing.T) {
-	conf, cleanup := testConfig(t)
+	conf := testConfig(t)
 	conf.HistoryDBConfig.Enabled = false
-	defer cleanup()
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	numLedgers := 10
@@ -74,16 +73,15 @@ func TestPauseAndResume(t *testing.T) {
 }
 
 func TestPauseAndResumeErrors(t *testing.T) {
-	conf, cleanup := testConfig(t)
+	conf := testConfig(t)
 	conf.HistoryDBConfig.Enabled = false
-	defer cleanup()
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	ledgerID := constructTestLedgerID(0)
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(ledgerID)
 	_, err := provider.CreateFromGenesisBlock(genesisBlock)
 	require.NoError(t, err)
-	// purposely set an invalid metatdata
+	// purposely set an invalid metadata
 	require.NoError(t, provider.idStore.db.Put(metadataKey(ledgerID), []byte("invalid"), true))
 
 	// fail if provider is open (e.g., peer is up running)

@@ -461,7 +461,7 @@ var _ = Describe("Deliver", func() {
 
 				Expect(fakeBlockIterator.NextCallCount()).To(Equal(2))
 				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(2))
-				for i := 0; i < fakeResponseSender.SendBlockResponseCallCount(); i++ {
+				for i := range fakeResponseSender.SendBlockResponseCallCount() {
 					b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(i)
 					Expect(b).To(Equal(&cb.Block{
 						Header: &cb.BlockHeader{Number: uint64(i + 1)},
@@ -492,7 +492,7 @@ var _ = Describe("Deliver", func() {
 				Expect(fakeBlockReader.IteratorCallCount()).To(Equal(1))
 				Expect(fakeBlockIterator.NextCallCount()).To(Equal(1))
 				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(1))
-				for i := 0; i < fakeResponseSender.SendBlockResponseCallCount(); i++ {
+				for i := range fakeResponseSender.SendBlockResponseCallCount() {
 					b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(i)
 					Expect(b).To(Equal(&cb.Block{
 						Header: &cb.BlockHeader{Number: uint64(i)},

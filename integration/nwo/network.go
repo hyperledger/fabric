@@ -243,7 +243,7 @@ func New(c *Config, rootDir string, dockerClient dcli.APIClient, startPort int, 
 		network.SessionCreateInterval = time.Second
 	}
 
-	for i := 0; i < network.Consensus.Brokers; i++ {
+	for i := range network.Consensus.Brokers {
 		ports := Ports{}
 		for _, portName := range BrokerPortNames() {
 			ports[portName] = network.ReservePort()
@@ -1337,13 +1337,13 @@ func (n *Network) BrokerGroupRunner() ifrit.Runner {
 	members := grouper.Members{}
 	zookeepers := []string{}
 
-	for i := 0; i < n.Consensus.ZooKeepers; i++ {
+	for i := range n.Consensus.ZooKeepers {
 		zk := n.ZooKeeperRunner(i)
 		zookeepers = append(zookeepers, fmt.Sprintf("%s:2181", zk.Name))
 		members = append(members, grouper.Member{Name: zk.Name, Runner: zk})
 	}
 
-	for i := 0; i < n.Consensus.Brokers; i++ {
+	for i := range n.Consensus.Brokers {
 		kafka := n.BrokerRunner(i, zookeepers)
 		members = append(members, grouper.Member{Name: kafka.Name, Runner: kafka})
 	}

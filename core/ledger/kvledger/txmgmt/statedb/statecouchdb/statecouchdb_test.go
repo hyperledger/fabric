@@ -45,10 +45,7 @@ func (env *testVDBEnv) init(t *testing.T, sysNamespaces []string) {
 		env.couchDBEnv = couchDBEnv
 	}
 
-	redoPath, err := os.MkdirTemp("", "cvdbenv")
-	if err != nil {
-		t.Fatalf("Failed to create redo log directory: %s", err)
-	}
+	redoPath := t.TempDir()
 	config := &ledger.CouchDBConfig{
 		Address:             env.couchDBEnv.couchAddress,
 		Username:            "admin",
@@ -90,7 +87,6 @@ func (env *testVDBEnv) cleanup() {
 		env.DBProvider.Close()
 	}
 	env.couchDBEnv.cleanup(env.config)
-	require.NoError(env.t, os.RemoveAll(env.config.RedoLogPath))
 }
 
 // testVDBEnv provides a couch db for testing
@@ -157,7 +153,7 @@ func TestGetStateFromCache(t *testing.T) {
 	db, err := vdbEnv.DBProvider.GetDBHandle(chainID, nil)
 	require.NoError(t, err)
 
-	// scenario 1: get state would receives a
+	// scenario 1: get state would receive a
 	// cache miss as the given key does not exist.
 	// As the key does not exist in the
 	// db also, get state call would not update
@@ -246,7 +242,7 @@ func TestGetVersionFromCache(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expectedVer, ver)
 
-	// scenario 3: get version would receives a
+	// scenario 3: get version would receive a
 	// cache miss as the given key does not present.
 	// The value associated with the key would be
 	// fetched from the database and the cache would
@@ -1119,9 +1115,7 @@ func TestFormatCheck(t *testing.T) {
 }
 
 func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedErr *dataformat.ErrFormatMismatch, expectedFormat string, vdbEnv *testVDBEnv) {
-	redoPath, err := os.MkdirTemp("", "redoPath")
-	require.NoError(t, err)
-	defer os.RemoveAll(redoPath)
+	redoPath := t.TempDir()
 	config := &ledger.CouchDBConfig{
 		Address:             vdbEnv.couchDBEnv.couchAddress,
 		Username:            "admin",
@@ -1143,7 +1137,7 @@ func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedE
 		require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(1, 1)))
 	}
 	if dataFormat == "" {
-		err := dropDB(dbProvider.couchInstance, fabricInternalDBName)
+		err = dropDB(dbProvider.couchInstance, fabricInternalDBName)
 		require.NoError(t, err)
 	} else {
 		require.NoError(t, writeDataFormatVersion(dbProvider.couchInstance, dataFormat))

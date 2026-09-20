@@ -8,6 +8,7 @@ package middleware
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/hyperledger/fabric/common/flogging"
 )
@@ -35,8 +36,8 @@ func (c Chain) Handler(h http.Handler) http.Handler {
 		h = http.DefaultServeMux
 	}
 
-	for i := len(c.mw) - 1; i >= 0; i-- {
-		h = c.mw[i](h)
+	for _, v := range slices.Backward(c.mw) {
+		h = v(h)
 	}
 	return h
 }

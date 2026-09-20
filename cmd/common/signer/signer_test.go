@@ -71,12 +71,10 @@ ZsQXrlIqlmNalfYPX+NDDELqlpXQBeEqnA==
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
-			tmpFile, err := os.CreateTemp("", "key")
+			tmpFile, err := os.CreateTemp(t.TempDir(), "key")
 			require.NoError(t, err)
 
-			defer os.Remove(tmpFile.Name())
-
-			err = os.WriteFile(tmpFile.Name(), []byte(testCase.keyBytes), 0o600)
+			err = os.WriteFile(tmpFile.Name(), testCase.keyBytes, 0o600)
 			require.NoError(t, err)
 
 			signer, err := NewSigner(Config{

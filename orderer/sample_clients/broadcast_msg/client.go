@@ -114,7 +114,7 @@ func main() {
 
 	var wg sync.WaitGroup
 	wg.Add(int(goroutines))
-	for i := uint64(0); i < goroutines; i++ {
+	for i := range goroutines {
 		go func(i uint64, pb *pb.ProgressBar) {
 			client, err := ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
 			if err != nil {

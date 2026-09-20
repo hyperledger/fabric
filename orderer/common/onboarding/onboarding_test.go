@@ -127,7 +127,7 @@ func newServerNode(t *testing.T, key, cert []byte) *deliverServer {
 }
 
 type deliverServer struct {
-	isConnected    int32
+	isConnected    atomic.Int32
 	t              *testing.T
 	srv            *comm.GRPCServer
 	blockResponses chan *orderer.DeliverResponse
@@ -138,7 +138,7 @@ func (*deliverServer) Broadcast(orderer.AtomicBroadcast_BroadcastServer) error {
 }
 
 func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) error {
-	atomic.StoreInt32(&ds.isConnected, 1)
+	ds.isConnected.Store(1)
 	seekInfo, err := readSeekEnvelope(stream)
 	if err != nil {
 		panic(err)
@@ -426,7 +426,7 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 			responseFunc: func(blockResponses chan *orderer.DeliverResponse) {
 				pullAppChannel = true
 
-				for i := 0; i < config.General.Cluster.ReplicationMaxRetries+1; i++ {
+				for range config.General.Cluster.ReplicationMaxRetries + 1 {
 					// Send once the genesis block, to make the client think this is a valid OSN endpoint
 					deliverServer.blockResponses <- &orderer.DeliverResponse{
 						Type: &orderer.DeliverResponse_Block{
@@ -504,8 +504,7 @@ func TestReplicate(t *testing.T) {
 
 	flogging.ActivateSpec("testReplicateIfNeeded=debug")
 
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	cryptoPath := generateCryptoMaterials(t, cryptogen)
 	defer os.RemoveAll(cryptoPath)
@@ -544,8 +543,8 @@ func TestReplicate(t *testing.T) {
 		}
 
 		blocks := make([]*common.Block, 11)
-		for seq := uint64(0); seq <= uint64(10); seq++ {
-			block := copyBlock(&bootBlock, seq)
+		for seq := range 11 {
+			block := copyBlock(&bootBlock, uint64(seq))
 			if seq > 0 {
 				block.Header.PreviousHash = protoutil.BlockHeaderHash(blocks[seq-1].GetHeader())
 			}
@@ -783,7 +782,7 @@ func TestReplicate(t *testing.T) {
 				hooksActivated = false
 			}()
 
-			require.Equal(t, testCase.shouldConnect, atomic.LoadInt32(&deliverServer.isConnected) == int32(1))
+			require.Equal(t, testCase.shouldConnect, deliverServer.isConnected.Load() == int32(1))
 			verifier.AssertNumberOfCalls(t, "VerifyBlockSignature", testCase.verificationCount)
 		})
 	}
@@ -1213,8 +1212,7 @@ func generateCryptoMaterials(t *testing.T, cryptogen string) string {
 }
 
 func TestCreateReplicator(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
 
 	iterator := &deliver_mocks.BlockIterator{}

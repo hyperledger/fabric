@@ -16,8 +16,7 @@ import (
 )
 
 func TestLoadGoodConfig(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	cc := &configCache{}
 	cfg, err := cc.load()
 	require.NoError(t, err)
@@ -27,8 +26,7 @@ func TestLoadGoodConfig(t *testing.T) {
 
 func TestMissingConfigValueOverridden(t *testing.T) {
 	t.Run("when the value is missing and not overridden", func(t *testing.T) {
-		cleanup := configtest.SetDevFabricConfigPath(t)
-		defer cleanup()
+		configtest.SetDevFabricConfigPath(t)
 		cc := &configCache{}
 		cfg, err := cc.load()
 		require.NotNil(t, cfg, "Could not load config")
@@ -37,9 +35,8 @@ func TestMissingConfigValueOverridden(t *testing.T) {
 	})
 
 	t.Run("when the value is missing and is overridden", func(t *testing.T) {
-		os.Setenv("ORDERER_KAFKA_TLS_CLIENTROOTCAS", "msp/tlscacerts/tlsroot.pem")
-		cleanup := configtest.SetDevFabricConfigPath(t)
-		defer cleanup()
+		t.Setenv("ORDERER_KAFKA_TLS_CLIENTROOTCAS", "msp/tlscacerts/tlsroot.pem")
+		configtest.SetDevFabricConfigPath(t)
 		cache := &configCache{}
 		cfg, err := cache.load()
 		require.NotNil(t, cfg, "Could not load config")
@@ -49,14 +46,13 @@ func TestMissingConfigValueOverridden(t *testing.T) {
 }
 
 func TestLoadCached(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	// Load the initial config, update the environment, and load again.
 	// With the caching behavior, the update should not be reflected
 	initial, err := Load()
 	require.NoError(t, err)
-	os.Setenv("ORDERER_KAFKA_RETRY_SHORTINTERVAL", "120s")
+	t.Setenv("ORDERER_KAFKA_RETRY_SHORTINTERVAL", "120s")
 	updated, err := Load()
 	require.NoError(t, err)
 	require.Equal(t, initial, updated, "expected %#v to equal %#v", updated, initial)
@@ -72,8 +68,7 @@ func TestLoadCached(t *testing.T) {
 func TestLoadMissingConfigFile(t *testing.T) {
 	envVar1 := "FABRIC_CFG_PATH"
 	envVal1 := "invalid fabric cfg path"
-	os.Setenv(envVar1, envVal1)
-	defer os.Unsetenv(envVar1)
+	t.Setenv(envVar1, envVal1)
 
 	cc := &configCache{}
 	cfg, err := cc.load()
@@ -82,12 +77,7 @@ func TestLoadMissingConfigFile(t *testing.T) {
 }
 
 func TestLoadMalformedConfigFile(t *testing.T) {
-	name, err := os.MkdirTemp("", "hyperledger_fabric")
-	require.Nil(t, err, "Error creating temp dir: %s", err)
-	defer func() {
-		err = os.RemoveAll(name)
-		require.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
-	}()
+	name := t.TempDir()
 
 	// Create a malformed orderer.yaml file in temp dir
 	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
@@ -97,8 +87,7 @@ func TestLoadMalformedConfigFile(t *testing.T) {
 
 	envVar1 := "FABRIC_CFG_PATH"
 	envVal1 := name
-	os.Setenv(envVar1, envVal1)
-	defer os.Unsetenv(envVar1)
+	t.Setenv(envVar1, envVal1)
 
 	cc := &configCache{}
 	cfg, err := cc.load()
@@ -115,12 +104,9 @@ func TestEnvInnerVar(t *testing.T) {
 	envVal1 := uint16(80)
 	envVar2 := "ORDERER_KAFKA_RETRY_SHORTINTERVAL"
 	envVal2 := "42s"
-	os.Setenv(envVar1, fmt.Sprintf("%d", envVal1))
-	os.Setenv(envVar2, envVal2)
-	defer os.Unsetenv(envVar1)
-	defer os.Unsetenv(envVar2)
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	t.Setenv(envVar1, fmt.Sprintf("%d", envVal1))
+	t.Setenv(envVar2, envVal2)
+	configtest.SetDevFabricConfigPath(t)
 
 	cc := &configCache{}
 	config, err := cc.load()
@@ -224,8 +210,7 @@ func TestAdminTLSConfig(t *testing.T) {
 }
 
 func TestClusterDefaults(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	cc := &configCache{}
 	cfg, err := cc.load()
@@ -234,12 +219,7 @@ func TestClusterDefaults(t *testing.T) {
 }
 
 func TestConsensusConfig(t *testing.T) {
-	name, err := os.MkdirTemp("", "hyperledger_fabric")
-	require.Nil(t, err, "Error creating temp dir: %s", err)
-	defer func() {
-		err = os.RemoveAll(name)
-		require.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
-	}()
+	name := t.TempDir()
 
 	content := `---
 Consensus:
@@ -255,8 +235,7 @@ Consensus:
 
 	envVar1 := "FABRIC_CFG_PATH"
 	envVal1 := name
-	os.Setenv(envVar1, envVal1)
-	defer os.Unsetenv(envVar1)
+	t.Setenv(envVar1, envVal1)
 
 	cc := &configCache{}
 	conf, err := cc.load()
@@ -280,8 +259,7 @@ Consensus:
 
 func TestConnectionTimeout(t *testing.T) {
 	t.Run("without connection timeout overridden", func(t *testing.T) {
-		cleanup := configtest.SetDevFabricConfigPath(t)
-		defer cleanup()
+		configtest.SetDevFabricConfigPath(t)
 		cc := &configCache{}
 		cfg, err := cc.load()
 		require.NotNil(t, cfg, "Could not load config")
@@ -290,10 +268,8 @@ func TestConnectionTimeout(t *testing.T) {
 	})
 
 	t.Run("with connection timeout overridden", func(t *testing.T) {
-		os.Setenv("ORDERER_GENERAL_CONNECTIONTIMEOUT", "10s")
-		defer os.Unsetenv("ORDERER_GENERAL_CONNECTIONTIMEOUT")
-		cleanup := configtest.SetDevFabricConfigPath(t)
-		defer cleanup()
+		t.Setenv("ORDERER_GENERAL_CONNECTIONTIMEOUT", "10s")
+		configtest.SetDevFabricConfigPath(t)
 
 		cc := &configCache{}
 		cfg, err := cc.load()
@@ -304,8 +280,7 @@ func TestConnectionTimeout(t *testing.T) {
 }
 
 func TestChannelParticipationDefaults(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	cc := &configCache{}
 	cfg, err := cc.load()

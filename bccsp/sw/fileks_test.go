@@ -21,9 +21,7 @@ import (
 func TestInvalidStoreKey(t *testing.T) {
 	t.Parallel()
 
-	tempDir, err := os.MkdirTemp("", "bccspks")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	ks, err := NewFileBasedKeyStore(nil, filepath.Join(tempDir, "bccspks"), false)
 	if err != nil {
@@ -57,9 +55,7 @@ func TestInvalidStoreKey(t *testing.T) {
 }
 
 func TestBigKeyFile(t *testing.T) {
-	ksPath, err := os.MkdirTemp("", "bccspks")
-	require.NoError(t, err)
-	defer os.RemoveAll(ksPath)
+	ksPath := t.TempDir()
 
 	ks, err := NewFileBasedKeyStore(nil, ksPath, false)
 	require.NoError(t, err)
@@ -96,9 +92,7 @@ func TestBigKeyFile(t *testing.T) {
 }
 
 func TestReInitKeyStore(t *testing.T) {
-	ksPath, err := os.MkdirTemp("", "bccspks")
-	require.NoError(t, err)
-	defer os.RemoveAll(ksPath)
+	ksPath := t.TempDir()
 
 	ks, err := NewFileBasedKeyStore(nil, ksPath, false)
 	require.NoError(t, err)

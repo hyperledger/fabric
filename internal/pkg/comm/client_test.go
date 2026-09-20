@@ -41,7 +41,9 @@ func TestClientConfigDial(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	badAddress := l.Addr().String()
-	defer l.Close()
+	t.Cleanup(func() {
+		l.Close()
+	})
 
 	certPool := x509.NewCertPool()
 	ok := certPool.AppendCertsFromPEM(testCerts.CAPEM)
@@ -262,7 +264,9 @@ func TestSetMessageSize(t *testing.T) {
 		t.Fatalf("failed to create test server: %v", err)
 	}
 	testpb.RegisterEchoServiceServer(srv.Server(), &echoServer{})
-	defer srv.Stop()
+	t.Cleanup(func() {
+		srv.Stop()
+	})
 	go srv.Start()
 
 	tests := []struct {
@@ -302,6 +306,7 @@ func TestSetMessageSize(t *testing.T) {
 	for _, test := range tests {
 		address := lis.Addr().String()
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			t.Log(test.name)
 			config := comm.ClientConfig{
 				DialTimeout:    testTimeout,

@@ -38,6 +38,7 @@ func TestTicker(t *testing.T) {
 	}
 
 	t.Run("Stop ticker serially", func(t *testing.T) {
+		t.Parallel()
 		ticker := newTicker(everyMillis)
 		for range 10 {
 			<-ticker.C
@@ -53,6 +54,7 @@ func TestTicker(t *testing.T) {
 	})
 
 	t.Run("Stop ticker concurrently", func(t *testing.T) {
+		t.Parallel()
 		ticker := newTicker(func() time.Duration {
 			return time.Millisecond
 		})

@@ -113,7 +113,7 @@ func (vdb *VersionedDB) buildCommittersForNs(ns string, nsUpdates map[string]*st
 
 	cacheEnabled := vdb.cache.enabled(ns)
 
-	for i := 0; i < numCommitters; i++ {
+	for i := range numCommitters {
 		committers[i] = &committer{
 			db:             db,
 			batchUpdateMap: make(map[string]*batchableDocument),

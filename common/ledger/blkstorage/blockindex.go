@@ -391,7 +391,7 @@ func importTxIDsFromSnapshot(
 			return err
 		}
 		batch.Put(
-			constructTxIDKey(txID, lastBlockNumInSnapshot, uint64(i)),
+			constructTxIDKey(txID, lastBlockNumInSnapshot, i),
 			[]byte{},
 		)
 		if (i+1)%importTxIDsBatchSize == 0 {

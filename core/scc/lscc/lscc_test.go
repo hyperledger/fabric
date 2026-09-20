@@ -149,9 +149,7 @@ func getMSPManager(cid string) msp.MSPManager { return mspmgmt.GetManagerForChai
 // TestInstall tests the install function with various inputs
 func TestInstall(t *testing.T) {
 	// Initialize ledgermgmt that inturn initializes internal components (such as cceventmgmt on which this test depends)
-	tempdir, err := os.MkdirTemp("", "lscc-test")
-	require.NoError(t, err, "failed to create temporary directory")
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	initializer := ledgermgmttest.NewInitializer(tempdir)
 
@@ -243,7 +241,7 @@ func testInstall(t *testing.T, ccname string, version string, path string, creat
 			require.Equal(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
 		} else {
 			res := stub.MockInvokeWithSignedProposal("1", args, sProp)
-			require.True(t, strings.HasPrefix(string(res.GetMessage()), expectedErrorMsg), res.GetMessage())
+			require.True(t, strings.HasPrefix(res.GetMessage(), expectedErrorMsg), res.GetMessage())
 		}
 	})
 }
@@ -589,7 +587,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 			})
 		}
 	} else {
-		require.Equal(t, expectedErrorMsg, string(res.GetMessage()))
+		require.Equal(t, expectedErrorMsg, res.GetMessage())
 	}
 }
 
@@ -854,7 +852,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 			require.NoError(t, err)
 			require.Equal(t, newccname, lifecycleEvent.GetChaincodeName())
 		} else {
-			require.Equal(t, expectedErrorMsg, string(res.GetMessage()))
+			require.Equal(t, expectedErrorMsg, res.GetMessage())
 		}
 	})
 }
@@ -1135,7 +1133,7 @@ func TestPutChaincodeCollectionData(t *testing.T) {
 	stub := shimtest.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.GetStatus() != shim.OK {
-		fmt.Println("Init failed", string(res.GetMessage()))
+		fmt.Println("Init failed", res.GetMessage())
 		t.FailNow()
 	}
 

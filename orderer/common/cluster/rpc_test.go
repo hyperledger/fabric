@@ -209,14 +209,14 @@ func TestSend(t *testing.T) {
 
 	sent := make(chan struct{})
 
-	var sendCalls uint32
+	var sendCalls atomic.Uint32
 
 	stream := &mocks.StepClient{}
 	stream.On("Context", mock.Anything).Return(context.Background())
 	stream.On("Send", mock.Anything).Return(func(*orderer.StepRequest) error {
 		l.Lock()
 		defer l.Unlock()
-		atomic.AddUint32(&sendCalls, 1)
+		sendCalls.Add(1)
 		sent <- struct{}{}
 		return tst.sendReturns
 	})
@@ -272,7 +272,7 @@ func TestSend(t *testing.T) {
 		l.Unlock()
 
 		t.Run(testCase.name, func(t *testing.T) {
-			atomic.StoreUint32(&sendCalls, 0)
+			sendCalls.Store(0)
 			isSend := testCase.receiveReturns == nil
 			comm := &mocks.Communicator{}
 			client := &mocks.ClusterClient{}
@@ -314,7 +314,7 @@ func TestSend(t *testing.T) {
 				<-sent
 
 				require.NoError(t, err)
-				require.Equal(t, 2, int(atomic.LoadUint32(&sendCalls)))
+				require.Equal(t, 2, int(sendCalls.Load()))
 				client.AssertNumberOfCalls(t, "Step", 1)
 			}
 		})

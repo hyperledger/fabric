@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package genesisconfig
 
 import (
-	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
@@ -17,8 +16,7 @@ import (
 )
 
 func TestLoadProfile(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	pNames := []string{
 		SampleDevModeKafkaProfile,
@@ -54,8 +52,7 @@ func TestLoadProfileWithPath(t *testing.T) {
 }
 
 func TestLoadTopLevel(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	topLevel := LoadTopLevel()
 	require.NotNil(t, topLevel.Application, "application should not be nil")
@@ -77,8 +74,7 @@ func TestLoadTopLevelWithPath(t *testing.T) {
 }
 
 func TestConsensusSpecificInit(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	devConfigDir := configtest.GetDevConfigDir()
 
@@ -271,8 +267,7 @@ func TestConsensusSpecificInit(t *testing.T) {
 }
 
 func TestLoadConfigCache(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	cfg := viperutil.New()
 	devConfigDir := configtest.GetDevConfigDir()
@@ -290,7 +285,7 @@ func TestLoadConfigCache(t *testing.T) {
 	// With the caching behavior, the update should not be reflected.
 	initial, err := c.load(cfg, configPath)
 	require.NoError(t, err)
-	os.Setenv("ORDERER_KAFKA_RETRY_SHORTINTERVAL", "120s")
+	t.Setenv("ORDERER_KAFKA_RETRY_SHORTINTERVAL", "120s")
 	updated, err := c.load(cfg, configPath)
 	require.NoError(t, err)
 	require.Equal(t, initial, updated, "expected %#v to equal %#v", updated, initial)

@@ -347,7 +347,7 @@ func (csp *Provider) createSession() (pkcs11.SessionHandle, error) {
 	var err error
 
 	// attempt to open a session with a 100ms delay after each attempt
-	for i := 0; i < csp.createSessionRetries; i++ {
+	for range csp.createSessionRetries {
 		sess, err = csp.ctx.OpenSession(csp.slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
 		if err == nil {
 			logger.Debugf("Created new pkcs11 session %d on slot %d\n", sess, csp.slot)

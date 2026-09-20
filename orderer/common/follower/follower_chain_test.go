@@ -55,7 +55,7 @@ var (
 	mockChainCreator                        *mocks.ChainCreator
 	options                                 follower.Options
 	timeAfterCount                          *mocks.TimeAfter
-	maxDelay                                int64
+	maxDelay                                atomic.Int64
 )
 
 // Before each test in all test cases
@@ -91,12 +91,12 @@ func globalSetup(t *testing.T) {
 		Cert:                  []byte{1, 2, 3, 4},
 	}
 
-	atomic.StoreInt64(&maxDelay, 0)
+	maxDelay.Store(0)
 	timeAfterCount = &mocks.TimeAfter{}
 	timeAfterCount.AfterCalls(
 		func(d time.Duration) <-chan time.Time {
-			if d.Nanoseconds() > atomic.LoadInt64(&maxDelay) {
-				atomic.StoreInt64(&maxDelay, d.Nanoseconds())
+			if d.Nanoseconds() > maxDelay.Load() {
+				maxDelay.Store(d.Nanoseconds())
 			}
 			c := make(chan time.Time, 1)
 			c <- time.Now()
@@ -339,7 +339,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		}
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 		require.Equal(t, 50, timeAfterCount.AfterCallCount())
-		require.Equal(t, int64(5000), atomic.LoadInt64(&maxDelay))
+		require.Equal(t, int64(5000), maxDelay.Load())
 	})
 }
 
@@ -400,7 +400,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.Equal(t, 1, pullerFactory.BlockPullerCallCount())
 		require.Equal(t, 10, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(21), localBlockchain.Height())
-		for i := uint64(0); i < localBlockchain.Height(); i++ {
+		for i := range localBlockchain.Height() {
 			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
@@ -441,7 +441,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.Equal(t, 1, pullerFactory.BlockPullerCallCount())
 		require.Equal(t, 40, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(51), localBlockchain.Height())
-		for i := uint64(0); i < localBlockchain.Height(); i++ {
+		for i := range localBlockchain.Height() {
 			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
@@ -499,12 +499,12 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.Equal(t, 1, pullerFactory.BlockPullerCallCount())
 		require.Equal(t, 40, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(51), localBlockchain.Height())
-		for i := uint64(0); i < localBlockchain.Height(); i++ {
+		for i := range localBlockchain.Height() {
 			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
 		require.True(t, puller.HeightsByEndpointsCallCount() >= 30)
-		require.Equal(t, int64(10000), atomic.LoadInt64(&maxDelay))
+		require.Equal(t, int64(10000), maxDelay.Load())
 	})
 	t.Run("Configs in the middle, latest height increasing", func(t *testing.T) {
 		setup()
@@ -546,7 +546,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.Equal(t, 1, pullerFactory.BlockPullerCallCount(), "after finding a config, block puller is created")
 		require.Equal(t, 50, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(61), localBlockchain.Height())
-		for i := uint64(0); i < localBlockchain.Height(); i++ {
+		for i := range localBlockchain.Height() {
 			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
@@ -620,13 +620,13 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.Equal(t, 1, pullerFactory.BlockPullerCallCount(), "after finding a config, or error, block puller is created")
 		require.Equal(t, 50, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(61), localBlockchain.Height())
-		for i := uint64(0); i < localBlockchain.Height(); i++ {
+		for i := range localBlockchain.Height() {
 			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 		require.Equal(t, 259, timeAfterCount.AfterCallCount())
-		require.Equal(t, int64(5000), atomic.LoadInt64(&maxDelay))
+		require.Equal(t, int64(5000), maxDelay.Load())
 	})
 }
 
@@ -691,7 +691,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount())
 		require.Equal(t, 21, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(21), localBlockchain.Height())
-		for i := uint64(0); i < localBlockchain.Height(); i++ {
+		for i := range localBlockchain.Height() {
 			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
@@ -732,7 +732,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount())
 		require.Equal(t, 51, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(51), localBlockchain.Height())
-		for i := uint64(0); i < localBlockchain.Height(); i++ {
+		for i := range localBlockchain.Height() {
 			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
@@ -779,7 +779,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount(), "after finding a config, block puller is created")
 		require.Equal(t, 55, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(61), localBlockchain.Height())
-		for i := uint64(0); i < localBlockchain.Height(); i++ {
+		for i := range localBlockchain.Height() {
 			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
@@ -853,13 +853,13 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount(), "after finding a config, or error, block puller is created")
 		require.Equal(t, 61, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(61), localBlockchain.Height())
-		for i := uint64(0); i < localBlockchain.Height(); i++ {
+		for i := range localBlockchain.Height() {
 			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 		require.Equal(t, 309, timeAfterCount.AfterCallCount())
-		require.Equal(t, int64(5000), atomic.LoadInt64(&maxDelay))
+		require.Equal(t, int64(5000), maxDelay.Load())
 	})
 }
 

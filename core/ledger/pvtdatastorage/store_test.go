@@ -191,8 +191,7 @@ func TestStoreIteratorError(t *testing.T) {
 	})
 
 	t.Run("processCollElgEvents", func(t *testing.T) {
-		storeDir, err := os.MkdirTemp("", "pdstore")
-		require.NoError(t, err)
+		storeDir := t.TempDir()
 		s := &Store{}
 		dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: storeDir})
 		require.NoError(t, err)
@@ -472,8 +471,8 @@ func TestStorePurge(t *testing.T) {
 	// write pvt data for block 2
 	require.NoError(t, s.Commit(2, nil, nil, nil))
 	// data for ns-1:coll-1 and ns-2:coll-2 should exist in store
-	ns1Coll1 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1", blkNum: 1}, txNum: 2}
-	ns2Coll2 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns-2", coll: "coll-2", blkNum: 1}, txNum: 2}
+	ns1Coll1 := &dataKey{ns: "ns-1", coll: "coll-1", blkNum: 1, txNum: 2}
+	ns2Coll2 := &dataKey{ns: "ns-2", coll: "coll-2", blkNum: 1, txNum: 2}
 
 	ns1Coll1Blk1Tx2HI := &hashedIndexKey{
 		ns:         "ns-1",
@@ -492,12 +491,12 @@ func TestStorePurge(t *testing.T) {
 	}
 
 	// eligible missingData entries for ns-1:coll-1, ns-1:coll-2 (neverExpires) should exist in store
-	ns1Coll1elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1", blkNum: 1}}
-	ns1Coll2elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: 1}}
+	ns1Coll1elgMD := &missingDataKey{ns: "ns-1", coll: "coll-1", blkNum: 1}
+	ns1Coll2elgMD := &missingDataKey{ns: "ns-1", coll: "coll-2", blkNum: 1}
 
 	// ineligible missingData entries for ns-3:col-1, ns-3:coll-2 (neverExpires) should exist in store
-	ns3Coll1inelgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-3", coll: "coll-1", blkNum: 1}}
-	ns3Coll2inelgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-3", coll: "coll-2", blkNum: 1}}
+	ns3Coll1inelgMD := &missingDataKey{ns: "ns-3", coll: "coll-1", blkNum: 1}
+	ns3Coll2inelgMD := &missingDataKey{ns: "ns-3", coll: "coll-2", blkNum: 1}
 
 	testWaitForPurgerRoutineToFinish(s)
 	require.True(t, testDataKeyExists(t, s, ns1Coll1))
@@ -589,7 +588,7 @@ func TestStorePurge(t *testing.T) {
 	require.False(t, testHashedIndexExists(t, s, ns2Coll2Blk1Tx2HI))
 
 	// "ns-2:coll-1" should never have been purged (because, it was no btl was declared for this)
-	require.True(t, testDataKeyExists(t, s, &dataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: 1}, txNum: 2}))
+	require.True(t, testDataKeyExists(t, s, &dataKey{ns: "ns-1", coll: "coll-2", blkNum: 1, txNum: 2}))
 	require.True(t, testHashedIndexExists(t, s,
 		&hashedIndexKey{
 			ns:         "ns-1",
@@ -866,21 +865,17 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 
 	// following two datakeys and three hashed indexkeys should have been created
 	dataKeyColl1 := &dataKey{
-		nsCollBlk: nsCollBlk{
-			ns:     "ns-1",
-			coll:   "coll-1",
-			blkNum: 1,
-		},
-		txNum: 2,
+		ns:     "ns-1",
+		coll:   "coll-1",
+		blkNum: 1,
+		txNum:  2,
 	}
 
 	dataKeyColl2 := &dataKey{
-		nsCollBlk: nsCollBlk{
-			ns:     "ns-1",
-			coll:   "coll-2",
-			blkNum: 1,
-		},
-		txNum: 2,
+		ns:     "ns-1",
+		coll:   "coll-2",
+		blkNum: 1,
+		txNum:  2,
 	}
 
 	hashedIndexKey1 := &hashedIndexKey{
@@ -1140,21 +1135,17 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 
 	// following two datakeys and three hashed indexkeys should have been created
 	dataKeyColl1 := &dataKey{
-		nsCollBlk: nsCollBlk{
-			ns:     "ns-1",
-			coll:   "coll-1",
-			blkNum: 1,
-		},
-		txNum: 2,
+		ns:     "ns-1",
+		coll:   "coll-1",
+		blkNum: 1,
+		txNum:  2,
 	}
 
 	dataKeyColl2 := &dataKey{
-		nsCollBlk: nsCollBlk{
-			ns:     "ns-1",
-			coll:   "coll-2",
-			blkNum: 1,
-		},
-		txNum: 2,
+		ns:     "ns-1",
+		coll:   "coll-2",
+		blkNum: 1,
+		txNum:  2,
 	}
 
 	hashedIndexKey1 := &hashedIndexKey{

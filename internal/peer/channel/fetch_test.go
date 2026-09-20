@@ -27,8 +27,7 @@ func TestFetch(t *testing.T) {
 	defer resetFlags()
 	InitMSP()
 	resetFlags()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -43,11 +42,7 @@ func TestFetch(t *testing.T) {
 		DeliverClient:    getMockDeliverClient(mockchain),
 	}
 
-	tempDir, err := os.MkdirTemp("", "fetch-output")
-	if err != nil {
-		t.Fatalf("failed to create temporary directory")
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	cmd := fetchCmd(mockCF)
 	AddFlags(cmd)
@@ -115,8 +110,7 @@ func TestFetchNilCF(t *testing.T) {
 
 	InitMSP()
 	resetFlags()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 	viper.Set("peer.client.connTimeout", 10*time.Millisecond)

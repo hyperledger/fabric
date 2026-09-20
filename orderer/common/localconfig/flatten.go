@@ -55,12 +55,12 @@ func flatten(k string, m *[]string, v reflect.Value) {
 		}
 		flatten(k, m, v.Elem())
 	case reflect.Struct:
-		if x, ok := v.Interface().(fmt.Stringer); ok {
+		if x, ok := reflect.TypeAssert[fmt.Stringer](v); ok {
 			*m = append(*m, fmt.Sprintf("%s = %v", k, x))
 			return
 		}
 
-		for i := 0; i < v.NumField(); i++ {
+		for i := range v.NumField() {
 			flatten(k+delimiter+v.Type().Field(i).Name, m, v.Field(i))
 		}
 	case reflect.String:

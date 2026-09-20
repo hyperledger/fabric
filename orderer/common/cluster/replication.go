@@ -224,7 +224,7 @@ func (r *Replicator) pullChannelBlocks(channel string, puller *BlockPuller, late
 	r.appendBlock(nextBlock, ledger, channel)
 	actualPrevHash := protoutil.BlockHeaderHash(nextBlock.GetHeader())
 
-	for seq := uint64(nextBlockToPull + 1); seq < latestHeight; seq++ {
+	for seq := nextBlockToPull + 1; seq < latestHeight; seq++ {
 		block := puller.PullBlock(seq)
 		if block == nil {
 			return ErrRetryCountExhausted
