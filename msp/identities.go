@@ -248,12 +248,10 @@ func newSigningIdentity(cert *x509.Certificate, pk bccsp.Key, signer crypto.Sign
 		return nil, err
 	}
 	return &signingidentity{
-		identity: identity{
-			id:   mspId.(*identity).id,
-			cert: mspId.(*identity).cert,
-			msp:  mspId.(*identity).msp,
-			pk:   mspId.(*identity).pk,
-		},
+		id:     mspId.(*identity).id,
+		cert:   mspId.(*identity).cert,
+		msp:    mspId.(*identity).msp,
+		pk:     mspId.(*identity).pk,
 		signer: signer,
 	}, nil
 }

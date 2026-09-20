@@ -107,8 +107,11 @@ func getStepStream(t *testing.T) (*comm_utils.GRPCServer, orderer.ClusterNodeSer
 }
 
 func TestClusterServiceStep(t *testing.T) {
+	t.Parallel()
 	server, stepStream := getStepStream(t)
-	defer server.Stop()
+	t.Cleanup(func() {
+		server.Stop()
+	})
 
 	t.Run("Create authenticated stream successfully", func(t *testing.T) {
 		t.Parallel()
@@ -300,7 +303,9 @@ func TestClusterServiceStep(t *testing.T) {
 func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 	t.Parallel()
 	server, stepStream := getStepStream(t)
-	defer server.Stop()
+	t.Cleanup(func() {
+		server.Stop()
+	})
 
 	t.Run("Verify auth request completes successfully", func(t *testing.T) {
 		t.Parallel()

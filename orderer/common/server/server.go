@@ -175,10 +175,8 @@ func (s *server) Broadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
 	}()
 	return s.bh.Handle(&broadcastMsgTracer{
 		AtomicBroadcast_BroadcastServer: srv,
-		msgTracer: msgTracer{
-			debug:    s.debug,
-			function: "Broadcast",
-		},
+		debug:                           s.debug,
+		function:                        "Broadcast",
 	})
 }
 
@@ -206,10 +204,8 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		PolicyChecker: deliver.PolicyCheckerFunc(policyChecker),
 		Receiver: &deliverMsgTracer{
 			Receiver: srv,
-			msgTracer: msgTracer{
-				debug:    s.debug,
-				function: "Deliver",
-			},
+			debug:    s.debug,
+			function: "Deliver",
 		},
 		ResponseSender: &responseSender{
 			AtomicBroadcast_DeliverServer: srv,

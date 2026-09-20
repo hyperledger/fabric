@@ -566,7 +566,7 @@ func TestParallelValidation(t *testing.T) {
 	// Block metadata array position to store serialized bit array filter of invalid transactions
 	txsFilter := txflags.ValidationFlags(b.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	// tx validity
-	for txNum := 0; txNum < txCnt; txNum += 1 {
+	for txNum := range txCnt {
 		switch uint(txNum / 10) {
 		case 1:
 			fallthrough

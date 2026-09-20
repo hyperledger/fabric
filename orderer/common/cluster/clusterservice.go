@@ -41,7 +41,7 @@ type ClusterStepStream interface {
 type ChannelMembersConfig struct {
 	MemberMapping     map[uint64][]byte
 	AuthorizedStreams sync.Map // Stream ID --> node identifier
-	nextStreamID      uint64
+	nextStreamID      atomic.Uint64
 }
 
 // ClusterService implements the server API for ClusterNodeService service
@@ -95,7 +95,7 @@ func (s *ClusterService) Step(stream orderer.ClusterNodeService_StepServer) erro
 		return status.Errorf(codes.Unauthenticated, "access denied")
 	}
 
-	streamID := atomic.AddUint64(&s.MembershipByChannel[authReq.GetChannel()].nextStreamID, 1)
+	streamID := s.MembershipByChannel[authReq.GetChannel()].nextStreamID.Add(1)
 	s.MembershipByChannel[authReq.GetChannel()].AuthorizedStreams.Store(streamID, authReq.GetFromId())
 	s.Lock.RUnlock()
 

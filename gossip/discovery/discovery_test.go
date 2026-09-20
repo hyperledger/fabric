@@ -95,8 +95,8 @@ func (m *mockAnchorPeerTracker) IsAnchorPeer(endpoint string) bool {
 
 type dummyCommModule struct {
 	validatedMessages chan *protoext.SignedGossipMessage
-	msgsReceived      uint32
-	msgsSent          uint32
+	msgsReceived      atomic.Uint32
+	msgsSent          atomic.Uint32
 	id                string
 	identitySwitch    chan common.PKIidType
 	presumeDead       chan common.PKIidType
@@ -109,7 +109,7 @@ type dummyCommModule struct {
 	shouldGossip      bool
 	disableComm       bool
 	mock              *mock.Mock
-	signCount         uint32
+	signCount         atomic.Uint32
 }
 
 type gossipInstance struct {
@@ -146,7 +146,7 @@ func (comm *dummyCommModule) recordValidation(validatedMessages chan *protoext.S
 }
 
 func (comm *dummyCommModule) SignMessage(am *proto.GossipMessage, internalEndpoint string) *proto.Envelope {
-	atomic.AddUint32(&comm.signCount, 1)
+	comm.signCount.Add(1)
 	protoext.NoopSign(am)
 
 	secret := &proto.Secret{
@@ -208,7 +208,7 @@ func (comm *dummyCommModule) SendToPeer(peer *NetworkMember, msg *protoext.Signe
 	s, _ := protoext.NoopSign(msg.GossipMessage)
 	comm.streams[peer.Endpoint].Send(s.Envelope)
 	comm.lock.Unlock()
-	atomic.AddUint32(&comm.msgsSent, 1)
+	comm.msgsSent.Add(1)
 }
 
 func (comm *dummyCommModule) Ping(peer *NetworkMember) bool {
@@ -263,11 +263,11 @@ func (comm *dummyCommModule) CloseConn(peer *NetworkMember) {
 }
 
 func (g *gossipInstance) receivedMsgCount() int {
-	return int(atomic.LoadUint32(&g.comm.msgsReceived))
+	return int(g.comm.msgsReceived.Load())
 }
 
 func (g *gossipInstance) sentMsgCount() int {
-	return int(atomic.LoadUint32(&g.comm.msgsSent))
+	return int(g.comm.msgsSent.Load())
 }
 
 func (g *gossipInstance) discoveryImpl() *gossipDiscoveryImpl {
@@ -314,7 +314,7 @@ func (g *gossipInstance) GossipStream(stream proto.Gossip_GossipStreamServer) er
 				ID: common.PKIidType("testID"),
 			},
 		}
-		atomic.AddUint32(&g.comm.msgsReceived, 1)
+		g.comm.msgsReceived.Add(1)
 
 		if aliveMsg := gMsg.GetAliveMsg(); aliveMsg != nil {
 			g.tryForwardMessage(gMsg)
@@ -600,10 +600,10 @@ func TestNoSigningIfNoMembership(t *testing.T) {
 	inst := createDiscoveryInstance(8931, "foreveralone", nil)
 	defer inst.Stop()
 	time.Sleep(defaultTestConfig.AliveTimeInterval * 10)
-	assert.Zero(t, atomic.LoadUint32(&inst.comm.signCount))
+	assert.Zero(t, inst.comm.signCount.Load())
 
 	inst.InitiateSync(10000)
-	assert.Zero(t, atomic.LoadUint32(&inst.comm.signCount))
+	assert.Zero(t, inst.comm.signCount.Load())
 }
 
 func TestValidation(t *testing.T) {
@@ -763,13 +763,13 @@ func TestValidation(t *testing.T) {
 
 			p.comm.incMsgs <- wrapReceivedMessage(testCase.message)
 			// Ensure all messages were validated
-			for i := 0; i < testCase.expectedAliveMessages; i++ {
+			for range testCase.expectedAliveMessages {
 				validatedMsg := <-validatedMessages
 				// send the message directly to be included in the message store
 				p.comm.incMsgs <- wrapReceivedMessage(validatedMsg)
 			}
 			// Wait for the messages to be validated
-			for i := 0; i < testCase.expectedAliveMessages; i++ {
+			for range testCase.expectedAliveMessages {
 				<-validatedMessages
 			}
 			// Not more than testCase.expectedAliveMessages should have been validated
@@ -1169,14 +1169,14 @@ func TestCertificateChange(t *testing.T) {
 	// Shutdown the second peer
 	waitUntilOrFailBlocking(t, p2.Stop)
 
-	var pingCountFrom1 uint32
-	var pingCountFrom3 uint32
+	var pingCountFrom1 atomic.Uint32
+	var pingCountFrom3 atomic.Uint32
 	// Program mocks to increment ping counters
 	p1.comm.lock.Lock()
 	p1.comm.mock = &mock.Mock{}
 	p1.comm.mock.On("SendToPeer", mock.Anything, mock.Anything)
 	p1.comm.mock.On("Ping").Run(func(arguments mock.Arguments) {
-		atomic.AddUint32(&pingCountFrom1, 1)
+		pingCountFrom1.Add(1)
 	})
 	p1.comm.lock.Unlock()
 
@@ -1184,16 +1184,16 @@ func TestCertificateChange(t *testing.T) {
 	p3.comm.mock = &mock.Mock{}
 	p3.comm.mock.On("SendToPeer", mock.Anything, mock.Anything)
 	p3.comm.mock.On("Ping").Run(func(arguments mock.Arguments) {
-		atomic.AddUint32(&pingCountFrom3, 1)
+		pingCountFrom3.Add(1)
 	})
 	p3.comm.lock.Unlock()
 
 	pingCount1 := func() uint32 {
-		return atomic.LoadUint32(&pingCountFrom1)
+		return pingCountFrom1.Load()
 	}
 
 	pingCount3 := func() uint32 {
-		return atomic.LoadUint32(&pingCountFrom3)
+		return pingCountFrom3.Load()
 	}
 
 	c1 := pingCount1()
@@ -1724,7 +1724,7 @@ func TestPeerIsolation(t *testing.T) {
 
 	// Start again the first 2 peers and wait for all the peers to get full membership.
 	// Especially, we want to test that peer2 won't be isolated
-	for i := 0; i < peersNum-1; i++ {
+	for i := range peersNum - 1 {
 		id := fmt.Sprintf("d%d", i)
 		inst = createDiscoveryInstanceCustomConfig(7120+i, id, bootPeers, config)
 		instances[i] = inst
@@ -1816,7 +1816,7 @@ func TestMembershipAfterExpiration(t *testing.T) {
 
 	// Start again peer0 and peer1 and wait for all the peers to get full membership.
 	// Especially, we want to test that peer2 won't be isolated
-	for i := 0; i < peersNum-1; i++ {
+	for i := range peersNum - 1 {
 		id := fmt.Sprintf("d%d", i)
 		inst = createDiscoveryInstanceWithAnchorPeerTracker(ports[i], id, bootPeers, true, noopPolicy, func(_ *protoext.SignedGossipMessage) {}, config, mockTracker, nil)
 		instances[i] = inst

@@ -160,7 +160,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// sanity check on header extension
-	if string(hdrExt.GetChaincodeId().GetName()) != "chaincode_name" {
+	if hdrExt.GetChaincodeId().GetName() != "chaincode_name" {
 		t.Fatalf("Invalid header extension after unmarshalling\n")
 		return
 	}
@@ -292,7 +292,7 @@ func TestProposalResponse(t *testing.T) {
 	}
 
 	// sanity check on the event
-	if string(event.GetChaincodeId()) != "ccid" {
+	if event.GetChaincodeId() != "ccid" {
 		t.Fatalf("Invalid actions after unmarshalling")
 		return
 	}

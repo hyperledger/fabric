@@ -98,7 +98,7 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 
 		dbVerifier.verifyElgMissingDataEntry(
-			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: 20}},
+			&missingDataKey{ns: "ns", coll: "coll", blkNum: 20},
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -139,7 +139,7 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 
 		dbVerifier.verifyInelgMissingDataEntry(
-			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: 20}},
+			&missingDataKey{ns: "ns", coll: "coll", blkNum: 20},
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -180,7 +180,7 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 
 		dbVerifier.verifyElgMissingDataEntry(
-			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: 20}},
+			&missingDataKey{ns: "ns", coll: "coll", blkNum: 20},
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -235,7 +235,7 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 
 		dbVerifier.verifyInelgMissingDataEntry(
-			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: 20}},
+			&missingDataKey{ns: "ns", coll: "coll", blkNum: 20},
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -283,7 +283,7 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 
 		dbVerifier.verifyElgMissingDataEntry(
-			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: myImplicitColl, blkNum: 20}},
+			&missingDataKey{ns: "ns", coll: myImplicitColl, blkNum: 20},
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -317,7 +317,7 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 
 		dbVerifier.verifyInelgMissingDataEntry(
-			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: otherOrgImplicitColl, blkNum: 20}},
+			&missingDataKey{ns: "ns", coll: otherOrgImplicitColl, blkNum: 20},
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -390,7 +390,7 @@ func TestSnapshotImporter(t *testing.T) {
 				},
 			)
 			dbVerifier.verifyElgMissingDataEntry(
-				&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: myImplicitColl, blkNum: uint64(i)}},
+				&missingDataKey{ns: "ns", coll: myImplicitColl, blkNum: uint64(i)},
 				(&bitset.BitSet{}).Set(300).Set(301).Set(302),
 			)
 		}
@@ -1098,7 +1098,7 @@ func TestSnapshotRowsSorter(t *testing.T) {
 			}
 			require.Len(t, results, len(testCase.inputRows))
 
-			for i := 0; i < len(results); i++ {
+			for i := range results {
 				require.Equal(
 					t,
 					testCase.inputRows[testCase.expectedSortOrder[i]],

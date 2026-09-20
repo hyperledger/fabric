@@ -33,7 +33,7 @@ var _ = Describe("WithRequestID", func() {
 		)
 		chain = requestID(handler)
 
-		req = httptest.NewRequest("GET", "/", nil)
+		req = httptest.NewRequest(http.MethodGet, "/", nil)
 		resp = httptest.NewRecorder()
 	})
 

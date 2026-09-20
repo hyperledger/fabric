@@ -204,8 +204,8 @@ var mspTypeStrings = map[ProviderType]string{
 }
 
 var Options = map[string]NewOpts{
-	ProviderTypeToString(FABRIC): &BCCSPNewOpts{NewBaseOpts: NewBaseOpts{Version: MSPv3_0}},
-	ProviderTypeToString(IDEMIX): &IdemixNewOpts{NewBaseOpts: NewBaseOpts{Version: MSPv1_1}},
+	ProviderTypeToString(FABRIC): &BCCSPNewOpts{Version: MSPv3_0},
+	ProviderTypeToString(IDEMIX): &IdemixNewOpts{Version: MSPv1_1},
 }
 
 // ProviderTypeToString returns a string that represents the ProviderType integer

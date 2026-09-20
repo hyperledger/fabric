@@ -35,9 +35,9 @@ type RemoteContext struct {
 	GetStreamFunc                    func(context.Context) (StepClientStream, error) // interface{}
 	ProbeConn                        func(conn *grpc.ClientConn) error
 	conn                             *grpc.ClientConn
-	nextStreamID                     uint64
+	nextStreamID                     atomic.Uint64
 	streamsByID                      streamsMapperReporter
-	workerCountReporter              workerCountReporter
+	workerCount                      atomic.Uint32
 }
 
 // NewStream creates a new stream.
@@ -54,7 +54,7 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	streamID := atomic.AddUint64(&rc.nextStreamID, 1)
+	streamID := rc.nextStreamID.Add(1)
 	nodeName := commonNameFromContext(stream.Context())
 
 	var canceled uint32
@@ -69,7 +69,7 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 			abortReason.Store(err.Error())
 			cancel()
 			rc.streamsByID.Delete(streamID)
-			rc.Metrics.reportEgressStreamCount(rc.Channel, atomic.LoadUint32(&rc.streamsByID.size))
+			rc.Metrics.reportEgressStreamCount(rc.Channel, rc.streamsByID.size.Load())
 			rc.Logger.Debugf("Stream %d to %s(%s) is aborted", streamID, nodeName, rc.endpoint)
 			atomic.StoreUint32(&canceled, 1)
 			close(abortChan)
@@ -122,12 +122,20 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 		rc.endpoint, streamID, cap(s.sendBuff))
 
 	rc.streamsByID.Store(streamID, s)
-	rc.Metrics.reportEgressStreamCount(rc.Channel, atomic.LoadUint32(&rc.streamsByID.size))
+	rc.Metrics.reportEgressStreamCount(rc.Channel, rc.streamsByID.size.Load())
 
 	go func() {
-		rc.workerCountReporter.increment(s.metrics)
+		count := rc.workerCount.Add(1)
+		s.metrics.reportWorkerCount(rc.Channel, count)
 		s.serviceStream()
-		rc.workerCountReporter.decrement(s.metrics)
+
+		// ^0 flips all zeros to ones, which means
+		// 2^32 - 1, and then we add this number wcr.workerCount.
+		// It follows from commutativity of the unsigned integers group
+		// that wcr.workerCount + 2^32 - 1 = wcr.workerCount - 1 + 2^32
+		// which is just wcr.workerCount - 1.
+		count = rc.workerCount.Add(^uint32(0))
+		s.metrics.reportWorkerCount(rc.Channel, count)
 	}()
 
 	return s, nil

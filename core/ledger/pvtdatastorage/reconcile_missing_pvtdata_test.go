@@ -591,12 +591,10 @@ func constructPvtDataForTest(t *testing.T, blockInfo []*blockTxPvtDataInfoForTes
 			for _, coll := range colls {
 				nsColls = append(nsColls, fmt.Sprintf("%s:%s", ns, coll))
 				p.dataKeys = append(p.dataKeys, &dataKey{
-					nsCollBlk: nsCollBlk{
-						ns:     ns,
-						coll:   coll,
-						blkNum: b.blkNum,
-					},
-					txNum: b.txNum,
+					ns:     ns,
+					coll:   coll,
+					blkNum: b.blkNum,
+					txNum:  b.txNum,
 				})
 			}
 		}

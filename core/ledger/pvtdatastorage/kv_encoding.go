@@ -257,20 +257,16 @@ func createRangeScanKeysForElgMissingData(blkNum uint64, group []byte) ([]byte, 
 func createRangeScanKeysForInelgMissingData(maxBlkNum uint64, ns, coll string) ([]byte, []byte) {
 	startKey := encodeInelgMissingDataKey(
 		&missingDataKey{
-			nsCollBlk: nsCollBlk{
-				ns:     ns,
-				coll:   coll,
-				blkNum: maxBlkNum,
-			},
+			ns:     ns,
+			coll:   coll,
+			blkNum: maxBlkNum,
 		},
 	)
 	endKey := encodeInelgMissingDataKey(
 		&missingDataKey{
-			nsCollBlk: nsCollBlk{
-				ns:     ns,
-				coll:   coll,
-				blkNum: 0,
-			},
+			ns:     ns,
+			coll:   coll,
+			blkNum: 0,
 		},
 	)
 

@@ -256,12 +256,10 @@ func deriveKeys(expiryEntry *expiryEntry) ([]*dataKey, []*missingDataKey, []*boo
 			for _, txNum := range txNums.GetList() {
 				dataKeys = append(dataKeys,
 					&dataKey{
-						nsCollBlk: nsCollBlk{
-							ns:     ns,
-							coll:   coll,
-							blkNum: expiryEntry.key.committingBlk,
-						},
-						txNum: txNum,
+						ns:     ns,
+						coll:   coll,
+						blkNum: expiryEntry.key.committingBlk,
+						txNum:  txNum,
 					})
 			}
 		}
@@ -269,11 +267,9 @@ func deriveKeys(expiryEntry *expiryEntry) ([]*dataKey, []*missingDataKey, []*boo
 		for coll := range colls.GetMissingData() {
 			missingDataKeys = append(missingDataKeys,
 				&missingDataKey{
-					nsCollBlk: nsCollBlk{
-						ns:     ns,
-						coll:   coll,
-						blkNum: expiryEntry.key.committingBlk,
-					},
+					ns:     ns,
+					coll:   coll,
+					blkNum: expiryEntry.key.committingBlk,
 				})
 		}
 

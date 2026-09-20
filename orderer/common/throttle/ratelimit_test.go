@@ -80,7 +80,7 @@ func TestRateLimitMultipleClients(t *testing.T) {
 		client := fmt.Sprintf("client%d", clientID)
 		go func(client string) {
 			defer wg.Done()
-			for i := 0; i < transactions/10; i++ {
+			for range transactions / 10 {
 				rl.LimitRate(client)
 			}
 		}(client)
@@ -127,7 +127,7 @@ func TestRateLimitSameClient(t *testing.T) {
 	for range 10 {
 		go func() {
 			defer wg.Done()
-			for i := 0; i < transactions/10; i++ {
+			for range transactions / 10 {
 				rl.LimitRate("alice")
 			}
 		}()
@@ -146,13 +146,15 @@ func TestRateLimitSameClient(t *testing.T) {
 	assert.Less(t, min, TPS)
 }
 
-func TestRateLimitClientNumChange(t *testing.T) {
+func TestRateLimitClientNumChange(t *testing.T) { //nolint:tparallel
 	t.Parallel()
 
 	clock := clock.NewFakeClock(time.Now())
 
 	stop := make(chan struct{})
-	defer close(stop)
+	t.Cleanup(func() {
+		close(stop)
+	})
 
 	go advanceTime(stop, clock)
 
@@ -161,10 +163,12 @@ func TestRateLimitClientNumChange(t *testing.T) {
 		Limit:             500,
 		InactivityTimeout: time.Second * 10,
 	}
-	defer rl.Stop()
+	t.Cleanup(func() {
+		rl.Stop()
+	})
 
 	t.Run("client", func(t *testing.T) {
-		start := time.Now()
+		start := clock.Now()
 
 		var wg sync.WaitGroup
 		wg.Add(10)
@@ -175,7 +179,7 @@ func TestRateLimitClientNumChange(t *testing.T) {
 			client := fmt.Sprintf("client%d", clientID)
 			go func(client string) {
 				defer wg.Done()
-				for i := 0; i < transactions/10; i++ {
+				for range transactions / 10 {
 					rl.LimitRate(client)
 				}
 			}(client)

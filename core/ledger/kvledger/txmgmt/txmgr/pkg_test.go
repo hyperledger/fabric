@@ -154,7 +154,7 @@ func (h *txMgrTestHelper) validateAndCommitRWSet(txRWSet *rwset.TxReadWriteSet) 
 	require.NoError(h.t, err)
 	txsFltr := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	invalidTxNum := 0
-	for i := 0; i < len(block.GetData().GetData()); i++ {
+	for i := range len(block.GetData().GetData()) {
 		if txsFltr.IsInvalid(i) {
 			invalidTxNum++
 		}
@@ -171,7 +171,7 @@ func (h *txMgrTestHelper) checkRWsetInvalid(txRWSet *rwset.TxReadWriteSet) {
 	require.NoError(h.t, err)
 	txsFltr := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	invalidTxNum := 0
-	for i := 0; i < len(block.GetData().GetData()); i++ {
+	for i := range len(block.GetData().GetData()) {
 		if txsFltr.IsInvalid(i) {
 			invalidTxNum++
 		}

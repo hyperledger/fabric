@@ -18,7 +18,7 @@ import (
 )
 
 func TestDataKeyEncoding(t *testing.T) {
-	dataKey1 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns1", coll: "coll1", blkNum: 2}, txNum: 5}
+	dataKey1 := &dataKey{ns: "ns1", coll: "coll1", blkNum: 2, txNum: 5}
 	datakey2, err := decodeDatakey(encodeDataKey(dataKey1))
 	require.NoError(t, err)
 	require.Equal(t, dataKey1, datakey2)
@@ -31,20 +31,20 @@ func TestDataKeyRange(t *testing.T) {
 	for txNum = range uint64(100) {
 		keyOfBlock := encodeDataKey(
 			&dataKey{
-				nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: blockNum},
-				txNum:     txNum,
+				ns: "ns", coll: "coll", blkNum: blockNum,
+				txNum: txNum,
 			},
 		)
 		keyOfPreviousBlock := encodeDataKey(
 			&dataKey{
-				nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: blockNum - 1},
-				txNum:     txNum,
+				ns: "ns", coll: "coll", blkNum: blockNum - 1,
+				txNum: txNum,
 			},
 		)
 		keyOfNextBlock := encodeDataKey(
 			&dataKey{
-				nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: blockNum + 1},
-				txNum:     txNum,
+				ns: "ns", coll: "coll", blkNum: blockNum + 1,
+				txNum: txNum,
 			},
 		)
 		require.Equal(t, bytes.Compare(keyOfPreviousBlock, startKey), -1)
@@ -60,29 +60,23 @@ func TestEligibleMissingDataRange(t *testing.T) {
 	for range uint64(100) {
 		keyOfBlock := encodeElgPrioMissingDataKey(
 			&missingDataKey{
-				nsCollBlk: nsCollBlk{
-					ns:     "ns",
-					coll:   "coll",
-					blkNum: blockNum,
-				},
+				ns:     "ns",
+				coll:   "coll",
+				blkNum: blockNum,
 			},
 		)
 		keyOfPreviousBlock := encodeElgPrioMissingDataKey(
 			&missingDataKey{
-				nsCollBlk: nsCollBlk{
-					ns:     "ns",
-					coll:   "coll",
-					blkNum: blockNum - 1,
-				},
+				ns:     "ns",
+				coll:   "coll",
+				blkNum: blockNum - 1,
 			},
 		)
 		keyOfNextBlock := encodeElgPrioMissingDataKey(
 			&missingDataKey{
-				nsCollBlk: nsCollBlk{
-					ns:     "ns",
-					coll:   "coll",
-					blkNum: blockNum + 1,
-				},
+				ns:     "ns",
+				coll:   "coll",
+				blkNum: blockNum + 1,
 			},
 		)
 		require.Equal(t, bytes.Compare(keyOfNextBlock, startKey), -1)
@@ -101,11 +95,9 @@ func TestEncodeDecodeMissingdataKey(t *testing.T) {
 
 func testEncodeDecodeMissingdataKey(t *testing.T, blkNum uint64) {
 	key := &missingDataKey{
-		nsCollBlk: nsCollBlk{
-			ns:     "ns",
-			coll:   "coll",
-			blkNum: blkNum,
-		},
+		ns:     "ns",
+		coll:   "coll",
+		blkNum: blkNum,
 	}
 
 	t.Run(
@@ -244,12 +236,10 @@ func TestDeriveDataKeyFromHashedIndexKey(t *testing.T) {
 			require.Equal(
 				t,
 				&dataKey{
-					nsCollBlk: nsCollBlk{
-						ns:     testcase.ns,
-						coll:   testcase.coll,
-						blkNum: testcase.blkNum,
-					},
-					txNum: testcase.txNum,
+					ns:     testcase.ns,
+					coll:   testcase.coll,
+					blkNum: testcase.blkNum,
+					txNum:  testcase.txNum,
 				},
 				dk,
 			)

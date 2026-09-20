@@ -520,7 +520,7 @@ func TestInitializeGrpcServer(t *testing.T) {
 		l.Close()
 		return l.Addr().String()
 	}()
-	host := strings.Split(listenAddr, ":")[0]
+	host, _, _ := strings.Cut(listenAddr, ":")
 	port, _ := strconv.ParseUint(strings.Split(listenAddr, ":")[1], 10, 16)
 	conf := &localconfig.TopLevel{
 		General: localconfig.General{

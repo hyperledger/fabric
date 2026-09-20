@@ -353,17 +353,12 @@ func remoteNodesFromConfigBlock(block *cb.Block, logger *flogging.FabricLogger, 
 		}
 
 		remoteNodes = append(remoteNodes, cluster.RemoteNode{
-			NodeAddress: cluster.NodeAddress{
-				ID:       uint64(consenter.GetId()),
-				Endpoint: fmt.Sprintf("%s:%d", consenter.GetHost(), consenter.GetPort()),
-			},
-
-			NodeCerts: cluster.NodeCerts{
-				ClientTLSCert: clientCertAsDER,
-				ServerTLSCert: serverCertAsDER,
-				ServerRootCA:  rootCAs,
-				Identity:      sanitizedCert,
-			},
+			ID:            uint64(consenter.GetId()),
+			Endpoint:      fmt.Sprintf("%s:%d", consenter.GetHost(), consenter.GetPort()),
+			ClientTLSCert: clientCertAsDER,
+			ServerTLSCert: serverCertAsDER,
+			ServerRootCA:  rootCAs,
+			Identity:      sanitizedCert,
 		})
 	}
 

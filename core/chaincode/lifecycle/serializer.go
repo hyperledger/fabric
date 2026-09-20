@@ -86,7 +86,7 @@ func (s *Serializer) SerializableChecks(structure any) (reflect.Value, []string,
 	}
 
 	allFields := make([]string, value.NumField())
-	for i := 0; i < value.NumField(); i++ {
+	for i := range value.NumField() {
 		fieldName := value.Type().Field(i).Name
 		fieldValue := value.Field(i)
 		allFields[i] = fieldName
@@ -137,7 +137,7 @@ func (s *Serializer) Serialize(namespace, name string, structure any, state Read
 		existingKeys[fqKey] = value
 	}
 
-	for i := 0; i < value.NumField(); i++ {
+	for i := range value.NumField() {
 		fieldName := value.Type().Field(i).Name
 		fieldValue := value.Field(i)
 
@@ -272,7 +272,7 @@ func (s *Serializer) IsSerialized(namespace, name string, structure any, state O
 		return
 	}
 
-	for i := 0; i < value.NumField(); i++ {
+	for i := range value.NumField() {
 		fieldName := value.Type().Field(i).Name
 		fieldValue := value.Field(i)
 
@@ -332,7 +332,7 @@ func (s *Serializer) Deserialize(namespace, name string, metadata *lb.StateMetad
 		return errors.Errorf("type name mismatch '%s' != '%s'", typeName, metadata.GetDatatype())
 	}
 
-	for i := 0; i < value.NumField(); i++ {
+	for i := range value.NumField() {
 		fieldName := value.Type().Field(i).Name
 		fieldValue := value.Field(i)
 		switch fieldValue.Kind() {

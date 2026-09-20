@@ -917,15 +917,13 @@ func stateInfoMessageWithHeight(ledgerHeight uint64, chaincodes ...*gossip.Chain
 func newPeer(i int, env *gossip.Envelope, properties *gossip.Properties) *peerInfo {
 	p := fmt.Sprintf("p%d", i)
 	return &peerInfo{
-		pkiID:    gossipcommon.PKIidType(p),
-		identity: api.PeerIdentityType(p),
-		NetworkMember: gdisc.NetworkMember{
-			PKIid:            gossipcommon.PKIidType(p),
-			Endpoint:         p,
-			InternalEndpoint: p,
-			Envelope:         env,
-			Properties:       properties,
-		},
+		pkiID:            gossipcommon.PKIidType(p),
+		identity:         api.PeerIdentityType(p),
+		PKIid:            gossipcommon.PKIidType(p),
+		Endpoint:         p,
+		InternalEndpoint: p,
+		Envelope:         env,
+		Properties:       properties,
 	}
 }
 

@@ -60,7 +60,7 @@ func flatten(k string, m *[]string, v reflect.Value) {
 			return
 		}
 
-		for i := 0; i < v.NumField(); i++ {
+		for i := range v.NumField() {
 			flatten(k+delimiter+v.Type().Field(i).Name, m, v.Field(i))
 		}
 	case reflect.String:

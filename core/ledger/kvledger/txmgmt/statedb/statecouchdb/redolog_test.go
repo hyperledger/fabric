@@ -25,7 +25,7 @@ func TestRedoLogger(t *testing.T) {
 	records := []*redoRecord{}
 
 	verifyLogRecords := func() {
-		for i := 0; i < len(loggers); i++ {
+		for i := range loggers {
 			retrievedRec, err := loggers[i].load()
 			require.NoError(t, err)
 			require.Equal(t, records[i], retrievedRec)

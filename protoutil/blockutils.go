@@ -31,7 +31,7 @@ func NewBlock(seqNum uint64, previousHash []byte) *cb.Block {
 	block.Data = &cb.BlockData{}
 
 	var metadataContents [][]byte
-	for i := 0; i < len(cb.BlockMetadataIndex_name); i++ {
+	for range len(cb.BlockMetadataIndex_name) {
 		metadataContents = append(metadataContents, []byte{})
 	}
 	block.Metadata = &cb.BlockMetadata{Metadata: metadataContents}

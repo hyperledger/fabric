@@ -531,16 +531,16 @@ func LastConfigBlock(block *common.Block, blockRetriever BlockRetriever) (*commo
 // StreamCountReporter reports the number of streams currently connected to this node
 type StreamCountReporter struct {
 	Metrics *Metrics
-	count   uint32
+	count   atomic.Uint32
 }
 
 func (scr *StreamCountReporter) Increment() {
-	count := atomic.AddUint32(&scr.count, 1)
+	count := scr.count.Add(1)
 	scr.Metrics.reportStreamCount(count)
 }
 
 func (scr *StreamCountReporter) Decrement() {
-	count := atomic.AddUint32(&scr.count, ^uint32(0))
+	count := scr.count.Add(^uint32(0))
 	scr.Metrics.reportStreamCount(count)
 }
 

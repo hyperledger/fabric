@@ -51,7 +51,7 @@ var (
 	// is based on TLS pinning
 	ca = createCAOrPanic()
 
-	lastNodeID uint64
+	lastNodeID atomic.Uint64
 
 	testSubReq = &orderer.SubmitRequest{
 		Channel: "test",
@@ -96,7 +96,7 @@ var (
 )
 
 func nextUnusedID() uint64 {
-	return atomic.AddUint64(&lastNodeID, 1)
+	return lastNodeID.Add(1)
 }
 
 func createCAOrPanic() tlsgen.CA {
@@ -644,11 +644,9 @@ func TestStreamAbort(t *testing.T) {
 	defer node2.stop()
 
 	invalidNodeInfo := cluster.RemoteNode{
-		NodeAddress: cluster.NodeAddress{ID: node2.nodeInfo.ID},
-		NodeCerts: cluster.NodeCerts{
-			ServerTLSCert: []byte{1, 2, 3},
-			ClientTLSCert: []byte{1, 2, 3},
-		},
+		ID:            node2.nodeInfo.ID,
+		ServerTLSCert: []byte{1, 2, 3},
+		ClientTLSCert: []byte{1, 2, 3},
 	}
 
 	for _, tst := range []struct {

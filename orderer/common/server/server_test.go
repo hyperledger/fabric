@@ -115,12 +115,10 @@ func TestBroadcastMsgTrace(t *testing.T) {
 			AtomicBroadcast_BroadcastServer: &mockBroadcastSrv{
 				msg: msg,
 			},
-			msgTracer: msgTracer{
-				debug: &localconfig.Debug{
-					BroadcastTraceDir: dir,
-				},
-				function: "Broadcast",
+			debug: &localconfig.Debug{
+				BroadcastTraceDir: dir,
 			},
+			function: "Broadcast",
 		}
 	}, t)
 }
@@ -131,12 +129,10 @@ func TestDeliverMsgTrace(t *testing.T) {
 			Receiver: &mockDeliverSrv{
 				msg: msg,
 			},
-			msgTracer: msgTracer{
-				debug: &localconfig.Debug{
-					DeliverTraceDir: dir,
-				},
-				function: "Deliver",
+			debug: &localconfig.Debug{
+				DeliverTraceDir: dir,
 			},
+			function: "Deliver",
 		}
 	}, t)
 }

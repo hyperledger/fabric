@@ -1134,8 +1134,7 @@ func TestValidateUpgradeOK(t *testing.T) {
 	v := newValidationInstance(state)
 
 	ccname := "mycc"
-	ccver := "upgradeok"
-	ccver = "2"
+	ccver := "2"
 
 	// policy signed by the right MSP
 	policy, err := getSignedByMSPMemberPolicy(mspid)

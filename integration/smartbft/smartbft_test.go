@@ -1872,7 +1872,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			network.Bootstrap()
 
 			var ordererRunners []*ginkgomon.Runner
-			for i := 0; i <= 1; i++ {
+			for i := range 2 {
 				orderer := network.Orderers[i]
 				runner := network.OrdererRunner(orderer, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
 					"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s")
@@ -1961,7 +1961,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("HandleRequest from 1 channel=testchannel1"))
 			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Proposing proposal sequence 1 in view 1 channel=testchannel1"))
 
-			for i := 0; i <= 3; i++ {
+			for i := range 4 {
 				Eventually(ordererRunners[i].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Sequence: 1-->2 channel=testchannel1"))
 			}
 

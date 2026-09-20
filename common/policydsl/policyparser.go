@@ -257,7 +257,7 @@ func newContext() *context {
 //     the required role
 func FromString(policy string) (*cb.SignaturePolicyEnvelope, error) {
 	// first we translate the and/or business into outof gates
-	env := map[string]interface{}{
+	env := map[string]any{
 		GateAnd:                    and,
 		strings.ToLower(GateAnd):   and,
 		strings.ToUpper(GateAnd):   and,
@@ -296,7 +296,7 @@ func FromString(policy string) (*cb.SignaturePolicyEnvelope, error) {
 	// to user-implemented functions other than via arguments.
 	// We need this argument because we need a global place where
 	// we put the identities that the policy requires
-	env = map[string]interface{}{
+	env = map[string]any{
 		"outof": firstPass,
 	}
 	exp, err := expr.Compile(resStr, expr.Env(env))
@@ -322,7 +322,7 @@ func FromString(policy string) (*cb.SignaturePolicyEnvelope, error) {
 	}
 
 	ctx := newContext()
-	env = map[string]interface{}{
+	env = map[string]any{
 		"outof": secondPass,
 		"ID":    ctx,
 	}

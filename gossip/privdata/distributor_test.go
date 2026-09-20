@@ -74,12 +74,10 @@ func TestDistributor(t *testing.T) {
 	channelID := "test"
 
 	g := &gossipMock{
-		Mock: mock.Mock{},
-		PeerSignature: api.PeerSignature{
-			Signature:    []byte{3, 4, 5},
-			Message:      []byte{6, 7, 8},
-			PeerIdentity: []byte{0, 1, 2},
-		},
+		Mock:         mock.Mock{},
+		Signature:    []byte{3, 4, 5},
+		Message:      []byte{6, 7, 8},
+		PeerIdentity: []byte{0, 1, 2},
 	}
 	sendings := make(chan struct {
 		*proto.PrivatePayload
