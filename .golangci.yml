@@ -40,7 +40,7 @@ linters:
     - modernize
     - nolintlint
     - nosprintfhostport
-    # - perfsprint
+#    - perfsprint
     - promlinter
     - protogetter
     - reassign
@@ -48,12 +48,12 @@ linters:
     - spancheck
     - staticcheck
     - testableexamples
-  #    - testifylint
+#    - testifylint
     - tparallel
     - unconvert
     - usestdlibvars
     - usetesting
-  #    - whitespace
+    - whitespace
   settings:
     depguard:
       rules:

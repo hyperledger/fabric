@@ -89,7 +89,6 @@ func (combiner *itrCombiner) moveItrAndRemoveIfExhausted(i int) (removed bool, e
 	if exhausted {
 		combiner.holders[i].itr.Close()
 		combiner.holders = append(combiner.holders[:i], combiner.holders[i+1:]...)
-
 	}
 	return exhausted, nil
 }

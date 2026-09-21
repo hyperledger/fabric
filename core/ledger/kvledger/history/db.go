@@ -91,7 +91,6 @@ func (d *DB) Commit(block *common.Block) error {
 
 	// write each tran's write set to history db
 	for _, envBytes := range block.GetData().GetData() {
-
 		// If the tran is marked as invalid, skip it
 		if txsFilter.IsInvalid(int(tranNo)) {
 			logger.Debugf("Channel [%s]: Skipping history write for invalid transaction number %d",
@@ -135,7 +134,6 @@ func (d *DB) Commit(block *common.Block) error {
 					dbBatch.Put(dataKey, emptyValue)
 				}
 			}
-
 		} else {
 			logger.Debugf("Skipping transaction [%d] since it is not an endorsement transaction\n", tranNo)
 		}

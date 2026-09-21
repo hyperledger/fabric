@@ -89,7 +89,6 @@ func formatDigests(msgType gossip.PullMsgType, givenDigests [][]byte) []string {
 		for _, digest := range givenDigests {
 			digests = append(digests, hex.EncodeToString(digest))
 		}
-
 	}
 	return digests
 }

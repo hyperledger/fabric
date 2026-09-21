@@ -48,8 +48,8 @@ func (v *validator) preLoadCommittedVersionOfRSet(blk *block) error {
 					pubKeysMap[compositeKey] = nil
 					pubKeys = append(pubKeys, &compositeKey)
 				}
-
 			}
+
 			for _, colHashedRwSet := range nsRWSet.CollHashedRwSets {
 				for _, kvHashedRead := range colHashedRwSet.HashedRwSet.GetHashedReads() {
 					hashedCompositeKey := privacyenabledstate.HashedCompositeKey{
@@ -314,7 +314,6 @@ func (p *pvtdataPurgeTracker) update(rwset *rwsetutil.TxRwSet, version *version.
 	for _, nsRwSets := range rwset.NsRwSets {
 		for _, collHashedRwSet := range nsRwSets.CollHashedRwSets {
 			for _, hashedWrite := range collHashedRwSet.HashedRwSet.GetHashedWrites() {
-
 				ck := privacyenabledstate.HashedCompositeKey{
 					Namespace:      nsRwSets.NameSpace,
 					CollectionName: collHashedRwSet.CollectionName,

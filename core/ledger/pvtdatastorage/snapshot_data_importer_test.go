@@ -350,7 +350,6 @@ func TestSnapshotImporter(t *testing.T) {
 				version.NewHeight(uint64(i), 302),
 			)
 			require.NoError(t, err)
-
 		}
 		require.NoError(t, snapshotDataImporter.Done())
 

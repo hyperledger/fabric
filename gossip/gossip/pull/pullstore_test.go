@@ -470,7 +470,6 @@ func createDigestsFilter(level uint64) IngressDigestFilter {
 				continue
 			}
 			res.Digests = append(res.Digests, digestMsg.GetDigests()[i])
-
 		}
 		return res
 	}

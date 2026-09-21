@@ -469,7 +469,6 @@ func GetClientCertificate() (tls.Certificate, error) {
 		}
 		keyPath = config.GetPath("peer.tls.clientKey.file")
 		certPath = config.GetPath("peer.tls.clientCert.file")
-
 	} else {
 		// use the TLS server keypair
 		keyPath = viper.GetString("peer.tls.key.file")

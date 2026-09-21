@@ -58,7 +58,6 @@ func NewPeerClientForAddress(address, tlsRootCertFile string) (*PeerClient, erro
 		if err != nil {
 			return nil, err
 		}
-
 	}
 	clientConfig.SecOpts = secOpts
 

@@ -307,10 +307,9 @@ func ParseChaincodePackage(source []byte) (*ChaincodePackageMetadata, []byte, er
 		}
 
 		switch header.Name {
-
 		case MetadataFile:
 			ccPackageMetadata = &ChaincodePackageMetadata{}
-			err := json.Unmarshal(fileBytes, ccPackageMetadata)
+			err = json.Unmarshal(fileBytes, ccPackageMetadata)
 			if err != nil {
 				return ccPackageMetadata, nil, errors.Wrapf(err, "could not unmarshal %s as json", MetadataFile)
 			}
@@ -330,7 +329,7 @@ func ParseChaincodePackage(source []byte) (*ChaincodePackageMetadata, []byte, er
 		return ccPackageMetadata, nil, errors.Errorf("did not find any package metadata (missing %s)", MetadataFile)
 	}
 
-	if err := ValidateLabel(ccPackageMetadata.Label); err != nil {
+	if err = ValidateLabel(ccPackageMetadata.Label); err != nil {
 		return ccPackageMetadata, nil, err
 	}
 

@@ -101,7 +101,6 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 				return nil, newRpcError(codes.DeadlineExceeded, "endorsement timeout expired while collecting endorsements")
 			}
 		}
-
 	}
 
 	if plan.completedLayout == nil {

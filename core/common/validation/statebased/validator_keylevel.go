@@ -279,7 +279,6 @@ func (klv *KeyLevelValidator) Validate(cc string, blockNum, txNum uint64, rwsetB
 		endorsementPolicy := &peer.ApplicationPolicy{}
 		proto.Unmarshal(ccEP, endorsementPolicy)
 		logger.Warnw("Endorsment policy failure", "error", err, "chaincode", cc, "endorsementPolicy", endorsementPolicy, "endorsingIdentities", protoutil.LogMessageForSerializedIdentities(signatureSet))
-
 	}
 	return err
 }

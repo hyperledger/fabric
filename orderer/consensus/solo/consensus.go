@@ -137,7 +137,6 @@ func (ch *chain) main() {
 					// 1. Timer is already running and there are messages pending
 					// 2. Timer is not set and there are no messages pending
 				}
-
 			} else {
 				// ConfigMsg
 				if msg.configSeq < seq {

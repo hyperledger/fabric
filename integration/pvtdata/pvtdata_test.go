@@ -1100,7 +1100,6 @@ func assertPvtdataPresencePerCollectionConfig1(n *nwo.Network, chaincodeName, ma
 	}
 	for _, peer := range peers {
 		switch peer.Organization {
-
 		case "Org1":
 			marblechaincodeutil.AssertPresentInCollectionM(n, channelID, chaincodeName, marbleName, peer)
 			marblechaincodeutil.AssertNotPresentInCollectionMPD(n, channelID, chaincodeName, marbleName, peer)
@@ -1122,7 +1121,6 @@ func assertPvtdataPresencePerCollectionConfig2(n *nwo.Network, chaincodeName, ma
 	}
 	for _, peer := range peers {
 		switch peer.Organization {
-
 		case "Org1":
 			marblechaincodeutil.AssertPresentInCollectionM(n, channelID, chaincodeName, marbleName, peer)
 			marblechaincodeutil.AssertNotPresentInCollectionMPD(n, channelID, chaincodeName, marbleName, peer)
@@ -1144,7 +1142,6 @@ func assertPvtdataPresencePerCollectionConfig7(n *nwo.Network, chaincodeName, ma
 		// exclude the peer that invoked originally and count number of peers disseminated to
 		if peer != excludedPeer {
 			switch peer.Organization {
-
 			case "Org1":
 				collectionMPresence += marblechaincodeutil.CheckPresentInCollectionM(n, channelID, chaincodeName, marbleName, peer)
 				marblechaincodeutil.AssertNotPresentInCollectionMPD(n, channelID, chaincodeName, marbleName, peer)

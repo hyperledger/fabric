@@ -45,7 +45,6 @@ func (t *Tracker) Check(status *raft.Status) {
 	// leader
 	current := []uint64{t.id}
 	for id, progress := range status.Progress {
-
 		if id == t.id {
 			// `RecentActive` for leader's Progress is expected to be false in current implementation of etcd/raft,
 			// but because not marking the leader recently active might be considered a bug and fixed in the future,
