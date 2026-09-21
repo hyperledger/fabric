@@ -190,7 +190,6 @@ func (cps ComparablePrincipalSets) reduce() ComparablePrincipalSets {
 			if s1.IsSubset(s2) && i < j {
 				isContaining = false
 			}
-
 		}
 		if !isContaining {
 			res = append(res, s1)

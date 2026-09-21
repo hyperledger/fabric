@@ -228,7 +228,6 @@ var (
 func main() {
 	kingpin.Version("0.0.1")
 	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
-
 	// "generate" command
 	case gen.FullCommand():
 		generate()

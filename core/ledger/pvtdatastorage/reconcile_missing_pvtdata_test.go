@@ -625,7 +625,6 @@ func constructPvtDataForTest(t *testing.T, blockInfo []*blockTxPvtDataInfoForTes
 					}
 				}
 			}
-
 		}
 	}
 

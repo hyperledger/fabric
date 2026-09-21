@@ -879,7 +879,6 @@ func assertBlockReceptionInAllOrderers(orderers []*nwo.Orderer, peer *nwo.Peer, 
 			return nwo.CurrentConfigBlockNumber(network, peer, orderer, channelId)
 		}
 		Eventually(ccb, network.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
-
 	}
 }
 

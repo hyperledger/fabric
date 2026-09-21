@@ -84,7 +84,6 @@ func TestRateLimitMultipleClients(t *testing.T) {
 				rl.LimitRate(client)
 			}
 		}(client)
-
 	}
 
 	wg.Wait()
@@ -183,7 +182,6 @@ func TestRateLimitClientNumChange(t *testing.T) { //nolint:tparallel
 					rl.LimitRate(client)
 				}
 			}(client)
-
 		}
 
 		wg.Wait()

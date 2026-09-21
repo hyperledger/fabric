@@ -115,7 +115,6 @@ func (b *PayloadsBufferImpl) Pop() *proto.Payload {
 		atomic.AddUint64(&b.next, 1)
 
 		b.drainReadChannel()
-
 	}
 
 	return result

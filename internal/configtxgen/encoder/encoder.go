@@ -615,7 +615,6 @@ func MakeChannelCreationTransactionFromTemplate(
 		if err != nil {
 			return nil, errors.Wrap(err, "signature failure over config update")
 		}
-
 	}
 
 	return protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, signer, newConfigUpdateEnv, msgVersion, epoch)

@@ -497,7 +497,6 @@ func (gc *gossipChannel) createBlockPuller() pull.Mediator {
 			if seqNum >= height {
 				digestMsg.Digests = append(digestMsg.Digests, digests[i])
 			}
-
 		}
 		return digestMsg
 	}

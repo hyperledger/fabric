@@ -53,7 +53,7 @@ linters:
     - unconvert
     - usestdlibvars
     - usetesting
-#    - whitespace
+    - whitespace
   settings:
     depguard:
       rules:

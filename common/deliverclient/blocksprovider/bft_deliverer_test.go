@@ -417,7 +417,6 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 			<-setup.monEndCSet[i]
 			require.Equal(t, 1, mon.MonitorCallCount())
 			require.Equal(t, 1, mon.StopCallCount())
-
 		}
 	})
 

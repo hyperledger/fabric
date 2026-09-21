@@ -71,7 +71,6 @@ func (itr *blocksItr) Next() (ledger.QueryResult, error) {
 
 	cachedBlock, existsInCache := itr.mgr.cache.get(itr.blockNumToRetrieve)
 	if existsInCache {
-
 		// Close the stream if applicable, because since we're fetching from
 		// the cache, the file stream is no longer in sync with the block number to retrieve.
 		// Hopefully the next iteration will also be a cache hit.

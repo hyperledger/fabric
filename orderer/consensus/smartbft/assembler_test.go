@@ -84,7 +84,6 @@ func TestAssembler(t *testing.T) {
 			assembler.RuntimeConfig.Store(rtc)
 
 			if testCase.panicVal != "" {
-
 				require.Panics(t, func() {
 					assembler.AssembleProposal([]byte{1, 2, 3}, testCase.requests)
 				})
