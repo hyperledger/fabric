@@ -169,11 +169,11 @@ func validateAndRemovePurgedKeys(
 	if collWSHashFromBlock != nil &&
 		len(trimmedKVHashes) == len(kvHashes) &&
 		len(pvtKVs) == len(kvHashes) {
-
 		if !bytes.Equal(util.ComputeSHA256(collPvtProto.GetRwset()), collWSHashFromBlock) {
 			logSkippedCollection(ns, coll, blkNum, txNum, "Hash mismatched")
 			return nil, nil
 		}
+
 		return collPvtProto, nil
 	}
 

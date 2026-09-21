@@ -230,7 +230,6 @@ func (cs *ChaincodeSupport) CheckInvocation(txParams *ccprovider.TransactionPara
 
 	needsInitialization := false
 	if cii.EnforceInit {
-
 		value, err := txParams.TXSimulator.GetState(chaincodeName, InitializedKeyName)
 		if err != nil {
 			return "", 0, errors.WithMessage(err, "could not get 'initialized' key")

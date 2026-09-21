@@ -81,7 +81,6 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 					var group string
 					endorser, group = plan.nextPeerInGroup(endorser)
 					plan.abandonGroupRemoveLayouts(group)
-
 				} else {
 					done <- newRpcError(code, "evaluate call to endorser returned error: "+message, errDetails...)
 				}

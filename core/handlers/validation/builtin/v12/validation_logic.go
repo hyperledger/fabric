@@ -204,7 +204,6 @@ func validateNewCollectionConfigs(newCollectionConfigs []*pb.CollectionConfig) e
 	newCollectionsMap := make(map[string]bool, len(newCollectionConfigs))
 	// Process each collection config from a set of collection configs
 	for _, newCollectionConfig := range newCollectionConfigs {
-
 		newCollection := newCollectionConfig.GetStaticCollectionConfig()
 		if newCollection == nil {
 			return errors.New("unknown collection configuration type")
@@ -270,7 +269,6 @@ func checkForMissingCollections(newCollectionsMap map[string]*pb.StaticCollectio
 	// In the new collection config package, ensure that there is one entry per old collection. Any
 	// number of new collections are allowed.
 	for _, oldCollectionConfig := range oldCollectionConfigs {
-
 		oldCollection := oldCollectionConfig.GetStaticCollectionConfig()
 		// It cannot be nil
 		if oldCollection == nil {
@@ -300,7 +298,6 @@ func checkForModifiedCollectionsBTL(newCollectionsMap map[string]*pb.StaticColle
 	// In the new collection config package, ensure that the block to live value is not
 	// modified for the existing collections.
 	for _, oldCollectionConfig := range oldCollectionConfigs {
-
 		oldCollection := oldCollectionConfig.GetStaticCollectionConfig()
 		// It cannot be nil
 		if oldCollection == nil {
@@ -434,7 +431,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 	newCollectionConfigPackage := &pb.CollectionConfigPackage{}
 
 	if collectionsConfigArg != nil {
-		err := proto.Unmarshal(collectionsConfigArg, newCollectionConfigPackage)
+		err = proto.Unmarshal(collectionsConfigArg, newCollectionConfigPackage)
 		if err != nil {
 			return policyErr(fmt.Errorf("invalid collection configuration supplied for chaincode %s:%s",
 				cdRWSet.GetName(), cdRWSet.GetVersion()))
@@ -445,12 +442,11 @@ func (vscc *Validator) validateRWSetAndCollection(
 
 	if ac.V1_2Validation() {
 		newCollectionConfigs := newCollectionConfigPackage.GetConfig()
-		if err := validateNewCollectionConfigs(newCollectionConfigs); err != nil {
+		if err = validateNewCollectionConfigs(newCollectionConfigs); err != nil {
 			return policyErr(err)
 		}
 
 		if lsccFunc == lscc.UPGRADE {
-
 			collectionCriteria := privdata.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.GetName()}
 			// oldCollectionConfigPackage denotes the existing collection config package in the ledger
 			oldCollectionConfigPackage, err := privdata.RetrieveCollectionConfigPackageFromState(collectionCriteria, state)
@@ -469,10 +465,9 @@ func (vscc *Validator) validateRWSetAndCollection(
 			// oldCollectionConfigPackage denotes the existing collection config package in the ledger
 			if oldCollectionConfigPackage != nil {
 				oldCollectionConfigs := oldCollectionConfigPackage.GetConfig()
-				if err := validateNewCollectionConfigsAgainstOld(newCollectionConfigs, oldCollectionConfigs); err != nil {
+				if err = validateNewCollectionConfigsAgainstOld(newCollectionConfigs, oldCollectionConfigs); err != nil {
 					return policyErr(err)
 				}
-
 			}
 		}
 	}

@@ -975,7 +975,6 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 		isPaginated = true
 		executeIter, err = txContext.TXSimulator.ExecuteQueryWithPagination(namespaceID,
 			getQueryResult.GetQuery(), metadata.GetBookmark(), metadata.GetPageSize())
-
 	} else {
 		executeIter, err = txContext.TXSimulator.ExecuteQuery(namespaceID, getQueryResult.GetQuery())
 	}

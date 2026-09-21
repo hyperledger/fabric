@@ -563,7 +563,6 @@ func TestGetVersion(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 
 	// check to see if the bulk optimizable interface is supported (couchdb)
 	if bulkdb, ok := db.(statedb.BulkOptimizable); ok {
-
 		// clear the cached versions, this will force a read when getVerion is called
 		bulkdb.ClearCachedVersions()
 
@@ -579,7 +578,6 @@ func TestGetVersion(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 		resp, err := db.GetVersion("ns", "key3")
 		require.NoError(t, err)
 		require.Equal(t, version.NewHeight(1, 3), resp)
-
 	}
 }
 
@@ -966,7 +964,6 @@ func executeRangeQuery(t *testing.T, db statedb.VersionedDB, namespace, startKey
 		if err != nil {
 			return "", err
 		}
-
 	} else {
 		itr, err = db.GetStateRangeScanIteratorWithPagination(namespace, startKey, endKey, pageSize)
 		if err != nil {

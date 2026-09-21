@@ -939,7 +939,6 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 		}
 
 		if c.checkForEvictionNCertRotation(msg.GetPayload()) {
-
 			if !c.leadershipTransferInProgress.CompareAndSwap(0, 1) {
 				c.logger.Warnf("A reconfiguration transaction is already in progress, ignoring a subsequent transaction")
 				return
@@ -1014,7 +1013,7 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 	// it is a normal message
 	if msg.GetLastValidationSeq() < seq {
 		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.GetLastValidationSeq(), seq)
-		if _, err := c.support.ProcessNormalMsg(msg.GetPayload()); err != nil {
+		if _, err = c.support.ProcessNormalMsg(msg.GetPayload()); err != nil {
 			c.Metrics.ProposalFailures.Add(1)
 			return nil, true, errors.Errorf("bad normal message: %s", err)
 		}
@@ -1215,7 +1214,6 @@ func (c *Chain) apply(ents []*raftpb.Entry) {
 			if c.confChangeInProgress != nil &&
 				c.confChangeInProgress.GetNodeId() == cc.GetNodeId() &&
 				c.confChangeInProgress.GetType() == cc.GetType() {
-
 				configureComm = true
 				c.confChangeInProgress = nil
 				c.configInflight = false
@@ -1471,11 +1469,10 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 				}
 			}
 			return nil
-		} else {
-			c.logger.Panicf("illegal consensus type detected during consensus metadata validation: %s", newOrdererConfig.ConsensusType())
-			return errors.Errorf("illegal consensus type detected during consensus metadata validation: %s", newOrdererConfig.ConsensusType())
-
 		}
+
+		c.logger.Panicf("illegal consensus type detected during consensus metadata validation: %s", newOrdererConfig.ConsensusType())
+		return errors.Errorf("illegal consensus type detected during consensus metadata validation: %s", newOrdererConfig.ConsensusType())
 	}
 
 	if oldOrdererConfig == nil {
@@ -1503,7 +1500,7 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 		return errors.Wrapf(err, "failed to create x509 verify options from old and new orderer config")
 	}
 
-	if err := VerifyConfigMetadata(newMetadata, verifyOpts); err != nil {
+	if err = VerifyConfigMetadata(newMetadata, verifyOpts); err != nil {
 		return errors.Wrap(err, "invalid new config metadata")
 	}
 
@@ -1531,7 +1528,7 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 
 	// new config metadata was verified above. Additionally need to check new consenters for certificates expiration
 	for _, c := range changes.AddedNodes {
-		if err := validateConsenterTLSCerts(c, verifyOpts, false); err != nil {
+		if err = validateConsenterTLSCerts(c, verifyOpts, false); err != nil {
 			return errors.Wrapf(err, "consenter %s:%d has invalid certificates", c.GetHost(), c.GetPort())
 		}
 	}

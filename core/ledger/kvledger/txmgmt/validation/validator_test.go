@@ -126,7 +126,6 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 	blk := &block{num: 1, txs: trans}
 
 	if testValidator.db.IsBulkOptimizable() {
-
 		db := testValidator.db
 		bulkOptimizable, _ := db.VersionedDB.(statedb.BulkOptimizable)
 

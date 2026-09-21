@@ -63,7 +63,6 @@ func (br *BlockReceiver) Start() {
 				close(br.recvC)
 				return
 			}
-
 		}
 	}()
 }

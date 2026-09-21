@@ -266,7 +266,6 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 	// PHASE 1 - Select one peer from each eligible org
 	if maximumPeerRemainingCount > 0 {
 		for _, selectionPeersForOrg := range identitySetsByOrg {
-
 			// Peers are tagged as a required peer (acksRequired=1) for RequiredPeerCount up front before dissemination.
 			// TODO It would be better to attempt dissemination to MaxPeerCount first, and then verify that enough sends were acknowledged to meet RequiredPeerCount.
 			acksRequired := 1

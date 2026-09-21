@@ -88,7 +88,6 @@ func (m *Metrics) reportConsensusRelation(channel string, relation types.Consens
 		r = 3
 	default:
 		logger.Panicf("Programming error: unexpected relation %s", relation)
-
 	}
 	m.ConsensusRelation.With("channel", channel).Set(float64(r))
 }

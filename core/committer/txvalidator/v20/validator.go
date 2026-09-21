@@ -359,7 +359,6 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		}
 
 		if common.HeaderType(chdr.GetType()) == common.HeaderType_ENDORSER_TRANSACTION {
-
 			txID = chdr.GetTxId()
 
 			// Check duplicate transactions

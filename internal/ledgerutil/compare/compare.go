@@ -152,14 +152,12 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 
 	// Main snapshot record comparison loop
 	for snapshotRecord1 != nil && snapshotRecord2 != nil {
-
 		// nsKeys used for comparing snapshot records
 		key1 := &nsKey{namespace: namespace1, key: snapshotRecord1.GetKey()}
 		key2 := &nsKey{namespace: namespace2, key: snapshotRecord2.GetKey()}
 
 		// Determine the difference in records by comparing nsKeys
 		switch nsKeyCompare(key1, key2) {
-
 		case 0: // Keys are the same, look for a difference in records
 			if !proto.Equal(snapshotRecord1, snapshotRecord2) {
 				// Keys are the same but records are different
@@ -233,7 +231,6 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 
 	// Check for tailing records
 	switch {
-
 	case snapshotRecord1 != nil: // Snapshot 2 is missing a record
 		for snapshotRecord1 != nil {
 			// Add missing to output JSON file

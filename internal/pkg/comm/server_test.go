@@ -98,7 +98,6 @@ func (esss *emptyServiceServer) EmptyStream(stream testpb.EmptyService_EmptyStre
 		if err = stream.Send(&testpb.Empty{}); err != nil {
 			return err
 		}
-
 	}
 }
 
