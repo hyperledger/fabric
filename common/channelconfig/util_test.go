@@ -350,7 +350,6 @@ func TestMarshalEtcdRaftMetadata(t *testing.T) {
 	for i := range unpacked.GetConsenters() {
 		outputCerts[i] = unpacked.GetConsenters()[i].GetClientTlsCert()
 		inputCerts[i], _ = os.ReadFile(fmt.Sprintf("testdata/tls-client-%d.pem", i+1))
-
 	}
 
 	for i := range len(inputCerts) - 1 {

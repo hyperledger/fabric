@@ -503,7 +503,6 @@ func testDBCreateDatabaseAndPersist(t *testing.T, config *ledger.CouchDBConfig) 
 	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	for _, attach4 := range dbGetResp.attachments {
-
 		currentName := attach4.Name
 		if currentName == "data1" {
 			require.Equal(t, testBytes4a, attach4.AttachmentBytes)
@@ -511,7 +510,6 @@ func testDBCreateDatabaseAndPersist(t *testing.T, config *ledger.CouchDBConfig) 
 		if currentName == "data2" {
 			require.Equal(t, testBytes4b, attach4.AttachmentBytes)
 		}
-
 	}
 
 	testBytes5a := []byte(`test attachment 5a`)
@@ -539,7 +537,6 @@ func testDBCreateDatabaseAndPersist(t *testing.T, config *ledger.CouchDBConfig) 
 	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	for _, attach5 := range dbGetResp.attachments {
-
 		currentName := attach5.Name
 		if currentName == "data1" {
 			require.Equal(t, testBytes5a, attach5.AttachmentBytes)
@@ -547,7 +544,6 @@ func testDBCreateDatabaseAndPersist(t *testing.T, config *ledger.CouchDBConfig) 
 		if currentName == "data2" {
 			require.Equal(t, testBytes5b, attach5.AttachmentBytes)
 		}
-
 	}
 
 	// Attempt to save the document with an invalid id
@@ -712,7 +708,6 @@ func TestPrefixScan(t *testing.T) {
 		require.NoError(t, saveerr, "Error when trying to save a document")
 		_, saveerr = db.saveDoc(id3, "", &couchDoc{jsonValue: assetJSON, attachments: nil})
 		require.NoError(t, saveerr, "Error when trying to save a document")
-
 	}
 	startKey := string([]rune{0, 10})
 	endKey := startKey + string(utf8.MaxRune)
@@ -1395,8 +1390,8 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 		require.Equal(t, true, updateDoc.Ok)
 	}
 
-	//----------------------------------------------
-	//Test Retrieve JSON
+	// ----------------------------------------------
+	// Test Retrieve JSON
 	dbGetResp, _, geterr := db.readDoc("marble01")
 	require.NoError(t, geterr, "Error when attempting read a document")
 
@@ -1406,7 +1401,7 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 	// Verify the owner retrieved matches
 	require.Equal(t, "jerry", assetResp.Owner)
 
-	//----------------------------------------------
+	// ----------------------------------------------
 	// Test Retrieve JSON using ID with URL special characters,
 	// this will confirm that batch document IDs and URL IDs are consistent, even if they include special characters
 	dbGetResp, _, geterr = db.readDoc("marble06#$&'()*+,/:;=?@[]")
@@ -1418,8 +1413,8 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 	// Verify the owner retrieved matches
 	require.Equal(t, "jerry", assetResp.Owner)
 
-	//----------------------------------------------
-	//Test retrieve binary
+	// ----------------------------------------------
+	// Test retrieve binary
 	dbGetResp, _, geterr = db.readDoc("marble03")
 	require.NoError(t, geterr, "Error when attempting read a document")
 	// Retrieve the attachments
@@ -1428,8 +1423,8 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 	retrievedAttachment := attachments[0]
 	// Verify the text matches
 	require.Equal(t, retrievedAttachment.AttachmentBytes, attachment3.AttachmentBytes)
-	//----------------------------------------------
-	//Test Bad Updates
+	// ----------------------------------------------
+	// Test Bad Updates
 	batchUpdateDocs = []*couchDoc{}
 	batchUpdateDocs = append(batchUpdateDocs, value1)
 	batchUpdateDocs = append(batchUpdateDocs, value2)
@@ -1443,8 +1438,8 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 		require.Equal(t, updateDocumentConflictReason, updateDoc.Reason)
 	}
 
-	//----------------------------------------------
-	//Test Batch Retrieve Keys and Update
+	// ----------------------------------------------
+	// Test Batch Retrieve Keys and Update
 
 	var keys []string
 
@@ -1479,8 +1474,8 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 		require.Equal(t, true, updateDoc.Ok)
 	}
 
-	//----------------------------------------------
-	//Test Batch Delete
+	// ----------------------------------------------
+	// Test Batch Delete
 
 	keys = []string{}
 

@@ -128,7 +128,6 @@ func computeGroupsMapUpdate(original, updated map[string]*cb.ConfigGroup) (readS
 
 		readSet[groupName] = groupReadSet
 		writeSet[groupName] = groupWriteSet
-
 	}
 
 	for groupName, updatedGroup := range updated {
@@ -157,7 +156,6 @@ func computeGroupUpdate(original, updated *cb.ConfigGroup) (readSet, writeSet *c
 
 	// If the updated group is 'Equal' to the updated group (none of the members nor the mod policy changed)
 	if !policiesMembersUpdated && !valuesMembersUpdated && !groupsMembersUpdated && original.GetModPolicy() == updated.GetModPolicy() {
-
 		// If there were no modified entries in any of the policies/values/groups maps
 		if len(readSetPolicies) == 0 &&
 			len(writeSetPolicies) == 0 &&

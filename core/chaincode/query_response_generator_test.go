@@ -100,7 +100,6 @@ func TestBuildQueryResponse(t *testing.T) {
 					// remainder retrieved, no more expected
 					require.Len(t, queryResponse.GetResults(), tc.expectedResultCount-totalResultCount)
 					require.False(t, queryResponse.GetHasMore())
-
 				}
 				totalResultCount += len(queryResponse.GetResults())
 			}

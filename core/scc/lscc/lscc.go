@@ -389,10 +389,9 @@ func checkCollectionMemberPolicy(collectionConfig *pb.CollectionConfig, mspmgr m
 		var orgID string
 		// the member org policy only supports certain principal types
 		switch principal.GetPrincipalClassification() {
-
 		case mb.MSPPrincipal_ROLE:
 			msprole := &mb.MSPRole{}
-			err := proto.Unmarshal(principal.GetPrincipal(), msprole)
+			err = proto.Unmarshal(principal.GetPrincipal(), msprole)
 			if err != nil {
 				return errors.Wrapf(err, "collection-name: %s -- cannot unmarshal identities", coll.GetName())
 			}
@@ -407,7 +406,7 @@ func checkCollectionMemberPolicy(collectionConfig *pb.CollectionConfig, mspmgr m
 
 		case mb.MSPPrincipal_ORGANIZATION_UNIT:
 			mspou := &mb.OrganizationUnit{}
-			err := proto.Unmarshal(principal.GetPrincipal(), mspou)
+			err = proto.Unmarshal(principal.GetPrincipal(), mspou)
 			if err != nil {
 				return errors.Wrapf(err, "collection-name: %s -- cannot unmarshal identities", coll.GetName())
 			}
@@ -423,7 +422,7 @@ func checkCollectionMemberPolicy(collectionConfig *pb.CollectionConfig, mspmgr m
 		case mb.MSPPrincipal_IDENTITY:
 			orgID = "identity principal"
 			for _, msp := range msps {
-				_, err := msp.DeserializeIdentity(principal.GetPrincipal())
+				_, err = msp.DeserializeIdentity(principal.GetPrincipal())
 				if err == nil {
 					found = true
 					break
@@ -440,7 +439,7 @@ func checkCollectionMemberPolicy(collectionConfig *pb.CollectionConfig, mspmgr m
 	// Call the constructor for SignaturePolicyEnvelope evaluators to perform extra semantic validation.
 	// Among other things, this validation catches any out-of-range references to the identities array.
 	policyProvider := &cauthdsl.EnvelopeBasedPolicyProvider{Deserializer: mspmgr}
-	if _, err := policyProvider.NewPolicy(coll.GetMemberOrgsPolicy().GetSignaturePolicy()); err != nil {
+	if _, err = policyProvider.NewPolicy(coll.GetMemberOrgsPolicy().GetSignaturePolicy()); err != nil {
 		logger.Errorf("Invalid member org policy for collection '%s', error: %s", coll.GetName(), err)
 		return errors.WithMessage(err, fmt.Sprintf("invalid member org policy for collection '%s'", coll.GetName()))
 	}

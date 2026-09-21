@@ -535,7 +535,6 @@ func (dbclient *couchDatabase) saveDoc(id string, rev string, couchDoc *couchDoc
 
 	// check to see if attachments is nil, if so, then this is a JSON only
 	if couchDoc.attachments == nil {
-
 		// Test to see if this is a valid JSON
 		if !isJSON(string(couchDoc.jsonValue)) {
 			return "", errors.New("JSON format is not valid")
@@ -543,10 +542,8 @@ func (dbclient *couchDatabase) saveDoc(id string, rev string, couchDoc *couchDoc
 
 		// if there are no attachments, then use the bytes passed in as the JSON
 		data = couchDoc.jsonValue
-
 	} else { // there are attachments
-
-		// attachments are included, create the multipart definition
+		// are included, create the multipart definition
 		multipartData, multipartBoundary, err3 := createAttachmentPart(couchDoc)
 		if err3 != nil {
 			return "", err3
@@ -564,7 +561,6 @@ func (dbclient *couchDatabase) saveDoc(id string, rev string, couchDoc *couchDoc
 
 		// Set the default boundary to the value generated in the multipart creation
 		defaultBoundary = multipartBoundary
-
 	}
 
 	// get the number of retries
@@ -623,7 +619,6 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 
 	// Add any data uploaded with the files
 	if couchDoc.jsonValue != nil {
-
 		// create a generic map
 		genericMap := make(map[string]any)
 
@@ -637,7 +632,6 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 
 		// add all key/values to the attachmentJSONMap
 		maps.Copy(attachmentJSONMap, genericMap)
-
 	}
 
 	filesForUpload, err := json.Marshal(attachmentJSONMap)
@@ -659,14 +653,12 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 	part.Write(filesForUpload)
 
 	for _, attachment := range couchDoc.attachments {
-
 		header := make(textproto.MIMEHeader)
 		part, err2 := writer.CreatePart(header)
 		if err2 != nil {
 			return *writeBuffer, defaultBoundary, errors.Wrap(err2, "error creating multipart")
 		}
 		part.Write(attachment.AttachmentBytes)
-
 	}
 
 	err = writer.Close()
@@ -909,7 +901,6 @@ func (dbclient *couchDatabase) readDocRange(startKey, endKey string, limit int32
 	nextStartKey := endKey
 
 	for index, row := range jsonResponse.Rows {
-
 		docMetadata := &docMetadata{}
 		err3 := json.Unmarshal(row.Doc, &docMetadata)
 		if err3 != nil {
@@ -924,7 +915,6 @@ func (dbclient *couchDatabase) readDocRange(startKey, endKey string, limit int32
 		}
 
 		if docMetadata.AttachmentsInfo != nil {
-
 			couchdbLogger.Debugf("[%s] Adding JSON document and attachments for id: %s", dbclient.dbName, docMetadata.ID)
 
 			attachments := []*attachmentInfo{}
@@ -936,16 +926,12 @@ func (dbclient *couchDatabase) readDocRange(startKey, endKey string, limit int32
 
 			addDocument := &queryResult{docMetadata.ID, row.Doc, attachments}
 			results = append(results, addDocument)
-
 		} else {
-
 			couchdbLogger.Debugf("[%s] Adding json docment for id: %s", dbclient.dbName, docMetadata.ID)
 
 			addDocument := &queryResult{docMetadata.ID, row.Doc, nil}
 			results = append(results, addDocument)
-
 		}
-
 	}
 
 	couchdbLogger.Debugf("[%s] Exiting ReadDocRange()", dbclient.dbName)
@@ -1037,7 +1023,6 @@ func (dbclient *couchDatabase) queryDocuments(query string) ([]*queryResult, str
 	}
 
 	for _, row := range jsonResponse.Docs {
-
 		docMetadata := &docMetadata{}
 		err3 := json.Unmarshal(row, &docMetadata)
 		if err3 != nil {
@@ -1047,7 +1032,6 @@ func (dbclient *couchDatabase) queryDocuments(query string) ([]*queryResult, str
 		// JSON Query results never have attachments
 		// The If block below will never be executed
 		if docMetadata.AttachmentsInfo != nil {
-
 			couchdbLogger.Debugf("[%s] Adding JSON docment and attachments for id: %s", dbclient.dbName, docMetadata.ID)
 
 			couchDoc, _, err := dbclient.readDoc(docMetadata.ID)
@@ -1056,13 +1040,11 @@ func (dbclient *couchDatabase) queryDocuments(query string) ([]*queryResult, str
 			}
 			addDocument := &queryResult{id: docMetadata.ID, value: couchDoc.jsonValue, attachments: couchDoc.attachments}
 			results = append(results, addDocument)
-
 		} else {
 			couchdbLogger.Debugf("[%s] Adding json docment for id: %s", dbclient.dbName, docMetadata.ID)
 			addDocument := &queryResult{id: docMetadata.ID, value: row, attachments: nil}
 
 			results = append(results, addDocument)
-
 		}
 	}
 
@@ -1121,7 +1103,6 @@ func (dbclient *couchDatabase) listIndex() ([]*indexResult, error) {
 	var results []*indexResult
 
 	for _, row := range jsonResponse.Indexes {
-
 		// if the DesignDocument does not begin with "_design/", then this is a system
 		// level index and is not meaningful and cannot be edited or deleted
 		designDoc := row.DesignDocument
@@ -1133,7 +1114,6 @@ func (dbclient *couchDatabase) listIndex() ([]*indexResult, error) {
 			addIndexResult := &indexResult{DesignDocument: designDoc, Name: row.Name, Definition: string(row.Definition)}
 			results = append(results, addIndexResult)
 		}
-
 	}
 
 	couchdbLogger.Debugf("[%s] Exiting ListIndex()", dbclient.dbName)
@@ -1188,11 +1168,9 @@ func (dbclient *couchDatabase) createIndex(indexdefinition string) (*createIndex
 	}
 
 	if couchDBReturn.Result == "created" {
-
 		couchdbLogger.Infof("Created CouchDB index [%s] in state database [%s] using design document [%s]", couchDBReturn.Name, dbclient.dbName, couchDBReturn.ID)
 
 		return couchDBReturn, nil
-
 	}
 
 	couchdbLogger.Infof("Updated CouchDB index [%s] in state database [%s] using design document [%s]", couchDBReturn.Name, dbclient.dbName, couchDBReturn.ID)
@@ -1421,7 +1399,6 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 	var jsonDocumentMap []any
 
 	for _, jsonDocument := range documents {
-
 		// create a document map
 		document := make(map[string]any)
 
@@ -1433,7 +1410,6 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 
 		// iterate through any attachments
 		if len(jsonDocument.attachments) > 0 {
-
 			// create a file attachment map
 			fileAttachment := make(map[string]any)
 
@@ -1448,12 +1424,10 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 
 			// add attachments to the document
 			document["_attachments"] = fileAttachment
-
 		}
 
 		// Append the document to the map of documents
 		jsonDocumentMap = append(jsonDocumentMap, document)
-
 	}
 
 	// Add the documents to the "docs" item
@@ -1513,7 +1487,6 @@ func (dbclient *couchDatabase) handleRequestWithRevisionRetry(id, method, dbName
 	// In this case, the retry is to catch problems where a client timeout may miss a
 	// successful CouchDB update and cause a document revision conflict on a retry in handleRequest
 	for attempts := 0; attempts <= maxRetries; attempts++ {
-
 		// if the revision was not passed in, or if a revision conflict is detected on prior attempt,
 		// query CouchDB for the document revision
 		if rev == "" || revisionConflictDetected {
@@ -1583,7 +1556,6 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 	// if maxRetries is 3 (default), a maximum of 4 attempts (one attempt with 3 retries)
 	//    will be made with warning entries for unsuccessful attempts
 	for attempts := 0; attempts <= maxRetries; attempts++ {
-
 		// Set up a buffer for the payload data
 		payloadData := new(bytes.Buffer)
 
@@ -1604,9 +1576,8 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 
 		// add content header for PUT
 		if method == http.MethodPut || method == http.MethodPost || method == http.MethodDelete {
-
 			// If the multipartBoundary is not set, then this is a JSON and content-type should be set
-			// to application/json.   Else, this is contains an attachment and needs to be multipart
+			// to application/json.   Else, this is containing an attachment and needs to be multipart
 			if multipartBoundary == "" {
 				req.Header.Set("Content-Type", "application/json")
 			} else {
@@ -1667,7 +1638,6 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 
 		// If the maxRetries is greater than 0, then log the retry info
 		if maxRetries > 0 {
-
 			retryMessage := fmt.Sprintf("Retrying couchdb request in %s", waitDuration)
 			if attempts == maxRetries {
 				retryMessage = "Retries exhausted"
@@ -1677,7 +1647,6 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 			if errResp != nil {
 				// Log the error with the retry count and continue
 				couchdbLogger.Warningf("Attempt %d of %d returned error: %s. %s", attempts+1, maxRetries+1, errResp.Error(), retryMessage)
-
 				// otherwise this is an unexpected 500 error from CouchDB. Log the error and retry.
 			} else {
 				// Read the response body and close it for next attempt
@@ -1697,7 +1666,6 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 				// Log the 500 error with the retry count and continue
 				couchdbLogger.Warningf("Attempt %d of %d returned Couch DB Error:%s,  Status Code:%v  Reason:%s. %s",
 					attempts+1, maxRetries+1, couchDBReturn.Error, resp.Status, couchDBReturn.Reason, retryMessage)
-
 			}
 			// if there are more retries remaining, sleep for specified sleep time, then retry
 			if attempts < maxRetries {
@@ -1706,9 +1674,7 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 
 			// backoff, doubling the retry time for next attempt
 			waitDuration *= 2
-
 		}
-
 	} // end retry loop
 
 	// if a golang http error is still present after retries are exhausted, return the error
@@ -1731,14 +1697,12 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 	// response codes 4XX and 500 will be treated as errors -
 	// golang error will be created from the couchDBReturn contents and both will be returned
 	if resp.StatusCode >= 400 {
-
 		// if the status code is 400 or greater, log and return an error
 		couchdbLogger.Debugf("Error handling CouchDB request. Error:%s,  Status Code:%v,  Reason:%s",
 			couchDBReturn.Error, resp.StatusCode, couchDBReturn.Reason)
 
 		return nil, couchDBReturn, errors.Errorf("error handling CouchDB request. Error:%s,  Status Code:%v,  Reason:%s",
 			couchDBReturn.Error, resp.StatusCode, couchDBReturn.Reason)
-
 	}
 
 	couchdbLogger.Debugf("Exiting handleRequest()")

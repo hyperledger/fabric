@@ -280,7 +280,6 @@ func (msp *bccspmsp) finalizeSetupCAs() error {
 
 func (msp *bccspmsp) setupNodeOUs(config *m.FabricMSPConfig) error {
 	if config.GetFabricNodeOus() != nil {
-
 		msp.ouEnforcement = config.GetFabricNodeOus().GetEnable()
 
 		if config.GetFabricNodeOus().GetClientOuIdentifier() == nil || len(config.GetFabricNodeOus().GetClientOuIdentifier().GetOrganizationalUnitIdentifier()) == 0 {
@@ -310,7 +309,6 @@ func (msp *bccspmsp) setupNodeOUs(config *m.FabricMSPConfig) error {
 			}
 			msp.peerOU.CertifiersIdentifier = certifiersIdentifier
 		}
-
 	} else {
 		msp.ouEnforcement = false
 	}
@@ -421,7 +419,6 @@ func (msp *bccspmsp) setupSigningIdentity(conf *m.FabricMSPConfig) error {
 func (msp *bccspmsp) setupOUs(conf *m.FabricMSPConfig) error {
 	msp.ouIdentifiers = make(map[string][][]byte)
 	for _, ou := range conf.GetOrganizationalUnitIdentifiers() {
-
 		certifiersIdentifier, err := msp.getCertifiersIdentifier(ou.GetCertificate())
 		if err != nil {
 			return errors.WithMessagef(err, "failed getting certificate for [%v]", ou)

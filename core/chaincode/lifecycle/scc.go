@@ -789,10 +789,9 @@ func validateCollectionConfigMemberOrgsPolicy(coll *pb.StaticCollectionConfig, m
 		var orgID string
 		// the member org policy only supports certain principal types
 		switch principal.GetPrincipalClassification() {
-
 		case mspprotos.MSPPrincipal_ROLE:
 			msprole := &mspprotos.MSPRole{}
-			err := proto.Unmarshal(principal.GetPrincipal(), msprole)
+			err = proto.Unmarshal(principal.GetPrincipal(), msprole)
 			if err != nil {
 				return errors.Wrapf(err, "collection-name: %s -- cannot unmarshal identity bytes into MSPRole", coll.GetName())
 			}
@@ -805,7 +804,7 @@ func validateCollectionConfigMemberOrgsPolicy(coll *pb.StaticCollectionConfig, m
 
 		case mspprotos.MSPPrincipal_ORGANIZATION_UNIT:
 			mspou := &mspprotos.OrganizationUnit{}
-			err := proto.Unmarshal(principal.GetPrincipal(), mspou)
+			err = proto.Unmarshal(principal.GetPrincipal(), mspou)
 			if err != nil {
 				return errors.Wrapf(err, "collection-name: %s -- cannot unmarshal identity bytes into OrganizationUnit", coll.GetName())
 			}
@@ -817,7 +816,7 @@ func validateCollectionConfigMemberOrgsPolicy(coll *pb.StaticCollectionConfig, m
 			}
 
 		case mspprotos.MSPPrincipal_IDENTITY:
-			if _, err := mspMgr.DeserializeIdentity(principal.GetPrincipal()); err != nil {
+			if _, err = mspMgr.DeserializeIdentity(principal.GetPrincipal()); err != nil {
 				return errors.Errorf("collection-name: %s -- contains an identity that is not part of the channel", coll.GetName())
 			}
 

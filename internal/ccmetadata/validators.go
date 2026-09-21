@@ -162,9 +162,7 @@ func validateIndexJSON(indexDefinition map[string]any) error {
 	for jsonKey, jsonValue := range indexDefinition {
 		// create a case for the top level entries
 		switch jsonKey {
-
 		case "index":
-
 			if reflect.TypeOf(jsonValue).Kind() != reflect.Map {
 				return fmt.Errorf("Invalid entry, \"index\" must be a JSON")
 			}
@@ -177,7 +175,6 @@ func validateIndexJSON(indexDefinition map[string]any) error {
 			indexIncluded = true
 
 		case "ddoc":
-
 			// Verify the design doc is a string
 			if reflect.TypeOf(jsonValue).Kind() != reflect.String {
 				return fmt.Errorf("Invalid entry, \"ddoc\" must be a string")
@@ -186,7 +183,6 @@ func validateIndexJSON(indexDefinition map[string]any) error {
 			logger.Debugf("Found index object: \"%s\":\"%s\"", jsonKey, jsonValue)
 
 		case "name":
-
 			// Verify the name is a string
 			if reflect.TypeOf(jsonValue).Kind() != reflect.String {
 				return fmt.Errorf("Invalid entry, \"name\" must be a string")
@@ -195,7 +191,6 @@ func validateIndexJSON(indexDefinition map[string]any) error {
 			logger.Debugf("Found index object: \"%s\":\"%s\"", jsonKey, jsonValue)
 
 		case "type":
-
 			if jsonValue != "json" {
 				return fmt.Errorf("Index type must be json")
 			}
@@ -203,9 +198,7 @@ func validateIndexJSON(indexDefinition map[string]any) error {
 			logger.Debugf("Found index object: \"%s\":\"%s\"", jsonKey, jsonValue)
 
 		default:
-
 			return fmt.Errorf("Invalid Entry.  Entry %s", jsonKey)
-
 		}
 	}
 
@@ -222,17 +215,12 @@ func processIndexMap(jsonFragment map[string]any) error {
 	// iterate the item in the map
 	for jsonKey, jsonValue := range jsonFragment {
 		switch jsonKey {
-
 		case "fields":
-
 			switch jsonValueType := jsonValue.(type) {
-
 			case []any:
-
 				// iterate the index field objects
 				for _, itemValue := range jsonValueType {
 					switch reflect.TypeOf(itemValue).Kind() {
-
 					case reflect.String:
 						// String is a valid field descriptor  ex: "color", "size"
 						logger.Debugf("Found index field name: \"%s\"", itemValue)
@@ -243,7 +231,6 @@ func processIndexMap(jsonFragment map[string]any) error {
 						if err != nil {
 							return err
 						}
-
 					}
 				}
 
@@ -261,7 +248,6 @@ func processIndexMap(jsonFragment map[string]any) error {
 			// if anything other than "fields" or "partial_filter_selector" was found,
 			// return an error
 			return fmt.Errorf("Invalid Entry.  Entry %s", jsonKey)
-
 		}
 	}
 
@@ -273,7 +259,6 @@ func validateFieldMap(jsonFragment map[string]any) error {
 	// iterate the fields to validate the sort criteria
 	for jsonKey, jsonValue := range jsonFragment {
 		switch jsonValue := jsonValue.(type) {
-
 		case string:
 			// Ensure the sort is either "asc" or "desc"
 			jv := strings.ToLower(jsonValue)

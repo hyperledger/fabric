@@ -35,7 +35,6 @@ func compile(policy *cb.SignaturePolicy, identities []*mb.MSPPrincipal) (func([]
 				return nil, err
 			}
 			policies[i] = compiledPolicy
-
 		}
 		return func(signedData []msp.Identity, used []bool) bool {
 			grepKey := time.Now().UnixNano()

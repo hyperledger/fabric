@@ -471,7 +471,6 @@ func (d *gossipDiscoveryImpl) createMembershipResponse(aliveMsg *protoext.Signed
 	deadPeers := []*proto.Envelope{}
 
 	for _, dm := range d.deadMembership.ToSlice() {
-
 		if !shouldBeDisclosed(dm) {
 			continue
 		}

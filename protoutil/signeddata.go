@@ -49,7 +49,6 @@ func ConfigUpdateEnvelopeAsSignedData(ce *common.ConfigUpdateEnvelope) ([]*Signe
 			Identity:  sigHeader.GetCreator(),
 			Signature: configSig.GetSignature(),
 		}
-
 	}
 
 	return result, nil

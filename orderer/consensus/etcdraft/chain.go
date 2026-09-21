@@ -934,7 +934,6 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 		}
 
 		if c.checkForEvictionNCertRotation(msg.GetPayload()) {
-
 			if !c.leadershipTransferInProgress.CompareAndSwap(0, 1) {
 				c.logger.Warnf("A reconfiguration transaction is already in progress, ignoring a subsequent transaction")
 				return
@@ -1166,7 +1165,6 @@ func (c *Chain) apply(ents []*raftpb.Entry) {
 			if c.confChangeInProgress != nil &&
 				c.confChangeInProgress.GetNodeId() == cc.GetNodeId() &&
 				c.confChangeInProgress.GetType() == cc.GetType() {
-
 				configureComm = true
 				c.confChangeInProgress = nil
 				c.configInflight = false

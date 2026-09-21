@@ -309,7 +309,6 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	require.NoError(err)
 
 	for _, txid := range toRemoveTxids {
-
 		// Check whether private write sets of txid-2 are removed
 		var expectedEndorsersResults *EndorserPvtSimulationResults = nil
 		iter, err = testStore.GetTxPvtRWSetByTxid(txid, nil)
@@ -357,7 +356,6 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	require.NoError(err)
 
 	for _, txid := range toRemoveTxids {
-
 		// Check whether private write sets of txid-1 are removed
 		var expectedEndorsersResults *EndorserPvtSimulationResults = nil
 		iter, err = testStore.GetTxPvtRWSetByTxid(txid, nil)

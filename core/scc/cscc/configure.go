@@ -207,7 +207,6 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 		}
 
 		return e.getChannels()
-
 	}
 	return shim.Error(fmt.Sprintf("Requested function %s not found.", fname))
 }

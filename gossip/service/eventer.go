@@ -59,7 +59,6 @@ func (ce *configEventer) ProcessConfigUpdate(configUpdate ConfigUpdate) {
 	if ce.lastConfig != nil && reflect.DeepEqual(ce.lastConfig.orgMap, orgMap) {
 		logger.Debugf("Ignoring new config for channel %s because it contained no anchor peer updates", configUpdate.ChannelID)
 	} else {
-
 		var newAnchorPeers []*peer.AnchorPeer
 		for _, group := range configUpdate.Organizations {
 			newAnchorPeers = append(newAnchorPeers, group.AnchorPeers()...)
