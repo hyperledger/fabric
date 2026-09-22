@@ -33,7 +33,7 @@ func getMsgType(r *http.Request) (proto.Message, error) {
 	msgType := reflect.TypeOf(mt.Zero().Interface())
 
 	if msgType == nil {
-		return nil, fmt.Errorf("message name not found")
+		return nil, errors.New("message name not found")
 	}
 	return reflect.New(msgType.Elem()).Interface().(proto.Message), nil
 }

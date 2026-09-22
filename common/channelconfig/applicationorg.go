@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package channelconfig
 
 import (
-	"fmt"
-
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/pkg/errors"
@@ -34,7 +32,7 @@ type ApplicationOrgConfig struct {
 // NewApplicationOrgConfig creates a new config for an application org
 func NewApplicationOrgConfig(id string, orgGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler) (*ApplicationOrgConfig, error) {
 	if len(orgGroup.GetGroups()) > 0 {
-		return nil, fmt.Errorf("ApplicationOrg config does not allow sub-groups")
+		return nil, errors.New("ApplicationOrg config does not allow sub-groups")
 	}
 
 	protos := &ApplicationOrgProtos{}

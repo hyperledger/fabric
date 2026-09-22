@@ -97,7 +97,7 @@ func (p *policy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error 
 // they satisfy the policy
 func (p *policy) EvaluateIdentities(identities []msp.Identity) error {
 	if p == nil {
-		return fmt.Errorf("No such policy")
+		return errors.New("No such policy")
 	}
 
 	ok := p.evaluator(identities, make([]bool, len(identities)))

@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package graph
 
 import (
-	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -67,7 +67,7 @@ func TestPermuteTooManyCombinations(t *testing.T) {
 	root := NewTreeVertex("r", nil)
 	root.Threshold = 500
 	for i := range 1000 {
-		root.AddDescendant(NewTreeVertex(fmt.Sprintf("%d", i), nil))
+		root.AddDescendant(NewTreeVertex(strconv.Itoa(i), nil))
 	}
 	permutations := root.ToTree().Permute(501)
 	require.Len(t, permutations, 501)

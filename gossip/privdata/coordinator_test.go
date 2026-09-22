@@ -647,7 +647,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		Validator:          &validatorMock{fmt.Errorf("failed validating block")},
+		Validator:          &validatorMock{errors.New("failed validating block")},
 		CapabilityProvider: capabilityProvider,
 	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)

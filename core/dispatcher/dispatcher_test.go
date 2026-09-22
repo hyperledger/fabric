@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package dispatcher_test
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/hyperledger/fabric/core/dispatcher"
@@ -51,7 +51,7 @@ func (tr TestReceiver) NilNilReturn(ts *timestamppb.Timestamp) (*timestamppb.Tim
 }
 
 func (tr TestReceiver) ErrorReturned(ts *timestamppb.Timestamp) (*timestamppb.Timestamp, error) {
-	return nil, fmt.Errorf("fake-error")
+	return nil, errors.New("fake-error")
 }
 
 var _ = Describe("Dispatcher", func() {
@@ -165,7 +165,7 @@ var _ = Describe("Dispatcher", func() {
 
 		Context("when the returned output cannot be marshaled", func() {
 			BeforeEach(func() {
-				fakeProto.MarshalReturns(nil, fmt.Errorf("fake-error"))
+				fakeProto.MarshalReturns(nil, errors.New("fake-error"))
 			})
 
 			It("wraps and returns the error", func() {

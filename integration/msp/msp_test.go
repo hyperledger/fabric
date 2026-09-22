@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package msp
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"syscall"
 
 	"github.com/hyperledger/fabric/integration/nwo"
@@ -197,7 +197,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, i
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess).To(gbytes.Say(fmt.Sprint(initialQueryResult)))
+	Expect(sess).To(gbytes.Say(strconv.Itoa(initialQueryResult)))
 
 	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: "testchannel",
@@ -222,7 +222,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, i
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess).To(gbytes.Say(fmt.Sprint(initialQueryResult - 10)))
+	Expect(sess).To(gbytes.Say(strconv.Itoa(initialQueryResult - 10)))
 }
 
 func copyFile(src, dst string) (int64, error) {

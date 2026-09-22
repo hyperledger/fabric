@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package blocksprovider_test
 
 import (
-	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -25,7 +24,7 @@ import (
 
 func TestBftHeaderReceiver_NoBlocks_RecvError(t *testing.T) {
 	fakeBlockVerifier := &fake.UpdatableBlockVerifier{}
-	fakeBlockVerifier.VerifyBlockAttestationReturns(fmt.Errorf("fake-verify-error"))
+	fakeBlockVerifier.VerifyBlockAttestationReturns(errors.New("fake-verify-error"))
 
 	streamClientMock := &fake.DeliverClient{}
 	streamClientMock.RecvReturns(nil, errors.New("oops"))
@@ -53,7 +52,7 @@ func TestBftHeaderReceiver_NoBlocks_RecvError(t *testing.T) {
 
 func TestBftHeaderReceiver_BadStatus(t *testing.T) {
 	fakeBlockVerifier := &fake.UpdatableBlockVerifier{}
-	fakeBlockVerifier.VerifyBlockAttestationReturns(fmt.Errorf("fake-verify-error"))
+	fakeBlockVerifier.VerifyBlockAttestationReturns(errors.New("fake-verify-error"))
 
 	streamClientMock := &fake.DeliverClient{}
 	streamClientMock.RecvReturnsOnCall(0, &orderer.DeliverResponse{Type: &orderer.DeliverResponse_Status{Status: common.Status_SUCCESS}}, nil)
@@ -79,7 +78,7 @@ func TestBftHeaderReceiver_BadStatus(t *testing.T) {
 
 func TestBftHeaderReceiver_NilResponse(t *testing.T) {
 	fakeBlockVerifier := &fake.UpdatableBlockVerifier{}
-	fakeBlockVerifier.VerifyBlockAttestationReturns(fmt.Errorf("fake-verify-error"))
+	fakeBlockVerifier.VerifyBlockAttestationReturns(errors.New("fake-verify-error"))
 
 	streamClientMock := &fake.DeliverClient{}
 	streamClientMock.RecvReturns(nil, nil)

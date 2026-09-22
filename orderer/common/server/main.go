@@ -15,6 +15,7 @@ import (
 	_ "net/http/pprof" // This is essentially the main package for the orderer
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -360,7 +361,7 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 		logger.Panicf("Failed to load cluster server key from '%s' (%s)", clusterConf.ServerPrivateKey, err)
 	}
 
-	port := fmt.Sprintf("%d", clusterConf.ListenPort)
+	port := strconv.FormatUint(uint64(clusterConf.ListenPort), 10)
 	bindAddr := net.JoinHostPort(clusterConf.ListenAddress, port)
 
 	var clientRootCAs [][]byte

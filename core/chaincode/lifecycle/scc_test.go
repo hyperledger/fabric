@@ -131,7 +131,7 @@ var _ = Describe("SCC", func() {
 		Context("when the ACL provider disapproves of the function", func() {
 			BeforeEach(func() {
 				fakeStub.GetArgsReturns([][]byte{[]byte("any-function"), nil})
-				fakeACLProvider.CheckACLReturns(fmt.Errorf("acl-error"))
+				fakeACLProvider.CheckACLReturns(errors.New("acl-error"))
 			})
 
 			It("returns an error", func() {
@@ -140,7 +140,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the signed data for the tx cannot be retrieved", func() {
 				BeforeEach(func() {
-					fakeStub.GetSignedProposalReturns(nil, fmt.Errorf("shim-error"))
+					fakeStub.GetSignedProposalReturns(nil, errors.New("shim-error"))
 				})
 
 				It("returns an error", func() {
@@ -187,7 +187,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.InstallChaincodeReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.InstallChaincodeReturns(nil, errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -267,7 +267,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryInstalledChaincodeReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryInstalledChaincodeReturns(nil, errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -313,7 +313,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.GetInstalledChaincodePackageReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.GetInstalledChaincodePackageReturns(nil, errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -875,7 +875,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.ApproveChaincodeDefinitionForOrgReturns(fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.ApproveChaincodeDefinitionForOrgReturns(errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1178,7 +1178,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.CommitChaincodeDefinitionReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.CommitChaincodeDefinitionReturns(nil, errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1301,7 +1301,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.CheckCommitReadinessReturns(nil, nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.CheckCommitReadinessReturns(nil, nil, errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1391,7 +1391,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying QueryApprovedChaincodeDefinition function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryApprovedChaincodeDefinitionReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryApprovedChaincodeDefinitionReturns(nil, errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1403,7 +1403,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying QueryApprovedChaincodeDefinition function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryApprovedChaincodeDefinitionReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryApprovedChaincodeDefinitionReturns(nil, errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1608,7 +1608,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying QueryApprovedChaincodeDefinitions function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryApprovedChaincodeDefinitionsReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryApprovedChaincodeDefinitionsReturns(nil, errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1620,7 +1620,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying QueryApprovedChaincodeDefinitions function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryApprovedChaincodeDefinitionsReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryApprovedChaincodeDefinitionsReturns(nil, errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1718,7 +1718,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying QueryChaincodeDefinition function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1730,7 +1730,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying QueryOrgApprovals function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryOrgApprovalsReturns(nil, nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryOrgApprovalsReturns(nil, nil, errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1850,7 +1850,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying QueryChaincodeDefinition function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryChaincodeDefinitionReturns(nil, errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1862,7 +1862,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying QueryNamespaceDefinitions function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryNamespaceDefinitionsReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryNamespaceDefinitionsReturns(nil, errors.New("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {

@@ -8,6 +8,7 @@ package validation
 
 import (
 	crand "crypto/rand"
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -41,19 +42,19 @@ func getChaincodeID() *peer.ChaincodeID {
 
 func createSignedTxTwoActions(proposal *peer.Proposal, signer msp.SigningIdentity, resps ...*peer.ProposalResponse) (*common.Envelope, error) {
 	if len(resps) == 0 {
-		return nil, fmt.Errorf("At least one proposal response is necessary")
+		return nil, errors.New("At least one proposal response is necessary")
 	}
 
 	// the original header
 	hdr, err := protoutil.UnmarshalHeader(proposal.GetHeader())
 	if err != nil {
-		return nil, fmt.Errorf("Could not unmarshal the proposal header")
+		return nil, errors.New("Could not unmarshal the proposal header")
 	}
 
 	// the original payload
 	pPayl, err := protoutil.UnmarshalChaincodeProposalPayload(proposal.GetPayload())
 	if err != nil {
-		return nil, fmt.Errorf("Could not unmarshal the proposal payload")
+		return nil, errors.New("Could not unmarshal the proposal payload")
 	}
 
 	// fill endorsements

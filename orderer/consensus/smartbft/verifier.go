@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -182,7 +181,7 @@ func (v *Verifier) verifyRequest(rawRequest []byte, noConfigAllowed bool) (types
 	switch req.chHdr.GetType() {
 	case int32(cb.HeaderType_CONFIG):
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
-		return types.RequestInfo{}, fmt.Errorf("orderer transactions are not supported in v3")
+		return types.RequestInfo{}, errors.New("orderer transactions are not supported in v3")
 	case int32(cb.HeaderType_ENDORSER_TRANSACTION):
 	default:
 		return types.RequestInfo{}, errors.Errorf("transaction of type %s is not allowed to be included in blocks", cb.HeaderType_name[req.chHdr.GetType()])

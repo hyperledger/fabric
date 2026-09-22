@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package version
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 
@@ -28,7 +29,7 @@ var cobraCommand = &cobra.Command{
 	Long:  `Print current version of the fabric peer server.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 0 {
-			return fmt.Errorf("trailing args detected")
+			return errors.New("trailing args detected")
 		}
 		// Parsing of the command line is done so silence cmd usage
 		cmd.SilenceUsage = true

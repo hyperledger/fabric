@@ -8,7 +8,6 @@ package kvledger
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"testing"
 
@@ -65,7 +64,7 @@ func TestNamespacesAndCollections(t *testing.T) {
 	fakeDeployedCCInfoProvider.AllChaincodesInfoReturns(deployedccInfo, nil)
 	fakeDeployedCCInfoProvider.GenerateImplicitCollectionForOrgStub = func(mspID string) *pb.StaticCollectionConfig {
 		return &pb.StaticCollectionConfig{
-			Name: fmt.Sprintf("_implicit_org_%s", mspID),
+			Name: "_implicit_org_" + mspID,
 		}
 	}
 

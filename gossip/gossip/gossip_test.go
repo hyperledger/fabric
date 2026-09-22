@@ -1340,7 +1340,7 @@ func TestSendByCriteria(t *testing.T) {
 	// We send to 3 peers, but 2 out of 3 peers acknowledge with an error
 	nack := func(c <-chan protoext.ReceivedMessage) {
 		msg := <-c
-		msg.Ack(fmt.Errorf("uh oh"))
+		msg.Ack(errors.New("uh oh"))
 	}
 	go ack(ackChan2)
 	go nack(ackChan3)

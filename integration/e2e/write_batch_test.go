@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package e2e
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"syscall"
 
 	"github.com/hyperledger/fabric/integration/nwo"
@@ -288,7 +288,7 @@ func RunInvoke(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, fn string, 
 		ChannelID: "testchannel",
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",
-		Ctor:      `{"Args":["` + fn + `","` + fmt.Sprint(startWriteBatch) + `","` + fmt.Sprint(numberCallsPut) + `"]}`,
+		Ctor:      `{"Args":["` + fn + `","` + strconv.FormatBool(startWriteBatch) + `","` + strconv.Itoa(numberCallsPut) + `"]}`,
 		PeerAddresses: []string{
 			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
 			n.PeerAddress(n.Peer("Org2", "peer0"), nwo.ListenPort),
@@ -322,7 +322,7 @@ func RunGetStateMultipleKeys(n *nwo.Network, peer *nwo.Peer, countKeys int) {
 	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      "mycc",
-		Ctor:      `{"Args":["get-multiple-keys","` + fmt.Sprint(countKeys) + `"]}`,
+		Ctor:      `{"Args":["get-multiple-keys","` + strconv.Itoa(countKeys) + `"]}`,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))

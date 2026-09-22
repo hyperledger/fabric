@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
@@ -101,9 +102,12 @@ func TestBlockIndexSelectiveIndexing(t *testing.T) {
 
 func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 	var testName string
+	var strBuilder strings.Builder
 	for _, s := range indexItems {
-		testName = testName + string(s)
+		strBuilder.WriteString(string(s))
 	}
+	testName = strBuilder.String()
+
 	t.Run(testName, func(t *testing.T) {
 		env := newTestEnvSelectiveIndexing(t, NewConf(t.TempDir(), 0), indexItems, &disabled.Provider{})
 		defer env.Cleanup()

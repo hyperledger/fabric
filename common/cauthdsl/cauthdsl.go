@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cauthdsl
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -23,7 +24,7 @@ var cauthdslLogger = flogging.MustGetLogger("cauthdsl")
 // passing them to this function for evaluation
 func compile(policy *cb.SignaturePolicy, identities []*mb.MSPPrincipal) (func([]msp.Identity, []bool) bool, error) {
 	if policy == nil {
-		return nil, fmt.Errorf("Empty policy element")
+		return nil, errors.New("Empty policy element")
 	}
 
 	switch t := policy.GetType().(type) {

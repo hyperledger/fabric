@@ -362,7 +362,7 @@ var _ = Describe("PrivateData", func() {
 				expectedDiscoveredPeers = append(expectedDiscoveredPeers, network.DiscoveredPeer(peer, "marblesp", "_lifecycle"))
 			}
 			for _, peer := range expectedPeers {
-				By(fmt.Sprintf("checking expected peers for peer: %s", peer.ID()))
+				By("checking expected peers for peer: " + peer.ID())
 				if peer.ID() == "Org2.peer1" {
 					// use Admin2 user for peer1.org2
 					Eventually(nwo.DiscoverPeers(network, peer, "Admin2", channelID), network.EventuallyTimeout).Should(ConsistOf(expectedDiscoveredPeers))
@@ -1371,14 +1371,14 @@ func generateNewCertsForPeer(network *nwo.Network, tempCryptoDir string, peer *n
 		"peerOrganizations",
 		org.Domain,
 		"users",
-		fmt.Sprintf("Admin2@%s", org.Domain),
+		"Admin2@"+org.Domain,
 	)
 	tempAdminUserPath := filepath.Join(
 		tempCryptoDir,
 		"peerOrganizations",
 		org.Domain,
 		"users",
-		fmt.Sprintf("Admin@%s", org.Domain),
+		"Admin@"+org.Domain,
 	)
 	os.RemoveAll(oldAdminUserPath)
 	err = exec.Command("cp", "-r", tempAdminUserPath, oldAdminUserPath).Run()

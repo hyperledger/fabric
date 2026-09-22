@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package lscc_test
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
@@ -101,7 +101,7 @@ func TestAllChaincodesInfo(t *testing.T) {
 	require.Equal(t, cc2.Hash, ccInfo.Hash)
 	require.Equal(t, cc2.IsLegacy, ccInfo.IsLegacy)
 
-	mockQE.GetStateRangeScanIteratorReturns(nil, fmt.Errorf("fake-rangescan-error"))
+	mockQE.GetStateRangeScanIteratorReturns(nil, errors.New("fake-rangescan-error"))
 	_, err = ccInfoProvider.AllChaincodesInfo("testchannel", mockQE)
 	require.EqualError(t, err, "fake-rangescan-error")
 }

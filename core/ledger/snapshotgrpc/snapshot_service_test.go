@@ -8,7 +8,7 @@ package snapshotgrpc
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -127,7 +127,7 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	// test error propagation of CheckACLNoChannel
-	fakeACLProvider.CheckACLNoChannelReturns(fmt.Errorf("fake-check-acl-error"))
+	fakeACLProvider.CheckACLNoChannelReturns(errors.New("fake-check-acl-error"))
 	signedRequest = createSignedQuery(ledgerID)
 	_, err = snapshotSvc.Generate(context.Background(), signedRequest)
 	require.EqualError(t, err, "fake-check-acl-error")

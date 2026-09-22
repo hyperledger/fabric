@@ -83,7 +83,7 @@ func TestByteSize(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.data, func(t *testing.T) {
-			data := fmt.Sprintf("---\nInner:\n    ByteSize: %s", tc.data)
+			data := "---\nInner:\n    ByteSize: " + tc.data
 
 			config := New()
 			err := config.ReadConfig(strings.NewReader(data))
@@ -141,7 +141,7 @@ func TestStringFromFile(t *testing.T) {
 	err = os.WriteFile(file.Name(), []byte(expectedValue), 0o644)
 	require.NoError(t, err, "uname to write temp file")
 
-	yaml := fmt.Sprintf("---\nInner:\n  Single:\n    File: %s", file.Name())
+	yaml := "---\nInner:\n  Single:\n    File: " + file.Name()
 
 	config := New()
 	err = config.ReadConfig(strings.NewReader(yaml))
@@ -167,7 +167,7 @@ func TestPEMBlocksFromFile(t *testing.T) {
 	err = os.WriteFile(file.Name(), pems, 0o644)
 	require.NoError(t, err, "failed to write temp file")
 
-	yaml := fmt.Sprintf("---\nInner:\n  Multiple:\n    File: %s", file.Name())
+	yaml := "---\nInner:\n  Multiple:\n    File: " + file.Name()
 
 	config := New()
 	err = config.ReadConfig(strings.NewReader(yaml))

@@ -645,8 +645,8 @@ func generateChannelArtifacts() (string, error) {
 	cryptoConfigDir := filepath.Join(dir, "crypto-config")
 	args := []string{
 		"generate",
-		fmt.Sprintf("--output=%s", cryptoConfigDir),
-		fmt.Sprintf("--config=%s", filepath.Join("testdata", "crypto-config.yaml")),
+		"--output=" + cryptoConfigDir,
+		"--config=" + filepath.Join("testdata", "crypto-config.yaml"),
 	}
 	b, err := exec.Command(cryptogen, args...).CombinedOutput()
 	if err != nil {
@@ -654,7 +654,7 @@ func generateChannelArtifacts() (string, error) {
 	}
 
 	idemixConfigDir := filepath.Join(dir, "crypto-config", "idemix")
-	b, err = exec.Command(idemixgen, "ca-keygen", fmt.Sprintf("--output=%s", idemixConfigDir)).CombinedOutput()
+	b, err = exec.Command(idemixgen, "ca-keygen", "--output="+idemixConfigDir).CombinedOutput()
 	if err != nil {
 		return "", errors.Wrap(err, string(b))
 	}
@@ -815,7 +815,7 @@ func peersToTestPeers(peers []*disc.Peer) testPeerSet {
 func newPeer(dir, mspID string, org, id int) *testPeer {
 	peerStr := fmt.Sprintf("peer%d.org%d.example.com", id, org)
 	certFile := filepath.Join(dir, fmt.Sprintf("org%d.example.com", org),
-		"peers", peerStr, "msp", "signcerts", fmt.Sprintf("%s-cert.pem", peerStr))
+		"peers", peerStr, "msp", "signcerts", peerStr+"-cert.pem")
 	certBytes, err := os.ReadFile(certFile)
 	if err != nil {
 		panic(fmt.Sprintf("failed reading file %s: %v", certFile, err))

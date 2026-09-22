@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package snapshot
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
@@ -32,13 +32,13 @@ func TestListPendingCmd(t *testing.T) {
 	require.Equal(t, []byte("Successfully got pending snapshot requests: [100 200]\n"), buffer.Contents())
 
 	// error tests
-	mockSnapshotClient.QueryPendingsReturns(nil, fmt.Errorf("fake-querypendings-error"))
+	mockSnapshotClient.QueryPendingsReturns(nil, errors.New("fake-querypendings-error"))
 	require.EqualError(t, cmd.Execute(), "failed to list pending requests: fake-querypendings-error")
 
-	mockSigner.SignReturns(nil, fmt.Errorf("fake-sign-error"))
+	mockSigner.SignReturns(nil, errors.New("fake-sign-error"))
 	require.EqualError(t, cmd.Execute(), "fake-sign-error")
 
-	mockSigner.SerializeReturns(nil, fmt.Errorf("fake-serialize-error"))
+	mockSigner.SerializeReturns(nil, errors.New("fake-serialize-error"))
 	require.EqualError(t, cmd.Execute(), "fake-serialize-error")
 
 	resetFlags()

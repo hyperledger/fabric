@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle_test
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
@@ -387,7 +388,7 @@ var _ = Describe("Cache", func() {
 
 		Context("when the chaincodes cannot be listed", func() {
 			BeforeEach(func() {
-				fakeCCStore.ListInstalledChaincodesReturns(nil, fmt.Errorf("list-error"))
+				fakeCCStore.ListInstalledChaincodesReturns(nil, errors.New("list-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -482,7 +483,7 @@ var _ = Describe("Cache", func() {
 
 		Context("when the namespaces query fails", func() {
 			BeforeEach(func() {
-				fakeQueryExecutor.GetStateRangeScanIteratorReturns(nil, fmt.Errorf("range-error"))
+				fakeQueryExecutor.GetStateRangeScanIteratorReturns(nil, errors.New("range-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -587,7 +588,7 @@ var _ = Describe("Cache", func() {
 
 		Context("when the state returns an error", func() {
 			BeforeEach(func() {
-				fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+				fakeQueryExecutor.GetStateReturns(nil, errors.New("get-state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -598,7 +599,7 @@ var _ = Describe("Cache", func() {
 
 		Context("when the private state returns an error", func() {
 			BeforeEach(func() {
-				fakeQueryExecutor.GetPrivateDataHashReturns(nil, fmt.Errorf("private-data-error"))
+				fakeQueryExecutor.GetPrivateDataHashReturns(nil, errors.New("private-data-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -612,7 +613,7 @@ var _ = Describe("Cache", func() {
 						if key != "chaincode-sources/metadata/chaincode-name#7" {
 							return fakePrivateState.GetStateHash(key)
 						}
-						return nil, fmt.Errorf("private-data-error")
+						return nil, errors.New("private-data-error")
 					}
 				})
 
@@ -628,7 +629,7 @@ var _ = Describe("Cache", func() {
 						if key != "chaincode-sources/fields/chaincode-name#7/PackageID" {
 							return fakePrivateState.GetStateHash(key)
 						}
-						return nil, fmt.Errorf("private-data-error")
+						return nil, errors.New("private-data-error")
 					}
 				})
 
@@ -909,7 +910,7 @@ var _ = Describe("Cache", func() {
 				BeforeEach(func() {
 					fakeCCStore.LoadStub = func(packageID string) ([]byte, error) {
 						if packageID == "packageID" {
-							return nil, fmt.Errorf("loading-error")
+							return nil, errors.New("loading-error")
 						}
 						return []byte("package-bytes"), nil
 					}
@@ -924,7 +925,7 @@ var _ = Describe("Cache", func() {
 
 			Context("when chaincode package parser returns error for both the chaincodes", func() {
 				BeforeEach(func() {
-					fakeParser.ParseReturns(nil, fmt.Errorf("parsing-error"))
+					fakeParser.ParseReturns(nil, errors.New("parsing-error"))
 				})
 				It("suppresses the error", func() {
 					err := c.RegisterListener("channel-id", fakeListener, true)
@@ -936,7 +937,7 @@ var _ = Describe("Cache", func() {
 
 			Context("when listener returns error", func() {
 				BeforeEach(func() {
-					fakeListener.HandleChaincodeDeployReturns(fmt.Errorf("listener-error"))
+					fakeListener.HandleChaincodeDeployReturns(errors.New("listener-error"))
 				})
 				It("suppresses the error", func() {
 					err := c.RegisterListener("channel-id", fakeListener, true)
@@ -1010,7 +1011,7 @@ var _ = Describe("Cache", func() {
 
 			Context("when the update encounters an error", func() {
 				BeforeEach(func() {
-					fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+					fakeQueryExecutor.GetStateReturns(nil, errors.New("state-error"))
 				})
 
 				It("wraps and returns the error", func() {

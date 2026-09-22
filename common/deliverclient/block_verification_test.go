@@ -288,7 +288,7 @@ func TestBlockVerificationAssistant_VerifyBlock(t *testing.T) {
 
 		err = assistant.VerifyBlock(block)
 		require.Error(t, err)
-		require.EqualError(t, err, fmt.Sprintf("Header.DataHash is different from Hash(block.Data) for block with id [1] on channel [channel1]; Header: 040506, Data: %s", hex.EncodeToString(expectedDataHash)))
+		require.EqualError(t, err, "Header.DataHash is different from Hash(block.Data) for block with id [1] on channel [channel1]; Header: 040506, Data: "+hex.EncodeToString(expectedDataHash))
 	})
 
 	t.Run("Header.PreviousHash is different from expected", func(t *testing.T) {

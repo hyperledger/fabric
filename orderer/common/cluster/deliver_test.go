@@ -1156,7 +1156,7 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 			detectedBadBlockDone := make(chan struct{})
 			var closeOnce sync.Once
 			bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
-				if strings.Contains(entry.Message, fmt.Sprintf("Failed pulling blocks: %s", testCase.expectedErrMsg)) {
+				if strings.Contains(entry.Message, "Failed pulling blocks: "+testCase.expectedErrMsg) {
 					closeOnce.Do(func() { close(detectedBadBlockDone) })
 
 					// Close the channel to make the current server-side deliver stream close
@@ -1200,7 +1200,7 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 func TestImpatientStreamDetectSelf(t *testing.T) {
 	osn := newClusterNodeWithTLS(t)
 	osn.Lock()
-	osn.err = fmt.Errorf("service unavailable")
+	osn.err = errors.New("service unavailable")
 	osn.Unlock()
 
 	defer osn.stop()

@@ -293,7 +293,7 @@ func stringFromFileDecodeHook(f reflect.Kind, t reflect.Kind, data any) (any, er
 			return string(bytes), nil
 		case ok:
 			// fileName was nil
-			return nil, fmt.Errorf("Value of File: was nil")
+			return nil, errors.New("Value of File: was nil")
 		}
 	}
 	return data, nil
@@ -351,7 +351,7 @@ func pemBlocksFromFileDecodeHook(f reflect.Kind, t reflect.Kind, data any) (any,
 			return result, nil
 		case ok:
 			// fileName was nil
-			return nil, fmt.Errorf("Value of File: was nil")
+			return nil, errors.New("Value of File: was nil")
 		}
 	}
 	return data, nil

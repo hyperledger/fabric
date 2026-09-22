@@ -586,7 +586,7 @@ func generateLedgerID(t *testing.T) string {
 	bytes := make([]byte, 8)
 	_, err := io.ReadFull(rand.Reader, bytes)
 	require.NoError(t, err)
-	return fmt.Sprintf("x%s", hex.EncodeToString(bytes))
+	return "x" + hex.EncodeToString(bytes)
 }
 
 func TestDrop(t *testing.T) {

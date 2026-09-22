@@ -549,7 +549,7 @@ func TestBlockValidationPolicyVerifier(t *testing.T) {
 	defer os.Remove(cryptogen)
 
 	cryptoConfigDir := filepath.Join(dir, "crypto-config")
-	b, err := exec.Command(cryptogen, "generate", fmt.Sprintf("--output=%s", cryptoConfigDir)).CombinedOutput()
+	b, err := exec.Command(cryptogen, "generate", "--output="+cryptoConfigDir).CombinedOutput()
 	require.NoError(t, err, string(b))
 
 	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())

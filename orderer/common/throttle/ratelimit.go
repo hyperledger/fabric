@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package throttle
 
 import (
-	"fmt"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -126,7 +126,7 @@ func (srl *SharedRateLimiter) getOrCreateState(client string) *clientState {
 func (srl *SharedRateLimiter) Stop() error {
 	select {
 	case <-srl.stop:
-		return fmt.Errorf("stop must be called only once")
+		return errors.New("stop must be called only once")
 	default:
 		close(srl.stop)
 		return nil

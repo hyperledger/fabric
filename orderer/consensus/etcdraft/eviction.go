@@ -121,7 +121,7 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 	if !errors.Is(err, cluster.ErrNotInChannel) && !errors.Is(err, cluster.ErrForbidden) {
 		details := fmt.Sprintf(", our certificate was found in config block with sequence %d", lastConfigBlock.GetHeader().GetNumber())
 		if err != nil {
-			details = fmt.Sprintf(": %s", err.Error())
+			details = ": " + err.Error()
 		}
 		es.logger.Infof("Cannot confirm our own eviction from the channel%s", details)
 

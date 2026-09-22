@@ -9,7 +9,6 @@ package channelparticipation_test
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -57,7 +56,7 @@ func TestHTTPHandler_ServeHTTP_InvalidMethods(t *testing.T) {
 			resp := httptest.NewRecorder()
 			req := httptest.NewRequest(method, path.Join(channelparticipation.URLBaseV1Channels, "ch-id", "blocks", "b-id"), nil)
 			h.ServeHTTP(resp, req)
-			checkErrorResponse(t, http.StatusMethodNotAllowed, fmt.Sprintf("invalid request method: %s", method), resp)
+			checkErrorResponse(t, http.StatusMethodNotAllowed, "invalid request method: "+method, resp)
 			require.Equal(t, "GET", resp.Result().Header.Get("Allow"), "%s", method)
 		}
 	})
@@ -68,7 +67,7 @@ func TestHTTPHandler_ServeHTTP_InvalidMethods(t *testing.T) {
 			resp := httptest.NewRecorder()
 			req := httptest.NewRequest(method, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
 			h.ServeHTTP(resp, req)
-			checkErrorResponse(t, http.StatusMethodNotAllowed, fmt.Sprintf("invalid request method: %s", method), resp)
+			checkErrorResponse(t, http.StatusMethodNotAllowed, "invalid request method: "+method, resp)
 			require.Equal(t, "GET, DELETE", resp.Result().Header.Get("Allow"), "%s", method)
 		}
 	})
@@ -79,7 +78,7 @@ func TestHTTPHandler_ServeHTTP_InvalidMethods(t *testing.T) {
 			resp := httptest.NewRecorder()
 			req := httptest.NewRequest(method, channelparticipation.URLBaseV1Channels, nil)
 			h.ServeHTTP(resp, req)
-			checkErrorResponse(t, http.StatusMethodNotAllowed, fmt.Sprintf("invalid request method: %s", method), resp)
+			checkErrorResponse(t, http.StatusMethodNotAllowed, "invalid request method: "+method, resp)
 			require.Equal(t, "GET, POST, PUT", resp.Result().Header.Get("Allow"), "%s", method)
 		}
 	})

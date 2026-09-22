@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package testutil
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -39,7 +40,7 @@ func init() {
 	}
 	signer, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
-		panic(fmt.Errorf("Could not initialize msp/signer"))
+		panic(errors.New("Could not initialize msp/signer"))
 	}
 }
 

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle_test
 
 import (
+	"errors"
 	"fmt"
 
 	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
@@ -128,7 +129,7 @@ var _ = Describe("Serializer", func() {
 
 			Context("when deleting from  the state fails", func() {
 				BeforeEach(func() {
-					fakeState.DelStateReturns(fmt.Errorf("del-error"))
+					fakeState.DelStateReturns(errors.New("del-error"))
 				})
 
 				It("deletes them before returning", func() {
@@ -269,7 +270,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when the state metadata cannot be retrieved", func() {
 			BeforeEach(func() {
-				fakeState.GetStateReturns(nil, fmt.Errorf("state-error"))
+				fakeState.GetStateReturns(nil, errors.New("state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -283,7 +284,7 @@ var _ = Describe("Serializer", func() {
 				fakeState.GetStateReturnsOnCall(0, protoutil.MarshalOrPanic(&lb.StateMetadata{
 					Fields: []string{"field1"},
 				}), nil)
-				fakeState.GetStateReturnsOnCall(1, nil, fmt.Errorf("state-error"))
+				fakeState.GetStateReturnsOnCall(1, nil, errors.New("state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -294,7 +295,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when writing to the state for a field fails", func() {
 			BeforeEach(func() {
-				fakeState.PutStateReturns(fmt.Errorf("put-error"))
+				fakeState.PutStateReturns(errors.New("put-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -305,7 +306,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when writing to the state for metadata fails", func() {
 			BeforeEach(func() {
-				fakeState.PutStateReturns(fmt.Errorf("put-error"))
+				fakeState.PutStateReturns(errors.New("put-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -321,7 +322,7 @@ var _ = Describe("Serializer", func() {
 					if _, ok := msg.(*lb.InstallChaincodeResult); !ok {
 						return proto.Marshal(msg)
 					}
-					return nil, fmt.Errorf("marshal-error")
+					return nil, errors.New("marshal-error")
 				}
 			})
 
@@ -334,7 +335,7 @@ var _ = Describe("Serializer", func() {
 		Context("when marshaling a field fails", func() {
 			BeforeEach(func() {
 				s.Marshaler = func(msg proto.Message) ([]byte, error) {
-					return nil, fmt.Errorf("marshal-error")
+					return nil, errors.New("marshal-error")
 				}
 			})
 
@@ -347,7 +348,7 @@ var _ = Describe("Serializer", func() {
 		Context("when marshaling a the metadata fails", func() {
 			BeforeEach(func() {
 				s.Marshaler = func(msg proto.Message) ([]byte, error) {
-					return nil, fmt.Errorf("marshal-error")
+					return nil, errors.New("marshal-error")
 				}
 			})
 
@@ -467,7 +468,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when the state cannot be queried", func() {
 			BeforeEach(func() {
-				fakeState.GetStateReturns(nil, fmt.Errorf("state-error"))
+				fakeState.GetStateReturns(nil, errors.New("state-error"))
 			})
 
 			It("fails", func() {
@@ -594,7 +595,7 @@ var _ = Describe("Serializer", func() {
 		Context("when marshaling the metadata fails", func() {
 			BeforeEach(func() {
 				s.Marshaler = func(msg proto.Message) ([]byte, error) {
-					return nil, fmt.Errorf("marshal-error")
+					return nil, errors.New("marshal-error")
 				}
 			})
 
@@ -704,7 +705,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when the state metadata cannot be retrieved", func() {
 			BeforeEach(func() {
-				fakeState.GetStateHashReturns(nil, fmt.Errorf("state-error"))
+				fakeState.GetStateHashReturns(nil, errors.New("state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -722,7 +723,7 @@ var _ = Describe("Serializer", func() {
 					if _, ok := msg.(*lb.StateData); ok {
 						return proto.Marshal(msg)
 					}
-					return nil, fmt.Errorf("marshal-error")
+					return nil, errors.New("marshal-error")
 				}
 			})
 
@@ -736,7 +737,7 @@ var _ = Describe("Serializer", func() {
 			BeforeEach(func() {
 				s.Marshaler = func(msg proto.Message) ([]byte, error) {
 					if _, ok := msg.(*lb.StateData); ok {
-						return nil, fmt.Errorf("marshal-error")
+						return nil, errors.New("marshal-error")
 					}
 					return proto.Marshal(msg)
 				}
@@ -751,7 +752,7 @@ var _ = Describe("Serializer", func() {
 		Context("when marshaling a the metadata fails", func() {
 			BeforeEach(func() {
 				s.Marshaler = func(msg proto.Message) ([]byte, error) {
-					return nil, fmt.Errorf("marshal-error")
+					return nil, errors.New("marshal-error")
 				}
 			})
 
@@ -792,7 +793,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when GetStateRange returns an error", func() {
 			BeforeEach(func() {
-				fakeState.GetStateRangeReturns(nil, fmt.Errorf("get-state-range-error"))
+				fakeState.GetStateRangeReturns(nil, errors.New("get-state-range-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -844,7 +845,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when GetState returns an error", func() {
 			BeforeEach(func() {
-				fakeState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+				fakeState.GetStateReturns(nil, errors.New("get-state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -895,7 +896,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when GetState returns an error", func() {
 			BeforeEach(func() {
-				fakeState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+				fakeState.GetStateReturns(nil, errors.New("get-state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -936,7 +937,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when GetState returns an error", func() {
 			BeforeEach(func() {
-				fakeState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+				fakeState.GetStateReturns(nil, errors.New("get-state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -991,7 +992,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when GetState returns an error", func() {
 			BeforeEach(func() {
-				fakeState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+				fakeState.GetStateReturns(nil, errors.New("get-state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -1042,7 +1043,7 @@ var _ = Describe("Serializer", func() {
 
 		Context("when GetState returns an error", func() {
 			BeforeEach(func() {
-				fakeState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+				fakeState.GetStateReturns(nil, errors.New("get-state-error"))
 			})
 
 			It("wraps and returns the error", func() {

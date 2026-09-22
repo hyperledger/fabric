@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
@@ -78,7 +77,7 @@ func TestEmptyPayload(t *testing.T) {
 }
 
 func TestErrorOnPolicy(t *testing.T) {
-	mockResources := newMockResources(true, fmt.Errorf("Error"))
+	mockResources := newMockResources(true, errors.New("Error"))
 	err := NewSigFilter("foo", "bar", mockResources).Apply(makeEnvelope())
 	require.Error(t, err)
 	require.Equal(t, ErrPermissionDenied, errors.Cause(err))
@@ -90,7 +89,7 @@ func TestMaintenance(t *testing.T) {
 	mockPolicyManager.GetPolicyStub = func(name string) (policies.Policy, bool) {
 		mockPolicy := &mocks.Policy{}
 		if name == policies.ChannelOrdererWriters {
-			mockPolicy.EvaluateSignedDataReturns(fmt.Errorf("Error"))
+			mockPolicy.EvaluateSignedDataReturns(errors.New("Error"))
 		}
 		return mockPolicy, true
 	}

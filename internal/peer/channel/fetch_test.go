@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package channel
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -78,7 +77,7 @@ func TestFetch(t *testing.T) {
 
 		err = cmd.Execute()
 		require.Error(t, err, "fetch command expected to fail")
-		require.Regexp(t, err.Error(), fmt.Sprintf("fetch target illegal: %s", block))
+		require.Regexp(t, err.Error(), "fetch target illegal: "+block)
 
 		if fileInfo, _ := os.Stat(outputBlockPath); fileInfo != nil {
 			// path/to/whatever does exist

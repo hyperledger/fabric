@@ -8,6 +8,7 @@ package common
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -15,7 +16,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/cmd/common/signer"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -100,8 +100,8 @@ func TestCLI(t *testing.T) {
 
 		userCert := filepath.Join(dir, "cert.pem")
 		userKey := filepath.Join(dir, "key.pem")
-		userCertFlag := fmt.Sprintf("--userCert=%s", userCert)
-		userKeyFlag := fmt.Sprintf("--userKey=%s", userKey)
+		userCertFlag := "--userCert=" + userCert
+		userKeyFlag := "--userKey=" + userKey
 		os.Create(userCert)
 		os.Create(userKey)
 

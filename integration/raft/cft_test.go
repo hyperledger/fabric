@@ -1017,7 +1017,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			nwo.JoinOrdererAppChannel(network, "testchannel", orderer, runner)
 
 			By("Creating config update that adds another orderer admin")
-			bootBlockPath := filepath.Join(network.RootDir, fmt.Sprintf("%s_block.pb", "testchannel"))
+			bootBlockPath := filepath.Join(network.RootDir, "testchannel_block.pb")
 			bootBlock, err := os.ReadFile(bootBlockPath)
 			Expect(err).NotTo(HaveOccurred())
 

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package blocksprovider_test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -103,7 +104,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		fakeDeliverClient.RecvStub = func() (*orderer.DeliverResponse, error) {
 			select {
 			case <-recvStep:
-				return nil, fmt.Errorf("fake-recv-step-error")
+				return nil, errors.New("fake-recv-step-error")
 			case <-doneC:
 				return nil, nil
 			}
@@ -178,7 +179,7 @@ var _ = Describe("CFT-Deliverer", func() {
 
 	When("the ledger returns an error", func() {
 		BeforeEach(func() {
-			fakeLedgerInfo.LedgerHeightReturns(0, fmt.Errorf("fake-ledger-error"))
+			fakeLedgerInfo.LedgerHeightReturns(0, errors.New("fake-ledger-error"))
 		})
 
 		It("exits the loop", func() {
@@ -195,7 +196,7 @@ var _ = Describe("CFT-Deliverer", func() {
 
 	When("the signer returns an error", func() {
 		BeforeEach(func() {
-			fakeSigner.SignReturns(nil, fmt.Errorf("fake-signer-error"))
+			fakeSigner.SignReturns(nil, errors.New("fake-signer-error"))
 		})
 
 		It("exits the loop", func() {
@@ -210,7 +211,7 @@ var _ = Describe("CFT-Deliverer", func() {
 
 	When("the orderer connection source returns an error", func() {
 		BeforeEach(func() {
-			fakeOrdererConnectionSource.RandomEndpointReturnsOnCall(0, nil, fmt.Errorf("fake-endpoint-error"))
+			fakeOrdererConnectionSource.RandomEndpointReturnsOnCall(0, nil, errors.New("fake-endpoint-error"))
 			fakeOrdererConnectionSource.RandomEndpointReturnsOnCall(1, &orderers.Endpoint{
 				Address: "orderer-address",
 			}, nil)
@@ -251,7 +252,7 @@ var _ = Describe("CFT-Deliverer", func() {
 
 	When("the dialer returns an error", func() {
 		BeforeEach(func() {
-			fakeDialer.DialReturnsOnCall(0, nil, fmt.Errorf("fake-dial-error"))
+			fakeDialer.DialReturnsOnCall(0, nil, errors.New("fake-dial-error"))
 			cc, err := grpc.Dial("localhost:6006", grpc.WithTransportCredentials(insecure.NewCredentials()))
 			Expect(err).NotTo(HaveOccurred())
 			fakeDialer.DialReturnsOnCall(1, cc, nil)
@@ -270,7 +271,7 @@ var _ = Describe("CFT-Deliverer", func() {
 
 	When("the deliver client cannot be created", func() {
 		BeforeEach(func() {
-			fakeDeliverStreamer.DeliverReturnsOnCall(0, nil, fmt.Errorf("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(0, nil, errors.New("deliver-error"))
 			fakeDeliverStreamer.DeliverReturnsOnCall(1, fakeDeliverClient, nil)
 		})
 
@@ -283,9 +284,9 @@ var _ = Describe("CFT-Deliverer", func() {
 
 	When("there are consecutive errors", func() {
 		BeforeEach(func() {
-			fakeDeliverStreamer.DeliverReturnsOnCall(0, nil, fmt.Errorf("deliver-error"))
-			fakeDeliverStreamer.DeliverReturnsOnCall(1, nil, fmt.Errorf("deliver-error"))
-			fakeDeliverStreamer.DeliverReturnsOnCall(2, nil, fmt.Errorf("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(0, nil, errors.New("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(1, nil, errors.New("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(2, nil, errors.New("deliver-error"))
 			fakeDeliverStreamer.DeliverReturnsOnCall(3, fakeDeliverClient, nil)
 		})
 
@@ -301,7 +302,7 @@ var _ = Describe("CFT-Deliverer", func() {
 	When("the consecutive errors are unbounded and the peer is not a static leader", func() {
 		BeforeEach(func() {
 			fakeDurationExceededHandler.DurationExceededHandlerReturns(true)
-			fakeDeliverStreamer.DeliverReturns(nil, fmt.Errorf("deliver-error"))
+			fakeDeliverStreamer.DeliverReturns(nil, errors.New("deliver-error"))
 			fakeDeliverStreamer.DeliverReturnsOnCall(500, fakeDeliverClient, nil)
 		})
 
@@ -368,12 +369,12 @@ var _ = Describe("CFT-Deliverer", func() {
 					}, nil
 				default:
 					if c < 900 {
-						return nil, fmt.Errorf("fake-recv-error-XXX")
+						return nil, errors.New("fake-recv-error-XXX")
 					}
 
 					select {
 					case <-recvStep:
-						return nil, fmt.Errorf("fake-recv-step-error-XXX")
+						return nil, errors.New("fake-recv-step-error-XXX")
 					case <-doneC:
 						return nil, nil
 					}
@@ -400,7 +401,7 @@ var _ = Describe("CFT-Deliverer", func() {
 
 	When("the consecutive errors are unbounded and the peer is static leader", func() {
 		BeforeEach(func() {
-			fakeDeliverStreamer.DeliverReturns(nil, fmt.Errorf("deliver-error"))
+			fakeDeliverStreamer.DeliverReturns(nil, errors.New("deliver-error"))
 			fakeDeliverStreamer.DeliverReturnsOnCall(500, fakeDeliverClient, nil)
 		})
 
@@ -416,9 +417,9 @@ var _ = Describe("CFT-Deliverer", func() {
 
 	When("an error occurs, then a block is successfully delivered", func() {
 		BeforeEach(func() {
-			fakeDeliverStreamer.DeliverReturnsOnCall(0, nil, fmt.Errorf("deliver-error"))
-			fakeDeliverStreamer.DeliverReturnsOnCall(1, nil, fmt.Errorf("deliver-error"))
-			fakeDeliverStreamer.DeliverReturnsOnCall(2, nil, fmt.Errorf("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(0, nil, errors.New("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(1, nil, errors.New("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(2, nil, errors.New("deliver-error"))
 			fakeDeliverStreamer.DeliverReturnsOnCall(3, fakeDeliverClient, nil)
 		})
 
@@ -440,7 +441,7 @@ var _ = Describe("CFT-Deliverer", func() {
 
 	When("the send fails", func() {
 		BeforeEach(func() {
-			fakeDeliverClient.SendReturnsOnCall(0, fmt.Errorf("fake-send-error"))
+			fakeDeliverClient.SendReturnsOnCall(0, errors.New("fake-send-error"))
 			fakeDeliverClient.SendReturnsOnCall(1, nil)
 			fakeDeliverClient.CloseSendStub = nil
 		})
@@ -471,11 +472,11 @@ var _ = Describe("CFT-Deliverer", func() {
 			fakeDeliverClient.CloseSendStub = nil
 			fakeDeliverClient.RecvStub = func() (*orderer.DeliverResponse, error) {
 				if fakeDeliverClient.RecvCallCount() == 1 {
-					return nil, fmt.Errorf("fake-recv-error")
+					return nil, errors.New("fake-recv-error")
 				}
 				select {
 				case <-recvStep:
-					return nil, fmt.Errorf("fake-recv-step-error")
+					return nil, errors.New("fake-recv-step-error")
 				case <-doneC:
 					return nil, nil
 				}
@@ -508,7 +509,7 @@ var _ = Describe("CFT-Deliverer", func() {
 			fakeDeliverClient.RecvStub = func() (*orderer.DeliverResponse, error) {
 				switch fakeDeliverClient.RecvCallCount() {
 				case 1, 2, 4:
-					return nil, fmt.Errorf("fake-recv-error")
+					return nil, errors.New("fake-recv-error")
 				case 3:
 					return &orderer.DeliverResponse{
 						Type: &orderer.DeliverResponse_Block{
@@ -522,7 +523,7 @@ var _ = Describe("CFT-Deliverer", func() {
 				default:
 					select {
 					case <-recvStep:
-						return nil, fmt.Errorf("fake-recv-step-error")
+						return nil, errors.New("fake-recv-step-error")
 					case <-doneC:
 						return nil, nil
 					}
@@ -560,7 +561,7 @@ var _ = Describe("CFT-Deliverer", func() {
 				}
 				select {
 				case <-recvStep:
-					return nil, fmt.Errorf("fake-recv-step-error")
+					return nil, errors.New("fake-recv-step-error")
 				case <-doneC:
 					return nil, nil
 				}
@@ -584,7 +585,7 @@ var _ = Describe("CFT-Deliverer", func() {
 
 		When("the block is invalid", func() {
 			BeforeEach(func() {
-				fakeUpdatableBlockVerifier.VerifyBlockReturns(fmt.Errorf("fake-verify-error"))
+				fakeUpdatableBlockVerifier.VerifyBlockReturns(errors.New("fake-verify-error"))
 			})
 
 			It("disconnects, sleeps, and tries again", func() {
@@ -613,7 +614,7 @@ var _ = Describe("CFT-Deliverer", func() {
 
 		When("handling the block fails", func() {
 			BeforeEach(func() {
-				fakeBlockHandler.HandleBlockReturns(fmt.Errorf("payload-error"))
+				fakeBlockHandler.HandleBlockReturns(errors.New("payload-error"))
 			})
 
 			It("disconnects, sleeps, and tries again", func() {
@@ -665,7 +666,7 @@ var _ = Describe("CFT-Deliverer", func() {
 				}
 				select {
 				case <-recvStep:
-					return nil, fmt.Errorf("fake-recv-step-error")
+					return nil, errors.New("fake-recv-step-error")
 				case <-doneC:
 					return nil, nil
 				}
@@ -736,7 +737,7 @@ var _ = Describe("CFT-Deliverer", func() {
 				}
 				select {
 				case <-recvStep:
-					return nil, fmt.Errorf("fake-recv-step-error")
+					return nil, errors.New("fake-recv-step-error")
 				case <-doneC:
 					return nil, nil
 				}
@@ -774,7 +775,7 @@ func testSetup(certDir string, consensusClass string) (*common.Config, bccsp.BCC
 		configProfile = genesisconfig.Load(genesisconfig.SampleAppChannelSmartBftProfile, configtest.GetDevConfigDir())
 		err = generateCertificatesSmartBFT(configProfile, tlsCA, certDir)
 	default:
-		err = fmt.Errorf("expected CFT or BFT")
+		err = errors.New("expected CFT or BFT")
 	}
 
 	if err != nil {

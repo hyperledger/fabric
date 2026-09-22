@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -163,7 +164,7 @@ func TestSyncNode(t *testing.T) {
 	// send 5 txs to all available nodes and wait the tx will be added to each ledger except the ledger of the old leader
 	numberTxs := 5
 	for i := range numberTxs {
-		message := "TEST_MESSAGE #" + fmt.Sprintf("%d", i+2)
+		message := "TEST_MESSAGE #" + strconv.Itoa(i+2)
 		env = createEndorserTxEnvelope(message, channelId)
 		err = networkSetupInfo.SendTxToAllAvailableNodes(env)
 		require.NoError(t, err)

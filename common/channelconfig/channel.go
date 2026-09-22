@@ -211,21 +211,21 @@ func (cc *ChannelConfig) validateHashingAlgorithm() error {
 
 func (cc *ChannelConfig) validateBlockDataHashingStructure() error {
 	if cc.protos.BlockDataHashingStructure.GetWidth() != math.MaxUint32 {
-		return fmt.Errorf("BlockDataHashStructure width only supported at MaxUint32 in this version")
+		return errors.New("BlockDataHashStructure width only supported at MaxUint32 in this version")
 	}
 	return nil
 }
 
 func (cc *ChannelConfig) validateOrdererAddresses() error {
 	if len(cc.protos.OrdererAddresses.GetAddresses()) == 0 {
-		return fmt.Errorf("Must set some OrdererAddresses")
+		return errors.New("Must set some OrdererAddresses")
 	}
 	return nil
 }
 
 func (cc *ChannelConfig) validateNoOrdererAddresses() error {
 	if len(cc.protos.OrdererAddresses.GetAddresses()) > 0 {
-		return fmt.Errorf("global OrdererAddresses are not allowed with V3_0 capability, use org specific addresses only")
+		return errors.New("global OrdererAddresses are not allowed with V3_0 capability, use org specific addresses only")
 	}
 	return nil
 }

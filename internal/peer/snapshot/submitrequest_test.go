@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package snapshot
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/hyperledger/fabric/internal/peer/snapshot/mock"
@@ -40,13 +40,13 @@ func TestSubmitRequestCmd(t *testing.T) {
 	require.Equal(t, []byte("Snapshot request submitted successfully\n"), buffer2.Contents())
 
 	// error tests
-	mockSnapshotClient.GenerateReturns(nil, fmt.Errorf("fake-generate-error"))
+	mockSnapshotClient.GenerateReturns(nil, errors.New("fake-generate-error"))
 	require.EqualError(t, cmd.Execute(), "failed to submit the request: fake-generate-error")
 
-	mockSigner.SignReturns(nil, fmt.Errorf("fake-sign-error"))
+	mockSigner.SignReturns(nil, errors.New("fake-sign-error"))
 	require.EqualError(t, cmd.Execute(), "fake-sign-error")
 
-	mockSigner.SerializeReturns(nil, fmt.Errorf("fake-serialize-error"))
+	mockSigner.SerializeReturns(nil, errors.New("fake-serialize-error"))
 	require.EqualError(t, cmd.Execute(), "fake-serialize-error")
 
 	resetFlags()

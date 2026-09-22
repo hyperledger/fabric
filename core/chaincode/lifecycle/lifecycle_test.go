@@ -205,7 +205,7 @@ var _ = Describe("Resources", func() {
 
 		Context("when the ledger returns an error", func() {
 			BeforeEach(func() {
-				fakeReadableState.GetStateReturns(nil, fmt.Errorf("state-error"))
+				fakeReadableState.GetStateReturns(nil, errors.New("state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -369,7 +369,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 		When("building the chaincode fails", func() {
 			BeforeEach(func() {
-				fakeChaincodeBuilder.BuildReturns(fmt.Errorf("fake-build-error"))
+				fakeChaincodeBuilder.BuildReturns(errors.New("fake-build-error"))
 			})
 
 			It("returns the wrapped error to the caller", func() {
@@ -402,7 +402,7 @@ var _ = Describe("ExternalFunctions", func() {
 			BeforeEach(func() {
 				bs, ok := ef.BuildRegistry.BuildStatus("fake-hash")
 				Expect(ok).To(BeFalse())
-				bs.Notify(fmt.Errorf("fake-other-builder-error"))
+				bs.Notify(errors.New("fake-other-builder-error"))
 			})
 
 			It("attempts to rebuild it itself", func() {
@@ -426,7 +426,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 		Context("when saving the chaincode fails", func() {
 			BeforeEach(func() {
-				fakeCCStore.SaveReturns("", fmt.Errorf("fake-error"))
+				fakeCCStore.SaveReturns("", errors.New("fake-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -438,7 +438,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 		Context("when parsing the chaincode package fails", func() {
 			BeforeEach(func() {
-				fakeParser.ParseReturns(nil, fmt.Errorf("parse-error"))
+				fakeParser.ParseReturns(nil, errors.New("parse-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -466,7 +466,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 		Context("when loading the chaincode fails", func() {
 			BeforeEach(func() {
-				fakeCCStore.LoadReturns(nil, fmt.Errorf("fake-error"))
+				fakeCCStore.LoadReturns(nil, errors.New("fake-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -930,7 +930,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 		Context("when querying the public state fails", func() {
 			BeforeEach(func() {
-				fakePublicState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+				fakePublicState.GetStateReturns(nil, errors.New("get-state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -941,7 +941,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 		Context("when writing to the org state fails for the parameters", func() {
 			BeforeEach(func() {
-				fakeOrgState.PutStateReturns(fmt.Errorf("put-state-error"))
+				fakeOrgState.PutStateReturns(errors.New("put-state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -952,7 +952,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 		Context("when writing to the org state fails for the package", func() {
 			BeforeEach(func() {
-				fakeOrgState.PutStateReturnsOnCall(4, fmt.Errorf("put-state-error"))
+				fakeOrgState.PutStateReturnsOnCall(4, errors.New("put-state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -1105,7 +1105,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 			Context("when the public state is not readable", func() {
 				BeforeEach(func() {
-					fakePublicState.GetStateReturns(nil, fmt.Errorf("getstate-error"))
+					fakePublicState.GetStateReturns(nil, errors.New("getstate-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1326,7 +1326,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 		Context("when the sequence argument is not provided and querying the public state fails", func() {
 			BeforeEach(func() {
-				fakePublicState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+				fakePublicState.GetStateReturns(nil, errors.New("get-state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -1691,7 +1691,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 		Context("when the public state is not readable", func() {
 			BeforeEach(func() {
-				fakePublicState.GetStateReturns(nil, fmt.Errorf("getstate-error"))
+				fakePublicState.GetStateReturns(nil, errors.New("getstate-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -1702,7 +1702,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 		Context("when the public state is not writable", func() {
 			BeforeEach(func() {
-				fakePublicState.PutStateReturns(fmt.Errorf("putstate-error"))
+				fakePublicState.PutStateReturns(errors.New("putstate-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -1832,7 +1832,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 		Context("when getting the metadata fails", func() {
 			BeforeEach(func() {
-				fakePublicState.GetStateReturns(nil, fmt.Errorf("metadata-error"))
+				fakePublicState.GetStateReturns(nil, errors.New("metadata-error"))
 			})
 
 			It("returns an error", func() {
@@ -1948,7 +1948,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 		Context("when the range cannot be retrieved", func() {
 			BeforeEach(func() {
-				fakePublicState.GetStateRangeReturns(nil, fmt.Errorf("state-range-error"))
+				fakePublicState.GetStateRangeReturns(nil, errors.New("state-range-error"))
 			})
 
 			It("returns an error", func() {

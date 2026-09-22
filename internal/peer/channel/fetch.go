@@ -40,10 +40,10 @@ func fetchCmd(cf *ChannelCmdFactory) *cobra.Command {
 
 func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	if len(args) == 0 {
-		return fmt.Errorf("fetch target required, oldest, newest, config, or a number")
+		return errors.New("fetch target required, oldest, newest, config, or a number")
 	}
 	if len(args) > 2 {
-		return fmt.Errorf("trailing args detected")
+		return errors.New("trailing args detected")
 	}
 	// Parsing of the command line is done so silence cmd usage
 	cmd.SilenceUsage = true

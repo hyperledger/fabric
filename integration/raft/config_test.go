@@ -576,7 +576,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Eventually(func() string {
 					b, err := nwo.Fetch(network, targetOrderer, "testchannel", "newest")
 					if err != nil {
-						return fmt.Sprintf("error is %s", err.Error())
+						return "error is " + err.Error()
 					}
 					if b.GetHeader().GetNumber() == uint64(blockSeq) {
 						return ""
@@ -1914,7 +1914,7 @@ func waitForBlockReception(o *nwo.Orderer, network *nwo.Network, channelName str
 	Eventually(func() string {
 		b, err := nwo.Fetch(network, o, channelName, "newest")
 		if err != nil {
-			return fmt.Sprintf("error is %s", err.Error())
+			return "error is " + err.Error()
 		}
 
 		if b.GetHeader().GetNumber() == uint64(blockNum) {
