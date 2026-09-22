@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -245,7 +246,7 @@ func (g *Node) learnAnchorPeers(channel string, orgOfAnchorPeers api.OrgIdentity
 			g.logger.Warningf("Got invalid port (0) for channel %s, skipping connecting to anchor peer %v", channel, ap)
 			continue
 		}
-		endpoint := net.JoinHostPort(ap.Host, fmt.Sprintf("%d", ap.Port))
+		endpoint := net.JoinHostPort(ap.Host, strconv.Itoa(ap.Port))
 		// Skip connecting to self
 		if g.selfNetworkMember().Endpoint == endpoint || g.selfNetworkMember().InternalEndpoint == endpoint {
 			g.logger.Infof("Anchor peer for channel %s with same endpoint, skipping connecting to myself", channel)

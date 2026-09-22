@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle_test
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
@@ -27,7 +27,7 @@ var _ = Describe("Custodian", func() {
 
 	BeforeEach(func() {
 		fakeBuilder = &mock.ChaincodeBuilder{}
-		fakeBuilder.BuildReturnsOnCall(1, fmt.Errorf("fake-build-error"))
+		fakeBuilder.BuildReturnsOnCall(1, errors.New("fake-build-error"))
 		fakeLauncher = &mock.ChaincodeLauncher{}
 		buildRegistry = &container.BuildRegistry{}
 		cc = lifecycle.NewChaincodeCustodian()

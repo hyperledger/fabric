@@ -9,7 +9,6 @@ package identity
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -100,7 +99,7 @@ func (*naiveCryptoService) Sign(msg []byte) ([]byte, error) {
 func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
 	equal := bytes.Equal(signature, message)
 	if !equal {
-		return fmt.Errorf("Wrong certificate")
+		return errors.New("Wrong certificate")
 	}
 	return nil
 }

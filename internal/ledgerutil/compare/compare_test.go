@@ -9,11 +9,11 @@ package compare
 import (
 	"bytes"
 	"crypto/sha256"
-	"fmt"
 	"hash"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/util"
@@ -914,7 +914,7 @@ func TestNSKeyCompare(t *testing.T) {
 	}
 
 	for i, testCase := range testCases {
-		t.Run(fmt.Sprint(i+1), func(t *testing.T) {
+		t.Run(strconv.Itoa(i+1), func(t *testing.T) {
 			require.Equal(t, nsKeyCompare(&testCase.nsKey1, &testCase.nsKey2), testCase.expected)
 		})
 	}

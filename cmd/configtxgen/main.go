@@ -81,11 +81,11 @@ func doOutputChannelCreateTx(conf, baseProfile *genesisconfig.Profile, channelID
 func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, outputAnchorPeersUpdate string, asOrg string) error {
 	logger.Info("Generating anchor peer update")
 	if asOrg == "" {
-		return fmt.Errorf("must specify an organization to update the anchor peer for")
+		return errors.New("must specify an organization to update the anchor peer for")
 	}
 
 	if conf.Application == nil {
-		return fmt.Errorf("cannot update anchor peers without an application section")
+		return errors.New("cannot update anchor peers without an application section")
 	}
 
 	original, err := encoder.NewChannelGroup(conf)

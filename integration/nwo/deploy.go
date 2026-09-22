@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package nwo
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -50,7 +51,7 @@ type Chaincode struct {
 func (c *Chaincode) SetPackageIDFromPackageFile() {
 	fileBytes, err := os.ReadFile(c.PackageFile)
 	Expect(err).NotTo(HaveOccurred())
-	hashStr := fmt.Sprintf("%x", util.ComputeSHA256(fileBytes))
+	hashStr := hex.EncodeToString(util.ComputeSHA256(fileBytes))
 	c.PackageID = c.Label + ":" + hashStr
 }
 

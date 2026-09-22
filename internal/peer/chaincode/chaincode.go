@@ -81,8 +81,8 @@ var (
 
 var chaincodeCmd = &cobra.Command{
 	Use:   chainFuncName,
-	Short: fmt.Sprint(chainCmdDes),
-	Long:  fmt.Sprint(chainCmdDes),
+	Short: chainCmdDes,
+	Long:  chainCmdDes,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		common.InitCmd(cmd, args)
 		common.SetOrdererEnv(cmd, args)
@@ -104,7 +104,7 @@ func resetFlags() {
 	flags.StringVarP(&chaincodeCtorJSON, "ctor", "c", "{}",
 		fmt.Sprintf("Constructor message for the %s in JSON format", chainFuncName))
 	flags.StringVarP(&chaincodePath, "path", "p", common.UndefinedParamValue,
-		fmt.Sprintf("Path to %s", chainFuncName))
+		"Path to "+chainFuncName)
 	flags.StringVarP(&chaincodeName, "name", "n", common.UndefinedParamValue,
 		"Name of the chaincode")
 	flags.StringVarP(&chaincodeVersion, "version", "v", common.UndefinedParamValue,

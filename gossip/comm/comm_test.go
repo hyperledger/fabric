@@ -136,7 +136,7 @@ func newCommInstanceOnlyWithMetrics(t *testing.T, commMetrics *metrics.CommMetri
 	_, portString, err := net.SplitHostPort(gRPCServer.Address())
 	require.NoError(t, err)
 
-	endpoint := fmt.Sprintf("127.0.0.1:%s", portString)
+	endpoint := "127.0.0.1:" + portString
 	id := []byte(endpoint)
 	identityMapper := identity.NewIdentityMapper(sec, id, noopPurgeIdentity, sec)
 

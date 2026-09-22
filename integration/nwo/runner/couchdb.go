@@ -101,9 +101,9 @@ func (c *CouchDB) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	container, err := c.Client.ContainerCreate(context.Background(), dcli.ContainerCreateOptions{
 		Config: &dcontainer.Config{
 			Env: []string{
-				fmt.Sprintf("_creator=%s", c.creator),
-				fmt.Sprintf("COUCHDB_USER=%s", CouchDBUsername),
-				fmt.Sprintf("COUCHDB_PASSWORD=%s", CouchDBPassword),
+				"_creator=" + c.creator,
+				"COUCHDB_USER=" + CouchDBUsername,
+				"COUCHDB_PASSWORD=" + CouchDBPassword,
 			},
 			Image: c.Image,
 		},

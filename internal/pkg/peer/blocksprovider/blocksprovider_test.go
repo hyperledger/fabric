@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package blocksprovider_test
 
 import (
-	"fmt"
+	"errors"
 	"sync"
 	"time"
 
@@ -82,7 +82,7 @@ var _ = Describe("Blocksprovider", func() {
 		fakeDeliverClient.RecvStub = func() (*orderer.DeliverResponse, error) {
 			select {
 			case <-recvStep:
-				return nil, fmt.Errorf("fake-recv-step-error")
+				return nil, errors.New("fake-recv-step-error")
 			case <-doneC:
 				return nil, nil
 			}
@@ -146,7 +146,7 @@ var _ = Describe("Blocksprovider", func() {
 
 	When("the ledger returns an error", func() {
 		BeforeEach(func() {
-			fakeLedgerInfo.LedgerHeightReturns(0, fmt.Errorf("fake-ledger-error"))
+			fakeLedgerInfo.LedgerHeightReturns(0, errors.New("fake-ledger-error"))
 		})
 
 		It("exits the loop", func() {
@@ -163,7 +163,7 @@ var _ = Describe("Blocksprovider", func() {
 
 	When("the signer returns an error", func() {
 		BeforeEach(func() {
-			fakeSigner.SignReturns(nil, fmt.Errorf("fake-signer-error"))
+			fakeSigner.SignReturns(nil, errors.New("fake-signer-error"))
 		})
 
 		It("exits the loop", func() {
@@ -177,7 +177,7 @@ var _ = Describe("Blocksprovider", func() {
 
 	When("the orderer connection source returns an error", func() {
 		BeforeEach(func() {
-			fakeOrdererConnectionSource.RandomEndpointReturnsOnCall(0, nil, fmt.Errorf("fake-endpoint-error"))
+			fakeOrdererConnectionSource.RandomEndpointReturnsOnCall(0, nil, errors.New("fake-endpoint-error"))
 			fakeOrdererConnectionSource.RandomEndpointReturnsOnCall(1, &orderers.Endpoint{
 				Address: "orderer-address",
 			}, nil)
@@ -218,7 +218,7 @@ var _ = Describe("Blocksprovider", func() {
 
 	When("the dialer returns an error", func() {
 		BeforeEach(func() {
-			fakeDialer.DialReturnsOnCall(0, nil, fmt.Errorf("fake-dial-error"))
+			fakeDialer.DialReturnsOnCall(0, nil, errors.New("fake-dial-error"))
 			cc, err := grpc.Dial("localhost", grpc.WithInsecure())
 			Expect(err).NotTo(HaveOccurred())
 			fakeDialer.DialReturnsOnCall(1, cc, nil)
@@ -237,7 +237,7 @@ var _ = Describe("Blocksprovider", func() {
 
 	When("the deliver client cannot be created", func() {
 		BeforeEach(func() {
-			fakeDeliverStreamer.DeliverReturnsOnCall(0, nil, fmt.Errorf("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(0, nil, errors.New("deliver-error"))
 			fakeDeliverStreamer.DeliverReturnsOnCall(1, fakeDeliverClient, nil)
 		})
 
@@ -250,9 +250,9 @@ var _ = Describe("Blocksprovider", func() {
 
 	When("there are consecutive errors", func() {
 		BeforeEach(func() {
-			fakeDeliverStreamer.DeliverReturnsOnCall(0, nil, fmt.Errorf("deliver-error"))
-			fakeDeliverStreamer.DeliverReturnsOnCall(1, nil, fmt.Errorf("deliver-error"))
-			fakeDeliverStreamer.DeliverReturnsOnCall(2, nil, fmt.Errorf("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(0, nil, errors.New("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(1, nil, errors.New("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(2, nil, errors.New("deliver-error"))
 			fakeDeliverStreamer.DeliverReturnsOnCall(3, fakeDeliverClient, nil)
 		})
 
@@ -267,7 +267,7 @@ var _ = Describe("Blocksprovider", func() {
 
 	When("the consecutive errors are unbounded and the peer is not a static leader", func() {
 		BeforeEach(func() {
-			fakeDeliverStreamer.DeliverReturns(nil, fmt.Errorf("deliver-error"))
+			fakeDeliverStreamer.DeliverReturns(nil, errors.New("deliver-error"))
 			fakeDeliverStreamer.DeliverReturnsOnCall(500, fakeDeliverClient, nil)
 		})
 
@@ -283,7 +283,7 @@ var _ = Describe("Blocksprovider", func() {
 
 	When("the consecutive errors are unbounded and the peer is static leader", func() {
 		BeforeEach(func() {
-			fakeDeliverStreamer.DeliverReturns(nil, fmt.Errorf("deliver-error"))
+			fakeDeliverStreamer.DeliverReturns(nil, errors.New("deliver-error"))
 			fakeDeliverStreamer.DeliverReturnsOnCall(500, fakeDeliverClient, nil)
 		})
 
@@ -299,10 +299,10 @@ var _ = Describe("Blocksprovider", func() {
 
 	When("an error occurs, then a block is successfully delivered", func() {
 		BeforeEach(func() {
-			fakeDeliverStreamer.DeliverReturnsOnCall(0, nil, fmt.Errorf("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(0, nil, errors.New("deliver-error"))
 			fakeDeliverStreamer.DeliverReturnsOnCall(1, fakeDeliverClient, nil)
-			fakeDeliverStreamer.DeliverReturnsOnCall(1, nil, fmt.Errorf("deliver-error"))
-			fakeDeliverStreamer.DeliverReturnsOnCall(2, nil, fmt.Errorf("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(1, nil, errors.New("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(2, nil, errors.New("deliver-error"))
 		})
 
 		It("sleeps in an exponential fashion and retries until dial is successful", func() {
@@ -323,7 +323,7 @@ var _ = Describe("Blocksprovider", func() {
 
 	When("the send fails", func() {
 		BeforeEach(func() {
-			fakeDeliverClient.SendReturnsOnCall(0, fmt.Errorf("fake-send-error"))
+			fakeDeliverClient.SendReturnsOnCall(0, errors.New("fake-send-error"))
 			fakeDeliverClient.SendReturnsOnCall(1, nil)
 			fakeDeliverClient.CloseSendStub = nil
 		})
@@ -354,11 +354,11 @@ var _ = Describe("Blocksprovider", func() {
 			fakeDeliverClient.CloseSendStub = nil
 			fakeDeliverClient.RecvStub = func() (*orderer.DeliverResponse, error) {
 				if fakeDeliverClient.RecvCallCount() == 1 {
-					return nil, fmt.Errorf("fake-recv-error")
+					return nil, errors.New("fake-recv-error")
 				}
 				select {
 				case <-recvStep:
-					return nil, fmt.Errorf("fake-recv-step-error")
+					return nil, errors.New("fake-recv-step-error")
 				case <-doneC:
 					return nil, nil
 				}
@@ -391,7 +391,7 @@ var _ = Describe("Blocksprovider", func() {
 			fakeDeliverClient.RecvStub = func() (*orderer.DeliverResponse, error) {
 				switch fakeDeliverClient.RecvCallCount() {
 				case 1, 2, 4:
-					return nil, fmt.Errorf("fake-recv-error")
+					return nil, errors.New("fake-recv-error")
 				case 3:
 					return &orderer.DeliverResponse{
 						Type: &orderer.DeliverResponse_Block{
@@ -405,7 +405,7 @@ var _ = Describe("Blocksprovider", func() {
 				default:
 					select {
 					case <-recvStep:
-						return nil, fmt.Errorf("fake-recv-step-error")
+						return nil, errors.New("fake-recv-step-error")
 					case <-doneC:
 						return nil, nil
 					}
@@ -443,7 +443,7 @@ var _ = Describe("Blocksprovider", func() {
 				}
 				select {
 				case <-recvStep:
-					return nil, fmt.Errorf("fake-recv-step-error")
+					return nil, errors.New("fake-recv-step-error")
 				case <-doneC:
 					return nil, nil
 				}
@@ -469,7 +469,7 @@ var _ = Describe("Blocksprovider", func() {
 
 		When("the block is invalid", func() {
 			BeforeEach(func() {
-				fakeBlockVerifier.VerifyBlockReturns(fmt.Errorf("fake-verify-error"))
+				fakeBlockVerifier.VerifyBlockReturns(errors.New("fake-verify-error"))
 			})
 
 			It("disconnects, sleeps, and tries again", func() {
@@ -497,7 +497,7 @@ var _ = Describe("Blocksprovider", func() {
 
 		When("adding the payload fails", func() {
 			BeforeEach(func() {
-				fakeGossipServiceAdapter.AddPayloadReturns(fmt.Errorf("payload-error"))
+				fakeGossipServiceAdapter.AddPayloadReturns(errors.New("payload-error"))
 			})
 
 			It("disconnects, sleeps, and tries again", func() {
@@ -574,7 +574,7 @@ var _ = Describe("Blocksprovider", func() {
 				}
 				select {
 				case <-recvStep:
-					return nil, fmt.Errorf("fake-recv-step-error")
+					return nil, errors.New("fake-recv-step-error")
 				case <-doneC:
 					return nil, nil
 				}

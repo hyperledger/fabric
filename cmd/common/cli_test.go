@@ -100,8 +100,8 @@ func TestCLI(t *testing.T) {
 
 		userCert := filepath.Join(dir, "cert.pem")
 		userKey := filepath.Join(dir, "key.pem")
-		userCertFlag := fmt.Sprintf("--userCert=%s", userCert)
-		userKeyFlag := fmt.Sprintf("--userKey=%s", userKey)
+		userCertFlag := "--userCert=" + userCert
+		userKeyFlag := "--userKey=" + userKey
 		os.Create(userCert)
 		os.Create(userKey)
 

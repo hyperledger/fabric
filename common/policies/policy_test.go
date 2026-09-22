@@ -215,7 +215,7 @@ func TestPrincipalUniqueSet(t *testing.T) {
 
 	for principal, plurality := range principalSet.UniqueSet() {
 		require.Equal(t, int(principal.GetPrincipalClassification()), plurality)
-		require.Equal(t, fmt.Sprintf("%d", plurality), string(principal.GetPrincipal()))
+		require.Equal(t, strconv.Itoa(plurality), string(principal.GetPrincipal()))
 	}
 
 	v := reflect.Indirect(reflect.ValueOf(msp.MSPPrincipal{}))

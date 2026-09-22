@@ -166,7 +166,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 		}
 
 		if chaincodeQueryRaw && chaincodeQueryHex {
-			return fmt.Errorf("options --raw (-r) and --hex (-x) are not compatible")
+			return errors.New("options --raw (-r) and --hex (-x) are not compatible")
 		}
 		if chaincodeQueryRaw {
 			fmt.Println(string(proposalResp.GetResponse().GetPayload()))

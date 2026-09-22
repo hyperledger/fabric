@@ -97,12 +97,12 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	}
 
 	if fname != GetChainInfo && len(args) < 3 {
-		return shim.Error(fmt.Sprintf("missing 3rd argument for %s", fname))
+		return shim.Error("missing 3rd argument for " + fname)
 	}
 
 	targetLedger := e.ledgers.GetLedger(cid)
 	if targetLedger == nil {
-		return shim.Error(fmt.Sprintf("Invalid chain ID, %s", cid))
+		return shim.Error("Invalid chain ID, " + cid)
 	}
 
 	qscclogger.Debugf("Invoke function: %s on chain: %s", fname, cid)

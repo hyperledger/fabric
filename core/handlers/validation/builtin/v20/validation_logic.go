@@ -156,7 +156,7 @@ func (vscc *Validator) extractValidationArtifacts(
 		return nil, err
 	}
 	if pRespPayload.Extension == nil {
-		err = fmt.Errorf("nil pRespPayload.Extension")
+		err = errors.New("nil pRespPayload.Extension")
 		return nil, err
 	}
 	respPayload, err := protoutil.UnmarshalChaincodeAction(pRespPayload.GetExtension())

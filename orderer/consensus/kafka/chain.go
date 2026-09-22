@@ -181,12 +181,12 @@ func (chain *chainImpl) WaitReady() error {
 	case <-chain.startChan: // The Start phase has completed
 		select {
 		case <-chain.haltChan: // The chain has been halted, stop here
-			return fmt.Errorf("consenter for this channel has been halted")
+			return errors.New("consenter for this channel has been halted")
 		case <-chain.doneReprocessing(): // Block waiting for all re-submitted messages to be reprocessed
 			return nil
 		}
 	default: // Not ready yet
-		return fmt.Errorf("backing Kafka cluster has not completed booting; try again later")
+		return errors.New("backing Kafka cluster has not completed booting; try again later")
 	}
 }
 
@@ -235,7 +235,7 @@ func (chain *chainImpl) configure(config *cb.Envelope, configSeq uint64, origina
 		return fmt.Errorf("cannot enqueue, unable to marshal config because %w", err)
 	}
 	if !chain.enqueue(newConfigMessage(marshaledConfig, configSeq, originalOffset)) {
-		return fmt.Errorf("cannot enqueue")
+		return errors.New("cannot enqueue")
 	}
 	return nil
 }
@@ -760,7 +760,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			commitNormalMsg(env, chain.lastOriginalOffsetProcessed)
 
 		case msgprocessor.ConfigUpdateMsg:
-			return fmt.Errorf("not expecting message of type ConfigUpdate")
+			return errors.New("not expecting message of type ConfigUpdate")
 
 		default:
 			logger.Panicf("[channel: %s] Unsupported message classification: %v", chain.ChannelID(), class)

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
-	"fmt"
 	"testing"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -178,7 +177,7 @@ func TestProposalRejectedByConfig(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.NewChannelConfigErr = fmt.Errorf("desired err text")
+	mcc.NewChannelConfigErr = errors.New("desired err text")
 	mv := &mocks.MetadataValidator{}
 
 	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()))

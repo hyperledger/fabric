@@ -216,7 +216,7 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 	gc.blocksPuller = gc.createBlockPuller()
 
 	seqNumFromMsg := func(m any) string {
-		return fmt.Sprintf("%d", m.(*protoext.SignedGossipMessage).GetDataMsg().GetPayload().GetSeqNum())
+		return strconv.FormatUint(m.(*protoext.SignedGossipMessage).GetDataMsg().GetPayload().GetSeqNum(), 10)
 	}
 	gc.blockMsgStore = msgstore.NewMessageStoreExpirable(comparator, func(m any) {
 		gc.logger.Debugf("Removing %s from the message store", seqNumFromMsg(m))
@@ -467,7 +467,7 @@ func (gc *gossipChannel) createBlockPuller() pull.Mediator {
 			gc.logger.Warning("Non-data block or with no payload")
 			return ""
 		}
-		return fmt.Sprintf("%d", dataMsg.GetPayload().GetSeqNum())
+		return strconv.FormatUint(dataMsg.GetPayload().GetSeqNum(), 10)
 	}
 	adapter := &pull.PullAdapter{
 		Sndr:        gc,

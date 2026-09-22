@@ -979,7 +979,7 @@ func updateConfigWithBatchTimeout(updatedConfig *common.Config) {
 	Expect(err).NotTo(HaveOccurred())
 	toDur = toDur + time.Duration(100000000)
 	batchTimeoutValue.Timeout = toDur.String()
-	By(fmt.Sprintf("Increasing BatchTimeout to %s", batchTimeoutValue.GetTimeout()))
+	By("Increasing BatchTimeout to " + batchTimeoutValue.GetTimeout())
 	updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchTimeout"] = &common.ConfigValue{
 		ModPolicy: "Admins",
 		Value:     protoutil.MarshalOrPanic(batchTimeoutValue),

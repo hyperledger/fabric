@@ -7,7 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package deliverservice
 
 import (
-	"fmt"
+	"encoding/hex"
+	"errors"
 	"testing"
 	"time"
 
@@ -24,7 +25,7 @@ type ledgerInfo interface {
 
 func TestStartDeliverForChannel(t *testing.T) {
 	fakeLedgerInfo := &fake.LedgerInfo{}
-	fakeLedgerInfo.LedgerHeightReturns(0, fmt.Errorf("fake-ledger-error"))
+	fakeLedgerInfo.LedgerHeightReturns(0, errors.New("fake-ledger-error"))
 
 	secOpts := comm.SecureOptions{
 		UseTLS:            true,
@@ -77,7 +78,7 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 
 		bp, ok := ds.blockProviders["channel-id"]
 		require.True(t, ok, "map entry must exist")
-		require.Equal(t, "76f7a03f8dfdb0ef7c4b28b3901fe163c730e906c70e4cdf887054ad5f608bed", fmt.Sprintf("%x", bp.TLSCertHash))
+		require.Equal(t, "76f7a03f8dfdb0ef7c4b28b3901fe163c730e906c70e4cdf887054ad5f608bed", hex.EncodeToString(bp.TLSCertHash))
 	})
 
 	t.Run("Green Path without mutual TLS", func(t *testing.T) {

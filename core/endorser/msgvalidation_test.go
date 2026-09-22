@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package endorser_test
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -452,7 +452,7 @@ var _ = Describe("Validate", func() {
 
 	Context("when the identity cannot be deserialized", func() {
 		BeforeEach(func() {
-			fakeIdentityDeserializer.DeserializeIdentityReturns(nil, fmt.Errorf("fake-deserializing-error"))
+			fakeIdentityDeserializer.DeserializeIdentityReturns(nil, errors.New("fake-deserializing-error"))
 		})
 
 		It("returns a generic auth error", func() {
@@ -464,7 +464,7 @@ var _ = Describe("Validate", func() {
 	Context("when the identity is not valid", func() {
 		BeforeEach(func() {
 			fakeIdentity.GetMSPIdentifierReturns("mspid")
-			fakeIdentity.ValidateReturns(fmt.Errorf("fake-validate-error"))
+			fakeIdentity.ValidateReturns(errors.New("fake-validate-error"))
 		})
 
 		It("returns a generic auth error", func() {
@@ -476,7 +476,7 @@ var _ = Describe("Validate", func() {
 	Context("when the identity signature is not valid", func() {
 		BeforeEach(func() {
 			fakeIdentity.GetMSPIdentifierReturns("mspid")
-			fakeIdentity.VerifyReturns(fmt.Errorf("fake-verify-error"))
+			fakeIdentity.VerifyReturns(errors.New("fake-verify-error"))
 		})
 
 		It("returns a generic auth error", func() {

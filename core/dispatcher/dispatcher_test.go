@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package dispatcher_test
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -52,7 +52,7 @@ func (tr TestReceiver) NilNilReturn(ts *timestamp.Timestamp) (*timestamp.Timesta
 }
 
 func (tr TestReceiver) ErrorReturned(ts *timestamp.Timestamp) (*timestamp.Timestamp, error) {
-	return nil, fmt.Errorf("fake-error")
+	return nil, errors.New("fake-error")
 }
 
 var _ = Describe("Dispatcher", func() {
@@ -167,7 +167,7 @@ var _ = Describe("Dispatcher", func() {
 
 		Context("when the returned output cannot be marshaled", func() {
 			BeforeEach(func() {
-				fakeProto.MarshalReturns(nil, fmt.Errorf("fake-error"))
+				fakeProto.MarshalReturns(nil, errors.New("fake-error"))
 			})
 
 			It("wraps and returns the error", func() {

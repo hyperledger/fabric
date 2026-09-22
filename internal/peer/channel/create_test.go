@@ -389,7 +389,7 @@ func TestCreateChainDeliverFail(t *testing.T) {
 		t.Fatalf("Get default signer error: %v", err)
 	}
 
-	sendErr := fmt.Errorf("skeleton")
+	sendErr := errors.New("skeleton")
 	mockCF := &ChannelCmdFactory{
 		BroadcastFactory: func() (common.BroadcastClient, error) {
 			return common.GetMockBroadcastClient(sendErr), nil

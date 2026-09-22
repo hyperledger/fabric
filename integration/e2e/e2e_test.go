@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -877,7 +878,7 @@ func hashFile(file string) string {
 	_, err = io.Copy(h, f)
 	Expect(err).NotTo(HaveOccurred())
 
-	return fmt.Sprintf("%x", h.Sum(nil))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func chaincodeContainerNameFilter(n *nwo.Network, chaincode nwo.Chaincode) string {

@@ -11,6 +11,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -72,7 +73,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	)
 	// TLS enabled
 	if *caFile != "" {
-		osnURL = fmt.Sprintf("https://%s", *orderer)
+		osnURL = "https://" + *orderer
 		var err error
 		caCertPool = x509.NewCertPool()
 		caFilePEM, err := os.ReadFile(*caFile)
@@ -80,7 +81,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 			return "", 1, fmt.Errorf("reading orderer CA certificate: %w", err)
 		}
 		if !caCertPool.AppendCertsFromPEM(caFilePEM) {
-			return "", 1, fmt.Errorf("failed to add ca-file PEM to cert pool")
+			return "", 1, errors.New("failed to add ca-file PEM to cert pool")
 		}
 
 		tlsClientCert, err = tls.LoadX509KeyPair(*clientCert, *clientKey)
@@ -88,7 +89,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 			return "", 1, fmt.Errorf("loading client cert/key pair: %w", err)
 		}
 	} else { // TLS disabled
-		osnURL = fmt.Sprintf("http://%s", *orderer)
+		osnURL = "http://" + *orderer
 	}
 
 	var marshaledConfigBlock []byte

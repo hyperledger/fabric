@@ -223,7 +223,7 @@ func InitBlockMetadata(block *cb.Block) {
 
 func VerifyTransactionsAreWellFormed(block *cb.Block) error {
 	if block == nil || block.GetData() == nil || len(block.GetData().GetData()) == 0 {
-		return fmt.Errorf("empty block")
+		return errors.New("empty block")
 	}
 
 	// If we have a single transaction, and the block is a config block, then no need to check

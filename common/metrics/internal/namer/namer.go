@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package namer
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -120,7 +119,7 @@ func (n *Namer) Format(labelValues ...string) string {
 			var ok bool
 			value, ok = labels[key]
 			if !ok {
-				panic(fmt.Sprintf("invalid label in name format: %s", key))
+				panic("invalid label in name format: " + key)
 			}
 			value = invalidLabelValueRegexp.ReplaceAllString(value, "_")
 		}

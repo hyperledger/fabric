@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package snapshot
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -32,13 +32,13 @@ func TestCancelRequestCmd(t *testing.T) {
 	require.Equal(t, []byte("Snapshot request cancelled successfully\n"), buffer.Contents())
 
 	// error tests
-	mockSnapshotClient.CancelReturns(nil, fmt.Errorf("fake-cancel-error"))
+	mockSnapshotClient.CancelReturns(nil, errors.New("fake-cancel-error"))
 	require.EqualError(t, cmd.Execute(), "failed to cancel the request: fake-cancel-error")
 
-	mockSigner.SignReturns(nil, fmt.Errorf("fake-sign-error"))
+	mockSigner.SignReturns(nil, errors.New("fake-sign-error"))
 	require.EqualError(t, cmd.Execute(), "fake-sign-error")
 
-	mockSigner.SerializeReturns(nil, fmt.Errorf("fake-serialize-error"))
+	mockSigner.SerializeReturns(nil, errors.New("fake-serialize-error"))
 	require.EqualError(t, cmd.Execute(), "fake-serialize-error")
 
 	resetFlags()

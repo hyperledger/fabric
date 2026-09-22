@@ -281,7 +281,7 @@ func createCSR(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, org, ou string) (*ecd
 			Country:            []string{"US"},
 			Province:           []string{"California"},
 			Locality:           []string{"San Francisco"},
-			Organization:       []string{fmt.Sprintf("%s.example.com", org)},
+			Organization:       []string{org + ".example.com"},
 			OrganizationalUnit: []string{ou},
 			CommonName:         fmt.Sprintf("peer.%s.example.com", org),
 		},

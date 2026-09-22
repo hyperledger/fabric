@@ -156,11 +156,11 @@ func (s *SystemChannel) ProcessConfigMsg(env *cb.Envelope) (*cb.Envelope, uint64
 	}
 
 	if payload.GetHeader() == nil {
-		return nil, 0, fmt.Errorf("Abort processing config msg because no head was set")
+		return nil, 0, errors.New("Abort processing config msg because no head was set")
 	}
 
 	if payload.Header.ChannelHeader == nil {
-		return nil, 0, fmt.Errorf("Abort processing config msg because no channel header was set")
+		return nil, 0, errors.New("Abort processing config msg because no channel header was set")
 	}
 
 	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
@@ -238,7 +238,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 	}
 
 	if configUpdatePayload.GetHeader() == nil {
-		return nil, fmt.Errorf("Failed initial channel config creation because config update header was missing")
+		return nil, errors.New("Failed initial channel config creation because config update header was missing")
 	}
 
 	channelHeader, err := protoutil.UnmarshalChannelHeader(configUpdatePayload.GetHeader().GetChannelHeader())
@@ -256,11 +256,11 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 	}
 
 	if configUpdate.GetWriteSet() == nil {
-		return nil, fmt.Errorf("Config update has an empty writeset")
+		return nil, errors.New("Config update has an empty writeset")
 	}
 
 	if configUpdate.WriteSet.Groups == nil || configUpdate.GetWriteSet().GetGroups()[channelconfig.ApplicationGroupKey] == nil {
-		return nil, fmt.Errorf("Config update has missing application group")
+		return nil, errors.New("Config update has missing application group")
 	}
 
 	if uv := configUpdate.GetWriteSet().GetGroups()[channelconfig.ApplicationGroupKey].GetVersion(); uv != 1 {
@@ -269,7 +269,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 
 	consortiumConfigValue, ok := configUpdate.GetWriteSet().GetValues()[channelconfig.ConsortiumKey]
 	if !ok {
-		return nil, fmt.Errorf("Consortium config value missing")
+		return nil, errors.New("Consortium config value missing")
 	}
 
 	consortium := &cb.Consortium{}
@@ -281,7 +281,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 	applicationGroup := protoutil.NewConfigGroup()
 	consortiumsConfig, ok := dt.support.ConsortiumsConfig()
 	if !ok {
-		return nil, fmt.Errorf("The ordering system channel does not appear to resources creating channels")
+		return nil, errors.New("The ordering system channel does not appear to resources creating channels")
 	}
 
 	consortiumConf, ok := consortiumsConfig.Consortiums()[consortium.GetName()]
@@ -324,7 +324,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 	// if the consortium group has any members, there must be at least one member in the source request
 	if len(systemChannelGroup.GetGroups()[channelconfig.ConsortiumsGroupKey].GetGroups()[consortium.GetName()].GetGroups()) > 0 &&
 		len(configUpdate.GetWriteSet().GetGroups()[channelconfig.ApplicationGroupKey].GetGroups()) == 0 {
-		return nil, fmt.Errorf("Proposed configuration has no application group members, but consortium contains members")
+		return nil, errors.New("Proposed configuration has no application group members, but consortium contains members")
 	}
 
 	// If the consortium has no members, allow the source request to contain arbitrary members, even though the eventual channel creation transaction may get invalidated

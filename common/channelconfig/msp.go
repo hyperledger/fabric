@@ -82,7 +82,7 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 
 	existingPendingMSPConfig, ok := bh.idMap[mspID]
 	if ok && !proto.Equal(existingPendingMSPConfig.mspConfig, mspConfig) {
-		return nil, errors.New(fmt.Sprintf("Attempted to define two different versions of MSP: %s", mspID))
+		return nil, errors.New("Attempted to define two different versions of MSP: " + mspID)
 	}
 
 	if !ok {

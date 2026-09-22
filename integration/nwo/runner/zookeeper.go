@@ -108,7 +108,7 @@ func (z *ZooKeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 			Image: z.Image,
 			Env: []string{
 				fmt.Sprintf("ZOOKEEPER_MY_ID=%d", z.ZooMyID),
-				fmt.Sprintf("ZOOKEEPER_SERVERS=%s", z.ZooServers),
+				"ZOOKEEPER_SERVERS=" + z.ZooServers,
 				fmt.Sprintf("ZOOKEEPER_CLIENT_PORT=%d", z.ClientPort.Num()),
 			},
 		},

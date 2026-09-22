@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package kafka
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -199,7 +198,7 @@ func setupTestLogging(logLevel string) {
 	// This call allows us to (a) get the logging backend initialization that
 	// takes place in the `flogging` package, and (b) adjust the verbosity of
 	// the logs when running tests on this package.
-	spec := fmt.Sprintf("orderer.consensus.kafka=%s", logLevel)
+	spec := "orderer.consensus.kafka=" + logLevel
 	flogging.ActivateSpec(spec)
 }
 
@@ -209,5 +208,5 @@ func tamperBytes(original []byte) []byte {
 }
 
 func channelNameForTest(t *testing.T) string {
-	return fmt.Sprintf("%s.channel", strings.ReplaceAll(strings.ToLower(t.Name()), "/", "."))
+	return strings.ReplaceAll(strings.ToLower(t.Name()), "/", ".") + ".channel"
 }

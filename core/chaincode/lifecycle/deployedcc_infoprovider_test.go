@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle_test
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -159,7 +159,7 @@ var _ = Describe("ValidatorCommitter", func() {
 
 		Context("when the legacy provider returns an error", func() {
 			BeforeEach(func() {
-				fakeLegacyProvider.UpdatedChaincodesReturns(nil, fmt.Errorf("legacy-error"))
+				fakeLegacyProvider.UpdatedChaincodesReturns(nil, errors.New("legacy-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -190,7 +190,7 @@ var _ = Describe("ValidatorCommitter", func() {
 
 		Context("when the ledger returns an error", func() {
 			BeforeEach(func() {
-				fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+				fakeQueryExecutor.GetStateReturns(nil, errors.New("state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -205,7 +205,7 @@ var _ = Describe("ValidatorCommitter", func() {
 					Name:    "legacy-name",
 					Hash:    []byte("hash"),
 					Version: "cc-version",
-				}, fmt.Errorf("chaincode-info-error"))
+				}, errors.New("chaincode-info-error"))
 			})
 
 			It("passes through to the legacy impl", func() {
@@ -274,7 +274,7 @@ var _ = Describe("ValidatorCommitter", func() {
 
 		Context("when state range scan returns an error", func() {
 			BeforeEach(func() {
-				fakeQueryExecutor.GetStateRangeScanIteratorReturns(nil, fmt.Errorf("rangescan-error"))
+				fakeQueryExecutor.GetStateRangeScanIteratorReturns(nil, errors.New("rangescan-error"))
 			})
 
 			It("returns the error", func() {
@@ -285,7 +285,7 @@ var _ = Describe("ValidatorCommitter", func() {
 
 		Context("when get state returns an error", func() {
 			BeforeEach(func() {
-				fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("getstate-error"))
+				fakeQueryExecutor.GetStateReturns(nil, errors.New("getstate-error"))
 			})
 
 			It("returns the error", func() {
@@ -351,7 +351,7 @@ var _ = Describe("ValidatorCommitter", func() {
 
 		Context("when LegacyProvider.AllChaincodesInfo returns an error", func() {
 			BeforeEach(func() {
-				fakeLegacyProvider.AllChaincodesInfoReturns(nil, fmt.Errorf("chaincode-info-error"))
+				fakeLegacyProvider.AllChaincodesInfoReturns(nil, errors.New("chaincode-info-error"))
 			})
 
 			It("passes through to the legacy impl", func() {
@@ -400,7 +400,7 @@ var _ = Describe("ValidatorCommitter", func() {
 
 		Context("when the ledger returns an error", func() {
 			BeforeEach(func() {
-				fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+				fakeQueryExecutor.GetStateReturns(nil, errors.New("state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -414,7 +414,7 @@ var _ = Describe("ValidatorCommitter", func() {
 
 			BeforeEach(func() {
 				collInfo = &pb.StaticCollectionConfig{}
-				fakeLegacyProvider.CollectionInfoReturns(collInfo, fmt.Errorf("collection-info-error"))
+				fakeLegacyProvider.CollectionInfoReturns(collInfo, errors.New("collection-info-error"))
 			})
 
 			It("passes through to the legacy impl", func() {
@@ -477,7 +477,7 @@ var _ = Describe("ValidatorCommitter", func() {
 
 		Context("when the ledger returns an error", func() {
 			BeforeEach(func() {
-				fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+				fakeQueryExecutor.GetStateReturns(nil, errors.New("state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -548,7 +548,7 @@ var _ = Describe("ValidatorCommitter", func() {
 
 		Context("when the ledger returns an error", func() {
 			BeforeEach(func() {
-				fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+				fakeQueryExecutor.GetStateReturns(nil, errors.New("state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -607,7 +607,7 @@ var _ = Describe("ValidatorCommitter", func() {
 
 		Context("when the chaincode is not in the new lifecycle and legacy info provider returns error", func() {
 			BeforeEach(func() {
-				fakeLegacyProvider.ChaincodeInfoReturns(nil, fmt.Errorf("legacy-chaincode-info-error"))
+				fakeLegacyProvider.ChaincodeInfoReturns(nil, errors.New("legacy-chaincode-info-error"))
 			})
 
 			It("passes through to the legacy impl", func() {
@@ -661,7 +661,7 @@ var _ = Describe("ValidatorCommitter", func() {
 
 		Context("when the ledger returns an error", func() {
 			BeforeEach(func() {
-				fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+				fakeQueryExecutor.GetStateReturns(nil, errors.New("state-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -712,7 +712,7 @@ var _ = Describe("ValidatorCommitter", func() {
 
 		Context("when the chaincode definition cannot be retrieved", func() {
 			BeforeEach(func() {
-				fakeValidationState.GetStateMultipleKeysReturns(nil, fmt.Errorf("state-error"))
+				fakeValidationState.GetStateMultipleKeysReturns(nil, errors.New("state-error"))
 			})
 
 			It("returns an unexpected error", func() {

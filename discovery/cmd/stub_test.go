@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package discovery
 
 import (
-	"fmt"
 	"net"
 	"path/filepath"
 	"testing"
@@ -29,7 +28,7 @@ func TestClientStub(t *testing.T) {
 	defer srv.Stop()
 
 	_, portStr, _ := net.SplitHostPort(srv.Address())
-	endpoint := fmt.Sprintf("localhost:%s", portStr)
+	endpoint := "localhost:" + portStr
 	stub := &ClientStub{}
 
 	req := discovery.NewRequest()
@@ -54,7 +53,7 @@ func TestRawStub(t *testing.T) {
 	defer srv.Stop()
 
 	_, portStr, _ := net.SplitHostPort(srv.Address())
-	endpoint := fmt.Sprintf("localhost:%s", portStr)
+	endpoint := "localhost:" + portStr
 	stub := &RawStub{}
 
 	req := discovery.NewRequest()

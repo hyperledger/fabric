@@ -18,7 +18,7 @@ import (
 type SendPanicFailure string
 
 func (e SendPanicFailure) Error() string {
-	return fmt.Sprintf("send failure %s", string(e))
+	return "send failure " + string(e)
 }
 
 // PeerChaincodeStream interface for stream between Peer and chaincode instance.

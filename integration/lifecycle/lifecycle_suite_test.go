@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"syscall"
 	"testing"
 	"time"
@@ -84,7 +85,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, chaincodeName str
 	})
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 	EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	ExpectWithOffset(1, sess).To(gbytes.Say(fmt.Sprint(initialQueryResult)))
+	ExpectWithOffset(1, sess).To(gbytes.Say(strconv.Itoa(initialQueryResult)))
 
 	By("invoking the chaincode")
 	sess, err = n.PeerUserSession(peers[0], "User1", commands.ChaincodeInvoke{
@@ -107,7 +108,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, chaincodeName str
 	})
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 	EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	ExpectWithOffset(1, sess).To(gbytes.Say(fmt.Sprint(initialQueryResult - 10)))
+	ExpectWithOffset(1, sess).To(gbytes.Say(strconv.Itoa(initialQueryResult - 10)))
 }
 
 func RestartNetwork(process ifrit.Process, network *nwo.Network) ifrit.Process {

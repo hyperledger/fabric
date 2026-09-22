@@ -1163,7 +1163,7 @@ func panicMsg(f func()) string {
 
 func produceGenesisFile(t *testing.T, profile, channelID string) string {
 	conf := genesisconfig.Load(profile, configtest.GetDevConfigDir())
-	f, err := os.CreateTemp(t.TempDir(), fmt.Sprintf("%s-genesis_block-", t.Name()))
+	f, err := os.CreateTemp(t.TempDir(), t.Name()+"-genesis_block-")
 	require.NoError(t, err)
 	_, err = f.Write(protoutil.MarshalOrPanic(encoder.New(conf).GenesisBlockForChannel(channelID)))
 	require.NoError(t, err)

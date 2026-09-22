@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package experiments
 
 import (
-	"fmt"
+	"errors"
 	"sync"
 	"testing"
 
@@ -27,7 +27,7 @@ import (
 // where, client_1 and client_2 run in parallel on chain_1 and client_3 and client_4 run in parallel on chain_2
 func BenchmarkInsertTxs(b *testing.B) {
 	if b.N != 1 {
-		panic(fmt.Errorf(`This benchmark should be called with N=1 only. Run this with more volume of data`))
+		panic(errors.New(`This benchmark should be called with N=1 only. Run this with more volume of data`))
 	}
 	testEnv := chainmgmt.InitTestEnv(conf.chainMgrConf, conf.batchConf, chainmgmt.ChainInitOpCreate)
 	for _, chain := range testEnv.Chains() {

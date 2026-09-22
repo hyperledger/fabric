@@ -217,7 +217,7 @@ func (d *gossipDiscoveryImpl) validateSelfConfig() {
 func (d *gossipDiscoveryImpl) sendUntilAcked(peer *NetworkMember, message *protoext.SignedGossipMessage) {
 	nonce := message.Nonce
 	for i := 0; i < d.maxConnectionAttempts && !d.toDie(); i++ {
-		sub := d.pubsub.Subscribe(fmt.Sprintf("%d", nonce), time.Second*5)
+		sub := d.pubsub.Subscribe(strconv.FormatUint(nonce, 10), time.Second*5)
 		d.comm.SendToPeer(peer, message)
 		if _, timeoutErr := sub.Listen(); timeoutErr == nil {
 			return
@@ -371,7 +371,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(msg protoext.ReceivedMessage) {
 	}
 
 	if memResp := m.GetMemRes(); memResp != nil {
-		d.pubsub.Publish(fmt.Sprintf("%d", m.Nonce), m.Nonce)
+		d.pubsub.Publish(strconv.FormatUint(m.Nonce, 10), m.Nonce)
 		for _, env := range memResp.GetAlive() {
 			am, err := protoext.EnvelopeToGossipMessage(env)
 			if err != nil {

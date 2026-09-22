@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -106,7 +107,7 @@ func (meqe *mockExecQuerySimulator) ExecuteQuery(namespace, query string) (commo
 
 func (meqe *mockExecQuerySimulator) commonQuery(namespace, query string) (commonledger.ResultsIterator, error) {
 	if meqe.resultsIter == nil {
-		return nil, fmt.Errorf("query executor not initialized")
+		return nil, errors.New("query executor not initialized")
 	}
 	nsiter := meqe.resultsIter[namespace]
 	if nsiter == nil {
@@ -121,35 +122,35 @@ func (meqe *mockExecQuerySimulator) commonQuery(namespace, query string) (common
 
 func (meqe *mockExecQuerySimulator) SetState(namespace string, key string, value []byte) error {
 	if meqe.txsim == nil {
-		return fmt.Errorf("SetState txsimulator not initialed")
+		return errors.New("SetState txsimulator not initialed")
 	}
 	return meqe.txsim.SetState(namespace, key, value)
 }
 
 func (meqe *mockExecQuerySimulator) DeleteState(namespace string, key string) error {
 	if meqe.txsim == nil {
-		return fmt.Errorf("SetState txsimulator not initialed")
+		return errors.New("SetState txsimulator not initialed")
 	}
 	return meqe.txsim.DeleteState(namespace, key)
 }
 
 func (meqe *mockExecQuerySimulator) SetStateMultipleKeys(namespace string, kvs map[string][]byte) error {
 	if meqe.txsim == nil {
-		return fmt.Errorf("SetState txsimulator not initialed")
+		return errors.New("SetState txsimulator not initialed")
 	}
 	return meqe.txsim.SetStateMultipleKeys(namespace, kvs)
 }
 
 func (meqe *mockExecQuerySimulator) ExecuteUpdate(query string) error {
 	if meqe.txsim == nil {
-		return fmt.Errorf("SetState txsimulator not initialed")
+		return errors.New("SetState txsimulator not initialed")
 	}
 	return meqe.txsim.ExecuteUpdate(query)
 }
 
 func (meqe *mockExecQuerySimulator) GetTxSimulationResults() ([]byte, error) {
 	if meqe.txsim == nil {
-		return nil, fmt.Errorf("SetState txsimulator not initialed")
+		return nil, errors.New("SetState txsimulator not initialed")
 	}
 	simRes, err := meqe.txsim.GetTxSimulationResults()
 	if err != nil {
@@ -796,7 +797,7 @@ func getQueryResult(t *testing.T, collection, chainID, ccname string, ccSide *mo
 
 	kvs := make([]*plgr.KV, 1000)
 	for i := range 1000 {
-		kvs[i] = &plgr.KV{Namespace: chainID, Key: fmt.Sprintf("%d", i), Value: fmt.Appendf(nil, "%d", i)}
+		kvs[i] = &plgr.KV{Namespace: chainID, Key: strconv.Itoa(i), Value: fmt.Appendf(nil, "%d", i)}
 	}
 
 	queryExec := &mockExecQuerySimulator{resultsIter: make(map[string]map[string]*mockResultsIterator)}
@@ -876,7 +877,7 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm, c
 
 	kvs := make([]*plgr.KV, 1000)
 	for i := range 1000 {
-		kvs[i] = &plgr.KV{Namespace: chainID, Key: fmt.Sprintf("%d", i), Value: fmt.Appendf(nil, "%d", i)}
+		kvs[i] = &plgr.KV{Namespace: chainID, Key: strconv.Itoa(i), Value: fmt.Appendf(nil, "%d", i)}
 	}
 
 	queryExec := &mockExecQuerySimulator{resultsIter: make(map[string]map[string]*mockResultsIterator)}

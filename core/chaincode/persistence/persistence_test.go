@@ -285,7 +285,7 @@ var _ = Describe("Persistence", func() {
 
 		When("remove returns an error", func() {
 			BeforeEach(func() {
-				mockReadWriter.RemoveReturns(fmt.Errorf("fake-remove-error"))
+				mockReadWriter.RemoveReturns(errors.New("fake-remove-error"))
 			})
 
 			It("returns the error", func() {

@@ -8,7 +8,7 @@ package chaincode
 
 import (
 	"encoding/hex"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -105,7 +105,7 @@ func TestChaincodeListCmd(t *testing.T) {
 		resetFlags()
 		args := []string{"--installed", "--instantiated", "-C", "mychannel"}
 		cmd.SetArgs(args)
-		expectErr := fmt.Errorf("must explicitly specify \"--installed\" or \"--instantiated\"")
+		expectErr := errors.New("must explicitly specify \"--installed\" or \"--instantiated\"")
 		err = cmd.Execute()
 		require.Error(t, err)
 		require.Equal(t, expectErr.Error(), err.Error())
@@ -116,7 +116,7 @@ func TestChaincodeListCmd(t *testing.T) {
 		args := []string{"-C", "mychannel"}
 		cmd.SetArgs(args)
 
-		expectErr := fmt.Errorf("must explicitly specify \"--installed\" or \"--instantiated\"")
+		expectErr := errors.New("must explicitly specify \"--installed\" or \"--instantiated\"")
 		err = cmd.Execute()
 		require.Error(t, err)
 		require.Equal(t, expectErr.Error(), err.Error())
