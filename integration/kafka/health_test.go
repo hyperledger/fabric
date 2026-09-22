@@ -71,7 +71,7 @@ var _ = Describe("Kafka Health", func() {
 			// Start Zookeeper
 			zookeepers := []string{}
 			zk := network.ZooKeeperRunner(0)
-			zookeepers = append(zookeepers, fmt.Sprintf("%s:2181", zk.Name))
+			zookeepers = append(zookeepers, zk.Name+":2181")
 			zProcess = ifrit.Invoke(zk)
 			Eventually(zProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
 

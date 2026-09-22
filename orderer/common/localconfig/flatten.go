@@ -50,7 +50,7 @@ func flatten(k string, m *[]string, v reflect.Value) {
 	switch v.Kind() {
 	case reflect.Pointer:
 		if v.IsNil() {
-			*m = append(*m, fmt.Sprintf("%s =", k))
+			*m = append(*m, k+" =")
 			return
 		}
 		flatten(k, m, v.Elem())

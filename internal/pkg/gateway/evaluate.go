@@ -109,7 +109,7 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 
 func getChannelAndChaincodeFromSignedProposal(signedProposal *peer.SignedProposal) (string, string, bool, error) {
 	if len(signedProposal.GetProposalBytes()) == 0 {
-		return "", "", false, fmt.Errorf("a signed proposal is required")
+		return "", "", false, errors.New("a signed proposal is required")
 	}
 	proposal, err := protoutil.UnmarshalProposal(signedProposal.GetProposalBytes())
 	if err != nil {
@@ -133,7 +133,7 @@ func getChannelAndChaincodeFromSignedProposal(signedProposal *peer.SignedProposa
 	}
 
 	if len(channelHeader.GetChannelId()) == 0 {
-		return "", "", false, fmt.Errorf("no channel id provided")
+		return "", "", false, errors.New("no channel id provided")
 	}
 
 	if spec.GetChaincodeSpec() == nil {

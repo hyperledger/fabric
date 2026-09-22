@@ -15,7 +15,7 @@ import (
 
 // Lists the channels an OSN is a member of.
 func ListAllChannels(osnURL string, caCertPool *x509.CertPool, tlsClientCert tls.Certificate) (*http.Response, error) {
-	url := fmt.Sprintf("%s/participation/v1/channels", osnURL)
+	url := osnURL + "/participation/v1/channels"
 
 	return httpGet(url, caCertPool, tlsClientCert)
 }

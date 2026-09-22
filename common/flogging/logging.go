@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package flogging
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -201,7 +200,7 @@ func (l *Logging) Encoding() Encoding {
 // used to determine which log levels are enabled.
 func (l *Logging) ZapLogger(name string) *zap.Logger {
 	if !isValidLoggerName(name) {
-		panic(fmt.Sprintf("invalid logger name: %s", name))
+		panic("invalid logger name: " + name)
 	}
 
 	l.mutex.RLock()

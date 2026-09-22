@@ -8,7 +8,6 @@ package keylevelep
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/hyperledger/fabric-chaincode-go/pkg/statebased"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
@@ -49,7 +48,7 @@ func (cc *EndorsementCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	if function, ok := functions[funcName]; ok {
 		return function(stub)
 	}
-	return shim.Error(fmt.Sprintf("Unknown function %s", funcName))
+	return shim.Error("Unknown function " + funcName)
 }
 
 // function dispatch map used by Invoke()

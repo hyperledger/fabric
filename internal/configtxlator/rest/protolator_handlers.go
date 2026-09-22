@@ -8,6 +8,7 @@ package rest
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -24,7 +25,7 @@ func getMsgType(r *http.Request) (proto.Message, error) {
 
 	msgType := proto.MessageType(msgName)
 	if msgType == nil {
-		return nil, fmt.Errorf("message name not found")
+		return nil, errors.New("message name not found")
 	}
 	return reflect.New(msgType.Elem()).Interface().(proto.Message), nil
 }

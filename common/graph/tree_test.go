@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package graph
 
 import (
-	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -47,7 +47,7 @@ func TestBFS(t *testing.T) {
 			require.True(t, j == 6)
 			break
 		}
-		require.Equal(t, fmt.Sprintf("%d", j), v.Id)
+		require.Equal(t, strconv.Itoa(j), v.Id)
 		j++
 	}
 }

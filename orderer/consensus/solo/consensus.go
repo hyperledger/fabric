@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package solo
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -78,7 +78,7 @@ func (ch *chain) Order(env *cb.Envelope, configSeq uint64) error {
 	}:
 		return nil
 	case <-ch.exitChan:
-		return fmt.Errorf("Exiting")
+		return errors.New("Exiting")
 	}
 }
 
@@ -91,7 +91,7 @@ func (ch *chain) Configure(config *cb.Envelope, configSeq uint64) error {
 	}:
 		return nil
 	case <-ch.exitChan:
-		return fmt.Errorf("Exiting")
+		return errors.New("Exiting")
 	}
 }
 

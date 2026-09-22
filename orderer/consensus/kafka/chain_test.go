@@ -1626,7 +1626,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ChannelIDVal:        mockChannel.topic(),
 					HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
 					ClassifyMsgVal:      msgprocessor.ConfigMsg,
-					ProcessConfigMsgErr: fmt.Errorf("Invalid config message"),
+					ProcessConfigMsgErr: errors.New("Invalid config message"),
 					SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
@@ -1680,7 +1680,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ChannelIDVal:        mockChannel.topic(),
 					HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
 					ClassifyMsgVal:      msgprocessor.ConfigMsg,
-					ProcessConfigMsgErr: fmt.Errorf("Invalid config message"),
+					ProcessConfigMsgErr: errors.New("Invalid config message"),
 					SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
@@ -1734,7 +1734,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ChannelIDVal:        mockChannel.topic(),
 					HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
 					SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
-					ProcessNormalMsgErr: fmt.Errorf("Invalid normal message"),
+					ProcessNormalMsgErr: errors.New("Invalid normal message"),
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -2278,7 +2278,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ClassifyMsgVal:      msgprocessor.ConfigMsg,
 					SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
 					SequenceVal:         uint64(1),
-					ProcessConfigMsgErr: fmt.Errorf("Invalid config message"),
+					ProcessConfigMsgErr: errors.New("Invalid config message"),
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -2371,7 +2371,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 			}()
 
 			// This is what the for-loop will process
-			mpc.YieldError(fmt.Errorf("fooError"))
+			mpc.YieldError(errors.New("fooError"))
 
 			logger.Debug("Closing haltChan to exit the infinite for-loop")
 			close(haltChan) // Identical to chain.Halt()
@@ -2438,7 +2438,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 			}()
 
 			// This is what the for-loop will process
-			mpc.YieldError(fmt.Errorf("foo"))
+			mpc.YieldError(errors.New("foo"))
 
 			// We tested this in ReceiveKafkaErrorAndCloseErrorChan, so this check
 			// is redundant in that regard. We use it however to ensure the
@@ -2677,7 +2677,7 @@ func TestResubmission(t *testing.T) {
 				HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
 				SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, true),
 				SequenceVal:         uint64(1),
-				ProcessNormalMsgErr: fmt.Errorf("Invalid normal message"),
+				ProcessNormalMsgErr: errors.New("Invalid normal message"),
 			}
 			defer close(mockSupport.BlockCutterVal.Block)
 
@@ -2766,7 +2766,7 @@ func TestResubmission(t *testing.T) {
 
 				regular := expectedKafkaMsg.GetRegular()
 				if regular == nil {
-					return fmt.Errorf("Expect message type to be regular")
+					return errors.New("Expect message type to be regular")
 				}
 
 				if regular.GetConfigSeq() != mockSupport.Sequence() {
@@ -2774,7 +2774,7 @@ func TestResubmission(t *testing.T) {
 				}
 
 				if regular.GetOriginalOffset() == 0 {
-					return fmt.Errorf("Expect Original Offset to be non-zero if resubmission")
+					return errors.New("Expect Original Offset to be non-zero if resubmission")
 				}
 
 				expectedKafkaMsgCh <- expectedKafkaMsg
@@ -2979,7 +2979,7 @@ func TestResubmission(t *testing.T) {
 			blockIngressMsg(t, false, bareMinimumChain.WaitReady)
 
 			// Message should be revalidated but considered invalid, so we don't resubmit it
-			mockSupport.ProcessConfigMsgErr = fmt.Errorf("invalid message found during revalidation")
+			mockSupport.ProcessConfigMsgErr = errors.New("invalid message found during revalidation")
 
 			// Emits a config message with lagged config sequence
 			mpc.YieldMessage(newMockConsumerMessage(newConfigMessage(
@@ -3122,7 +3122,7 @@ func TestResubmission(t *testing.T) {
 				HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
 				SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, true),
 				SequenceVal:         uint64(1),
-				ProcessConfigMsgErr: fmt.Errorf("Invalid config message"),
+				ProcessConfigMsgErr: errors.New("Invalid config message"),
 			}
 			defer close(mockSupport.BlockCutterVal.Block)
 
@@ -3213,7 +3213,7 @@ func TestResubmission(t *testing.T) {
 
 				regular := expectedKafkaMsg.GetRegular()
 				if regular == nil {
-					return fmt.Errorf("Expect message type to be regular")
+					return errors.New("Expect message type to be regular")
 				}
 
 				if regular.GetConfigSeq() != mockSupport.Sequence() {
@@ -3221,7 +3221,7 @@ func TestResubmission(t *testing.T) {
 				}
 
 				if regular.GetOriginalOffset() == 0 {
-					return fmt.Errorf("Expect Original Offset to be non-zero if resubmission")
+					return errors.New("Expect Original Offset to be non-zero if resubmission")
 				}
 
 				expectedKafkaMsgCh <- expectedKafkaMsg
@@ -3675,7 +3675,7 @@ func TestHealthCheck(t *testing.T) {
 	mockSyncProducer.SendMessageReturns(int32(1), int64(1), sarama.ErrNotEnoughReplicas)
 	chain.replicaIDs = []int32{int32(1), int32(2)}
 	err = chain.HealthCheck(context.Background())
-	gt.Expect(err).To(MatchError(fmt.Sprintf("[replica ids: [1 2]]: %s", sarama.ErrNotEnoughReplicas.Error())))
+	gt.Expect(err).To(MatchError("[replica ids: [1 2]]: " + sarama.ErrNotEnoughReplicas.Error()))
 	gt.Expect(mockSyncProducer.SendMessageCallCount()).To(Equal(2))
 
 	// If another type of error is returned, it should be ignored by health check

@@ -9,7 +9,6 @@ package flogging_test
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"os"
 	"testing"
 
@@ -106,7 +105,7 @@ func TestInvalidLoggerName(t *testing.T) {
 	names := []string{"test*", ".test", "test.", ".", ""}
 	for _, name := range names {
 		t.Run(name, func(t *testing.T) {
-			msg := fmt.Sprintf("invalid logger name: %s", name)
+			msg := "invalid logger name: " + name
 			require.PanicsWithValue(t, msg, func() { flogging.MustGetLogger(name) })
 		})
 	}

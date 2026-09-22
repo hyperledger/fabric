@@ -139,7 +139,7 @@ func compilePlugin(pluginType string) string {
 		"-buildmode=plugin",
 		"-tags=generic", // workaround to ensure github.com/kilic/bls12-381 dependency compiles on amd64 in plugin mode
 		"-o", pluginFilePath,
-		fmt.Sprintf("github.com/hyperledger/fabric/integration/pluggable/testdata/plugins/%s", pluginType),
+		"github.com/hyperledger/fabric/integration/pluggable/testdata/plugins/"+pluginType,
 	)
 	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[build-plugin-%s] ", pluginType), GinkgoWriter)
 	sess, err := gexec.Start(cmd, pw, pw)

@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -19,7 +19,7 @@ var RejectRule = Rule(rejectRule{})
 type rejectRule struct{}
 
 func (r rejectRule) Apply(message *cb.Envelope) error {
-	return fmt.Errorf("Rejected")
+	return errors.New("Rejected")
 }
 
 func TestEmptyRejectRule(t *testing.T) {

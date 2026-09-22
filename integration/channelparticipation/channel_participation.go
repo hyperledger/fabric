@@ -48,7 +48,7 @@ func Join(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, e
 func GenerateJoinRequest(url, channel string, blockBytes []byte) *http.Request {
 	joinBody := new(bytes.Buffer)
 	writer := multipart.NewWriter(joinBody)
-	part, err := writer.CreateFormFile("config-block", fmt.Sprintf("%s.block", channel))
+	part, err := writer.CreateFormFile("config-block", channel+".block")
 	Expect(err).NotTo(HaveOccurred())
 	part.Write(blockBytes)
 	err = writer.Close()
@@ -182,7 +182,7 @@ func systemChannelMatcher(systemChannel ...string) types.GomegaMatcher {
 func channelInfoShortMatcher(channel string) types.GomegaMatcher {
 	return gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 		"Name": Equal(channel),
-		"URL":  Equal(fmt.Sprintf("/participation/v1/channels/%s", channel)),
+		"URL":  Equal("/participation/v1/channels/" + channel),
 	})
 }
 
@@ -193,7 +193,7 @@ func JoinOrderersAppChannelCluster(network *nwo.Network, channelID string, order
 	for _, orderer := range orderers {
 		expectedChannelInfo := ChannelInfo{
 			Name:              channelID,
-			URL:               fmt.Sprintf("/participation/v1/channels/%s", channelID),
+			URL:               "/participation/v1/channels/" + channelID,
 			Status:            "active",
 			ConsensusRelation: "consenter",
 			Height:            1,

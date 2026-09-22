@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package kafka
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -49,7 +49,7 @@ func (rp *retryProcess) try(interval, total time.Duration) (err error) {
 	// when we cannot avoid the creation of a retriable process but we wish
 	// to terminate it right away.
 	if rp.shortPollingInterval == 0 {
-		return fmt.Errorf("illegal value")
+		return errors.New("illegal value")
 	}
 
 	// If initial operation is successful, we don't bother start retry process
@@ -71,7 +71,7 @@ func (rp *retryProcess) try(interval, total time.Duration) (err error) {
 		select {
 		case <-rp.exit:
 			logger.Warningf("[channel: %s] process asked to exit", rp.channel.topic())
-			return fmt.Errorf("process asked to exit")
+			return errors.New("process asked to exit")
 		case <-tickTotal.C:
 			return
 		case <-tickInterval.C:

@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package policies
 
 import (
-	"fmt"
+	"strconv"
 	"testing"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -43,7 +43,7 @@ func makeManagers(count, passing int) map[string]*ManagerImpl {
 		}
 		remaining--
 
-		result[fmt.Sprintf("%d", i)] = &ManagerImpl{
+		result[strconv.Itoa(i)] = &ManagerImpl{
 			Policies: policyMap,
 		}
 	}

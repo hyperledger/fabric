@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -100,10 +101,11 @@ func TestBlockIndexSelectiveIndexing(t *testing.T) {
 }
 
 func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
-	var testName string
+	tmp := strings.Builder{}
 	for _, s := range indexItems {
-		testName = testName + string(s)
+		tmp.WriteString(string(s))
 	}
+	testName := tmp.String()
 	t.Run(testName, func(t *testing.T) {
 		env := newTestEnvSelectiveIndexing(t, NewConf(testPath(), 0), indexItems, &disabled.Provider{})
 		defer env.Cleanup()

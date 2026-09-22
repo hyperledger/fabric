@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package configtx
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"testing"
 
@@ -292,7 +292,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 	}
 	// Set the mock policy to error
 	fakePolicy := &mockpolicies.Policy{}
-	fakePolicy.EvaluateSignedDataReturns(fmt.Errorf("err"))
+	fakePolicy.EvaluateSignedDataReturns(errors.New("err"))
 	pm.GetPolicyReturns(fakePolicy, true)
 
 	newConfig := makeConfigUpdateEnvelope(defaultChannel, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
@@ -345,7 +345,7 @@ func TestInvalidProposal(t *testing.T) {
 	}
 
 	fakePolicy := &mockpolicies.Policy{}
-	fakePolicy.EvaluateSignedDataReturns(fmt.Errorf("err"))
+	fakePolicy.EvaluateSignedDataReturns(errors.New("err"))
 	pm.GetPolicyReturns(fakePolicy, true)
 
 	newConfig := makeConfigUpdateEnvelope(defaultChannel, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))

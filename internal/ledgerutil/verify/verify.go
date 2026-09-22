@@ -8,7 +8,6 @@ package verify
 
 import (
 	"bytes"
-	"fmt"
 	"path/filepath"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -54,7 +53,7 @@ func VerifyLedger(blockStorePath string, outputDir string) (bool, error) {
 	// Iterate over the channels
 	for _, ledgerId := range list {
 		// Create Output Directory
-		outputDirName := fmt.Sprintf("%s_verification_result", ledgerId)
+		outputDirName := ledgerId + "_verification_result"
 		outputDirPath := filepath.Join(outputDir, outputDirName)
 
 		empty, err := fileutil.CreateDirIfMissing(outputDirPath)

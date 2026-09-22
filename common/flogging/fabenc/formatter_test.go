@@ -8,7 +8,6 @@ package fabenc_test
 
 import (
 	"bytes"
-	"fmt"
 	"runtime"
 	"strconv"
 	"sync"
@@ -115,7 +114,7 @@ func TestNewFormatter(t *testing.T) {
 	}
 
 	for i, tc := range tests {
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			f, err := fabenc.NewFormatter(tc.verb, tc.format)
 			if tc.errorMsg == "" {
 				require.NoError(t, err)
@@ -153,7 +152,7 @@ func TestColorFormatter(t *testing.T) {
 	}
 
 	for i, tc := range tests {
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			buf := &bytes.Buffer{}
 			entry := zapcore.Entry{Level: tc.level}
 			tc.f.Format(buf, entry, nil)
@@ -178,7 +177,7 @@ func TestLevelFormatter(t *testing.T) {
 	}
 
 	for i, tc := range tests {
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			buf := &bytes.Buffer{}
 			entry := zapcore.Entry{Level: tc.level}
 			fabenc.LevelFormatter{FormatVerb: "%s"}.Format(buf, entry, nil)

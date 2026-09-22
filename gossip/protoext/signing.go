@@ -175,7 +175,7 @@ func (m *SignedGossipMessage) String() string {
 			gMsg = PayloadToString(m.GetDataMsg().GetPayload())
 		} else if IsDataUpdate(m.GossipMessage) {
 			update := m.GetDataUpdate()
-			gMsg = fmt.Sprintf("DataUpdate: %s", DataUpdateToString(update))
+			gMsg = "DataUpdate: " + DataUpdateToString(update)
 		} else if m.GetMemRes() != nil {
 			gMsg = MembershipResponseToString(m.GetMemRes())
 		} else if IsStateInfoSnapshot(m.GossipMessage) {

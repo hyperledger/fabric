@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -133,7 +132,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	})
 	t.Run("BadNewChannelConfig", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
-			NewChannelConfigErr: fmt.Errorf("An error"),
+			NewChannelConfigErr: errors.New("An error"),
 		}
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
@@ -154,7 +153,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	})
 	t.Run("BadProposedUpdate", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
-			NewChannelConfigVal: newMockConfigTXValidator(fmt.Errorf("An error")),
+			NewChannelConfigVal: newMockConfigTXValidator(errors.New("An error")),
 		}
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},

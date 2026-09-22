@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package container_test
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/hyperledger/fabric/core/container"
 	. "github.com/onsi/ginkgo/v2"
@@ -49,9 +49,9 @@ var _ = Describe("BuildRegistry", func() {
 			bs, ok := br.BuildStatus("ccid")
 			Expect(ok).To(BeFalse())
 			Expect(bs).NotTo(BeNil())
-			bs.Notify(fmt.Errorf("fake-error"))
+			bs.Notify(errors.New("fake-error"))
 			Expect(bs.Done()).To(BeClosed())
-			Expect(bs.Err()).To(MatchError(fmt.Errorf("fake-error")))
+			Expect(bs.Err()).To(MatchError(errors.New("fake-error")))
 		})
 
 		It("can be reset", func() {
@@ -90,7 +90,7 @@ var _ = Describe("BuildStatus", func() {
 
 	When("notify is called with an error", func() {
 		BeforeEach(func() {
-			bs.Notify(fmt.Errorf("fake-error"))
+			bs.Notify(errors.New("fake-error"))
 		})
 
 		It("closes the blocking done channel", func() {
@@ -98,7 +98,7 @@ var _ = Describe("BuildStatus", func() {
 		})
 
 		It("sets err to the error", func() {
-			Expect(bs.Err()).To(MatchError(fmt.Errorf("fake-error")))
+			Expect(bs.Err()).To(MatchError(errors.New("fake-error")))
 		})
 	})
 })

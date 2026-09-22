@@ -38,7 +38,7 @@ type OrganizationConfig struct {
 // NewOrganizationConfig creates a new config for an organization
 func NewOrganizationConfig(name string, orgGroup *cb.ConfigGroup, mspConfigHandler *MSPConfigHandler) (*OrganizationConfig, error) {
 	if len(orgGroup.GetGroups()) > 0 {
-		return nil, fmt.Errorf("organizations do not support sub-groups")
+		return nil, errors.New("organizations do not support sub-groups")
 	}
 
 	oc := &OrganizationConfig{

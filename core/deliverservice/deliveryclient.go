@@ -107,7 +107,7 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	if d.stopping {
-		errMsg := fmt.Sprintf("Delivery service is stopping cannot join a new channel %s", chainID)
+		errMsg := "Delivery service is stopping cannot join a new channel " + chainID
 		logger.Error(errMsg)
 		return errors.New(errMsg)
 	}
@@ -168,7 +168,7 @@ func (d *deliverServiceImpl) StopDeliverForChannel(chainID string) error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	if d.stopping {
-		errMsg := fmt.Sprintf("Delivery service is stopping, cannot stop delivery for channel %s", chainID)
+		errMsg := "Delivery service is stopping, cannot stop delivery for channel " + chainID
 		logger.Error(errMsg)
 		return errors.New(errMsg)
 	}

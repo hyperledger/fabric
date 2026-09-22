@@ -200,7 +200,7 @@ func TestInstall(t *testing.T) {
 	testInstall(t, "example02", "0", path, false, "", "Alice", scc, stub, nil)
 	require.Equal(t, 1, chaincodeBuilder.BuildCallCount())
 
-	chaincodeBuilder.BuildReturns(fmt.Errorf("fake-build-error"))
+	chaincodeBuilder.BuildReturns(errors.New("fake-build-error"))
 	testInstall(t, "example02-different", "0", path, false, "chaincode installed to peer but could not build chaincode: fake-build-error", "Alice", scc, stub, nil)
 	chaincodeBuilder.BuildReturns(nil)
 

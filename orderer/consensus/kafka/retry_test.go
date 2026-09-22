@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package kafka
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,7 @@ func TestRetry(t *testing.T) {
 		return nil
 	}
 
-	errorFn := func() error { return fmt.Errorf("foo") }
+	errorFn := func() error { return errors.New("foo") }
 
 	t.Run("Proper", func(t *testing.T) {
 		exitChan := make(chan struct{})

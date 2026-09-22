@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package solo
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -346,7 +346,7 @@ func TestRevalidation(t *testing.T) {
 		})
 
 		t.Run("Invalid", func(t *testing.T) {
-			support.ProcessConfigMsgErr = fmt.Errorf("Config message is not valid")
+			support.ProcessConfigMsgErr = errors.New("Config message is not valid")
 			require.Nil(t, bs.Configure(testMessage, 0))
 
 			select {
@@ -371,7 +371,7 @@ func TestRevalidation(t *testing.T) {
 		})
 
 		t.Run("Invalid", func(t *testing.T) {
-			support.ProcessNormalMsgErr = fmt.Errorf("Normal message is not valid")
+			support.ProcessNormalMsgErr = errors.New("Normal message is not valid")
 			// We are not calling `syncQueueMessage` here because we don't expect
 			// `Ordered` to be invoked at all in this case, so we don't need to
 			// synchronize on `support.BlockCutterVal.Block`.

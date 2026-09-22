@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -25,7 +26,7 @@ func signpackageCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.
 		ValidArgs: []string{"2"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 2 {
-				return fmt.Errorf("peer chaincode signpackage <inputpackage> <outputpackage>")
+				return errors.New("peer chaincode signpackage <inputpackage> <outputpackage>")
 			}
 			return signpackage(cmd, args[0], args[1], cf, cryptoProvider)
 		},

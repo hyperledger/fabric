@@ -239,7 +239,7 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 			))
 
 			By("verifying membership change on peer0Org1 when a non-anchor peer in the same org is stopped and restarted")
-			expectedMsgFromExpirationCallback = fmt.Sprintf("Removing member: Endpoint: %s", peerEndpoints[peer1Org1.ID()])
+			expectedMsgFromExpirationCallback = "Removing member: Endpoint: " + peerEndpoints[peer1Org1.ID()]
 			assertPeerMembershipUpdate(network, peer0Org1, []*nwo.Peer{peer1Org1}, nwprocs, expectedMsgFromExpirationCallback)
 		})
 

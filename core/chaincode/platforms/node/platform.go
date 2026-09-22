@@ -117,7 +117,7 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 		}
 	}
 	if !foundPackageJson {
-		return fmt.Errorf("no package.json found at the root of the chaincode package")
+		return errors.New("no package.json found at the root of the chaincode package")
 	}
 
 	return nil

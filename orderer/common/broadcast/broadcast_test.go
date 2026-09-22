@@ -8,7 +8,7 @@ package broadcast_test
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"io"
 
 	"github.com/golang/protobuf/proto"
@@ -132,7 +132,7 @@ var _ = Describe("Broadcast", func() {
 				fakeSupportRegistrar.BroadcastChannelSupportReturns(&cb.ChannelHeader{
 					Type:      2,
 					ChannelId: "fake-channel",
-				}, false, nil, fmt.Errorf("support-error"))
+				}, false, nil, errors.New("support-error"))
 			})
 
 			It("returns the error to the client with a bad status", func() {
@@ -148,7 +148,7 @@ var _ = Describe("Broadcast", func() {
 
 			Context("when the channel header is not validly decoded", func() {
 				BeforeEach(func() {
-					fakeSupportRegistrar.BroadcastChannelSupportReturns(nil, false, nil, fmt.Errorf("support-error"))
+					fakeSupportRegistrar.BroadcastChannelSupportReturns(nil, false, nil, errors.New("support-error"))
 				})
 
 				It("does not crash", func() {
@@ -169,7 +169,7 @@ var _ = Describe("Broadcast", func() {
 
 		Context("when the receive from the client fails", func() {
 			BeforeEach(func() {
-				fakeABServer.RecvReturns(nil, fmt.Errorf("recv-error"))
+				fakeABServer.RecvReturns(nil, errors.New("recv-error"))
 			})
 
 			It("returns the error", func() {
@@ -180,7 +180,7 @@ var _ = Describe("Broadcast", func() {
 
 		Context("when the consenter is not ready for the request", func() {
 			BeforeEach(func() {
-				fakeSupport.WaitReadyReturns(fmt.Errorf("not-ready"))
+				fakeSupport.WaitReadyReturns(errors.New("not-ready"))
 			})
 
 			It("returns the error to the client with a service unavailable status", func() {
@@ -197,7 +197,7 @@ var _ = Describe("Broadcast", func() {
 
 		Context("when the send to the client fails", func() {
 			BeforeEach(func() {
-				fakeABServer.SendReturns(fmt.Errorf("send-error"))
+				fakeABServer.SendReturns(errors.New("send-error"))
 			})
 
 			It("returns the error", func() {
@@ -208,7 +208,7 @@ var _ = Describe("Broadcast", func() {
 
 		Context("when the consenter cannot enqueue the message", func() {
 			BeforeEach(func() {
-				fakeSupport.OrderReturns(fmt.Errorf("consenter-error"))
+				fakeSupport.OrderReturns(errors.New("consenter-error"))
 			})
 
 			It("returns the error", func() {
@@ -225,7 +225,7 @@ var _ = Describe("Broadcast", func() {
 
 		Context("when the message processor returns an error", func() {
 			BeforeEach(func() {
-				fakeSupport.ProcessNormalMsgReturns(0, fmt.Errorf("normal-messsage-processing-error"))
+				fakeSupport.ProcessNormalMsgReturns(0, errors.New("normal-messsage-processing-error"))
 			})
 
 			It("returns the error and an error status", func() {
@@ -310,7 +310,7 @@ var _ = Describe("Broadcast", func() {
 
 			Context("when the consenter is not ready for the request", func() {
 				BeforeEach(func() {
-					fakeSupport.WaitReadyReturns(fmt.Errorf("not-ready"))
+					fakeSupport.WaitReadyReturns(errors.New("not-ready"))
 				})
 
 				It("returns the error to the client with a service unavailable status", func() {
@@ -327,7 +327,7 @@ var _ = Describe("Broadcast", func() {
 
 			Context("when the consenter cannot enqueue the message", func() {
 				BeforeEach(func() {
-					fakeSupport.ConfigureReturns(fmt.Errorf("consenter-error"))
+					fakeSupport.ConfigureReturns(errors.New("consenter-error"))
 				})
 
 				It("returns the error", func() {
@@ -344,7 +344,7 @@ var _ = Describe("Broadcast", func() {
 
 			Context("when the processing of the config update fails", func() {
 				BeforeEach(func() {
-					fakeSupport.ProcessConfigUpdateMsgReturns(nil, 0, fmt.Errorf("config-processing-error"))
+					fakeSupport.ProcessConfigUpdateMsgReturns(nil, 0, errors.New("config-processing-error"))
 				})
 
 				It("returns the error with a bad_status", func() {

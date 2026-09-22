@@ -28,14 +28,14 @@ import (
 type ConfigTxFileNotFound string
 
 func (e ConfigTxFileNotFound) Error() string {
-	return fmt.Sprintf("channel create configuration tx file not found %s", string(e))
+	return "channel create configuration tx file not found " + string(e)
 }
 
 // InvalidCreateTx invalid channel create transaction
 type InvalidCreateTx string
 
 func (e InvalidCreateTx) Error() string {
-	return fmt.Sprintf("Invalid channel create transaction : %s", string(e))
+	return "Invalid channel create transaction : " + string(e)
 }
 
 func createCmd(cf *ChannelCmdFactory) *cobra.Command {

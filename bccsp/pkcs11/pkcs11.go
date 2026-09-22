@@ -131,7 +131,7 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore, options ...Option) (*Provider
 
 func (csp *Provider) initialize(opts PKCS11Opts) (*Provider, error) {
 	if opts.Library == "" {
-		return nil, fmt.Errorf("pkcs11: library path not provided")
+		return nil, errors.New("pkcs11: library path not provided")
 	}
 
 	ctx := pkcs11.New(opts.Library)
@@ -432,11 +432,11 @@ func (csp *Provider) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool,
 
 	curve := namedCurveFromOID(*curveOid)
 	if curve == nil {
-		return nil, false, fmt.Errorf("could not recognize Curve from OID")
+		return nil, false, errors.New("could not recognize Curve from OID")
 	}
 	x, y := elliptic.Unmarshal(curve, ecpt)
 	if x == nil {
-		return nil, false, fmt.Errorf("failed Unmarshalling Public Key")
+		return nil, false, errors.New("failed Unmarshalling Public Key")
 	}
 
 	pubKey = &ecdsa.PublicKey{Curve: curve, X: x, Y: y}
@@ -497,8 +497,8 @@ func (csp *Provider) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) 
 	defer func() { csp.handleSessionReturn(err, session) }()
 
 	id := nextIDCtr()
-	publabel := fmt.Sprintf("BCPUB%s", id.Text(16))
-	prvlabel := fmt.Sprintf("BCPRV%s", id.Text(16))
+	publabel := "BCPUB" + id.Text(16)
+	prvlabel := "BCPRV" + id.Text(16)
 
 	marshaledOID, err := asn1.Marshal(curve)
 	if err != nil {
@@ -591,11 +591,11 @@ func (csp *Provider) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) 
 
 	nistCurve := namedCurveFromOID(curve)
 	if curve == nil {
-		return nil, nil, fmt.Errorf("Cound not recognize Curve from OID")
+		return nil, nil, errors.New("Cound not recognize Curve from OID")
 	}
 	x, y := elliptic.Unmarshal(nistCurve, ecpt)
 	if x == nil {
-		return nil, nil, fmt.Errorf("Failed Unmarshalling Public Key")
+		return nil, nil, errors.New("Failed Unmarshalling Public Key")
 	}
 
 	pubGoKey := &ecdsa.PublicKey{Curve: nistCurve, X: x, Y: y}
@@ -827,7 +827,7 @@ func (csp *Provider) ecPoint(session pkcs11.SessionHandle, key pkcs11.ObjectHand
 		}
 	}
 	if oid == nil || ecpt == nil {
-		return nil, nil, fmt.Errorf("CKA_EC_POINT not found, perhaps not an EC Key?")
+		return nil, nil, errors.New("CKA_EC_POINT not found, perhaps not an EC Key?")
 	}
 
 	return ecpt, oid, nil

@@ -8,6 +8,7 @@ package util
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -63,7 +64,7 @@ func DockerBuild(opts DockerBuildOptions, client dcli.APIClient) error {
 	if opts.Image == "" {
 		opts.Image = GetDockerImageFromConfig("chaincode.builder")
 		if opts.Image == "" {
-			return fmt.Errorf("No image provided and \"chaincode.builder\" default does not exist")
+			return errors.New("No image provided and \"chaincode.builder\" default does not exist")
 		}
 	}
 
@@ -178,7 +179,7 @@ func DockerBuild(opts DockerBuildOptions, client dcli.APIClient) error {
 func ParamsImage(client dcli.APIClient) (string, string, string, error) {
 	image := GetDockerImageFromConfig("chaincode.builder")
 	if image == "" {
-		return "", "", "", fmt.Errorf("No image provided and \"chaincode.builder\" default does not exist")
+		return "", "", "", errors.New("No image provided and \"chaincode.builder\" default does not exist")
 	}
 
 	// -----------------------------------------------------------------------------------

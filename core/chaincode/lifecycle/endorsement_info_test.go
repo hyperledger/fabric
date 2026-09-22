@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle_test
 
 import (
-	"fmt"
+	"errors"
 
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
@@ -129,7 +129,7 @@ var _ = Describe("ChaincodeEndorsementInfoSource", func() {
 
 		Context("when the cache returns an error", func() {
 			BeforeEach(func() {
-				fakeCache.ChaincodeInfoReturns(nil, fmt.Errorf("cache-error"))
+				fakeCache.ChaincodeInfoReturns(nil, errors.New("cache-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -173,7 +173,7 @@ var _ = Describe("ChaincodeEndorsementInfoSource", func() {
 
 		Context("when the sequence cannot be fetched from the state", func() {
 			BeforeEach(func() {
-				fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("state-error"))
+				fakeQueryExecutor.GetStateReturns(nil, errors.New("state-error"))
 			})
 
 			It("wraps and returns an error", func() {
@@ -253,7 +253,7 @@ var _ = Describe("ChaincodeEndorsementInfoSource", func() {
 
 		Context("when the cache returns an error", func() {
 			BeforeEach(func() {
-				fakeCache.ChaincodeInfoReturns(nil, fmt.Errorf("cache-error"))
+				fakeCache.ChaincodeInfoReturns(nil, errors.New("cache-error"))
 			})
 
 			It("returns the wrapped error", func() {
@@ -269,7 +269,7 @@ var _ = Describe("ChaincodeEndorsementInfoSource", func() {
 					Version:           "legacy-version",
 					EndorsementPlugin: "legacy-plugin",
 					ChaincodeID:       "legacy-id",
-				}, fmt.Errorf("fake-error"))
+				}, errors.New("fake-error"))
 			})
 
 			It("passes through the legacy implementation", func() {

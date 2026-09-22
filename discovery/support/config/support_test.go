@@ -9,7 +9,6 @@ package config_test
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -37,7 +36,7 @@ func TestMSPIDMapping(t *testing.T) {
 		return hex.EncodeToString(buff)
 	}
 
-	dir := filepath.Join(os.TempDir(), fmt.Sprintf("TestMSPIDMapping_%s", randString()))
+	dir := filepath.Join(os.TempDir(), "TestMSPIDMapping_"+randString())
 	os.Mkdir(dir, 0o700)
 	defer os.RemoveAll(dir)
 
@@ -50,11 +49,11 @@ func TestMSPIDMapping(t *testing.T) {
 	defer os.Remove(idemixgen)
 
 	cryptoConfigDir := filepath.Join(dir, "crypto-config")
-	b, err := exec.Command(cryptogen, "generate", fmt.Sprintf("--output=%s", cryptoConfigDir)).CombinedOutput()
+	b, err := exec.Command(cryptogen, "generate", "--output="+cryptoConfigDir).CombinedOutput()
 	require.NoError(t, err, string(b))
 
 	idemixConfigDir := filepath.Join(dir, "crypto-config", "idemix")
-	b, err = exec.Command(idemixgen, "ca-keygen", fmt.Sprintf("--output=%s", idemixConfigDir)).CombinedOutput()
+	b, err = exec.Command(idemixgen, "ca-keygen", "--output="+idemixConfigDir).CombinedOutput()
 	require.NoError(t, err, string(b))
 
 	profileConfig := genesisconfig.Load("TwoOrgsChannel", "testdata/")

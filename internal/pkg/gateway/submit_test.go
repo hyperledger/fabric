@@ -8,6 +8,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -41,7 +42,7 @@ func TestSubmit(t *testing.T) {
 				"g1": {{endorser: localhostMock}},
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
-				def.discovery.ConfigReturnsOnCall(1, nil, fmt.Errorf("jabberwocky"))
+				def.discovery.ConfigReturnsOnCall(1, nil, errors.New("jabberwocky"))
 			},
 			errCode:   codes.FailedPrecondition,
 			errString: "failed to get config for channel [test_channel]: jabberwocky",
@@ -149,7 +150,7 @@ func TestSubmit(t *testing.T) {
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.dialer.Calls(func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
 					if target == "orderer1:7050" {
-						return nil, fmt.Errorf("orderer not answering")
+						return nil, errors.New("orderer not answering")
 					}
 					return nil, nil
 				})

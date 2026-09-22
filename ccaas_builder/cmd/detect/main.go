@@ -36,7 +36,7 @@ type chaincodeMetadata struct {
 
 func run() error {
 	if len(os.Args) < 3 {
-		return fmt.Errorf("too few arguments")
+		return errors.New("too few arguments")
 	}
 
 	chaincodeMetaData := os.Args[2]

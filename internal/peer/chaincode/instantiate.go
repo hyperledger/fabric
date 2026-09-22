@@ -28,8 +28,8 @@ const instantiateDesc = "Deploy the specified chaincode to the network."
 func instantiateCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeInstantiateCmd = &cobra.Command{
 		Use:       instantiateCmdName,
-		Short:     fmt.Sprint(instantiateDesc),
-		Long:      fmt.Sprint(instantiateDesc),
+		Short:     instantiateDesc,
+		Long:      instantiateDesc,
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return chaincodeDeploy(cmd, args, cf, cryptoProvider)

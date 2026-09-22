@@ -8,7 +8,6 @@ package fileledger
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -314,7 +313,7 @@ func TestBlockstoreError(t *testing.T) {
 		fl := &FileLedger{
 			blockStore: &mockBlockStore{
 				blockchainInfo:         nil,
-				getBlockchainInfoError: fmt.Errorf("Error getting blockchain info"),
+				getBlockchainInfoError: errors.New("Error getting blockchain info"),
 			},
 			signal: make(chan struct{}),
 		}
@@ -336,7 +335,7 @@ func TestBlockstoreError(t *testing.T) {
 			blockStore: &mockBlockStore{
 				blockchainInfo:             &cb.BlockchainInfo{Height: uint64(1)},
 				getBlockchainInfoError:     nil,
-				retrieveBlockByNumberError: fmt.Errorf("Error retrieving block by number"),
+				retrieveBlockByNumberError: errors.New("Error retrieving block by number"),
 			},
 			signal: make(chan struct{}),
 		}
@@ -357,7 +356,7 @@ func TestBlockstoreError(t *testing.T) {
 			blockStore: &mockBlockStore{
 				blockchainInfo:             &cb.BlockchainInfo{Height: uint64(1)},
 				getBlockchainInfoError:     nil,
-				retrieveBlockByNumberError: fmt.Errorf("Error retrieving block by number"),
+				retrieveBlockByNumberError: errors.New("Error retrieving block by number"),
 				resultsIterator:            resultsIterator,
 			},
 			signal: make(chan struct{}),

@@ -363,24 +363,24 @@ func (lscc *SCC) putChaincodeData(stub shim.ChaincodeStubInterface, cd *ccprovid
 // towards catching manual errors in the config as oppose to any attempt of serializability.
 func checkCollectionMemberPolicy(collectionConfig *pb.CollectionConfig, mspmgr msp.MSPManager) error {
 	if mspmgr == nil {
-		return fmt.Errorf("msp manager not set")
+		return errors.New("msp manager not set")
 	}
 	msps, err := mspmgr.GetMSPs()
 	if err != nil {
 		return errors.Wrapf(err, "error getting channel msp")
 	}
 	if collectionConfig == nil {
-		return fmt.Errorf("collection configuration is not set")
+		return errors.New("collection configuration is not set")
 	}
 	coll := collectionConfig.GetStaticCollectionConfig()
 	if coll == nil {
-		return fmt.Errorf("collection configuration is empty")
+		return errors.New("collection configuration is empty")
 	}
 	if coll.GetMemberOrgsPolicy() == nil {
-		return fmt.Errorf("collection member policy is not set")
+		return errors.New("collection member policy is not set")
 	}
 	if coll.GetMemberOrgsPolicy().GetSignaturePolicy() == nil {
-		return fmt.Errorf("collection member org policy is empty")
+		return errors.New("collection member org policy is empty")
 	}
 	// make sure that the orgs listed are actually part of the channel
 	// check all principals in the signature policy
@@ -493,7 +493,7 @@ func (lscc *SCC) getChaincodeCollectionData(stub shim.ChaincodeStubInterface, ch
 		return shim.Error(err.Error())
 	}
 	if len(collectionsConfigBytes) == 0 {
-		return shim.Error(fmt.Sprintf("collections config not defined for chaincode %s", chaincodeName))
+		return shim.Error("collections config not defined for chaincode " + chaincodeName)
 	}
 	return shim.Success(collectionsConfigBytes)
 }
@@ -685,7 +685,7 @@ func (lscc *SCC) executeInstall(stub shim.ChaincodeStubInterface, ccbytes []byte
 	cds := ccpack.GetDepSpec()
 
 	if cds == nil {
-		return fmt.Errorf("nil deployment spec from the CC package")
+		return errors.New("nil deployment spec from the CC package")
 	}
 
 	if err = lscc.isValidChaincodeName(cds.GetChaincodeSpec().GetChaincodeId().GetName()); err != nil {

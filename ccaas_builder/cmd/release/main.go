@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -47,7 +48,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 3 {
-		return fmt.Errorf("incorrect number of arguments")
+		return errors.New("incorrect number of arguments")
 	}
 
 	builderOutputDir, releaseDir := os.Args[1], os.Args[2]

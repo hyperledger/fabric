@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatastorage
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"path"
@@ -499,7 +500,7 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		snapshotDataImporter.eligibilityAndBTLCache.membershipProvider.(*mock.MembershipInfoProvider).AmMemberOfReturns(false, fmt.Errorf("membership-error"))
+		snapshotDataImporter.eligibilityAndBTLCache.membershipProvider.(*mock.MembershipInfoProvider).AmMemberOfReturns(false, errors.New("membership-error"))
 		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),

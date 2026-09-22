@@ -8,6 +8,7 @@ package inquire
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -36,7 +37,7 @@ func NewInquireableSignaturePolicy(sigPol *common.SignaturePolicyEnvelope) polic
 // SatisfiedBy returns a slice of PrincipalSets that each of them
 // satisfies the policy.
 func (isp *inquireableSignaturePolicy) SatisfiedBy() []policies.PrincipalSet {
-	rootId := fmt.Sprintf("%d", 0)
+	rootId := strconv.Itoa(0)
 	root := graph.NewTreeVertex(rootId, isp.sigPol.GetRule())
 	computePolicyTree(root)
 	var res []policies.PrincipalSet

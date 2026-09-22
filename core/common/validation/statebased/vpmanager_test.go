@@ -8,7 +8,6 @@ package statebased
 
 import (
 	crand "crypto/rand"
-	"fmt"
 	"math/rand/v2"
 	"runtime"
 	"strconv"
@@ -568,10 +567,10 @@ func TestLedgerErrors(t *testing.T) {
 	// GetValidationParameterForKey returns an error
 
 	mr := &mockState{
-		GetStateMetadataErr:             fmt.Errorf("Ledger error"),
-		GetPrivateDataMetadataByHashErr: fmt.Errorf("Ledger error"),
+		GetStateMetadataErr:             errors.New("Ledger error"),
+		GetPrivateDataMetadataByHashErr: errors.New("Ledger error"),
 	}
-	ms := &mockStateFetcher{FetchStateRv: mr, FetchStateErr: fmt.Errorf("Ledger error")}
+	ms := &mockStateFetcher{FetchStateRv: mr, FetchStateErr: errors.New("Ledger error")}
 	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}
 
 	cc, coll, key := "cc", "", "key"

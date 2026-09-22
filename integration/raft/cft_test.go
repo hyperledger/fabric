@@ -986,7 +986,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			findLeader([]*ginkgomon.Runner{runner})
 
 			By("Creating config update that adds another orderer admin")
-			bootBlockPath := filepath.Join(network.RootDir, fmt.Sprintf("%s_block.pb", network.SystemChannel.Name))
+			bootBlockPath := filepath.Join(network.RootDir, network.SystemChannel.Name+"_block.pb")
 			bootBlock, err := os.ReadFile(bootBlockPath)
 			Expect(err).NotTo(HaveOccurred())
 

@@ -301,7 +301,7 @@ func (c *Config) load() error {
 	c.ExternalBuilders = externalBuilders
 	for builderIndex, builder := range c.ExternalBuilders {
 		if builder.Path == "" {
-			return fmt.Errorf("invalid external builder configuration, path attribute missing in one or more builders")
+			return errors.New("invalid external builder configuration, path attribute missing in one or more builders")
 		}
 		if builder.Name == "" {
 			return fmt.Errorf("external builder at path %s has no name attribute", builder.Path)
@@ -338,7 +338,7 @@ func (c *Config) load() error {
 func getLocalAddress() (string, error) {
 	peerAddress := viper.GetString("peer.address")
 	if peerAddress == "" {
-		return "", fmt.Errorf("peer.address isn't set")
+		return "", errors.New("peer.address isn't set")
 	}
 	host, port, err := net.SplitHostPort(peerAddress)
 	if err != nil {
