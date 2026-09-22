@@ -67,11 +67,11 @@ func (cbv *ConfigBlockValidator) ValidateConfig(envelope *common.Envelope) error
 	}
 
 	if payload.GetHeader() == nil {
-		return fmt.Errorf("no header was set")
+		return errors.New("no header was set")
 	}
 
 	if payload.Header.ChannelHeader == nil {
-		return fmt.Errorf("no channel header was set")
+		return errors.New("no channel header was set")
 	}
 
 	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
@@ -93,27 +93,27 @@ func (cbv *ConfigBlockValidator) ValidateConfig(envelope *common.Envelope) error
 
 func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *common.Config) error {
 	if conf == nil {
-		return fmt.Errorf("empty Config")
+		return errors.New("empty Config")
 	}
 
 	if conf.GetChannelGroup() == nil {
-		return fmt.Errorf("empty channel group")
+		return errors.New("empty channel group")
 	}
 
 	if len(conf.GetChannelGroup().GetGroups()) == 0 {
-		return fmt.Errorf("no groups in channel group")
+		return errors.New("no groups in channel group")
 	}
 
 	if conf.GetChannelGroup().GetGroups()["Orderer"] == nil {
-		return fmt.Errorf("no 'Orderer' group in channel groups")
+		return errors.New("no 'Orderer' group in channel groups")
 	}
 
 	if len(conf.GetChannelGroup().GetGroups()["Orderer"].GetValues()) == 0 {
-		return fmt.Errorf("no values in 'Orderer' group")
+		return errors.New("no values in 'Orderer' group")
 	}
 
 	if conf.GetChannelGroup().GetGroups()["Orderer"].GetValues()["Orderers"] == nil {
-		return fmt.Errorf("no values in 'Orderer' group")
+		return errors.New("no values in 'Orderer' group")
 	}
 
 	ords := &common.Orderers{}
@@ -153,11 +153,11 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *common.Config)
 	}
 
 	if len(conf.GetChannelGroup().GetGroups()["Orderer"].GetPolicies()) == 0 {
-		return fmt.Errorf("empty policies in 'Orderer' group")
+		return errors.New("empty policies in 'Orderer' group")
 	}
 
 	if conf.GetChannelGroup().GetGroups()["Orderer"].GetPolicies()["BlockValidation"] == nil {
-		return fmt.Errorf("block validation policy is not found in the policies of 'Orderer' group")
+		return errors.New("block validation policy is not found in the policies of 'Orderer' group")
 	}
 
 	actualPolicy := conf.GetChannelGroup().GetGroups()["Orderer"].GetPolicies()["BlockValidation"].GetPolicy()
@@ -169,7 +169,7 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *common.Config)
 	consensusTypeConfigValue := conf.GetChannelGroup().GetGroups()["Orderer"].GetValues()["ConsensusType"]
 
 	if consensusTypeConfigValue == nil {
-		return fmt.Errorf("missing consensus type property in config")
+		return errors.New("missing consensus type property in config")
 	}
 
 	consensusTypeValue := &protosorderer.ConsensusType{}
@@ -183,7 +183,7 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *common.Config)
 	}
 
 	if configOptions.GetLeaderRotation() == smartbft.Options_ROTATION_ON {
-		return fmt.Errorf("leader rotation must be turned off for this version or be unspecified")
+		return errors.New("leader rotation must be turned off for this version or be unspecified")
 	}
 
 	return nil

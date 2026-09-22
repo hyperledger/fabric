@@ -527,7 +527,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
 			)
-			require.Contains(t, err.Error(), fmt.Sprintf("error while opening data file: error while reading from the snapshot file: %s", dataFile))
+			require.Contains(t, err.Error(), "error while opening data file: error while reading from the snapshot file: "+dataFile)
 		})
 
 		t.Run("unexpected_data_format_in_"+f, func(t *testing.T) {

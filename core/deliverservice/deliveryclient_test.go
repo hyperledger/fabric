@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package deliverservice
 
 import (
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -36,7 +38,7 @@ func TestStartDeliverForChannel(t *testing.T) {
 	fakeLedgerInfoCreator := func() *fake.LedgerInfo {
 		fakeLedgerInfo := &fake.LedgerInfo{}
 		fakeLedgerInfo.LedgerHeightReturns(7, nil)                                      // first call creates the verifier
-		fakeLedgerInfo.LedgerHeightReturnsOnCall(1, 0, fmt.Errorf("fake-ledger-error")) // second call inside the deliverer
+		fakeLedgerInfo.LedgerHeightReturnsOnCall(1, 0, errors.New("fake-ledger-error")) // second call inside the deliverer
 		fakeLedgerInfo.GetCurrentBlockHashReturns([]byte{1, 2, 3, 4, 5, 6, 7, 8}, nil)
 		return fakeLedgerInfo
 	}
@@ -68,7 +70,7 @@ func TestStartDeliverForChannel(t *testing.T) {
 		require.NotNil(t, ds.blockDeliverer)
 		bpd := ds.blockDeliverer.(*blocksprovider.Deliverer)
 
-		require.Equal(t, "76f7a03f8dfdb0ef7c4b28b3901fe163c730e906c70e4cdf887054ad5f608bed", fmt.Sprintf("%x", bpd.TLSCertHash))
+		require.Equal(t, "76f7a03f8dfdb0ef7c4b28b3901fe163c730e906c70e4cdf887054ad5f608bed", hex.EncodeToString(bpd.TLSCertHash))
 	})
 
 	t.Run("Green Path without mutual TLS", func(t *testing.T) {
@@ -168,7 +170,7 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 	fakeLedgerInfoCreator := func() *fake.LedgerInfo {
 		fakeLedgerInfo := &fake.LedgerInfo{}
 		fakeLedgerInfo.LedgerHeightReturns(7, nil)                                      // first call creates the verifier
-		fakeLedgerInfo.LedgerHeightReturnsOnCall(1, 0, fmt.Errorf("fake-ledger-error")) // second call inside the deliverer
+		fakeLedgerInfo.LedgerHeightReturnsOnCall(1, 0, errors.New("fake-ledger-error")) // second call inside the deliverer
 		fakeLedgerInfo.GetCurrentBlockHashReturns([]byte{1, 2, 3, 4, 5, 6, 7, 8}, nil)
 		return fakeLedgerInfo
 	}
@@ -198,7 +200,7 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 		require.NotNil(t, ds.blockDeliverer)
 		bpd := ds.blockDeliverer.(*blocksprovider.BFTDeliverer)
 
-		require.Equal(t, "76f7a03f8dfdb0ef7c4b28b3901fe163c730e906c70e4cdf887054ad5f608bed", fmt.Sprintf("%x", bpd.TLSCertHash))
+		require.Equal(t, "76f7a03f8dfdb0ef7c4b28b3901fe163c730e906c70e4cdf887054ad5f608bed", hex.EncodeToString(bpd.TLSCertHash))
 	})
 
 	t.Run("Green Path without mutual TLS", func(t *testing.T) {

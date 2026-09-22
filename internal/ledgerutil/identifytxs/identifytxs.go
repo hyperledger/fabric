@@ -48,7 +48,7 @@ func IdentifyTxs(recPath string, fsPath string, outputDirLoc string) (uint64, ui
 	}
 
 	// Output directory creation
-	outputDirName := fmt.Sprintf("%s_identified_transactions", records.Ledgerid)
+	outputDirName := records.Ledgerid + "_identified_transactions"
 	outputDirPath := filepath.Join(outputDirLoc, outputDirName)
 
 	empty, err := fileutil.CreateDirIfMissing(outputDirPath)

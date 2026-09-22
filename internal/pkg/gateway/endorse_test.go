@@ -8,7 +8,6 @@ package gateway
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -384,7 +383,7 @@ func TestEndorse(t *testing.T) {
 				"g1": {{endorser: localhostMock, height: 2}},
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
-				def.discovery.PeersForEndorsementReturns(nil, fmt.Errorf("peach-melba"))
+				def.discovery.PeersForEndorsementReturns(nil, errors.New("peach-melba"))
 			},
 			errCode:   codes.FailedPrecondition,
 			errString: "no combination of peers can be derived which satisfy the endorsement policy: peach-melba",

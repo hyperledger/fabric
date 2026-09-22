@@ -14,7 +14,6 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
-	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -74,17 +73,17 @@ func TestLoadPrivateKey_BadPEM(t *testing.T) {
 		{
 			name:   "not pem encoded",
 			data:   []byte("wrong_encoding"),
-			errMsg: fmt.Sprintf("%s: bytes are not PEM encoded", badPEMFile),
+			errMsg: badPEMFile + ": bytes are not PEM encoded",
 		},
 		{
 			name:   "not EC key",
 			data:   pkcs8RSAPem,
-			errMsg: fmt.Sprintf("%s: pem bytes do not contain an ECDSA nor ed25519 private key", badPEMFile),
+			errMsg: badPEMFile + ": pem bytes do not contain an ECDSA nor ed25519 private key",
 		},
 		{
 			name:   "not PKCS8 encoded",
 			data:   pkcs1RSAPem,
-			errMsg: fmt.Sprintf("%s: pem bytes are not PKCS8 encoded", badPEMFile),
+			errMsg: badPEMFile + ": pem bytes are not PKCS8 encoded",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

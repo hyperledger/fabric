@@ -153,7 +153,7 @@ func InitBCCSPConfig(bccspConfig *factory.FactoryOpts) error {
 
 	subv := viper.Sub("peer.BCCSP")
 	if subv == nil {
-		return fmt.Errorf("could not get peer BCCSP configuration")
+		return errors.New("could not get peer BCCSP configuration")
 	}
 
 	opts := viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(

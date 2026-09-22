@@ -199,10 +199,11 @@ func (c *CommittedQuerier) printApprovals(qcdr *lb.QueryChaincodeDefinitionResul
 	}
 	sort.Strings(orgs)
 
-	approvals := ""
+	tmp := strings.Builder{}
 	for _, org := range orgs {
-		approvals += fmt.Sprintf("%s: %t, ", org, approved[org])
+		fmt.Fprintf(&tmp, "%s: %t, ", org, approved[org])
 	}
+	approvals := tmp.String()
 	approvals = strings.TrimSuffix(approvals, ", ")
 
 	fmt.Fprintf(c.Writer, ", Approvals: [%s]\n", approvals)

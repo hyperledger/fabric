@@ -8,7 +8,7 @@ package gateway
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -246,7 +246,7 @@ func TestEvaluate(t *testing.T) {
 				"g3": {{endorser: peer4Mock, height: 5}},                                       // msp3
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
-				def.localEndorser.ProcessProposalReturns(createErrorResponse(t, 500, "invalid signature", nil), fmt.Errorf("invalid signature"))
+				def.localEndorser.ProcessProposalReturns(createErrorResponse(t, 500, "invalid signature", nil), errors.New("invalid signature"))
 			},
 			endorsingOrgs: []string{"msp1"},
 			errCode:       codes.FailedPrecondition, // Code path could fail for reasons other than authentication
@@ -302,7 +302,7 @@ func TestEvaluate(t *testing.T) {
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.dialer.Calls(func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
 					if target == "peer2:9051" {
-						return nil, fmt.Errorf("endorser not answering")
+						return nil, errors.New("endorser not answering")
 					}
 					return nil, nil
 				})

@@ -8,7 +8,6 @@ package discovery_test
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	discprotos "github.com/hyperledger/fabric-protos-go-apiv2/discovery"
@@ -95,6 +94,6 @@ func TestParseConfigResponse(t *testing.T) {
 		err := parser.ParseResponse("mychannel", res)
 		require.NoError(t, err)
 		expected := "{\n\t\"msps\": {\n\t\t\"Org1MSP\": null,\n\t\t\"Org2MSP\": null\n\t},\n\t\"orderers\": {\n\t\t\"OrdererMSP\": {\n\t\t\t\"endpoint\": [\n\t\t\t\t{\n\t\t\t\t\t\"host\": \"orderer1\",\n\t\t\t\t\t\"port\": 7050\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t}\n}"
-		require.Equal(t, fmt.Sprintf("%s\n", expected), buff.String())
+		require.Equal(t, expected+"\n", buff.String())
 	})
 }

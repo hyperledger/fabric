@@ -54,7 +54,7 @@ func Join(n *Network, o *Orderer, channel string, block *common.Block, expectedC
 func GenerateJoinRequest(url, channel string, blockBytes []byte) *http.Request {
 	joinBody := new(bytes.Buffer)
 	writer := multipart.NewWriter(joinBody)
-	part, err := writer.CreateFormFile("config-block", fmt.Sprintf("%s.block", channel))
+	part, err := writer.CreateFormFile("config-block", channel+".block")
 	Expect(err).NotTo(HaveOccurred())
 	part.Write(blockBytes)
 	err = writer.Close()
@@ -122,7 +122,7 @@ func UpdateFull(n *Network, o *Orderer, channel string, envelope *common.Envelop
 func GenerateUpdateRequest(url, channel string, envelopeBytes []byte) *http.Request {
 	updateBody := new(bytes.Buffer)
 	writer := multipart.NewWriter(updateBody)
-	part, err := writer.CreateFormFile("config-update-envelope", fmt.Sprintf("%s-update.envelope", channel))
+	part, err := writer.CreateFormFile("config-update-envelope", channel+"-update.envelope")
 	Expect(err).NotTo(HaveOccurred())
 	part.Write(envelopeBytes)
 	err = writer.Close()
@@ -291,7 +291,7 @@ func channelsMatcher(channels []string) types.GomegaMatcher {
 func channelInfoShortMatcher(channel string) types.GomegaMatcher {
 	return gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 		"Name": Equal(channel),
-		"URL":  Equal(fmt.Sprintf("/participation/v1/channels/%s", channel)),
+		"URL":  Equal("/participation/v1/channels/" + channel),
 	})
 }
 
@@ -302,19 +302,19 @@ func JoinOrdererJoinPeersAppChannel(network *Network, channelID string, orderer 
 	appGenesisBlock := network.LoadAppChannelGenesisBlock(channelID)
 	expectedChannelInfo := ChannelInfo{
 		Name:              channelID,
-		URL:               fmt.Sprintf("/participation/v1/channels/%s", channelID),
+		URL:               "/participation/v1/channels/" + channelID,
 		Status:            "active",
 		ConsensusRelation: "consenter",
 		Height:            1,
 	}
 	Join(network, orderer, channelID, appGenesisBlock, expectedChannelInfo)
 
-	ginkgo.By(fmt.Sprintf("waiting for leader on channel %s", channelID))
+	ginkgo.By("waiting for leader on channel " + channelID)
 	Eventually(ordererRunner.Err(), network.EventuallyTimeout, time.Second).Should(
 		gbytes.Say(fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channelID)),
 	)
 
-	ginkgo.By(fmt.Sprintf("joining peers to the channel %s", channelID))
+	ginkgo.By("joining peers to the channel " + channelID)
 	peers := network.PeersWithChannel(channelID)
 	network.JoinChannel(channelID, orderer, peers...)
 }
@@ -325,14 +325,14 @@ func JoinOrdererAppChannel(network *Network, channelID string, orderer *Orderer,
 	appGenesisBlock := network.LoadAppChannelGenesisBlock(channelID)
 	expectedChannelInfo := ChannelInfo{
 		Name:              channelID,
-		URL:               fmt.Sprintf("/participation/v1/channels/%s", channelID),
+		URL:               "/participation/v1/channels/" + channelID,
 		Status:            "active",
 		ConsensusRelation: "consenter",
 		Height:            1,
 	}
 	Join(network, orderer, channelID, appGenesisBlock, expectedChannelInfo)
 
-	ginkgo.By(fmt.Sprintf("waiting for leader on channel %s", channelID))
+	ginkgo.By("waiting for leader on channel " + channelID)
 	Eventually(ordererRunner.Err(), network.EventuallyTimeout, time.Second).Should(
 		gbytes.Say(fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channelID)),
 	)
@@ -345,7 +345,7 @@ func JoinOrderersAppChannelCluster(network *Network, channelID string, orderers 
 	for _, orderer := range orderers {
 		expectedChannelInfo := ChannelInfo{
 			Name:              channelID,
-			URL:               fmt.Sprintf("/participation/v1/channels/%s", channelID),
+			URL:               "/participation/v1/channels/" + channelID,
 			Status:            "active",
 			ConsensusRelation: "consenter",
 			Height:            1,

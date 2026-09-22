@@ -516,11 +516,11 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			restart := func(i int) {
 				orderer := network.Orderers[i]
-				By(fmt.Sprintf("Killing %s", orderer.Name))
+				By("Killing " + orderer.Name)
 				ordererProcesses[i].Signal(syscall.SIGTERM)
 				Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
 
-				By(fmt.Sprintf("Launching %s", orderer.Name))
+				By("Launching " + orderer.Name)
 				runner := network.OrdererRunner(orderer)
 				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.common.cluster=debug:orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
 				ordererRunners[i] = runner
@@ -721,11 +721,11 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			By("Restarting all nodes")
 			for i := range 4 {
 				orderer := network.Orderers[i]
-				By(fmt.Sprintf("Killing %s", orderer.Name))
+				By("Killing " + orderer.Name)
 				ordererProcesses[i].Signal(syscall.SIGTERM)
 				Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
 
-				By(fmt.Sprintf("Launching %s", orderer.Name))
+				By("Launching " + orderer.Name)
 				runner := network.OrdererRunner(orderer)
 				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
 				ordererRunners[i] = runner
@@ -825,11 +825,11 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			By("Restarting all nodes")
 			for i := range 4 {
 				orderer := network.Orderers[i]
-				By(fmt.Sprintf("Killing %s", orderer.Name))
+				By("Killing " + orderer.Name)
 				ordererProcesses[i].Signal(syscall.SIGTERM)
 				Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
 
-				By(fmt.Sprintf("Launching %s", orderer.Name))
+				By("Launching " + orderer.Name)
 				runner := network.OrdererRunner(orderer)
 				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
 				ordererRunners[i] = runner
@@ -1149,7 +1149,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				ordererIdentity, err := os.ReadFile(network.OrdererCert(newOrderer))
 				Expect(err).NotTo(HaveOccurred())
 
-				By(fmt.Sprintf("Adding consenter with certificate %s", string(ordererIdentity)))
+				By("Adding consenter with certificate " + string(ordererIdentity))
 
 				nwo.UpdateConsenters(network, peer, orderer, channel, func(orderers *common.Orderers) {
 					orderers.ConsenterMapping = append(orderers.ConsenterMapping, &common.Consenter{
@@ -1828,7 +1828,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			numberKill := 3
 			orderer := network.Orderers[numberKill]
-			By(fmt.Sprintf("Killing %s", orderer.Name))
+			By("Killing " + orderer.Name)
 			ordererProcesses[numberKill].Signal(syscall.SIGTERM)
 			Eventually(ordererProcesses[numberKill].Wait(), network.EventuallyTimeout).Should(Receive())
 
@@ -1843,7 +1843,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			}
 
 			// After starting orderer 3, orderer 0 (leader) will have 10-11 seconds to establish a connection and throw a heartbeat message.
-			By(fmt.Sprintf("Launching %s", orderer.Name))
+			By("Launching " + orderer.Name)
 			runner := network.OrdererRunner(
 				orderer,
 				"FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
@@ -1944,7 +1944,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			// start the 2 stopped nodes
 			for i := 2; i <= 3; i++ {
 				orderer := network.Orderers[i]
-				By(fmt.Sprintf("Launching %s", orderer.Name))
+				By("Launching " + orderer.Name)
 				runner := network.OrdererRunner(orderer, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
 					"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s")
 				ordererRunners = append(ordererRunners, runner)
@@ -2430,7 +2430,7 @@ func queryExpect(network *nwo.Network, peer *nwo.Peer, channel string, key strin
 		}
 
 		outStr := strings.TrimSpace(string(sess.Out.Contents()))
-		if outStr != fmt.Sprintf("%d", expectedBalance) {
+		if outStr != strconv.Itoa(expectedBalance) {
 			return fmt.Sprintf("Error: expected: %d, received %s", expectedBalance, outStr)
 		}
 		return ""
@@ -2455,7 +2455,7 @@ func waitForBlockReception(o *nwo.Orderer, network *nwo.Network, channelName str
 	Eventually(func() string {
 		b, err := nwo.Fetch(network, o, channelName, "newest")
 		if err != nil {
-			return fmt.Sprintf("error is %s", err.Error())
+			return "error is " + err.Error()
 		}
 
 		if b.GetHeader().GetNumber() == uint64(blockSeq) {
@@ -2974,7 +2974,7 @@ func renewOrdererEnrollmentCertificates(network *nwo.Network, notAfter time.Time
 
 		// Path to the orderer's signcert
 		ordererSignCertPath := filepath.Join(
-			network.RootDir, "crypto", "ordererOrganizations", ordererDomain, "orderers", ordererFQDN, "msp", "signcerts", fmt.Sprintf("%s-cert.pem", ordererFQDN),
+			network.RootDir, "crypto", "ordererOrganizations", ordererDomain, "orderers", ordererFQDN, "msp", "signcerts", ordererFQDN+"-cert.pem",
 		)
 		ordererSignCert, err := os.ReadFile(ordererSignCertPath)
 		Expect(err).NotTo(HaveOccurred())

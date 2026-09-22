@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package encoder_test
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -1068,7 +1068,7 @@ var _ = Describe("Encoder", func() {
 
 			Context("when the signer cannot create the signature header", func() {
 				BeforeEach(func() {
-					fakeSigner.SerializeReturns(nil, fmt.Errorf("serialize-error"))
+					fakeSigner.SerializeReturns(nil, errors.New("serialize-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1079,7 +1079,7 @@ var _ = Describe("Encoder", func() {
 
 			Context("when the signer cannot sign", func() {
 				BeforeEach(func() {
-					fakeSigner.SignReturns(nil, fmt.Errorf("sign-error"))
+					fakeSigner.SignReturns(nil, errors.New("sign-error"))
 				})
 
 				It("wraps and returns the error", func() {

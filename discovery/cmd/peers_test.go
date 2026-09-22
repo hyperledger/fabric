@@ -101,7 +101,7 @@ func TestParsePeers(t *testing.T) {
 		buff.Reset()
 		err := parser.ParseResponse(channel, res)
 		require.NoError(t, err)
-		require.Equal(t, fmt.Sprintf("%s\n", expected), buff.String())
+		require.Equal(t, expected+"\n", buff.String())
 	}
 }
 

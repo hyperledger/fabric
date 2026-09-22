@@ -791,7 +791,7 @@ func startPeer(s *setup, orgName, peerName, channelID string, useCouchDB bool) (
 func joinBySnapshot(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channelID string, snapshotDir string, lastBlockInSnapshot int) {
 	channelHeight := nwo.GetMaxLedgerHeight(n, channelID, n.PeersWithChannel(channelID)...)
 
-	By(fmt.Sprintf("joining a peer via snapshot %s", snapshotDir))
+	By("joining a peer via snapshot " + snapshotDir)
 	n.JoinChannelBySnapshot(snapshotDir, peer)
 
 	By("calling JoinBySnapshotStatus")
@@ -822,7 +822,7 @@ func verifyQSCC(n *nwo.Network, peer *nwo.Peer, channelID string, lastBlockInSna
 	Expect(resp).To(ContainSubstring(fmt.Sprintf("The ledger is bootstrapped from a snapshot. First available block = [%d]", lastBlockInSnapshot+1)))
 
 	By("verifying qscc GetBlockByNumber succeeds for a block number after snapshot on peer " + peerID)
-	callQSCC(n, peer, "qscc", "GetBlockByNumber", 0, channelID, fmt.Sprintf("%d", lastBlockInSnapshot+1))
+	callQSCC(n, peer, "qscc", "GetBlockByNumber", 0, channelID, strconv.Itoa(lastBlockInSnapshot+1))
 
 	By("verifying qscc GetBlockByTxID returns an error for a txid before snapshot on peer " + peerID)
 	resp = callQSCC(n, peer, "qscc", "GetBlockByTxID", 1, channelID, txidBeforeSnapshot)

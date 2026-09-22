@@ -257,7 +257,7 @@ func (t *SimpleChaincode) issue(stub shim.ChaincodeStubInterface, args []string)
 	A := args[0]
 	val, err := stub.GetState(A)
 	if val != nil || err != nil {
-		return shim.Error(fmt.Sprintf("Asset already exists: %s", A))
+		return shim.Error("Asset already exists: " + A)
 	}
 
 	Aval, err := strconv.Atoi(args[1])

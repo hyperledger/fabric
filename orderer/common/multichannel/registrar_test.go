@@ -520,7 +520,7 @@ func createJoinBlockFileRepoDirWithBlocks(t *testing.T, tmpdir string, joinBlock
 	for _, jb := range joinBlocks {
 		blockBytes, err := proto.Marshal(jb.block)
 		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(joinBlockRepoPath, fmt.Sprintf("%s.join", jb.channel)), blockBytes, 0o600)
+		err = os.WriteFile(filepath.Join(joinBlockRepoPath, jb.channel+".join"), blockBytes, 0o600)
 		require.NoError(t, err)
 	}
 }

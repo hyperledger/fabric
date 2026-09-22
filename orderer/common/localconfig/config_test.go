@@ -4,9 +4,9 @@
 package localconfig
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -100,7 +100,7 @@ func TestEnvInnerVar(t *testing.T) {
 	envVal1 := uint16(80)
 	envVar2 := "ORDERER_GENERAL_KEEPALIVE_SERVERTIMEOUT"
 	envVal2 := "42s"
-	t.Setenv(envVar1, fmt.Sprintf("%d", envVal1))
+	t.Setenv(envVar1, strconv.FormatUint(uint64(envVal1), 10))
 	t.Setenv(envVar2, envVal2)
 	configtest.SetDevFabricConfigPath(t)
 

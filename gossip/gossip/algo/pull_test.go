@@ -459,7 +459,7 @@ func TestSpread(t *testing.T) {
 	inst5.hook(addToCounters("p5"))
 
 	for i := range 100 {
-		item := fmt.Sprintf("%d", i)
+		item := strconv.Itoa(i)
 		inst2.Add(item)
 		inst3.Add(item)
 		inst4.Add(item)

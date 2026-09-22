@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package protoext
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
@@ -128,7 +129,7 @@ func IsLeadershipMsg(m *gossip.GossipMessage) bool {
 // and returns an error if the tag doesn't match the type.
 func IsTagLegal(m *gossip.GossipMessage) error {
 	if m.GetTag() == gossip.GossipMessage_UNDEFINED {
-		return fmt.Errorf("Undefined tag")
+		return errors.New("Undefined tag")
 	}
 	if IsDataMsg(m) {
 		if m.GetTag() != gossip.GossipMessage_CHAN_AND_ORG {

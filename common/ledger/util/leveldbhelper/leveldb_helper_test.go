@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package leveldbhelper
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -132,7 +131,7 @@ func TestFileLock(t *testing.T) {
 	// try to acquire the file lock again using the fileLock2
 	// would result in an error
 	err = fileLock2.Lock()
-	expectedErr := fmt.Sprintf("lock is already acquired on file %s", fileLockPath)
+	expectedErr := "lock is already acquired on file " + fileLockPath
 	require.EqualError(t, err, expectedErr)
 	require.Nil(t, fileLock2.db)
 

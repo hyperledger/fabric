@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"testing"
 	"time"
 
@@ -72,7 +73,7 @@ func QueryChaincode(n *nwo.Network, chaincodeName string, peer *nwo.Peer, initia
 	})
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 	EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	ExpectWithOffset(1, sess).To(gbytes.Say(fmt.Sprint(initialQueryResult)))
+	ExpectWithOffset(1, sess).To(gbytes.Say(strconv.Itoa(initialQueryResult)))
 }
 
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, chaincodeName string, initialQueryResult int, peers ...*nwo.Peer) {

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package channelconfig
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -73,10 +74,10 @@ func (sv *StandardValues) Deserialize(key string, value []byte) (proto.Message, 
 func (sv *StandardValues) initializeProtosStruct(objValue reflect.Value) error {
 	objType := objValue.Type()
 	if objType.Kind() != reflect.Pointer {
-		return fmt.Errorf("Non pointer type")
+		return errors.New("Non pointer type")
 	}
 	if objType.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("Non struct type")
+		return errors.New("Non struct type")
 	}
 
 	numFields := objValue.Elem().NumField()

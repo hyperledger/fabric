@@ -97,7 +97,7 @@ func (r *Registry) GenerateDockerfile(ccType string) (string, error) {
 	// Then augment it with any general options
 	// ----------------------------------------------------------------------------------------------------
 	// append version so chaincode build version can be compared against peer build version
-	buf = append(buf, fmt.Sprintf("ENV CORE_CHAINCODE_BUILDLEVEL=%s", metadata.Version))
+	buf = append(buf, "ENV CORE_CHAINCODE_BUILDLEVEL="+metadata.Version)
 
 	// ----------------------------------------------------------------------------------------------------
 	// Finalize it

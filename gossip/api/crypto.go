@@ -126,17 +126,17 @@ func (pit PeerIdentityType) String() string {
 	sID := &msp.SerializedIdentity{}
 	err := proto.Unmarshal(pit, sID)
 	if err != nil {
-		return fmt.Sprintf("non SerializedIdentity: %s", base64Representation)
+		return "non SerializedIdentity: " + base64Representation
 	}
 
 	bl, _ := pem.Decode(sID.GetIdBytes())
 	if bl == nil {
-		return fmt.Sprintf("non PEM encoded identity: %s", base64Representation)
+		return "non PEM encoded identity: " + base64Representation
 	}
 
 	cert, _ := x509.ParseCertificate(bl.Bytes)
 	if cert == nil {
-		return fmt.Sprintf("non x509 identity: %s", base64Representation)
+		return "non x509 identity: " + base64Representation
 	}
 	m := make(map[string]any)
 	m["MSP"] = sID.GetMspid()

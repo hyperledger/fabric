@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle_test
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
@@ -60,7 +60,7 @@ var _ = Describe("LedgerShims", func() {
 
 			Context("when the iterator cannot be retrieved", func() {
 				BeforeEach(func() {
-					fakeStub.GetStateByRangeReturns(nil, fmt.Errorf("error-by-range"))
+					fakeStub.GetStateByRangeReturns(nil, errors.New("error-by-range"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -71,7 +71,7 @@ var _ = Describe("LedgerShims", func() {
 
 			Context("when the iterator fails to iterate", func() {
 				BeforeEach(func() {
-					fakeIterator.NextReturns(nil, fmt.Errorf("fake-iterator-error"))
+					fakeIterator.NextReturns(nil, errors.New("fake-iterator-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -111,7 +111,7 @@ var _ = Describe("LedgerShims", func() {
 
 			Context("when getting the state iterator fails", func() {
 				BeforeEach(func() {
-					fakeStub.GetPrivateDataByRangeReturns(nil, fmt.Errorf("fake-range-error"))
+					fakeStub.GetPrivateDataByRangeReturns(nil, errors.New("fake-range-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -123,13 +123,13 @@ var _ = Describe("LedgerShims", func() {
 
 		Describe("GetState", func() {
 			BeforeEach(func() {
-				fakeStub.GetPrivateDataReturns([]byte("fake-value"), fmt.Errorf("fake-getstate-error"))
+				fakeStub.GetPrivateDataReturns([]byte("fake-value"), errors.New("fake-getstate-error"))
 			})
 
 			It("passes through to the stub private data implementation", func() {
 				res, err := cls.GetState("fake-key")
 				Expect(res).To(Equal([]byte("fake-value")))
-				Expect(err).To(MatchError(fmt.Errorf("fake-getstate-error")))
+				Expect(err).To(MatchError(errors.New("fake-getstate-error")))
 				Expect(fakeStub.GetPrivateDataCallCount()).To(Equal(1))
 				collection, key := fakeStub.GetPrivateDataArgsForCall(0)
 				Expect(collection).To(Equal("fake-collection"))
@@ -139,7 +139,7 @@ var _ = Describe("LedgerShims", func() {
 
 		Describe("GetStateHash", func() {
 			BeforeEach(func() {
-				fakeStub.GetPrivateDataHashReturns([]byte("fake-hash"), fmt.Errorf("fake-error"))
+				fakeStub.GetPrivateDataHashReturns([]byte("fake-hash"), errors.New("fake-error"))
 			})
 
 			It("passes through to the chaincode stub", func() {
@@ -155,12 +155,12 @@ var _ = Describe("LedgerShims", func() {
 
 		Describe("PutState", func() {
 			BeforeEach(func() {
-				fakeStub.PutPrivateDataReturns(fmt.Errorf("fake-putstate-error"))
+				fakeStub.PutPrivateDataReturns(errors.New("fake-putstate-error"))
 			})
 
 			It("passes through to the stub private data implementation", func() {
 				err := cls.PutState("fake-key", []byte("fake-value"))
-				Expect(err).To(MatchError(fmt.Errorf("fake-putstate-error")))
+				Expect(err).To(MatchError(errors.New("fake-putstate-error")))
 				Expect(fakeStub.PutPrivateDataCallCount()).To(Equal(1))
 				collection, key, value := fakeStub.PutPrivateDataArgsForCall(0)
 				Expect(collection).To(Equal("fake-collection"))
@@ -171,12 +171,12 @@ var _ = Describe("LedgerShims", func() {
 
 		Describe("DelState", func() {
 			BeforeEach(func() {
-				fakeStub.DelPrivateDataReturns(fmt.Errorf("fake-delstate-error"))
+				fakeStub.DelPrivateDataReturns(errors.New("fake-delstate-error"))
 			})
 
 			It("passes through to the stub private data implementation", func() {
 				err := cls.DelState("fake-key")
-				Expect(err).To(MatchError(fmt.Errorf("fake-delstate-error")))
+				Expect(err).To(MatchError(errors.New("fake-delstate-error")))
 				Expect(fakeStub.DelPrivateDataCallCount()).To(Equal(1))
 				collection, key := fakeStub.DelPrivateDataArgsForCall(0)
 				Expect(collection).To(Equal("fake-collection"))
@@ -201,7 +201,7 @@ var _ = Describe("LedgerShims", func() {
 
 		Describe("GetState", func() {
 			BeforeEach(func() {
-				fakeSimpleQueryExecutor.GetStateReturns([]byte("fake-state"), fmt.Errorf("fake-error"))
+				fakeSimpleQueryExecutor.GetStateReturns([]byte("fake-state"), errors.New("fake-error"))
 			})
 
 			It("passes through to the query executor", func() {
@@ -239,7 +239,7 @@ var _ = Describe("LedgerShims", func() {
 
 			Context("when the result iterator returns an error", func() {
 				BeforeEach(func() {
-					resItr.NextReturns(nil, fmt.Errorf("fake-error"))
+					resItr.NextReturns(nil, errors.New("fake-error"))
 				})
 
 				It("returns the error", func() {
@@ -250,7 +250,7 @@ var _ = Describe("LedgerShims", func() {
 
 			Context("when getting the state iterator fails", func() {
 				BeforeEach(func() {
-					fakeSimpleQueryExecutor.GetStateRangeScanIteratorReturns(nil, fmt.Errorf("fake-range-error"))
+					fakeSimpleQueryExecutor.GetStateRangeScanIteratorReturns(nil, errors.New("fake-range-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -274,7 +274,7 @@ var _ = Describe("LedgerShims", func() {
 				Collection: "collection",
 				State:      fakeSimpleQueryExecutor,
 			}
-			fakeSimpleQueryExecutor.GetPrivateDataHashReturns([]byte("hash"), fmt.Errorf("fake-error"))
+			fakeSimpleQueryExecutor.GetPrivateDataHashReturns([]byte("hash"), errors.New("fake-error"))
 		})
 
 		It("passes through to the underlying implementation", func() {

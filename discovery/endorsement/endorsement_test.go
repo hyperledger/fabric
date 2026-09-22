@@ -1328,7 +1328,7 @@ func (pe *principalEvaluatorMock) SatisfiesPrincipal(_ string, identity []byte, 
 		if proto.Equal(sId, identityPrincipal) {
 			return nil
 		}
-		return fmt.Errorf("identities do not match")
+		return errors.New("identities do not match")
 	}
 	// Else, it's either an OU type or a role type, so we only classify by MSP ID
 	peerRole := &msp.MSPRole{}

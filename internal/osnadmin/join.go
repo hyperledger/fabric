@@ -10,14 +10,13 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"mime/multipart"
 	"net/http"
 )
 
 // Joins an OSN to a new or existing channel.
 func Join(osnURL string, blockBytes []byte, caCertPool *x509.CertPool, tlsClientCert tls.Certificate) (*http.Response, error) {
-	url := fmt.Sprintf("%s/participation/v1/channels", osnURL)
+	url := osnURL + "/participation/v1/channels"
 	req, err := createJoinRequest(url, blockBytes)
 	if err != nil {
 		return nil, err

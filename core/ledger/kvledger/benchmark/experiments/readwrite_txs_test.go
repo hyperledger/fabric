@@ -8,6 +8,7 @@ package experiments
 
 import (
 	crand "crypto/rand"
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"sync"
@@ -31,7 +32,7 @@ import (
 // and modifies any key(s) between Key_1 to key_50 (because, total keys are to be 100 across two chains)
 func BenchmarkReadWriteTxs(b *testing.B) {
 	if b.N != 1 {
-		panic(fmt.Errorf(`This benchmark should be called with N=1 only. Run this with more volume of data`))
+		panic(errors.New(`This benchmark should be called with N=1 only. Run this with more volume of data`))
 	}
 	runReadWriteTest()
 }

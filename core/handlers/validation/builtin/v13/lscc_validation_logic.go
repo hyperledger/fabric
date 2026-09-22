@@ -129,7 +129,7 @@ func checkForMissingCollections(newCollectionsMap map[string]*pb.StaticCollectio
 		oldCollection := oldCollectionConfig.GetStaticCollectionConfig()
 		// It cannot be nil
 		if oldCollection == nil {
-			return policyErr(fmt.Errorf("unknown collection configuration type"))
+			return policyErr(errors.New("unknown collection configuration type"))
 		}
 
 		// All old collection must exist in the new collection config package
@@ -158,7 +158,7 @@ func checkForModifiedCollectionsBTL(newCollectionsMap map[string]*pb.StaticColle
 		oldCollection := oldCollectionConfig.GetStaticCollectionConfig()
 		// It cannot be nil
 		if oldCollection == nil {
-			return policyErr(fmt.Errorf("unknown collection configuration type"))
+			return policyErr(errors.New("unknown collection configuration type"))
 		}
 
 		oldCollectionName := oldCollection.GetName()
@@ -201,7 +201,7 @@ func validateNewCollectionConfigsAgainstOld(newCollectionConfigs []*pb.Collectio
 
 func validateCollectionName(collectionName string) error {
 	if collectionName == "" {
-		return fmt.Errorf("empty collection-name is not allowed")
+		return errors.New("empty collection-name is not allowed")
 	}
 	match := validCollectionNameRegex.FindString(collectionName)
 	if len(match) != len(collectionName) {
@@ -227,7 +227,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 	/********************************************/
 	// there can only be one or two writes
 	if len(lsccrwset.GetWrites()) > 2 {
-		return policyErr(fmt.Errorf("LSCC can only issue one or two putState upon deploy"))
+		return policyErr(errors.New("LSCC can only issue one or two putState upon deploy"))
 	}
 
 	/**********************************************************/
@@ -356,7 +356,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 		cis.GetChaincodeSpec().GetInput() == nil ||
 		cis.ChaincodeSpec.Input.Args == nil {
 		logger.Errorf("VSCC error: committing invalid vscc invocation")
-		return policyErr(fmt.Errorf("malformed chaincode invocation spec"))
+		return policyErr(errors.New("malformed chaincode invocation spec"))
 	}
 
 	lsccFunc := string(cis.GetChaincodeSpec().GetInput().GetArgs()[0])
@@ -418,7 +418,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			return policyErr(fmt.Errorf("GetProposalResponsePayload error %w", err))
 		}
 		if pRespPayload.Extension == nil {
-			return policyErr(fmt.Errorf("nil pRespPayload.Extension"))
+			return policyErr(errors.New("nil pRespPayload.Extension"))
 		}
 		respPayload, err := protoutil.UnmarshalChaincodeAction(pRespPayload.GetExtension())
 		if err != nil {
@@ -450,11 +450,11 @@ func (vscc *Validator) ValidateLSCCInvocation(
 		/******************************************/
 		// there has to be a write-set
 		if lsccrwset == nil {
-			return policyErr(fmt.Errorf("No read write set for lscc was found"))
+			return policyErr(errors.New("No read write set for lscc was found"))
 		}
 		// there must be at least one write
 		if len(lsccrwset.GetWrites()) < 1 {
-			return policyErr(fmt.Errorf("LSCC must issue at least one single putState upon deploy/upgrade"))
+			return policyErr(errors.New("LSCC must issue at least one single putState upon deploy/upgrade"))
 		}
 		// the first key name must be the chaincode id provided in the deployment spec
 		if lsccrwset.GetWrites()[0].GetKey() != cdsArgs.GetChaincodeSpec().GetChaincodeId().GetName() {
@@ -505,7 +505,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			} else {
 				// there can only be a single ledger write
 				if len(lsccrwset.GetWrites()) != 1 {
-					return policyErr(fmt.Errorf("LSCC can only issue a single putState upon deploy"))
+					return policyErr(errors.New("LSCC can only issue a single putState upon deploy"))
 				}
 			}
 
@@ -514,7 +514,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			/*****************************************************/
 			pol := cdRWSet.GetInstantiationPolicy()
 			if pol == nil {
-				return policyErr(fmt.Errorf("no instantiation policy was specified"))
+				return policyErr(errors.New("no instantiation policy was specified"))
 			}
 			// FIXME: could we actually pull the cds package from the
 			// file system to verify whether the policy that is specified
@@ -554,7 +554,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			} else {
 				// there can only be a single ledger write
 				if len(lsccrwset.GetWrites()) != 1 {
-					return policyErr(fmt.Errorf("LSCC can only issue a single putState upon upgrade"))
+					return policyErr(errors.New("LSCC can only issue a single putState upon upgrade"))
 				}
 			}
 
@@ -563,7 +563,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			/*****************************************************/
 			pol := cdLedger.GetInstantiationPolicy()
 			if pol == nil {
-				return policyErr(fmt.Errorf("No instantiation policy was specified"))
+				return policyErr(errors.New("No instantiation policy was specified"))
 			}
 			// FIXME: could we actually pull the cds package from the
 			// file system to verify whether the policy that is specified
@@ -581,7 +581,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			if ac.V1_1Validation() {
 				polNew := cdRWSet.GetInstantiationPolicy()
 				if polNew == nil {
-					return policyErr(fmt.Errorf("No instantiation policy was specified"))
+					return policyErr(errors.New("No instantiation policy was specified"))
 				}
 
 				// no point in checking it again if they are the same policy

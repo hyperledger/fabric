@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
@@ -100,7 +100,7 @@ func TestConfigUpdateMsg(t *testing.T) {
 	t.Run("BadUpdate", func(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			ProposeConfigUpdateErr: fmt.Errorf("An error"),
+			ProposeConfigUpdateErr: errors.New("An error"),
 			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
@@ -113,7 +113,7 @@ func TestConfigUpdateMsg(t *testing.T) {
 	t.Run("BadMsg", func(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			ProposeConfigUpdateErr: fmt.Errorf("An error"),
+			ProposeConfigUpdateErr: errors.New("An error"),
 			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())

@@ -8,7 +8,6 @@ package pull
 
 import (
 	"bytes"
-	"fmt"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -160,7 +159,7 @@ func createPullInstanceWithFilters(endpoint string, peer2PullInst map[string]*pu
 		if dataMsg.GetPayload() == nil {
 			return ""
 		}
-		return fmt.Sprintf("%d", dataMsg.GetPayload().GetSeqNum())
+		return strconv.FormatUint(dataMsg.GetPayload().GetSeqNum(), 10)
 	}
 	blockConsumer := func(msg *protoext.SignedGossipMessage) {
 		inst.items.Add(msg.GetDataMsg().GetPayload().GetSeqNum())

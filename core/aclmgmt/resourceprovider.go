@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package aclmgmt
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -192,7 +193,7 @@ func (rp *resourceProvider) CheckACL(resName string, channelID string, idinfo an
 // CheckACLNoChannel implements the ACLProvider interface function
 func (rp *resourceProvider) CheckACLNoChannel(resName string, idinfo any) error {
 	if !rp.enforceDefaultBehavior(resName, "", idinfo) {
-		return fmt.Errorf("cannot override peer type policy for channeless ACL check")
+		return errors.New("cannot override peer type policy for channeless ACL check")
 	}
 
 	return rp.defaultProvider.CheckACLNoChannel(resName, idinfo)

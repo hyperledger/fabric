@@ -290,7 +290,7 @@ func (e *PeerConfiger) getConfigBlock(channelID []byte) *pb.Response {
 
 	channel := e.peer.Channel(string(channelID))
 	if channel == nil {
-		return shim.Error(fmt.Sprintf("Unknown channel ID, %s", string(channelID)))
+		return shim.Error("Unknown channel ID, " + string(channelID))
 	}
 	block, err := peer.ConfigBlockFromLedger(channel.Ledger())
 	if err != nil {
@@ -308,7 +308,7 @@ func (e *PeerConfiger) getConfigBlock(channelID []byte) *pb.Response {
 func (e *PeerConfiger) getChannelConfig(channelID []byte) *pb.Response {
 	channel := e.peer.Channel(string(channelID))
 	if channel == nil {
-		return shim.Error(fmt.Sprintf("unknown channel ID, %s", string(channelID)))
+		return shim.Error("unknown channel ID, " + string(channelID))
 	}
 	channelConfig, err := peer.RetrievePersistedChannelConfig(channel.Ledger())
 	if err != nil {

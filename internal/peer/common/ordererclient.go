@@ -8,7 +8,6 @@ package common
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"strings"
 
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -81,7 +80,7 @@ func newMulticastBroadcastClient(addressString string, dial dialer) (*multicastB
 	for _, addr := range addresses {
 		conn, err := dial(addr)
 		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("orderer client failed to connect to %s", addr))
+			return nil, errors.WithMessage(err, "orderer client failed to connect to "+addr)
 		}
 		cl, err := ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
 		if err != nil {

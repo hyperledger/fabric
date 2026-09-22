@@ -9,6 +9,7 @@ package kvledger
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -410,7 +411,7 @@ func TestSnapshotCouchDBIndexCreation(t *testing.T) {
 
 		t.Run("deployedChaincodeInfoProvider-returns-error", func(t *testing.T) {
 			deployedCCInfoProvider := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
-			deployedCCInfoProvider.AllChaincodesInfoReturns(nil, fmt.Errorf("error-retrieving-all-defined-chaincodes"))
+			deployedCCInfoProvider.AllChaincodesInfoReturns(nil, errors.New("error-retrieving-all-defined-chaincodes"))
 
 			installedChaincodeInfoProvider := &kvledgermock.ChaincodeInfoProvider{}
 			installedChaincodeInfoProvider.RetrieveChaincodeArtifactsReturns(
@@ -436,7 +437,7 @@ func TestSnapshotCouchDBIndexCreation(t *testing.T) {
 			)
 
 			installedChaincodeInfoProvider := &kvledgermock.ChaincodeInfoProvider{}
-			installedChaincodeInfoProvider.RetrieveChaincodeArtifactsReturns(false, nil, fmt.Errorf("error-retrieving-db-artifacts"))
+			installedChaincodeInfoProvider.RetrieveChaincodeArtifactsReturns(false, nil, errors.New("error-retrieving-db-artifacts"))
 			cceventmgmt.Initialize(installedChaincodeInfoProvider)
 			_, _, err := provider.CreateFromSnapshot(snapshotDir)
 			require.EqualError(t, err, "error while opening ledger: error while creating statdb indexes after bootstrapping from snapshot: error-retrieving-db-artifacts")
@@ -444,7 +445,7 @@ func TestSnapshotCouchDBIndexCreation(t *testing.T) {
 
 		t.Run("chaincodeLifecycleEventProvider-returns-error", func(t *testing.T) {
 			chaincodeLifecycleEventProvider := provider.initializer.ChaincodeLifecycleEventProvider.(*mock.ChaincodeLifecycleEventProvider)
-			chaincodeLifecycleEventProvider.RegisterListenerReturns(fmt.Errorf("error-calling-back"))
+			chaincodeLifecycleEventProvider.RegisterListenerReturns(errors.New("error-calling-back"))
 			cceventmgmt.Initialize(nil)
 			_, _, err := provider.CreateFromSnapshot(snapshotDir)
 			require.EqualError(t, err, "error while opening ledger: error while creating statdb indexes after bootstrapping from snapshot: error-calling-back")

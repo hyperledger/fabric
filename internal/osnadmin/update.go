@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"mime/multipart"
 	"net/http"
 	"time"
@@ -18,7 +17,7 @@ import (
 
 // Update an OSN to existing channel.
 func Update(osnURL string, blockBytes []byte, caCertPool *x509.CertPool, tlsClientCert tls.Certificate, timeShift time.Duration) (*http.Response, error) {
-	url := fmt.Sprintf("%s/participation/v1/channels", osnURL)
+	url := osnURL + "/participation/v1/channels"
 	req, err := createUpdateRequest(url, blockBytes)
 	if err != nil {
 		return nil, err

@@ -8,7 +8,7 @@ package endorser_test
 
 import (
 	"context"
-	"fmt"
+	"encoding/hex"
 	"slices"
 	"strings"
 
@@ -178,7 +178,7 @@ var _ = Describe("Endorser", func() {
 
 		fakeSupport.GetTxSimulatorReturns(fakeTxSimulator, nil)
 
-		fakeSupport.GetTransactionByIDReturns(nil, fmt.Errorf("txid-error"))
+		fakeSupport.GetTransactionByIDReturns(nil, errors.New("txid-error"))
 
 		e = &endorser.Endorser{
 			LocalMSP:               fakeLocalMSPIdentityDeserializer,
@@ -256,7 +256,7 @@ var _ = Describe("Endorser", func() {
 		prp := &pb.ProposalResponsePayload{}
 		err = proto.Unmarshal(propRespPayloadBytes, prp)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(fmt.Sprintf("%x", prp.GetProposalHash())).To(Equal("6fa450b00ebef6c7de9f3479148f6d6ff2c645762e17fcaae989ff7b668be001"))
+		Expect(hex.EncodeToString(prp.GetProposalHash())).To(Equal("6fa450b00ebef6c7de9f3479148f6d6ff2c645762e17fcaae989ff7b668be001"))
 
 		ccAct := &pb.ChaincodeAction{}
 		err = proto.Unmarshal(prp.GetExtension(), ccAct)
@@ -273,7 +273,7 @@ var _ = Describe("Endorser", func() {
 
 	Context("when the chaincode endorsement fails", func() {
 		BeforeEach(func() {
-			fakeSupport.EndorseWithPluginReturns(nil, nil, fmt.Errorf("fake-endorserment-error"))
+			fakeSupport.EndorseWithPluginReturns(nil, nil, errors.New("fake-endorserment-error"))
 		})
 
 		It("returns the error, but with no payload encoded", func() {
@@ -324,7 +324,7 @@ var _ = Describe("Endorser", func() {
 
 	Context("when getting the tx simulator fails", func() {
 		BeforeEach(func() {
-			fakeSupport.GetTxSimulatorReturns(nil, fmt.Errorf("fake-simulator-error"))
+			fakeSupport.GetTxSimulatorReturns(nil, errors.New("fake-simulator-error"))
 		})
 
 		It("returns a response with the error", func() {
@@ -348,7 +348,7 @@ var _ = Describe("Endorser", func() {
 
 	Context("when getting the history query executor fails", func() {
 		BeforeEach(func() {
-			fakeSupport.GetHistoryQueryExecutorReturns(nil, fmt.Errorf("fake-history-error"))
+			fakeSupport.GetHistoryQueryExecutorReturns(nil, errors.New("fake-history-error"))
 		})
 
 		It("returns a response with the error", func() {
@@ -400,7 +400,7 @@ var _ = Describe("Endorser", func() {
 
 	Context("when the proposal is not validly signed", func() {
 		BeforeEach(func() {
-			fakeChannelMSPIdentityDeserializer.DeserializeIdentityReturns(nil, fmt.Errorf("fake-deserialize-error"))
+			fakeChannelMSPIdentityDeserializer.DeserializeIdentityReturns(nil, errors.New("fake-deserialize-error"))
 		})
 
 		It("wraps and returns an error and responds to the client", func() {
@@ -426,7 +426,7 @@ var _ = Describe("Endorser", func() {
 
 	Context("when the acl check fails", func() {
 		BeforeEach(func() {
-			fakeSupport.CheckACLReturns(fmt.Errorf("fake-acl-error"))
+			fakeSupport.CheckACLReturns(errors.New("fake-acl-error"))
 		})
 
 		It("wraps and returns an error and responds to the client", func() {
@@ -465,7 +465,7 @@ var _ = Describe("Endorser", func() {
 
 	Context("when the chaincode definition is not found", func() {
 		BeforeEach(func() {
-			fakeSupport.ChaincodeEndorsementInfoReturns(nil, fmt.Errorf("fake-definition-error"))
+			fakeSupport.ChaincodeEndorsementInfoReturns(nil, errors.New("fake-definition-error"))
 		})
 
 		It("returns an error in the response", func() {
@@ -495,7 +495,7 @@ var _ = Describe("Endorser", func() {
 
 	Context("when calling the chaincode returns an error", func() {
 		BeforeEach(func() {
-			fakeSupport.ExecuteReturns(nil, nil, fmt.Errorf("fake-chaincode-execution-error"))
+			fakeSupport.ExecuteReturns(nil, nil, errors.New("fake-chaincode-execution-error"))
 		})
 
 		It("returns a response with the error and no payload", func() {
@@ -528,7 +528,7 @@ var _ = Describe("Endorser", func() {
 
 	Context("when the private data cannot be distributed", func() {
 		BeforeEach(func() {
-			fakePrivateDataDistributor.DistributePrivateDataReturns(fmt.Errorf("fake-private-data-error"))
+			fakePrivateDataDistributor.DistributePrivateDataReturns(errors.New("fake-private-data-error"))
 		})
 
 		It("returns a response with the error and no payload", func() {
@@ -551,7 +551,7 @@ var _ = Describe("Endorser", func() {
 
 	Context("when the block height cannot be determined", func() {
 		BeforeEach(func() {
-			fakeSupport.GetLedgerHeightReturns(0, fmt.Errorf("fake-block-height-error"))
+			fakeSupport.GetLedgerHeightReturns(0, errors.New("fake-block-height-error"))
 		})
 
 		It("returns a response with the error and no payload", func() {
@@ -633,7 +633,7 @@ var _ = Describe("Endorser", func() {
 
 		Context("when the proposal is not validly signed", func() {
 			BeforeEach(func() {
-				fakeLocalMSPIdentityDeserializer.DeserializeIdentityReturns(nil, fmt.Errorf("fake-deserialize-error"))
+				fakeLocalMSPIdentityDeserializer.DeserializeIdentityReturns(nil, errors.New("fake-deserialize-error"))
 			})
 
 			It("wraps and returns an error and responds to the client", func() {
@@ -689,7 +689,7 @@ var _ = Describe("Endorser", func() {
 				prp := &pb.ProposalResponsePayload{}
 				err = proto.Unmarshal(proposalResponse.GetPayload(), prp)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fmt.Sprintf("%x", prp.GetProposalHash())).To(Equal("f2c27f04f897dc28fd1b2983e7b22ebc8fbbb3d0617c140d913b33e463886788"))
+				Expect(hex.EncodeToString(prp.GetProposalHash())).To(Equal("f2c27f04f897dc28fd1b2983e7b22ebc8fbbb3d0617c140d913b33e463886788"))
 
 				ccAct := &pb.ChaincodeAction{}
 				err = proto.Unmarshal(prp.GetExtension(), ccAct)
@@ -941,7 +941,7 @@ var _ = Describe("Endorser", func() {
 
 		Context("when the init fails", func() {
 			BeforeEach(func() {
-				fakeSupport.ExecuteLegacyInitReturns(nil, nil, fmt.Errorf("fake-legacy-init-error"))
+				fakeSupport.ExecuteLegacyInitReturns(nil, nil, errors.New("fake-legacy-init-error"))
 			})
 
 			It("returns an error and increments the metric", func() {
