@@ -273,7 +273,7 @@ func TestChaincodeEvents(t *testing.T) {
 			},
 			postTest: func(t *testing.T, test *preparedTest) {
 				require.Equal(t, 1, test.ledger.GetBlocksIteratorCallCount())
-				require.EqualValues(t, 101, test.ledger.GetBlocksIteratorArgsForCall(0))
+				require.Equal(t, uint64(101), test.ledger.GetBlocksIteratorArgsForCall(0))
 			},
 		},
 		{
@@ -291,7 +291,7 @@ func TestChaincodeEvents(t *testing.T) {
 			},
 			postTest: func(t *testing.T, test *preparedTest) {
 				require.Equal(t, 1, test.ledger.GetBlocksIteratorCallCount())
-				require.EqualValues(t, 99, test.ledger.GetBlocksIteratorArgsForCall(0))
+				require.Equal(t, uint64(99), test.ledger.GetBlocksIteratorArgsForCall(0))
 			},
 		},
 		{
@@ -302,7 +302,7 @@ func TestChaincodeEvents(t *testing.T) {
 			localLedgerHeight: 101,
 			postTest: func(t *testing.T, test *preparedTest) {
 				require.Equal(t, 1, test.ledger.GetBlocksIteratorCallCount())
-				require.EqualValues(t, 101, test.ledger.GetBlocksIteratorArgsForCall(0))
+				require.Equal(t, uint64(101), test.ledger.GetBlocksIteratorArgsForCall(0))
 			},
 		},
 		{
@@ -329,7 +329,7 @@ func TestChaincodeEvents(t *testing.T) {
 			},
 			postTest: func(t *testing.T, test *preparedTest) {
 				require.Equal(t, 1, test.ledger.GetBlocksIteratorCallCount())
-				require.EqualValues(t, 99, test.ledger.GetBlocksIteratorArgsForCall(0))
+				require.Equal(t, uint64(99), test.ledger.GetBlocksIteratorArgsForCall(0))
 				require.Equal(t, 1, test.ledger.GetBlockByTxIDCallCount())
 				require.Equal(t, "TX_ID", test.ledger.GetBlockByTxIDArgsForCall(0))
 			},
@@ -353,7 +353,7 @@ func TestChaincodeEvents(t *testing.T) {
 			},
 			postTest: func(t *testing.T, test *preparedTest) {
 				require.Equal(t, 1, test.ledger.GetBlocksIteratorCallCount())
-				require.EqualValues(t, 1, test.ledger.GetBlocksIteratorArgsForCall(0))
+				require.Equal(t, uint64(1), test.ledger.GetBlocksIteratorArgsForCall(0))
 			},
 		},
 		{

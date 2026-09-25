@@ -17,8 +17,8 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft/mocks"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -32,14 +32,14 @@ func TestSigner(t *testing.T) {
 
 	t.Run("signing fails", func(t *testing.T) {
 		ss.On("Sign", mock.Anything).Return(nil, errors.New("foo")).Once()
-		assert.PanicsWithValue(t, "Failed signing message: foo", func() {
+		require.PanicsWithValue(t, "Failed signing message: foo", func() {
 			s.Sign(nil)
 		})
 	})
 
 	t.Run("signing succeeds", func(t *testing.T) {
 		ss.On("Sign", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
-		assert.Equal(t, []byte{1, 2, 3}, s.Sign(nil))
+		require.Equal(t, []byte{1, 2, 3}, s.Sign(nil))
 	})
 }
 
@@ -88,18 +88,18 @@ func TestSignProposal(t *testing.T) {
 	prop := assembler.AssembleProposal(nil, [][]byte{env})
 
 	sig := s.SignProposal(prop, nil)
-	assert.NotNil(t, sig)
+	require.NotNil(t, sig)
 
 	signature := smartbft.Signature{}
 	signature.Unmarshal(sig.Msg)
 
-	assert.Equal(t, s.ID, sig.ID)
-	assert.Equal(t, []byte{1, 2, 3}, sig.Value)
-	assert.Equal(t, prop.Header, signature.BlockHeader)
+	require.Equal(t, s.ID, sig.ID)
+	require.Equal(t, []byte{1, 2, 3}, sig.Value)
+	require.Equal(t, prop.Header, signature.BlockHeader)
 	sigHdr := &cb.SignatureHeader{}
-	assert.NoError(t, proto.Unmarshal(signature.IdentifierHeader, sigHdr))
-	assert.Nil(t, sigHdr.GetCreator())
-	assert.Equal(t, signature.OrdererBlockMetadata, protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
+	require.NoError(t, proto.Unmarshal(signature.IdentifierHeader, sigHdr))
+	require.Nil(t, sigHdr.GetCreator())
+	require.Equal(t, signature.OrdererBlockMetadata, protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
 		LastConfig:        &cb.LastConfig{Index: 10},
 		ConsenterMetadata: prop.Metadata,
 	}))
@@ -119,5 +119,5 @@ func TestSignBadProposal(t *testing.T) {
 	f := func() {
 		s.SignProposal(types.Proposal{}, nil)
 	}
-	assert.PanicsWithValue(t, "Tried to sign bad proposal: proposal header cannot be nil", f)
+	require.PanicsWithValue(t, "Tried to sign bad proposal: proposal header cannot be nil", f)
 }

@@ -146,7 +146,7 @@ func TestMSPSetupNoCryptoConf(t *testing.T) {
 
 func TestGetters(t *testing.T) {
 	typ := localMsp.GetType()
-	require.Equal(t, typ, FABRIC)
+	require.Equal(t, FABRIC, typ)
 	require.NotNil(t, localMsp.GetTLSRootCerts())
 	require.NotNil(t, localMsp.GetTLSIntermediateCerts())
 }
@@ -396,7 +396,7 @@ func TestValidateCANameConstraintsMitigation(t *testing.T) {
 		err = verifyLegacyNameConstraints(certs)
 		require.Error(t, err, "certificate chain should trigger legacy constraints")
 		var cie x509.CertificateInvalidError
-		require.True(t, errors.As(err, &cie))
+		require.ErrorAs(t, err, &cie)
 		require.Equal(t, x509.NameConstraintsWithoutSANs, cie.Reason)
 	})
 
@@ -444,7 +444,7 @@ func TestValidateCANameConstraintsMitigation(t *testing.T) {
 		err = testMSP.Setup(mspConfig)
 		require.Error(t, err)
 		var cie x509.CertificateInvalidError
-		require.True(t, errors.As(err, &cie))
+		require.ErrorAs(t, err, &cie)
 		require.Equal(t, x509.NameConstraintsWithoutSANs, cie.Reason)
 	})
 }
@@ -1613,5 +1613,5 @@ func TestProviderTypeToString(t *testing.T) {
 
 	// Check that the provider type is not found
 	pt = ProviderTypeToString(OTHER)
-	require.Equal(t, "", pt)
+	require.Empty(t, pt)
 }

@@ -284,9 +284,9 @@ func TestGlobalConfigCheckDefaultIsSet(t *testing.T) {
 	err = viper.ReadInConfig()
 	require.NoError(t, err)
 
-	require.Equal(t, false, viper.IsSet("peer.deliveryclient.blockCensorshipTimeoutKey"))
-	require.Equal(t, false, viper.IsSet("peer.deliveryclient.minimalReconnectInterval"))
-	require.Equal(t, true, viper.IsSet("peer.deliveryclient.blockGossipEnabled"))
+	require.False(t, viper.IsSet("peer.deliveryclient.blockCensorshipTimeoutKey"))
+	require.False(t, viper.IsSet("peer.deliveryclient.minimalReconnectInterval"))
+	require.True(t, viper.IsSet("peer.deliveryclient.blockGossipEnabled"))
 
 	coreConfig := deliverservice.GlobalConfig()
 	require.NoError(t, err)
@@ -303,5 +303,5 @@ func TestGlobalConfigCheckDefaultIsSet(t *testing.T) {
 		Policy:                      deliverservice.DefaultPolicy,
 	}
 
-	require.Equal(t, coreConfig, expectedConfig)
+	require.Equal(t, expectedConfig, coreConfig)
 }

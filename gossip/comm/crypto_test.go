@@ -107,8 +107,8 @@ func TestCertificateExtraction(t *testing.T) {
 	require.NotNil(t, clientSideCertHash)
 	require.NotNil(t, serverSideCertHash)
 
-	require.Equal(t, 32, len(clientSideCertHash), "client side cert hash is %v", clientSideCertHash)
-	require.Equal(t, 32, len(serverSideCertHash), "server side cert hash is %v", serverSideCertHash)
+	require.Lenf(t, clientSideCertHash, 32, "client side cert hash is %v", clientSideCertHash)
+	require.Lenf(t, serverSideCertHash, 32, "server side cert hash is %v", serverSideCertHash)
 
 	require.Equal(t, clientSideCertHash, srv.selfCertHash, "Server self hash isn't equal to client side hash")
 	require.Equal(t, clientCertHash, srv.remoteCertHash, "Server side and client hash aren't equal")

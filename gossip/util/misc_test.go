@@ -37,7 +37,7 @@ func TestGetRandomInt(t *testing.T) {
 }
 
 func TestNonNegativeValues(t *testing.T) {
-	require.True(t, RandomInt(1000000) >= 0)
+	require.GreaterOrEqual(t, RandomInt(1000000), 0)
 }
 
 func TestGetRandomIntBadInput(t *testing.T) {
@@ -114,13 +114,13 @@ func TestGetLogger(t *testing.T) {
 
 func TestSet(t *testing.T) {
 	s := NewSet()
-	require.Len(t, s.ToArray(), 0)
-	require.Equal(t, s.Size(), 0)
+	require.Empty(t, s.ToArray())
+	require.Equal(t, 0, s.Size())
 	require.False(t, s.Exists(42))
 	s.Add(42)
 	require.True(t, s.Exists(42))
 	require.Len(t, s.ToArray(), 1)
-	require.Equal(t, s.Size(), 1)
+	require.Equal(t, 1, s.Size())
 	s.Remove(42)
 	require.False(t, s.Exists(42))
 	s.Add(42)

@@ -466,7 +466,7 @@ func TestLoadLocalMSP(t *testing.T) {
 		require.NotNil(t, localMSP)
 		id, err := localMSP.GetIdentifier()
 		require.NoError(t, err)
-		require.Equal(t, id, "SampleOrg")
+		require.Equal(t, "SampleOrg", id)
 	})
 
 	t.Run("Error", func(t *testing.T) {
@@ -628,8 +628,8 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	t.Logf("# app CAs: %d", len(caMgr.appRootCAsByChain["testchannelid"]))
 	t.Logf("# orderer CAs: %d", len(caMgr.ordererRootCAsByChain["testchannelid"]))
 	// mutual TLS not required so no updates should have occurred
-	require.Equal(t, 0, len(caMgr.appRootCAsByChain["testchannelid"]))
-	require.Equal(t, 0, len(caMgr.ordererRootCAsByChain["testchannelid"]))
+	require.Empty(t, caMgr.appRootCAsByChain["testchannelid"])
+	require.Empty(t, caMgr.ordererRootCAsByChain["testchannelid"])
 
 	grpcServer.Listener().Close()
 	cs := r.GetChain("testchannelid")
@@ -680,8 +680,8 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	t.Logf("# orderer CAs: %d", len(caMgr.ordererRootCAsByChain["testchannelid"]))
 	// mutual TLS is required so updates should have occurred
 	// we do not expect an intermediate CA, only root CA for apps and orderers
-	require.Equal(t, 1, len(caMgr.appRootCAsByChain["testchannelid"]))
-	require.Equal(t, 1, len(caMgr.ordererRootCAsByChain["testchannelid"]))
+	require.Len(t, caMgr.appRootCAsByChain["testchannelid"], 1)
+	require.Len(t, caMgr.ordererRootCAsByChain["testchannelid"], 1)
 	require.Len(t, predDialer.Config.SecOpts.ServerRootCAs, 1)
 	grpcServer.Listener().Close()
 	cs = r.GetChain("testchannelid")

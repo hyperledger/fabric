@@ -672,7 +672,7 @@ func TestPendingBatch(t *testing.T) {
 	// as the block commit is pending, we cannot read the pvtData
 	hasPendingBatch, err := s.hasPendingCommit()
 	require.NoError(t, err)
-	require.Equal(t, true, hasPendingBatch)
+	require.True(t, hasPendingBatch)
 	pvtData, err := s.GetPvtDataByBlockNum(26, nil)
 	require.EqualError(t, err, "last committed block number [25] smaller than the requested block number [26]")
 	require.Nil(t, pvtData)
@@ -684,7 +684,7 @@ func TestPendingBatch(t *testing.T) {
 	testLastCommittedBlockHeight(t, existingLastBlockNum+2, s)
 	hasPendingBatch, err = s.hasPendingCommit()
 	require.NoError(t, err)
-	require.Equal(t, false, hasPendingBatch)
+	require.False(t, hasPendingBatch)
 	testDataKeyExists(t, s, dataKey)
 
 	expectedPvtData := &rwset.TxPvtReadWriteSet{
@@ -699,7 +699,7 @@ func TestPendingBatch(t *testing.T) {
 	}
 	pvtData, err = s.GetPvtDataByBlockNum(26, nil)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(pvtData))
+	require.Len(t, pvtData, 1)
 	require.Equal(t, uint64(1), pvtData[0].SeqInBlock)
 	require.True(t, proto.Equal(expectedPvtData, pvtData[0].WriteSet))
 }
@@ -759,6 +759,7 @@ func TestCollElgEnabled_PurgerDeletesDuringBatchSleep(t *testing.T) {
 	// flush the first batch), this goroutine acquires purgerLock during the
 	// inter-batch sleep window and deletes the InelgMissing entries for
 	// blk 1 and blk 2 — exactly what the real purger does for expired data.
+	errs := make(chan error, 2)
 	purgerDone := make(chan struct{})
 	go func() {
 		defer close(purgerDone)
@@ -769,8 +770,7 @@ func TestCollElgEnabled_PurgerDeletesDuringBatchSleep(t *testing.T) {
 			key := encodeInelgMissingDataKey(
 				&missingDataKey{ns: "ns-1", coll: "coll-2", blkNum: blk},
 			)
-			err := store.db.Delete(key, true)
-			require.NoError(t, err)
+			errs <- store.db.Delete(key, true)
 		}
 	}()
 
@@ -781,6 +781,10 @@ func TestCollElgEnabled_PurgerDeletesDuringBatchSleep(t *testing.T) {
 	))
 	testutilWaitForCollElgProcToFinish(store)
 	<-purgerDone
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
 
 	// blk 3 was the first entry processed (reverse-order iteration) and was
 	// converted to ElgPrio in the very first batch, before the simulated
@@ -845,7 +849,7 @@ func TestDrop(t *testing.T) {
 	// pvt data retrieval for block 1 should return full pvtdata
 	retrievedData, err = store.GetPvtDataByBlockNum(1, nilFilter)
 	require.NoError(t, err)
-	require.Equal(t, len(testData), len(retrievedData))
+	require.Len(t, retrievedData, len(testData))
 	for i, data := range retrievedData {
 		require.Equal(t, data.SeqInBlock, testData[i].SeqInBlock)
 		require.True(t, proto.Equal(data.WriteSet, testData[i].WriteSet))
@@ -1630,7 +1634,7 @@ func TestFetchPrivateDataRawKey(t *testing.T) {
 
 	key, err = s.FetchPrivateDataRawKey("ns-1", "coll-2", util.ComputeStringHash("non-existing-key"))
 	require.NoError(t, err)
-	require.Equal(t, "", key)
+	require.Empty(t, key)
 }
 
 func TestRemoveAppInitiatedPurgesUsingReconMarker(t *testing.T) {

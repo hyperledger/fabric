@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -59,7 +58,7 @@ func TestOutOfOrderInsertionPanics(t *testing.T) {
 	func() {
 		defer func() {
 			err := recover()
-			assert.Contains(t, err.(string), "detected out of order block insertion: attempted to insert block number 102 but highest block is 100")
+			require.Contains(t, err.(string), "detected out of order block insertion: attempted to insert block number 102 but highest block is 100")
 		}()
 
 		c.put(&common.Block{Header: &common.BlockHeader{Number: 102}}, 1)
@@ -77,7 +76,7 @@ func TestDoubleInsertionPanics(t *testing.T) {
 	func() {
 		defer func() {
 			err := recover()
-			assert.Contains(t, err.(string), "detected insertion of the same block (100) twice")
+			require.Contains(t, err.(string), "detected insertion of the same block (100) twice")
 		}()
 
 		c.put(&common.Block{Header: &common.BlockHeader{Number: 100}}, 1)

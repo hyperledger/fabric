@@ -331,7 +331,7 @@ func TestDigestsFilters(t *testing.T) {
 		for i := range itemIds {
 			seqNum, err := strconv.ParseUint(itemIds[i], 10, 64)
 			require.NoError(t, err, "Can't parse seq number")
-			require.True(t, seqNum >= 2, "Digest with wrong ( ", seqNum, " ) seqNum passed")
+			require.GreaterOrEqual(t, seqNum, uint64(2), "Digest with wrong ( ", seqNum, " ) seqNum passed")
 		}
 		require.Len(t, itemIds, 2, "Not correct number of seqNum passed")
 		atomic.StoreInt32(&inst1ReceivedDigest, int32(1))
@@ -370,7 +370,7 @@ func TestHandleMessage(t *testing.T) {
 			return
 		}
 		atomic.StoreInt32(&inst1ReceivedDigest, int32(1))
-		require.True(t, len(itemIds) == 3)
+		require.Len(t, itemIds, 3)
 	})
 
 	inst1.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*protoext.SignedGossipMessage, msg protoext.ReceivedMessage) {
@@ -378,7 +378,7 @@ func TestHandleMessage(t *testing.T) {
 			return
 		}
 		atomic.StoreInt32(&inst1ReceivedResponse, int32(1))
-		require.True(t, len(items) == 3)
+		require.Len(t, items, 3)
 	})
 
 	// inst1 sends hello to inst2

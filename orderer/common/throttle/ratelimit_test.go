@@ -13,7 +13,7 @@ import (
 	"time"
 
 	clock "code.cloudfoundry.org/clock/fakeclock"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRateLimitSingleClient(t *testing.T) {
@@ -48,8 +48,8 @@ func TestRateLimitSingleClient(t *testing.T) {
 	max := float64(500) * 1.3
 	min := float64(500) * 0.7
 
-	assert.Less(t, TPS, max)
-	assert.Less(t, min, TPS)
+	require.Less(t, TPS, max)
+	require.Less(t, min, TPS)
 }
 
 func TestRateLimitMultipleClients(t *testing.T) {
@@ -95,8 +95,8 @@ func TestRateLimitMultipleClients(t *testing.T) {
 	max := float64(500) * 1.3
 	min := float64(500) * 0.7
 
-	assert.Less(t, TPS, max)
-	assert.Less(t, min, TPS)
+	require.Less(t, TPS, max)
+	require.Less(t, min, TPS)
 }
 
 func TestRateLimitSameClient(t *testing.T) {
@@ -141,8 +141,8 @@ func TestRateLimitSameClient(t *testing.T) {
 	max := float64(500) * 1.3
 	min := float64(500) * 0.7
 
-	assert.Less(t, TPS, max)
-	assert.Less(t, min, TPS)
+	require.Less(t, TPS, max)
+	require.Less(t, min, TPS)
 }
 
 func TestRateLimitClientNumChange(t *testing.T) { //nolint:tparallel
@@ -193,8 +193,8 @@ func TestRateLimitClientNumChange(t *testing.T) { //nolint:tparallel
 		max := float64(500) * 1.3
 		min := float64(500) * 0.7
 
-		assert.Less(t, TPS, max)
-		assert.Less(t, min, TPS)
+		require.Less(t, TPS, max)
+		require.Less(t, min, TPS)
 	})
 
 	// Next, wait two seconds and then run only a single client.
@@ -216,8 +216,8 @@ func TestRateLimitClientNumChange(t *testing.T) { //nolint:tparallel
 		max := float64(500) * 1.3
 		min := float64(500) * 0.7
 
-		assert.Less(t, TPS, max)
-		assert.Less(t, min, TPS)
+		require.Less(t, TPS, max)
+		require.Less(t, min, TPS)
 	})
 }
 

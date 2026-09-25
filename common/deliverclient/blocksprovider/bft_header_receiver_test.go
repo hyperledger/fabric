@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider/fake"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,20 +33,20 @@ func TestBftHeaderReceiver_NoBlocks_RecvError(t *testing.T) {
 	}
 
 	hr := blocksprovider.NewBFTHeaderReceiver("testchannel", "10.10.10.11:666", streamClientMock, clientCloser, fakeBlockVerifier, nil, flogging.MustGetLogger("test.BFTHeaderReceiver"))
-	assert.NotNil(t, hr)
-	assert.False(t, hr.IsStarted())
-	assert.False(t, hr.IsStopped())
+	require.NotNil(t, hr)
+	require.False(t, hr.IsStarted())
+	require.False(t, hr.IsStopped())
 	_, _, err := hr.LastBlockNum()
-	assert.EqualError(t, err, "not found")
+	require.EqualError(t, err, "not found")
 
 	hr.DeliverHeaders() // it will get a Recv() error and exit
 
-	assert.Eventually(t, hr.IsStarted, time.Second, time.Millisecond)
-	assert.Eventually(t, hr.IsStopped, time.Second, time.Millisecond)
+	require.Eventually(t, hr.IsStarted, time.Second, time.Millisecond)
+	require.Eventually(t, hr.IsStopped, time.Second, time.Millisecond)
 	_, _, err = hr.LastBlockNum()
-	assert.EqualError(t, err, "not found")
-	assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 0)
-	assert.Equal(t, 1, streamClientMock.RecvCallCount())
+	require.EqualError(t, err, "not found")
+	require.Equal(t, 0, fakeBlockVerifier.VerifyBlockAttestationCallCount())
+	require.Equal(t, 1, streamClientMock.RecvCallCount())
 }
 
 func TestBftHeaderReceiver_BadStatus(t *testing.T) {
@@ -65,14 +64,14 @@ func TestBftHeaderReceiver_BadStatus(t *testing.T) {
 
 	for range 3 {
 		hr := blocksprovider.NewBFTHeaderReceiver("testchannel", "10.10.10.11:666", streamClientMock, clientCloser, fakeBlockVerifier, nil, flogging.MustGetLogger("test.BFTHeaderReceiver"))
-		assert.NotNil(t, hr)
+		require.NotNil(t, hr)
 
 		hr.DeliverHeaders() // it will get a bad status and exit
-		assert.Eventually(t, hr.IsStarted, time.Second, time.Millisecond)
-		assert.Eventually(t, hr.IsStopped, time.Second, time.Millisecond)
+		require.Eventually(t, hr.IsStarted, time.Second, time.Millisecond)
+		require.Eventually(t, hr.IsStopped, time.Second, time.Millisecond)
 		_, _, err := hr.LastBlockNum()
-		assert.EqualError(t, err, "not found")
-		assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 0)
+		require.EqualError(t, err, "not found")
+		require.Equal(t, 0, fakeBlockVerifier.VerifyBlockAttestationCallCount())
 	}
 }
 
@@ -88,14 +87,14 @@ func TestBftHeaderReceiver_NilResponse(t *testing.T) {
 	}
 
 	hr := blocksprovider.NewBFTHeaderReceiver("testchannel", "10.10.10.11:666", streamClientMock, clientCloser, fakeBlockVerifier, nil, flogging.MustGetLogger("test.BFTHeaderReceiver"))
-	assert.NotNil(t, hr)
+	require.NotNil(t, hr)
 
 	hr.DeliverHeaders() // it will get a bad status and exit
-	assert.Eventually(t, hr.IsStarted, time.Second, time.Millisecond)
-	assert.Eventually(t, hr.IsStopped, time.Second, time.Millisecond)
+	require.Eventually(t, hr.IsStarted, time.Second, time.Millisecond)
+	require.Eventually(t, hr.IsStopped, time.Second, time.Millisecond)
 	_, _, err := hr.LastBlockNum()
-	assert.EqualError(t, err, "not found")
-	assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 0)
+	require.EqualError(t, err, "not found")
+	require.Equal(t, 0, fakeBlockVerifier.VerifyBlockAttestationCallCount())
 }
 
 func TestBftHeaderReceiver_WithBlocks_Renew(t *testing.T) {
@@ -144,16 +143,16 @@ func TestBftHeaderReceiver_WithBlocks_Renew(t *testing.T) {
 	}, time.Second, time.Millisecond)
 
 	err = hr.Stop()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	bTimeOld = bTime
 	bNum, bTime, err = hr.LastBlockNum()
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(2), bNum)
-	assert.Equal(t, bTime, bTimeOld)
+	require.NoError(t, err)
+	require.Equal(t, uint64(2), bNum)
+	require.Equal(t, bTime, bTimeOld)
 
-	assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 2)
-	assert.Equal(t, fakeBlockVerifier.VerifyBlockCallCount(), 0)
+	require.Equal(t, 2, fakeBlockVerifier.VerifyBlockAttestationCallCount())
+	require.Equal(t, 0, fakeBlockVerifier.VerifyBlockCallCount())
 
 	// === Create a new BFTHeaderReceiver with the last good header of the previous receiver
 	fakeBlockVerifier = &fake.UpdatableBlockVerifier{}
@@ -162,12 +161,12 @@ func TestBftHeaderReceiver_WithBlocks_Renew(t *testing.T) {
 		_ = streamClientMock.CloseSend()
 	}
 	hr2 := blocksprovider.NewBFTHeaderReceiver("testchannel", "10.10.10.11:666", streamClientMock, clientCloser, fakeBlockVerifier, hr, flogging.MustGetLogger("test.BFTHeaderReceiver.2"))
-	assert.False(t, hr2.IsStarted())
-	assert.False(t, hr2.IsStopped())
+	require.False(t, hr2.IsStarted())
+	require.False(t, hr2.IsStopped())
 	bNum, bTime, err = hr2.LastBlockNum()
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(2), bNum)
-	assert.Equal(t, bTime, bTimeOld)
+	require.NoError(t, err)
+	require.Equal(t, uint64(2), bNum)
+	require.Equal(t, bTime, bTimeOld)
 }
 
 func TestBftHeaderReceiver_WithBlocks_StopOnVerificationFailure(t *testing.T) {
@@ -224,12 +223,12 @@ func TestBftHeaderReceiver_WithBlocks_StopOnVerificationFailure(t *testing.T) {
 	// After the receiver closes, it returns the last good header
 	bTimeOld = bTime
 	bNum, bTime, err = hr.LastBlockNum()
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(2), bNum)
-	assert.Equal(t, bTime, bTimeOld)
+	require.NoError(t, err)
+	require.Equal(t, uint64(2), bNum)
+	require.Equal(t, bTime, bTimeOld)
 
-	assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 3)
-	assert.Equal(t, fakeBlockVerifier.VerifyBlockCallCount(), 0)
+	require.Equal(t, 3, fakeBlockVerifier.VerifyBlockAttestationCallCount())
+	require.Equal(t, 0, fakeBlockVerifier.VerifyBlockCallCount())
 }
 
 func TestBftHeaderReceiver_WithBlocks_ConfigVerification(t *testing.T) {
@@ -252,7 +251,7 @@ func TestBftHeaderReceiver_WithBlocks_ConfigVerification(t *testing.T) {
 			if ok {
 				if seqNew == 3 {
 					res := prepareConfigBlock(seqNew, uint32(1))
-					assert.True(t, protoutil.IsConfigBlock(res.GetBlock()))
+					require.True(t, protoutil.IsConfigBlock(res.GetBlock()))
 					return res, nil
 				}
 				return prepareBlock(seqNew, orderer.SeekInfo_HEADER_WITH_SIG, uint32(1)), nil
@@ -294,9 +293,9 @@ func TestBftHeaderReceiver_WithBlocks_ConfigVerification(t *testing.T) {
 	require.NoError(t, err)
 	require.Eventually(t, hr.IsStopped, time.Second, time.Millisecond)
 
-	assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 2)
-	assert.Equal(t, fakeBlockVerifier.VerifyBlockCallCount(), 1)
-	assert.Equal(t, fakeBlockVerifier.UpdateConfigCallCount(), 1)
+	require.Equal(t, 2, fakeBlockVerifier.VerifyBlockAttestationCallCount())
+	require.Equal(t, 1, fakeBlockVerifier.VerifyBlockCallCount())
+	require.Equal(t, 1, fakeBlockVerifier.UpdateConfigCallCount())
 }
 
 func TestBftHeaderReceiver_VerifyOnce(t *testing.T) {
@@ -336,15 +335,15 @@ func TestBftHeaderReceiver_VerifyOnce(t *testing.T) {
 
 	for range 10 {
 		bNum, bTime, err := hr.LastBlockNum()
-		assert.NoError(t, err)
-		assert.Equal(t, uint64(5), bNum)
-		assert.True(t, !bTime.IsZero())
+		require.NoError(t, err)
+		require.Equal(t, uint64(5), bNum)
+		require.False(t, bTime.IsZero())
 	}
-	assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 1)
+	require.Equal(t, 1, fakeBlockVerifier.VerifyBlockAttestationCallCount())
 
 	err := hr.Stop()
-	assert.NoError(t, err)
-	assert.Eventually(t, hr.IsStopped, time.Second, time.Millisecond)
+	require.NoError(t, err)
+	require.Eventually(t, hr.IsStopped, time.Second, time.Millisecond)
 }
 
 func prepareBlock(seq uint64, contentType orderer.SeekInfo_SeekContentType, goodSignature uint32) *orderer.DeliverResponse {

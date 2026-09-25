@@ -65,7 +65,7 @@ func TestTxRWSetMarshalUnmarshal(t *testing.T) {
 	txRwSet1 := &TxRwSet{}
 	require.NoError(t, txRwSet1.FromProtoBytes(protoBytes))
 	t.Logf("txRwSet=%s, txRwSet1=%s", spew.Sdump(txRwSet), spew.Sdump(txRwSet1))
-	require.Equal(t, len(txRwSet1.NsRwSets), len(txRwSet.NsRwSets))
+	require.Len(t, txRwSet.NsRwSets, len(txRwSet1.NsRwSets))
 	for i, rwset := range txRwSet.NsRwSets {
 		require.Equal(t, txRwSet1.NsRwSets[i].NameSpace, rwset.NameSpace)
 		require.True(t, proto.Equal(txRwSet1.NsRwSets[i].KvRwSet, rwset.KvRwSet), "proto messages are not equal")
@@ -80,7 +80,7 @@ func TestTxRwSetConversion(t *testing.T) {
 	txRwSet1, err := TxRwSetFromProtoMsg(protoMsg)
 	require.NoError(t, err)
 	t.Logf("txRwSet=%s, txRwSet1=%s", spew.Sdump(txRwSet), spew.Sdump(txRwSet1))
-	require.Equal(t, len(txRwSet1.NsRwSets), len(txRwSet.NsRwSets))
+	require.Len(t, txRwSet.NsRwSets, len(txRwSet1.NsRwSets))
 	for i, rwset := range txRwSet.NsRwSets {
 		require.Equal(t, txRwSet1.NsRwSets[i].NameSpace, rwset.NameSpace)
 		require.True(t, proto.Equal(txRwSet1.NsRwSets[i].KvRwSet, rwset.KvRwSet), "proto messages are not equal")
@@ -199,7 +199,7 @@ func TestTxPvtRwSetConversion(t *testing.T) {
 	txPvtRwSet1, err := TxPvtRwSetFromProtoMsg(protoMsg)
 	require.NoError(t, err)
 	t.Logf("txPvtRwSet=%s, txPvtRwSet1=%s, Diff:%s", spew.Sdump(txPvtRwSet), spew.Sdump(txPvtRwSet1), pretty.Diff(txPvtRwSet, txPvtRwSet1))
-	require.Equal(t, len(txPvtRwSet1.NsPvtRwSet), len(txPvtRwSet.NsPvtRwSet))
+	require.Len(t, txPvtRwSet.NsPvtRwSet, len(txPvtRwSet1.NsPvtRwSet))
 	for i, rwset := range txPvtRwSet.NsPvtRwSet {
 		require.Equal(t, txPvtRwSet1.NsPvtRwSet[i].NameSpace, rwset.NameSpace)
 		for j, hashedRwSet := range rwset.CollPvtRwSets {

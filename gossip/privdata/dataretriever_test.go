@@ -85,7 +85,7 @@ func TestNewDataRetriever_GetDataFromTransientStore(t *testing.T) {
 	}]
 	assertion.NotNil(dig2pvtRWSet)
 	pvtRWSets := dig2pvtRWSet.RWSet
-	assertion.Equal(2, len(pvtRWSets))
+	assertion.Len(pvtRWSets, 2)
 
 	var mergedRWSet []byte
 	for _, rws := range pvtRWSets {
@@ -150,7 +150,7 @@ func TestNewDataRetriever_GetDataFromLedger(t *testing.T) {
 		SeqInBlock: 1,
 	}]
 	assertion.NotEmpty(pvtRWSet)
-	assertion.Equal(2, len(pvtRWSet.RWSet))
+	assertion.Len(pvtRWSet.RWSet, 2)
 
 	var mergedRWSet []byte
 	for _, rws := range pvtRWSet.RWSet {
@@ -241,7 +241,7 @@ func TestNewDataRetriever_GetOnlyRelevantPvtData(t *testing.T) {
 		SeqInBlock: 1,
 	}]
 	assertion.NotEmpty(pvtRWSet)
-	assertion.Equal(2, len(pvtRWSet.RWSet))
+	assertion.Len(pvtRWSet.RWSet, 2)
 
 	var mergedRWSet []byte
 	for _, rws := range pvtRWSet.RWSet {
@@ -327,7 +327,7 @@ func TestNewDataRetriever_GetMultipleDigests(t *testing.T) {
 	assertion := require.New(t)
 	assertion.NoError(err)
 	assertion.NotEmpty(rwSets)
-	assertion.Equal(2, len(rwSets))
+	assertion.Len(rwSets, 2)
 
 	pvtRWSet := rwSets[privdatacommon.DigKey{
 		Namespace:  ns1,
@@ -337,7 +337,7 @@ func TestNewDataRetriever_GetMultipleDigests(t *testing.T) {
 		SeqInBlock: 1,
 	}]
 	assertion.NotEmpty(pvtRWSet)
-	assertion.Equal(2, len(pvtRWSet.RWSet))
+	assertion.Len(pvtRWSet.RWSet, 2)
 
 	var mergedRWSet []byte
 	for _, rws := range pvtRWSet.RWSet {
@@ -352,7 +352,7 @@ func TestNewDataRetriever_GetMultipleDigests(t *testing.T) {
 		SeqInBlock: 2,
 	}]
 	assertion.NotEmpty(pvtRWSet)
-	assertion.Equal(2, len(pvtRWSet.RWSet))
+	assertion.Len(pvtRWSet.RWSet, 2)
 	for _, rws := range pvtRWSet.RWSet {
 		mergedRWSet = append(mergedRWSet, rws...)
 	}

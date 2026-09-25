@@ -53,8 +53,8 @@ func TestSecondChanceCacheConcurrent(t *testing.T) {
 	cache := newSecondChanceCache(25)
 
 	workers := 16
+	errs := make(chan error, workers)
 	wg := sync.WaitGroup{}
-	wg.Add(workers)
 
 	key1 := "key1"
 	val1 := key1
@@ -64,40 +64,46 @@ func TestSecondChanceCacheConcurrent(t *testing.T) {
 		key2 := fmt.Sprintf("key2-%d", i)
 		val2 := key2
 
-		go func() {
+		wg.Go(func() {
 			for j := range 10000 {
 				key3 := fmt.Sprintf("key3-%d-%d", id, j)
 				val3 := key3
 				cache.add(key3, val3)
 
 				val, ok := cache.get(key1)
-				if ok {
-					require.Equal(t, val1, val.(string))
+				if ok && val1 != val.(string) {
+					errs <- fmt.Errorf("expected %s, got %s", val1, val.(string))
+					return
 				}
 				cache.add(key1, val1)
 
 				val, ok = cache.get(key2)
-				if ok {
-					require.Equal(t, val2, val.(string))
+				if ok && val2 != val.(string) {
+					errs <- fmt.Errorf("expected %s, got %s", val2, val.(string))
+					return
 				}
 				cache.add(key2, val2)
 
 				key4 := fmt.Sprintf("key4-%d", j)
 				val4 := key4
 				val, ok = cache.get(key4)
-				if ok {
-					require.Equal(t, val4, val.(string))
+				if ok && val4 != val.(string) {
+					errs <- fmt.Errorf("expected %s, got %s", val4, val.(string))
+					return
 				}
 				cache.add(key4, val4)
 
 				val, ok = cache.get(key3)
-				if ok {
-					require.Equal(t, val3, val.(string))
+				if ok && val3 != val.(string) {
+					errs <- fmt.Errorf("expected %s, got %s", val3, val.(string))
+					return
 				}
 			}
-
-			wg.Done()
-		}()
+		})
 	}
 	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
 }

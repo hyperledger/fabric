@@ -185,7 +185,7 @@ func TestSubmit(t *testing.T) {
 				for _, o := range ordererMocks {
 					invoked += o.client.(*mocks.ABClient).BroadcastCallCount()
 				}
-				require.Equal(t, invoked, 1)
+				require.Equal(t, 1, invoked)
 			},
 		},
 		{

@@ -85,14 +85,14 @@ func TestMembershipRequestToString(t *testing.T) {
 		},
 		Known: [][]byte{},
 	}
-	require.Equal(t, "", protoext.MembershipRequestToString(mr1))
+	require.Empty(t, protoext.MembershipRequestToString(mr1))
 
 	mr2 := &gossip.MembershipRequest{
 		SelfInformation: nil,
 		Known:           [][]byte{},
 	}
 
-	require.Equal(t, "", protoext.MembershipRequestToString(mr2))
+	require.Empty(t, protoext.MembershipRequestToString(mr2))
 }
 
 func TestToStringMember(t *testing.T) {

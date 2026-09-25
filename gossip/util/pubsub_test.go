@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -20,12 +22,13 @@ func TestNewPubsub(t *testing.T) {
 	sub1 := ps.Subscribe("test", time.Second)
 	sub2 := ps.Subscribe("test2", time.Second)
 	require.NotNil(t, sub1)
+	publishErr := make(chan error, 1)
 	go func() {
-		err := ps.Publish("test", 5)
-		require.NoError(t, err)
+		publishErr <- ps.Publish("test", 5)
 	}()
 	item, err := sub1.Listen()
 	require.NoError(t, err)
+	require.NoError(t, <-publishErr)
 	require.Equal(t, 5, item)
 	// Check that a publishing to a topic with no subscribers fails
 	err = ps.Publish("test3", 5)
@@ -33,29 +36,38 @@ func TestNewPubsub(t *testing.T) {
 	require.Contains(t, "no subscribers", err.Error())
 	// Check that a listen on a topic that its publish is too late, times out
 	// and returns an error
+	publishErr = make(chan error, 1)
 	go func() {
 		time.Sleep(time.Second * 2)
-		ps.Publish("test2", 10)
+		publishErr <- ps.Publish("test2", 10)
 	}()
 	item, err = sub2.Listen()
 	require.Error(t, err)
 	require.Contains(t, "timed out", err.Error())
 	require.Nil(t, item)
+	err = <-publishErr
+	require.Error(t, err)
+	require.Contains(t, "no subscribers", err.Error())
 	// Have multiple subscribers subscribe to the same topic
 	subscriptions := []Subscription{}
 	n := 100
 	for range n {
 		subscriptions = append(subscriptions, ps.Subscribe("test4", time.Second))
 	}
+	publishErr = make(chan error, 1)
 	go func() {
 		// Send items and fill the buffer and overflow
 		// it by 1 item
 		for i := 0; i <= subscriptionBuffSize; i++ {
-			err := ps.Publish("test4", 100+i)
-			require.NoError(t, err)
+			if err := ps.Publish("test4", 100+i); err != nil {
+				publishErr <- err
+				return
+			}
 		}
+		publishErr <- nil
 	}()
 	wg := sync.WaitGroup{}
+	listenErrs := make(chan error, n*2)
 	wg.Add(n)
 	for _, s := range subscriptions {
 		go func(s Subscription) {
@@ -63,17 +75,32 @@ func TestNewPubsub(t *testing.T) {
 			defer wg.Done()
 			for i := range subscriptionBuffSize {
 				item, err := s.Listen()
-				require.NoError(t, err)
-				require.Equal(t, 100+i, item)
+				if err != nil {
+					listenErrs <- fmt.Errorf("subscription %d: item %d: %w", i, 100+i, err)
+					return
+				}
+				if item != 100+i {
+					listenErrs <- fmt.Errorf("subscription %d: item %d: got %d", i, 100+i, item)
+					return
+				}
 			}
 			// The last item that we published was dropped
 			// due to the buffer being full
 			item, err := s.Listen()
-			require.Nil(t, item)
-			require.Error(t, err)
+			if item != nil {
+				listenErrs <- fmt.Errorf("expected nil item, got %d", item)
+			}
+			if err == nil {
+				listenErrs <- errors.New("expected timeout error")
+			}
 		}(s)
 	}
 	wg.Wait()
+	close(listenErrs)
+	for err := range listenErrs {
+		require.NoError(t, err)
+	}
+	require.NoError(t, <-publishErr)
 
 	// Ensure subscriptions are cleaned after use
 	for range 10 {

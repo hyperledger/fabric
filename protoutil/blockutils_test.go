@@ -181,7 +181,7 @@ func TestGetMetadataFromBlock(t *testing.T) {
 		md, err := protoutil.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
 		require.NoError(t, err, "Unexpected error extracting metadata from new block")
 		require.Nil(t, md.GetValue(), "Expected metadata field value to be nil")
-		require.Equal(t, 0, len(md.GetValue()), "Expected length of metadata field value to be 0")
+		require.Empty(t, md.GetValue(), "Expected length of metadata field value to be 0")
 		md = protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
 		require.NotNil(t, md, "Expected to get metadata from block")
 	})
@@ -283,7 +283,7 @@ func TestInitBlockMeta(t *testing.T) {
 	block := &cb.Block{}
 	protoutil.InitBlockMetadata(block)
 	// should have 3 entries
-	require.Equal(t, 5, len(block.GetMetadata().GetMetadata()), "Expected block to have 5 metadata entries")
+	require.Len(t, block.GetMetadata().GetMetadata(), 5, "Expected block to have 5 metadata entries")
 
 	// block with a single entry
 	block = &cb.Block{
@@ -292,7 +292,7 @@ func TestInitBlockMeta(t *testing.T) {
 	block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 	protoutil.InitBlockMetadata(block)
 	// should have 3 entries
-	require.Equal(t, 5, len(block.GetMetadata().GetMetadata()), "Expected block to have 5 metadata entries")
+	require.Len(t, block.GetMetadata().GetMetadata(), 5, "Expected block to have 5 metadata entries")
 }
 
 func TestCopyBlockMetadata(t *testing.T) {
@@ -306,7 +306,7 @@ func TestCopyBlockMetadata(t *testing.T) {
 	protoutil.CopyBlockMetadata(srcBlock, dstBlock)
 
 	// check that the copy worked
-	require.Equal(t, len(srcBlock.GetMetadata().GetMetadata()), len(dstBlock.GetMetadata().GetMetadata()),
+	require.Len(t, dstBlock.GetMetadata().GetMetadata(), len(srcBlock.GetMetadata().GetMetadata()),
 		"Expected target block to have same number of metadata entries after copy")
 	require.Equal(t, metadata, dstBlock.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_ORDERER],
 		"Unexpected metadata from target block")

@@ -41,9 +41,10 @@ func TestStartCmd(t *testing.T) {
 
 	msptesttools.LoadMSPSetupForTesting()
 
+	executeErr := make(chan error, 1)
 	go func() {
-		cmd := startCmd()
-		require.NoError(t, cmd.Execute(), "expected to successfully start command")
+		err := startCmd().Execute()
+		executeErr <- err
 	}()
 
 	grpcProbe := func(addr string) bool {
@@ -55,6 +56,11 @@ func TestStartCmd(t *testing.T) {
 		return false
 	}
 	g.Eventually(grpcProbe("localhost:6051")).Should(BeTrue())
+	select {
+	case err := <-executeErr:
+		require.NoError(t, err, "expected to successfully start command")
+	default:
+	}
 }
 
 func TestHandlerMap(t *testing.T) {

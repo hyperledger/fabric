@@ -192,7 +192,7 @@ func TestAddCommitHash(t *testing.T) {
 	commitHash, err := lgr.(*kvLedger).lastPersistedCommitHash()
 	require.NoError(t, err)
 	require.Equal(t, commitHash, lgr.(*kvLedger).commitHash)
-	require.Equal(t, len(commitHash), 0)
+	require.Empty(t, commitHash)
 
 	bcInfo, _ := lgr.GetBlockchainInfo()
 	require.Equal(t, &common.BlockchainInfo{
@@ -213,7 +213,7 @@ func TestAddCommitHash(t *testing.T) {
 	commitHash, err = lgr.(*kvLedger).lastPersistedCommitHash()
 	require.NoError(t, err)
 	require.Equal(t, commitHash, lgr.(*kvLedger).commitHash)
-	require.Equal(t, len(commitHash), 32)
+	require.Len(t, commitHash, 32)
 
 	// if the kvledger.commitHash is nil and the block number is > 1, the
 	// commitHash should not be added to the block
@@ -224,7 +224,7 @@ func TestAddCommitHash(t *testing.T) {
 	commitHash, err = lgr.(*kvLedger).lastPersistedCommitHash()
 	require.NoError(t, err)
 	require.Equal(t, commitHash, lgr.(*kvLedger).commitHash)
-	require.Equal(t, len(commitHash), 0)
+	require.Empty(t, commitHash)
 }
 
 func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
@@ -664,14 +664,14 @@ func TestPvtDataAPIs(t *testing.T) {
 	// block 5 has no pvt data
 	pvtdata, err = lgr.GetPvtDataByNum(5, nil)
 	require.NoError(t, err)
-	require.Equal(t, 0, len(pvtdata))
+	require.Empty(t, pvtdata)
 
 	// block 3 has pvt data for tx 3, 5 and 6. Though the tx 6
 	// is marked as invalid in the block, the pvtData should
 	// have been stored
 	pvtdata, err = lgr.GetPvtDataByNum(3, nil)
 	require.NoError(t, err)
-	require.Equal(t, 3, len(pvtdata))
+	require.Len(t, pvtdata, 3)
 	require.Equal(t, uint64(3), pvtdata[0].SeqInBlock)
 	require.Equal(t, uint64(5), pvtdata[1].SeqInBlock)
 	require.Equal(t, uint64(6), pvtdata[2].SeqInBlock)
@@ -679,7 +679,7 @@ func TestPvtDataAPIs(t *testing.T) {
 	// block 4 has pvt data for tx 4 and 6 only
 	pvtdata, err = lgr.GetPvtDataByNum(4, nil)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(pvtdata))
+	require.Len(t, pvtdata, 2)
 	require.Equal(t, uint64(4), pvtdata[0].SeqInBlock)
 	require.Equal(t, uint64(6), pvtdata[1].SeqInBlock)
 
@@ -698,10 +698,10 @@ func TestPvtDataAPIs(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, proto.Equal(sampleData[3].Block, blockAndPvtdata.Block))
 	// two transactions should be present
-	require.Equal(t, 2, len(blockAndPvtdata.PvtData))
+	require.Len(t, blockAndPvtdata.PvtData, 2)
 	// both tran number 4 and 6 should have only one collection because of filter
-	require.Equal(t, 1, len(blockAndPvtdata.PvtData[4].WriteSet.GetNsPvtRwset()))
-	require.Equal(t, 1, len(blockAndPvtdata.PvtData[6].WriteSet.GetNsPvtRwset()))
+	require.Len(t, blockAndPvtdata.PvtData[4].WriteSet.GetNsPvtRwset(), 1)
+	require.Len(t, blockAndPvtdata.PvtData[6].WriteSet.GetNsPvtRwset(), 1)
 	// any other transaction entry should be nil
 	require.Nil(t, blockAndPvtdata.PvtData[2])
 
@@ -818,7 +818,7 @@ func testVerifyPvtData(t *testing.T, lgr ledger.PeerLedger, blockNum uint64, exp
 	pvtdata, err := lgr.GetPvtDataByNum(blockNum, nil)
 	require.NoError(t, err)
 	constructed := constructPvtdataMap(pvtdata)
-	require.Equal(t, len(expectedPvtData), len(constructed))
+	require.Len(t, constructed, len(expectedPvtData))
 	for k, v := range expectedPvtData {
 		ov, ok := constructed[k]
 		require.True(t, ok)

@@ -88,12 +88,10 @@ func testGenerateLocalMSP(t *testing.T, nodeOUs bool) {
 	}
 
 	for _, file := range mspFiles {
-		require.Equal(t, true, checkForFile(file),
-			"Expected to find file "+file)
+		require.True(t, checkForFile(file), "Expected to find file "+file)
 	}
 	for _, file := range tlsFiles {
-		require.Equal(t, true, checkForFile(file),
-			"Expected to find file "+file)
+		require.True(t, checkForFile(file), "Expected to find file "+file)
 	}
 
 	// generate local MSP for nodeType=CLIENT
@@ -101,13 +99,11 @@ func testGenerateLocalMSP(t *testing.T, nodeOUs bool) {
 	require.NoError(t, err, "Failed to generate local MSP")
 	// check all
 	for _, file := range mspFiles {
-		require.Equal(t, true, checkForFile(file),
-			"Expected to find file "+file)
+		require.True(t, checkForFile(file), "Expected to find file "+file)
 	}
 
 	for _, file := range tlsFiles {
-		require.Equal(t, true, checkForFile(file),
-			"Expected to find file "+file)
+		require.True(t, checkForFile(file), "Expected to find file "+file)
 	}
 
 	tlsCA.Name = "test/fail"
@@ -155,8 +151,7 @@ func testGenerateVerifyingMSP(t *testing.T, nodeOUs bool) {
 	}
 
 	for _, file := range files {
-		require.Equal(t, true, checkForFile(file),
-			"Expected to find file "+file)
+		require.True(t, checkForFile(file), "Expected to find file "+file)
 	}
 
 	tlsCA.Name = "test/fail"

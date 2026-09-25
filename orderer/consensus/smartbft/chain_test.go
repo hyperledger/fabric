@@ -231,8 +231,8 @@ func TestAddAndRemoveNode(t *testing.T) {
 	// add new node to the network
 	nodesMap, newNode := networkSetupInfo.AddNewNode()
 	newNode.Start()
-	require.Equal(t, len(nodesMap), 5)
-	require.Equal(t, len(networkSetupInfo.nodeIdToNode), 5)
+	require.Len(t, nodesMap, 5)
+	require.Len(t, networkSetupInfo.nodeIdToNode, 5)
 
 	// send a tx to all nodes again and wait the tx will be added to each ledger
 	env = createEndorserTxEnvelope("TEST_ADDITION_OF_NODE", channelId)
@@ -263,8 +263,8 @@ func TestAddAndRemoveNode(t *testing.T) {
 
 	// remove node from the network
 	nodesMap = networkSetupInfo.RemoveNode(uint64(5))
-	require.Equal(t, len(nodesMap), 4)
-	require.Equal(t, len(networkSetupInfo.nodeIdToNode), 4)
+	require.Len(t, nodesMap, 4)
+	require.Len(t, networkSetupInfo.nodeIdToNode, 4)
 
 	// send a tx to all nodes again and wait the tx will be added to each ledger
 	env = createEndorserTxEnvelope("TEST_REMOVAL_OF_NODE", channelId)
@@ -330,8 +330,8 @@ func TestAddNodeWhileAnotherNodeIsDown(t *testing.T) {
 	// add new node to the network
 	nodesMap, newNode := networkSetupInfo.AddNewNode()
 	newNode.Start()
-	require.Equal(t, len(nodesMap), 5)
-	require.Equal(t, len(networkSetupInfo.nodeIdToNode), 5)
+	require.Len(t, nodesMap, 5)
+	require.Len(t, networkSetupInfo.nodeIdToNode, 5)
 
 	// restart the old leader
 	nodeMap[leaderId].Restart(networkSetupInfo.configInfo)
@@ -393,8 +393,8 @@ func TestAddAndRemoveNodeWithoutStop(t *testing.T) {
 	// add new node to the network
 	nodesMap, newNode := networkSetupInfo.AddNewNode()
 	newNode.Start()
-	require.Equal(t, len(nodesMap), 5)
-	require.Equal(t, len(networkSetupInfo.nodeIdToNode), 5)
+	require.Len(t, nodesMap, 5)
+	require.Len(t, networkSetupInfo.nodeIdToNode, 5)
 
 	// send a tx to all nodes again and wait the tx will be added to each ledger
 	env = createEndorserTxEnvelope("TEST_ADDITION_OF_NODE", channelId)
@@ -423,8 +423,8 @@ func TestAddAndRemoveNodeWithoutStop(t *testing.T) {
 
 	// remove node from the network
 	nodesMap = networkSetupInfo.RemoveNode(uint64(5))
-	require.Equal(t, len(nodesMap), 4)
-	require.Equal(t, len(networkSetupInfo.nodeIdToNode), 4)
+	require.Len(t, nodesMap, 4)
+	require.Len(t, networkSetupInfo.nodeIdToNode, 4)
 
 	// send a tx to all nodes again and wait the tx will be added to each ledger
 	env = createEndorserTxEnvelope("TEST_REMOVAL_OF_NODE", channelId)

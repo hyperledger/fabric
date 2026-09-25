@@ -162,6 +162,6 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	require.NoError(t, err)
 
 	blocks := committer.GetBlocks([]uint64{0})
-	require.Equal(t, 1, len(blocks))
+	require.Len(t, blocks, 1)
 	require.NoError(t, err)
 }

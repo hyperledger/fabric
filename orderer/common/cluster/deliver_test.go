@@ -297,7 +297,7 @@ func (ds *deliverServer) addExpectProbeAssert() {
 	select {
 	case ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
 		require.NotNil(ds.t, info.GetStart().GetNewest())
-		require.Equal(ds.t, info.GetErrorResponse(), orderer.SeekInfo_BEST_EFFORT)
+		require.Equal(ds.t, orderer.SeekInfo_BEST_EFFORT, info.GetErrorResponse())
 	}:
 	case <-ds.done:
 	}
@@ -311,7 +311,7 @@ func (ds *deliverServer) addExpectPullAssert(seq uint64) {
 		seekSpecified := seekPosition.GetSpecified()
 		require.NotNil(ds.t, seekSpecified)
 		require.Equal(ds.t, seq, seekSpecified.GetNumber())
-		require.Equal(ds.t, info.GetErrorResponse(), orderer.SeekInfo_BEST_EFFORT)
+		require.Equal(ds.t, orderer.SeekInfo_BEST_EFFORT, info.GetErrorResponse())
 	}:
 	case <-ds.done:
 	}
@@ -407,7 +407,7 @@ func TestBlockPullerBasicHappyPath(t *testing.T) {
 	for i := 5; i <= 10; i++ {
 		require.Equal(t, uint64(i), bp.PullBlock(uint64(i)).GetHeader().GetNumber())
 	}
-	require.Len(t, osn.blockResponses, 0)
+	require.Empty(t, osn.blockResponses)
 
 	bp.Close()
 	dialer.assertAllConnectionsClosed(t)
@@ -440,7 +440,7 @@ func TestBlockPullerDuplicate(t *testing.T) {
 	for i := 1; i <= 3; i++ {
 		require.Equal(t, uint64(i), bp.PullBlock(uint64(i)).GetHeader().GetNumber())
 	}
-	require.Len(t, osn.blockResponses, 0)
+	require.Empty(t, osn.blockResponses)
 
 	bp.Close()
 	dialer.assertAllConnectionsClosed(t)
@@ -1359,22 +1359,21 @@ func TestBlockPullerToBadEndpointWithStop(t *testing.T) {
 	bp.MaxPullBlockRetries = 100
 	bp.RetryTimeout = time.Hour
 
-	releaseDone := make(chan struct{})
-	var closeOnce sync.Once
-
+	pullResult := make(chan *common.Block, 1)
 	go func() {
 		// But this will get stuck until the StopChannel is closed
-		require.Nil(t, bp.PullBlock(uint64(1)))
-		bp.Close()
-		closeOnce.Do(func() { close(releaseDone) })
+		pullResult <- bp.PullBlock(uint64(1))
 	}()
 
 	close(bp.StopChannel)
 	select {
-	case <-releaseDone:
+	case block := <-pullResult:
+		require.Nil(t, block)
 	case <-time.After(10 * time.Second):
 		t.Fatalf("timed out waiting for PullBlock to complete")
 	}
+
+	bp.Close()
 
 	dialer.assertAllConnectionsClosed(t)
 	require.True(t, couldNotConnectLogged)

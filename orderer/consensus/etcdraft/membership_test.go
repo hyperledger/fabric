@@ -352,21 +352,21 @@ func TestMembershipChanges(t *testing.T) {
 					require.Equal(t, test.Changes.RotatedNode, changes.RotatedNode)
 					require.True(t, proto.Equal(test.Changes.NewBlockMetadata, changes.NewBlockMetadata))
 
-					require.Equal(t, len(test.Changes.NewConsenters), len(changes.NewConsenters))
+					require.Len(t, changes.NewConsenters, len(test.Changes.NewConsenters))
 					for k, v := range test.Changes.NewConsenters {
 						v1, ok := changes.NewConsenters[k]
 						require.True(t, ok)
 						require.True(t, proto.Equal(v, v1))
 					}
 
-					require.Equal(t, len(test.Changes.AddedNodes), len(changes.AddedNodes))
+					require.Len(t, changes.AddedNodes, len(test.Changes.AddedNodes))
 					slices.SortFunc(test.Changes.AddedNodes, sortSlice)
 					slices.SortFunc(changes.AddedNodes, sortSlice)
 					for i := range test.Changes.AddedNodes {
 						require.True(t, proto.Equal(test.Changes.AddedNodes[i], changes.AddedNodes[i]))
 					}
 
-					require.Equal(t, len(test.Changes.RemovedNodes), len(changes.RemovedNodes))
+					require.Len(t, changes.RemovedNodes, len(test.Changes.RemovedNodes))
 					slices.SortFunc(test.Changes.RemovedNodes, sortSlice)
 					slices.SortFunc(changes.RemovedNodes, sortSlice)
 					for i := range test.Changes.RemovedNodes {

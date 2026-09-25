@@ -65,7 +65,7 @@ peer:
 		},
 		AuthenticationTimeWindow: 900000000000,
 	}
-	require.EqualValues(t, expect, actual)
+	require.Equal(t, expect, actual)
 }
 
 func TestLoadConfigEnvVarOverride(t *testing.T) {
@@ -108,5 +108,5 @@ peer:
 		AuthenticationTimeWindow: time.Minute * 15,
 	}
 
-	require.EqualValues(t, expect, actual)
+	require.Equal(t, expect, actual)
 }

@@ -387,7 +387,7 @@ func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 	// wait until ledger creation is done
 	ledgerCreationDone := func() bool {
 		resp := cscc.joinBySnapshotStatus()
-		require.Equal(t, shim.OK, int(resp.GetStatus()))
+		require.Equal(t, int32(shim.OK), resp.GetStatus())
 		status := &pb.JoinBySnapshotStatus{}
 		err := proto.Unmarshal(resp.GetPayload(), status)
 		require.NoError(t, err)
@@ -402,7 +402,7 @@ func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 
 	cqr := &pb.ChannelQueryResponse{}
 	require.NoError(t, proto.Unmarshal(res.GetPayload(), cqr))
-	require.Equal(t, 1, len(cqr.GetChannels()))
+	require.Len(t, cqr.GetChannels(), 1)
 	require.Equal(t, channelID, cqr.GetChannels()[0].GetChannelId())
 
 	// verify ledger is created
@@ -489,7 +489,7 @@ func TestConfigerInvokeGetChannelConfig(t *testing.T) {
 		mockACLProvider.CheckACLReturns(errors.New("auth error"))
 		res := cscc.Invoke(mockStub)
 		require.Equal(t, int32(shim.ERROR), res.GetStatus())
-		require.Equal(t, res.GetMessage(), "access denied for [GetChannelConfig][test-channel-id]: auth error")
+		require.Equal(t, "access denied for [GetChannelConfig][test-channel-id]: auth error", res.GetMessage())
 	})
 
 	t.Run("missing-channel-name-error", func(t *testing.T) {

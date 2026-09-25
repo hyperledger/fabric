@@ -85,20 +85,20 @@ func testMsgTrace(handler func(dir string, msg *cb.Envelope) recvr, t *testing.T
 
 	rMsg, err := r.Recv()
 	require.Equal(t, msg, rMsg)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	var fileData []byte
 	for range 100 {
 		// Writing the trace file is deliberately non-blocking, wait up to a second, checking every 10 ms to see if the file now exists.
 		time.Sleep(10 * time.Millisecond)
 		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-			require.Nil(t, err)
+			require.NoError(t, err)
 			if path == dir {
 				return nil
 			}
 			require.Nil(t, fileData, "Should only be one file")
 			fileData, err = os.ReadFile(path)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			return nil
 		})
 		if fileData != nil {
@@ -142,5 +142,4 @@ func TestDeliverNoChannel(t *testing.T) {
 	ds := &deliverSupport{Registrar: r}
 	chain := ds.GetChain("mychannel")
 	require.Nil(t, chain)
-	require.True(t, chain == nil)
 }

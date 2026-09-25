@@ -105,7 +105,7 @@ func TestIterators(t *testing.T) {
 
 	assertExpectedBlock := func(t *testing.T, block *event.Block) {
 		require.NotNil(t, block, "block")
-		require.EqualValues(t, blockProto.GetHeader().GetNumber(), block.Number(), "block.Number()")
+		require.Equal(t, blockProto.GetHeader().GetNumber(), block.Number(), "block.Number()")
 
 		transactions, err := block.Transactions()
 		require.NoError(t, err, "Transactions()")
@@ -114,8 +114,8 @@ func TestIterators(t *testing.T) {
 		for txIndex, transaction := range transactions {
 			require.Equal(t, block, transaction.Block(), "transaction[%d].Block()", txIndex)
 			require.Equal(t, transactionId, transaction.ID(), "transaction[%d].ID()", txIndex)
-			require.EqualValues(t, now.Unix(), transaction.Timestamp().GetSeconds(), "transaction[%d].Timestamp.Seconds", txIndex)
-			require.EqualValues(t, now.Nanosecond(), int(transaction.Timestamp().GetNanos()), "transaction[%d].Tomestamp.Nanos", txIndex)
+			require.Equal(t, now.Unix(), transaction.Timestamp().GetSeconds(), "transaction[%d].Timestamp.Seconds", txIndex)
+			require.Equal(t, now.Nanosecond(), int(transaction.Timestamp().GetNanos()), "transaction[%d].Tomestamp.Nanos", txIndex)
 
 			events, err := transaction.ChaincodeEvents()
 			require.NoError(t, err, "ChaincodeEvents()")
@@ -125,7 +125,7 @@ func TestIterators(t *testing.T) {
 				require.Equal(t, transaction, event.Transaction(), "transaction[%d].ChaincodeEvents()[%d].Transaction()", txIndex, eventIndex)
 				require.Equal(t, chaincodeEvent.GetChaincodeId(), event.ChaincodeID(), "transaction[%d].ChaincodeEvents()[%d].ChaincodeID()", txIndex, eventIndex)
 				require.Equal(t, chaincodeEvent.GetEventName(), event.EventName(), "transaction[%d].ChaincodeEvents()[%d].EventName()", txIndex, eventIndex)
-				require.EqualValues(t, chaincodeEvent.GetPayload(), event.Payload(), "transaction[%d].ChaincodeEvents()[%d].Payload()", txIndex, eventIndex)
+				require.Equal(t, chaincodeEvent.GetPayload(), event.Payload(), "transaction[%d].ChaincodeEvents()[%d].Payload()", txIndex, eventIndex)
 				require.True(t, proto.Equal(chaincodeEvent, event.ProtoMessage()), "transaction[%d].ChaincodeEvents()[%d].ProtoMessage(): %v", txIndex, eventIndex, event.ProtoMessage())
 			}
 		}
@@ -168,11 +168,11 @@ func TestIterators(t *testing.T) {
 
 				require.NoError(t, err, "Next()")
 				require.NotNil(t, block, "block")
-				require.EqualValues(t, result.GetHeader().GetNumber(), block.Number(), "Number()")
+				require.Equal(t, result.GetHeader().GetNumber(), block.Number(), "Number()")
 
 				transactions, err := block.Transactions()
 				require.NoError(t, err, "Transactions()")
-				require.Len(t, transactions, 0, "transactions")
+				require.Empty(t, transactions, "transactions")
 			})
 
 			t.Run("returns a block with invalid transaction", func(t *testing.T) {

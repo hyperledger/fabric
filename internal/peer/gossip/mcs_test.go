@@ -26,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -323,13 +322,13 @@ func TestVerifyBlock(t *testing.T) {
 		attestation2 := blockRaw2
 		attestation2.Data = nil
 
-		assert.NoError(t, msgCryptoService.VerifyBlockAttestation("C", attestation))
+		require.NoError(t, msgCryptoService.VerifyBlockAttestation("C", attestation))
 		delete(policyManagerGetter.Managers, "D")
 		nilPolMgrErr := msgCryptoService.VerifyBlockAttestation("D", attestation2)
-		assert.Contains(t, nilPolMgrErr.Error(), "Could not acquire policy manager")
-		assert.Error(t, nilPolMgrErr)
-		assert.Error(t, msgCryptoService.VerifyBlockAttestation("A", attestation))
-		assert.Error(t, msgCryptoService.VerifyBlockAttestation("B", attestation))
+		require.Contains(t, nilPolMgrErr.Error(), "Could not acquire policy manager")
+		require.Error(t, nilPolMgrErr)
+		require.Error(t, msgCryptoService.VerifyBlockAttestation("A", attestation))
+		require.Error(t, msgCryptoService.VerifyBlockAttestation("B", attestation))
 
 		// - Prepare testing invalid attestation (wrong data has), Alice signs it.
 		// - Prepare testing invalid attestation (wrong data has), Alice signs it.
@@ -340,16 +339,16 @@ func TestVerifyBlock(t *testing.T) {
 		}()
 
 		// - Verify attestation
-		assert.Error(t, msgCryptoService.VerifyBlockAttestation("C", attestation))
+		require.Error(t, msgCryptoService.VerifyBlockAttestation("C", attestation))
 
 		// Check invalid args
 		attestation.Header.DataHash = []byte{0, 1, 2, 3, 4}
-		assert.Error(t, msgCryptoService.VerifyBlockAttestation("C", attestation))
+		require.Error(t, msgCryptoService.VerifyBlockAttestation("C", attestation))
 		attestation.Metadata = nil
-		assert.Error(t, msgCryptoService.VerifyBlockAttestation("C", attestation))
+		require.Error(t, msgCryptoService.VerifyBlockAttestation("C", attestation))
 		attestation.Header = nil
-		assert.Error(t, msgCryptoService.VerifyBlockAttestation("C", attestation))
-		assert.Error(t, msgCryptoService.VerifyBlockAttestation("C", nil))
+		require.Error(t, msgCryptoService.VerifyBlockAttestation("C", attestation))
+		require.Error(t, msgCryptoService.VerifyBlockAttestation("C", nil))
 	})
 }
 

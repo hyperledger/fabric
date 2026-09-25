@@ -463,7 +463,7 @@ func TestBuildStepRespone(t *testing.T) {
 			if err != nil {
 				require.EqualError(t, err, tc.err)
 			} else {
-				require.EqualValues(t, tc.res, res)
+				require.Equal(t, tc.res, res)
 			}
 		})
 	}

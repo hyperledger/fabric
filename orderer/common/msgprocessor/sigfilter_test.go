@@ -59,7 +59,7 @@ func newMockResources(hasPolicy bool, policyErr error) *mocks.Resources {
 
 func TestAccept(t *testing.T) {
 	mockResources := newMockResources(true, nil)
-	require.Nil(t, NewSigFilter("foo", "bar", mockResources).Apply(makeEnvelope()), "Valid envelope and good policy")
+	require.NoError(t, NewSigFilter("foo", "bar", mockResources).Apply(makeEnvelope()), "Valid envelope and good policy")
 }
 
 func TestMissingPolicy(t *testing.T) {

@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -446,7 +445,7 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 			round := (i + 1) / 4
 			fDur := math.Min(float64(minDur.Nanoseconds())*math.Pow(2.0, float64(round)), float64(10*time.Second))
 			dur := time.Duration(fDur)
-			assert.Equal(t, dur, setup.fakeSleeper.SleepArgsForCall(i), fmt.Sprintf("i=%d", i))
+			require.Equalf(t, dur, setup.fakeSleeper.SleepArgsForCall(i), "i=%d", i)
 		}
 
 		setup.stop()
@@ -492,7 +491,7 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 			round := (i + 1) / 4
 			fDur := math.Min(float64(minDur.Nanoseconds())*math.Pow(2.0, float64(round)), float64(10*time.Second))
 			dur := time.Duration(fDur)
-			assert.Equal(t, dur, setup.fakeSleeper.SleepArgsForCall(i), fmt.Sprintf("i=%d", i))
+			require.Equalf(t, dur, setup.fakeSleeper.SleepArgsForCall(i), "i=%d", i)
 		}
 
 		var monSet []*fake.CensorshipDetector
@@ -504,8 +503,8 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 
 		for i, mon := range monSet {
 			<-setup.monEndCSet[i]
-			require.Equal(t, 1, mon.MonitorCallCount(), fmt.Sprintf("i=%d", i))
-			require.Equal(t, 1, mon.StopCallCount(), fmt.Sprintf("i=%d", i))
+			require.Equalf(t, 1, mon.MonitorCallCount(), "i=%d", i)
+			require.Equalf(t, 1, mon.StopCallCount(), "i=%d", i)
 		}
 	})
 
@@ -530,11 +529,11 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 			round := (i + 1) / 4
 			fDur := math.Min(float64(minDur.Nanoseconds())*math.Pow(2.0, float64(round)), float64(10*time.Second))
 			dur := time.Duration(fDur)
-			assert.Equal(t, dur, setup.fakeSleeper.SleepArgsForCall(i), fmt.Sprintf("i=%d", i))
+			require.Equalf(t, dur, setup.fakeSleeper.SleepArgsForCall(i), "i=%d", i)
 			totalDur += dur
 		}
 
-		require.True(t, totalDur > setup.d.MaxRetryDuration)
+		require.Greater(t, totalDur, setup.d.MaxRetryDuration)
 		require.Equal(t, 82, setup.fakeSleeper.SleepCallCount())
 
 		var monSet []*fake.CensorshipDetector
@@ -546,11 +545,11 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 
 		for i, mon := range monSet {
 			<-setup.monEndCSet[i]
-			require.Equal(t, 1, mon.MonitorCallCount(), fmt.Sprintf("i=%d", i))
+			require.Equalf(t, 1, mon.MonitorCallCount(), "i=%d", i)
 			if i == 82 {
-				require.Equal(t, 2, mon.StopCallCount(), fmt.Sprintf("i=%d", i))
+				require.Equalf(t, 2, mon.StopCallCount(), "i=%d", i)
 			} else {
-				require.Equal(t, 1, mon.StopCallCount(), fmt.Sprintf("i=%d", i))
+				require.Equalf(t, 1, mon.StopCallCount(), "i=%d", i)
 			}
 		}
 	})
@@ -580,8 +579,8 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 		require.Len(t, setup.monitorSet, 2)
 		for i, mon := range setup.monitorSet {
 			<-setup.monEndCSet[i]
-			require.Equal(t, 1, mon.MonitorCallCount(), fmt.Sprintf("i=%d", i))
-			require.Equal(t, 1, mon.StopCallCount(), fmt.Sprintf("i=%d", i))
+			require.Equalf(t, 1, mon.MonitorCallCount(), "i=%d", i)
+			require.Equalf(t, 1, mon.StopCallCount(), "i=%d", i)
 		}
 	})
 
@@ -608,7 +607,7 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 			round := (i + 1) / 4
 			fDur := math.Min(float64(minDur.Nanoseconds())*math.Pow(2.0, float64(round)), float64(10*time.Second))
 			dur := time.Duration(fDur)
-			assert.Equal(t, dur, setup.fakeSleeper.SleepArgsForCall(i), fmt.Sprintf("i=%d", i))
+			require.Equalf(t, dur, setup.fakeSleeper.SleepArgsForCall(i), "i=%d", i)
 		}
 
 		setup.stop()
@@ -618,8 +617,8 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 		require.Len(t, setup.monitorSet, 25)
 		for i, mon := range setup.monitorSet {
 			<-setup.monEndCSet[i]
-			require.Equal(t, 1, mon.MonitorCallCount(), fmt.Sprintf("i=%d", i))
-			require.Equal(t, 1, mon.StopCallCount(), fmt.Sprintf("i=%d", i))
+			require.Equalf(t, 1, mon.MonitorCallCount(), "i=%d", i)
+			require.Equalf(t, 1, mon.StopCallCount(), "i=%d", i)
 		}
 
 		setup.logger.Info("Cycles through all sources")
@@ -651,7 +650,7 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 			round := (i + 1) / 4
 			fDur := math.Min(float64(minDur.Nanoseconds())*math.Pow(2.0, float64(round)), float64(10*time.Second))
 			dur := time.Duration(fDur)
-			assert.Equal(t, dur, setup.fakeSleeper.SleepArgsForCall(i), fmt.Sprintf("i=%d", i))
+			require.Equalf(t, dur, setup.fakeSleeper.SleepArgsForCall(i), "i=%d", i)
 		}
 
 		var monSet []*fake.CensorshipDetector
@@ -663,8 +662,8 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 
 		for i, mon := range monSet {
 			<-setup.monEndCSet[i]
-			require.Equal(t, 1, mon.MonitorCallCount(), fmt.Sprintf("i=%d", i))
-			require.Equal(t, 1, mon.StopCallCount(), fmt.Sprintf("i=%d", i))
+			require.Equalf(t, 1, mon.MonitorCallCount(), "i=%d", i)
+			require.Equalf(t, 1, mon.StopCallCount(), "i=%d", i)
 		}
 	})
 }
@@ -1140,7 +1139,7 @@ func TestBFTDeliverer_CensorshipMonitorEvents(t *testing.T) {
 		for i := range 40 {
 			round := (i + 1) / 4
 			dur := min(time.Duration(minDur.Nanoseconds()*int64(math.Pow(2.0, float64(round)))), 10*time.Second)
-			assert.Equal(t, dur, setup.fakeSleeper.SleepArgsForCall(i), fmt.Sprintf("i=%d", i))
+			require.Equalf(t, dur, setup.fakeSleeper.SleepArgsForCall(i), "i=%d", i)
 		}
 
 		setup.stop()

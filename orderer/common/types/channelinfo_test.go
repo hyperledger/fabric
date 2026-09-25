@@ -19,7 +19,7 @@ func TestErrorResponse(t *testing.T) {
 
 	buff, err := json.Marshal(errResp)
 	require.NoError(t, err)
-	require.Equal(t, `{"error":"oops"}`, string(buff))
+	require.JSONEq(t, `{"error":"oops"}`, string(buff))
 
 	buff2 := []byte(`{"error":"oops again"}`)
 	errResp2 := types.ErrorResponse{}
@@ -37,7 +37,7 @@ func TestChannelInfoShort(t *testing.T) {
 
 	buff, err := json.Marshal(info)
 	require.NoError(t, err)
-	require.Equal(t, `{"name":"my-channel","url":"/api/v1/channels/my-channel"}`, string(buff))
+	require.JSONEq(t, `{"name":"my-channel","url":"/api/v1/channels/my-channel"}`, string(buff))
 
 	buff2 := []byte(`{"name":"my-channel2","url":"/api/v1/channels/my-channel2"}`)
 	var info2 types.ChannelInfoShort
@@ -68,7 +68,7 @@ func TestChannelList(t *testing.T) {
 
 	buff, err = json.Marshal(list)
 	require.NoError(t, err)
-	require.Equal(t, `{"systemChannel":{"name":"s","url":"/api/channels/s"},"channels":[{"name":"a","url":"/api/channels/a"},{"name":"b","url":"/api/channels/b"}]}`, string(buff))
+	require.JSONEq(t, `{"systemChannel":{"name":"s","url":"/api/channels/s"},"channels":[{"name":"a","url":"/api/channels/a"},{"name":"b","url":"/api/channels/b"}]}`, string(buff))
 }
 
 func TestChannelInfo(t *testing.T) {
@@ -82,7 +82,7 @@ func TestChannelInfo(t *testing.T) {
 
 	buff, err := json.Marshal(info)
 	require.NoError(t, err)
-	require.Equal(t, `{"name":"a","url":"/api/channels/a","consensusRelation":"follower","status":"active","height":1152921504606846976}`, string(buff))
+	require.JSONEq(t, `{"name":"a","url":"/api/channels/a","consensusRelation":"follower","status":"active","height":1152921504606846976}`, string(buff))
 
 	var info2 types.ChannelInfo
 	err = json.Unmarshal(buff, &info2)

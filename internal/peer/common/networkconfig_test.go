@@ -35,16 +35,16 @@ func TestGetConfig(t *testing.T) {
 	networkConfig, err = common.GetConfig("testdata/connectionprofile.yaml")
 	require.NoError(err, "error should have been nil")
 	require.NotNil(networkConfig, "network config should be set")
-	require.Equal(networkConfig.Name, "connection-profile")
+	require.Equal("connection-profile", networkConfig.Name)
 
 	channelPeers := networkConfig.Channels["mychannel"].Peers
-	require.Equal(len(channelPeers), 2)
+	require.Len(channelPeers, 2)
 	for _, peer := range channelPeers {
 		require.True(peer.EndorsingPeer)
 	}
 
 	peers := networkConfig.Peers
-	require.Equal(len(peers), 2)
+	require.Len(peers, 2)
 	for _, peer := range peers {
 		require.NotEmpty(peer.TLSCACerts.Path)
 	}

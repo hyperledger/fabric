@@ -21,8 +21,8 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -31,7 +31,7 @@ func TestValidateConfig(t *testing.T) {
 	configBlockEnvelopePayload := protoutil.UnmarshalPayloadOrPanic(configBlockEnvelope.GetPayload())
 	configEnvelope := &common.ConfigEnvelope{}
 	err := proto.Unmarshal(configBlockEnvelopePayload.GetData(), configEnvelope)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	lateConfigEnvelope := proto.Clone(configEnvelope).(*common.ConfigEnvelope)
 	lateConfigEnvelope.Config.Sequence--
@@ -258,10 +258,10 @@ func TestValidateConfig(t *testing.T) {
 				Return(testCase.proposeConfigUpdateReturns, testCase.proposeConfigUpdaterr)
 			err = cbv.ValidateConfig(env)
 			if testCase.expectedError == "" {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.Error(t, err)
-				assert.Equal(t, testCase.expectedError, strings.ReplaceAll(err.Error(), "\u00a0", " "))
+				require.Error(t, err)
+				require.Equal(t, testCase.expectedError, strings.ReplaceAll(err.Error(), "\u00a0", " "))
 			}
 		})
 	}

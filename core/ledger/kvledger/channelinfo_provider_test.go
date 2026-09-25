@@ -79,7 +79,7 @@ func TestNamespacesAndCollections(t *testing.T) {
 	}
 	namespacesAndColls, err := channelInfoProvider.NamespacesAndCollections(nil)
 	require.NoError(t, err)
-	require.Equal(t, len(expectedNamespacesAndColls), len(namespacesAndColls))
+	require.Len(t, namespacesAndColls, len(expectedNamespacesAndColls))
 	for ns, colls := range expectedNamespacesAndColls {
 		require.ElementsMatch(t, colls, namespacesAndColls[ns])
 	}
@@ -157,7 +157,7 @@ func TestGetAllMSPIDs(t *testing.T) {
 	lastConfigBlock, err := channelInfoProvider.mostRecentConfigBlockAsOf(lastBlockNum)
 	require.NoError(t, err)
 	config = getConfigFromBlock(lastConfigBlock)
-	require.Equal(t, 2, len(config.GetChannelGroup().GetGroups()[channelconfig.ApplicationGroupKey].GetGroups()))
+	require.Len(t, config.GetChannelGroup().GetGroups()[channelconfig.ApplicationGroupKey].GetGroups(), 2)
 	require.Contains(t, config.GetChannelGroup().GetGroups()[channelconfig.ApplicationGroupKey].GetGroups(), "SampleOrg")
 	require.Contains(t, config.GetChannelGroup().GetGroups()[channelconfig.ApplicationGroupKey].GetGroups(), "org2")
 }

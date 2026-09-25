@@ -23,7 +23,7 @@ func TestUnjoinChannel(t *testing.T) {
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	activeLedgerIDs, err := provider.List()
 	require.NoError(t, err)
-	require.Len(t, activeLedgerIDs, 0)
+	require.Empty(t, activeLedgerIDs)
 
 	genesisBlock, err := configtxtest.MakeGenesisBlock(ledgerID)
 	require.NoError(t, err)
@@ -46,7 +46,7 @@ func TestUnjoinChannel(t *testing.T) {
 
 	activeLedgerIDs, err = provider.List()
 	require.NoError(t, err)
-	require.Len(t, activeLedgerIDs, 0)
+	require.Empty(t, activeLedgerIDs)
 	require.NotContains(t, activeLedgerIDs, ledgerID)
 
 	// check underlying databases have been removed
@@ -73,7 +73,7 @@ func TestUnjoinUnjoinedChannelErrors(t *testing.T) {
 	provider = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	activeLedgerIDs, err := provider.List()
 	require.NoError(t, err)
-	require.Len(t, activeLedgerIDs, 0)
+	require.Empty(t, activeLedgerIDs)
 	provider.Close()
 
 	// unjoining an unjoined channel is an error.

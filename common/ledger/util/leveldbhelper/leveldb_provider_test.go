@@ -190,7 +190,7 @@ func TestBatchedUpdates(t *testing.T) {
 		require.Equal(t, "value1", string(val1))
 
 		val2, err2 := db.Get([]byte("key2"))
-		require.NoError(t, err2, "")
+		require.NoError(t, err2)
 		require.Nil(t, val2)
 
 		val3, _ := db.Get([]byte("key3"))
@@ -575,7 +575,7 @@ func testFormatCheck(t *testing.T, dataFormat, expectedFormat string, dataExists
 	p, err = NewProvider(&Conf{DBPath: testDBPath, ExpectedFormat: expectedFormat})
 	if expectedErr != nil {
 		expectedErr.DBInfo = fmt.Sprintf("leveldb at [%s]", testDBPath)
-		require.Equal(t, err, expectedErr)
+		require.Equal(t, expectedErr, err)
 		return
 	}
 	require.NoError(t, err)
@@ -599,33 +599,33 @@ func testDBBasicWriteAndReads(t *testing.T, dbNames ...string) {
 	for _, dbName := range dbNames {
 		db := p.GetDBHandle(dbName)
 		val, err := db.Get([]byte("key1"))
-		require.NoError(t, err, "")
+		require.NoError(t, err)
 		require.Equal(t, []byte("value1_"+dbName), val)
 
 		val, err = db.Get([]byte("key2"))
-		require.NoError(t, err, "")
+		require.NoError(t, err)
 		require.Equal(t, []byte("value2_"+dbName), val)
 
 		val, err = db.Get([]byte("key3"))
-		require.NoError(t, err, "")
+		require.NoError(t, err)
 		require.Equal(t, []byte("value3_"+dbName), val)
 	}
 
 	for _, dbName := range dbNames {
 		db := p.GetDBHandle(dbName)
-		require.NoError(t, db.Delete([]byte("key1"), false), "")
+		require.NoError(t, db.Delete([]byte("key1"), false))
 		val, err := db.Get([]byte("key1"))
-		require.NoError(t, err, "")
+		require.NoError(t, err)
 		require.Nil(t, val)
 
-		require.NoError(t, db.Delete([]byte("key2"), false), "")
+		require.NoError(t, db.Delete([]byte("key2"), false))
 		val, err = db.Get([]byte("key2"))
-		require.NoError(t, err, "")
+		require.NoError(t, err)
 		require.Nil(t, val)
 
-		require.NoError(t, db.Delete([]byte("key3"), false), "")
+		require.NoError(t, db.Delete([]byte("key3"), false))
 		val, err = db.Get([]byte("key3"))
-		require.NoError(t, err, "")
+		require.NoError(t, err)
 		require.Nil(t, val)
 	}
 }
@@ -639,7 +639,7 @@ func checkItrResults(t *testing.T, itr *Iterator, expectedKeys []string, expecte
 	}
 	require.Equal(t, expectedKeys, actualKeys)
 	require.Equal(t, expectedValues, actualValues)
-	require.Equal(t, false, itr.Next())
+	require.False(t, itr.Next())
 }
 
 func createTestKey(i int) string {

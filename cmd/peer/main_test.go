@@ -18,7 +18,6 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -91,6 +90,6 @@ func TestSetEnvConfig(t *testing.T) {
 
 	setEnvConfig(vp)
 
-	assert.Equal(t, "Apple", vp.Get("Fruit"))
-	assert.Equal(t, "", vp.Get("Color"))
+	require.Equal(t, "Apple", vp.Get("Fruit"))
+	require.Empty(t, vp.Get("Color"))
 }

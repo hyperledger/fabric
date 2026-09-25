@@ -95,7 +95,7 @@ func TestExpirationCheckFilter(t *testing.T) {
 	// Scenario I: Expired x509 identity
 	sp := createValidSignedProposal(t, createX509Identity(t, "expiredCert.pem"))
 	_, err := auth.ProcessProposal(context.Background(), sp)
-	require.Equal(t, err.Error(), "proposal client identity expired")
+	require.Equal(t, "proposal client identity expired", err.Error())
 	require.False(t, nextEndorser.invoked)
 
 	// Scenario II: Not expired x509 identity

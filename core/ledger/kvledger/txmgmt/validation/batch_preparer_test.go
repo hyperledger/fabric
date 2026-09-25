@@ -237,7 +237,7 @@ func TestPreprocessProtoBlockInvalidWriteset(t *testing.T) {
 	require.False(t, txfilter.IsValid(0)) // tx at index 0 should be marked as invalid
 	require.True(t, txfilter.IsValid(1))  // tx at index 1 should be marked as valid
 	require.Len(t, internalBlock.txs, 1)
-	require.Equal(t, internalBlock.txs[0].indexInBlock, 1)
+	require.Equal(t, 1, internalBlock.txs[0].indexInBlock)
 }
 
 func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
@@ -484,7 +484,7 @@ func TestTxStatsInfo(t *testing.T) {
 		},
 	}
 	t.Logf("txStatsInfo=%s\n", spew.Sdump(txStatsInfo))
-	require.Equal(t, len(expectedTxStatInfo), len(txStatsInfo))
+	require.Len(t, txStatsInfo, len(expectedTxStatInfo))
 	for i := range expectedTxStatInfo {
 		require.Equal(t, expectedTxStatInfo[i].TxIDFromChannelHeader, txStatsInfo[i].TxIDFromChannelHeader)
 		require.Equal(t, expectedTxStatInfo[i].ValidationCode, txStatsInfo[i].ValidationCode)
@@ -686,7 +686,7 @@ func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
 	// Check result
 	require.NoError(t, err2)
 	require.Equal(t, expectedPreprocessedBlock.num, internalBlock.num)
-	require.Equal(t, len(expectedPreprocessedBlock.txs), len(internalBlock.txs))
+	require.Len(t, internalBlock.txs, len(expectedPreprocessedBlock.txs))
 	require.Equal(t, expectedPreprocessedBlock.txs[0].indexInBlock, internalBlock.txs[0].indexInBlock)
 	require.Equal(t, expectedPreprocessedBlock.txs[0].id, internalBlock.txs[0].id)
 	require.Equal(t, expectedPreprocessedBlock.txs[0].containsPostOrderWrites, internalBlock.txs[0].containsPostOrderWrites)

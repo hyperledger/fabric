@@ -216,7 +216,7 @@ func checkHandleStateUpdatesCallback(t *testing.T, ml *mock.StateListener, callN
 }
 
 func checkEqualUpdates(t *testing.T, expected, actual ledger.StateUpdates) {
-	require.Equal(t, len(expected), len(actual))
+	require.Len(t, actual, len(expected))
 	for ns, e := range expected {
 		require.ElementsMatch(t, e.PublicUpdates, actual[ns].PublicUpdates)
 		checkEqualCollsUpdates(t, e.CollHashUpdates, actual[ns].CollHashUpdates)
@@ -224,7 +224,7 @@ func checkEqualUpdates(t *testing.T, expected, actual ledger.StateUpdates) {
 }
 
 func checkEqualCollsUpdates(t *testing.T, expected, actual map[string][]*kvrwset.KVWriteHash) {
-	require.Equal(t, len(expected), len(actual))
+	require.Len(t, actual, len(expected))
 	for coll, e := range expected {
 		require.ElementsMatch(t, e, actual[coll])
 	}

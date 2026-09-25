@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/metrics/mocks"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -333,7 +332,7 @@ func TestSelf(t *testing.T) {
 	env := gc.Self().Envelope
 	sMsg, _ := protoext.EnvelopeToGossipMessage(env)
 	require.True(t, gproto.Equal(gMsg, sMsg.GossipMessage))
-	require.Equal(t, gMsg.GetStateInfo().GetProperties().GetLedgerHeight(), uint64(1))
+	require.Equal(t, uint64(1), gMsg.GetStateInfo().GetProperties().GetLedgerHeight())
 	require.Equal(t, gMsg.GetStateInfo().GetPkiId(), []byte("1"))
 }
 
@@ -497,7 +496,7 @@ func TestLeaveChannel(t *testing.T) {
 	// Send another hello. Shouldn't respond
 	go gc.HandleMessage(hello)
 	// Ensure it doesn't know now any other peer
-	require.Len(t, gc.GetPeers(), 0)
+	require.Empty(t, gc.GetPeers())
 	// Sleep 3 times the pull interval.
 	// we're not supposed to send a pull during this time.
 	time.Sleep(conf.PullInterval * 3)
@@ -1001,7 +1000,7 @@ func TestChannelBlockExpiration(t *testing.T) {
 		t.Fatal("Haven't responded to hello message within a time period")
 	case msg := <-respondedChan:
 		if protoext.IsDigestMsg(msg) {
-			require.Equal(t, 1, len(msg.GetDataDig().GetDigests()), "Number of digests returned by channel blockPuller incorrect")
+			require.Len(t, msg.GetDataDig().GetDigests(), 1, "Number of digests returned by channel blockPuller incorrect")
 		} else {
 			t.Fatal("Not correct pull msg type in response - expect digest")
 		}
@@ -1045,7 +1044,7 @@ func TestChannelBlockExpiration(t *testing.T) {
 		t.Fatal("Haven't responded to hello message within a time period")
 	case msg := <-respondedChan:
 		if protoext.IsDigestMsg(msg) {
-			require.Equal(t, 1, len(msg.GetDataDig().GetDigests()), "Number of digests returned by channel blockPuller incorrect")
+			require.Len(t, msg.GetDataDig().GetDigests(), 1, "Number of digests returned by channel blockPuller incorrect")
 		} else {
 			t.Fatal("Not correct pull msg type in response - expect digest")
 		}
@@ -1075,19 +1074,19 @@ func TestChannelBadBlocks(t *testing.T) {
 
 	// Send a block with wrong channel
 	gc.HandleMessage(&receivedMsg{msg: createDataMsg(2, common.ChannelID("B")), PKIID: pkiIDInOrg1})
-	require.Len(t, receivedMessages, 0)
+	require.Empty(t, receivedMessages)
 
 	// Send a block with empty payload
 	dataMsg := createDataMsg(3, channelA)
 	dataMsg.GetDataMsg().Payload = nil
 	gc.HandleMessage(&receivedMsg{msg: dataMsg, PKIID: pkiIDInOrg1})
-	require.Len(t, receivedMessages, 0)
+	require.Empty(t, receivedMessages)
 
 	// Send a block with a bad signature
 	cs.Mock = mock.Mock{}
 	cs.On("VerifyBlock", mock.Anything).Return(errors.New("Bad signature"))
 	gc.HandleMessage(&receivedMsg{msg: createDataMsg(4, channelA), PKIID: pkiIDInOrg1})
-	require.Len(t, receivedMessages, 0)
+	require.Empty(t, receivedMessages)
 }
 
 func TestNoGossipOrSigningWhenEmptyMembership(t *testing.T) {
@@ -1120,14 +1119,14 @@ func TestNoGossipOrSigningWhenEmptyMembership(t *testing.T) {
 
 	gc := NewGossipChannel(pkiIDInOrg1, orgInChannelA, cs, channelA, adapter, &joinChanMsg{}, disabledMetrics, nil)
 	// We have signed only once at creation time
-	assert.Equal(t, uint32(1), adapter.signCallCount.Load())
+	require.Equal(t, uint32(1), adapter.signCallCount.Load())
 	defer gc.Stop()
 	gc.UpdateLedgerHeight(1)
 
 	// The first time we have membership, so we should gossip and sign
 	gossipedWG.Wait()
 	// So far we have signed twice: Once at creation time, and once before we gossiped
-	assert.Equal(t, uint32(2), adapter.signCallCount.Load())
+	require.Equal(t, uint32(2), adapter.signCallCount.Load())
 
 	// Membership is now empty
 	dynamicMembership.Store(emptyMembership)
@@ -1136,15 +1135,15 @@ func TestNoGossipOrSigningWhenEmptyMembership(t *testing.T) {
 	// Wait some time and ensure we do not sign because membership is now empty
 	time.Sleep(conf.PublishStateInfoInterval * 3)
 	// We haven't signed anything
-	assert.Equal(t, uint32(2), adapter.signCallCount.Load())
+	require.Equal(t, uint32(2), adapter.signCallCount.Load())
 
-	assert.Empty(t, gc.Self().GetStateInfo().GetProperties().GetChaincodes())
+	require.Empty(t, gc.Self().GetStateInfo().GetProperties().GetChaincodes())
 	gossipedWG.Add(1)
 	// Now, update chaincodes and check our chaincode information was indeed updated
 	gc.UpdateChaincodes([]*proto.Chaincode{{Name: "mycc"}})
 	// We should have signed regardless!
-	assert.Equal(t, uint32(3), adapter.signCallCount.Load())
-	assert.Equal(t, "mycc", gc.Self().GetStateInfo().GetProperties().GetChaincodes()[0].GetName())
+	require.Equal(t, uint32(3), adapter.signCallCount.Load())
+	require.Equal(t, "mycc", gc.Self().GetStateInfo().GetProperties().GetChaincodes()[0].GetName())
 }
 
 func TestChannelPulledBadBlocks(t *testing.T) {
@@ -1756,7 +1755,7 @@ func TestChannelGetPeers(t *testing.T) {
 	cs.mocked = true
 	// Simulate a config update
 	gc.ConfigureChannel(&joinChanMsg{})
-	require.Len(t, gc.GetPeers(), 0)
+	require.Empty(t, gc.GetPeers())
 
 	// Now recreate gc and corrupt the MAC
 	// and ensure that the StateInfo message doesn't count
@@ -1764,7 +1763,7 @@ func TestChannelGetPeers(t *testing.T) {
 	msg := &receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)}
 	msg.GetGossipMessage().GetStateInfo().Channel_MAC = GenerateMAC(pkiIDinOrg2, channelA)
 	gc.HandleMessage(msg)
-	require.Len(t, gc.GetPeers(), 0)
+	require.Empty(t, gc.GetPeers())
 }
 
 func TestOnDemandGossip(t *testing.T) {
@@ -1945,7 +1944,7 @@ func TestFilterForeignOrgLeadershipMessages(t *testing.T) {
 
 	gc.HandleMessage(leadershipMsg(p1, p1))
 	require.Len(t, relayedLeadershipMsgs, 1, "should have relayed a message from p1 (same org)")
-	require.Len(t, loggedEntries, 0)
+	require.Empty(t, loggedEntries)
 
 	gc.HandleMessage(leadershipMsg(p2, p1))
 	require.Len(t, relayedLeadershipMsgs, 1, "should not have relayed a message from p2 (foreign org)")
@@ -2099,7 +2098,7 @@ func simulatePullPhaseWithVariableDigest(gc GossipChannel, t *testing.T, wg *syn
 			for _, expectedDigest := range util.StringsToBytes(resultDigestSeqs) {
 				require.Contains(t, dataReq.GetDigests(), expectedDigest)
 			}
-			require.Equal(t, len(resultDigestSeqs), len(dataReq.GetDigests()))
+			require.Len(t, dataReq.GetDigests(), len(resultDigestSeqs))
 			// When we send a data request, simulate a response of a data update
 			// from the imaginary peer that got the request
 			dataUpdateMsg := new(receivedMsg)
@@ -2289,7 +2288,7 @@ func TestChangesInPeers(t *testing.T) {
 				t.Fatal("did not get Set() call")
 			}
 			require.Equal(t, []string{"channel", "test"}, testMetricProvider.FakeTotalGauge.WithArgsForCall(0))
-			require.EqualValues(t, test.expectedTotal, testMetricProvider.FakeTotalGauge.SetArgsForCall(0))
+			require.InDelta(t, test.expectedTotal, testMetricProvider.FakeTotalGauge.SetArgsForCall(0), 0)
 		})
 	}
 }
