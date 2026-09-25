@@ -474,7 +474,7 @@ func TestSnapshotDirPathsCreation(t *testing.T) {
 	for _, dir := range [2]string{inProgressSnapshotsPath, completedSnapshotsPath} {
 		f, err := os.ReadDir(dir)
 		require.NoError(t, err)
-		require.Len(t, f, 0)
+		require.Empty(t, f)
 	}
 
 	// add a file in each of the above folders
@@ -492,7 +492,7 @@ func TestSnapshotDirPathsCreation(t *testing.T) {
 	provider = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	f, err := os.ReadDir(inProgressSnapshotsPath)
 	require.NoError(t, err)
-	require.Len(t, f, 0)
+	require.Empty(t, f)
 	f, err = os.ReadDir(completedSnapshotsPath)
 	require.NoError(t, err)
 	require.Len(t, f, 1)
@@ -880,7 +880,7 @@ func verifySnapshotOutput(
 	inProgressSnapshotsPath := SnapshotsTempDirPath(o.snapshotRootDir)
 	f, err := os.ReadDir(inProgressSnapshotsPath)
 	require.NoError(t, err)
-	require.Len(t, f, 0)
+	require.Empty(t, f)
 
 	snapshotDir := SnapshotDirForLedgerBlockNum(o.snapshotRootDir, o.ledgerID, o.lastBlockNumber)
 	files, err := os.ReadDir(snapshotDir)

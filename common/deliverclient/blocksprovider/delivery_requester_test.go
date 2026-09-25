@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider/fake"
 	"github.com/hyperledger/fabric/common/deliverclient/orderers"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -36,7 +35,7 @@ func TestDeliveryRequester_Connect_Success(t *testing.T) {
 	fakeDeliverStreamer.DeliverReturns(fakeDeliverClient, nil)
 
 	dr := blocksprovider.NewDeliveryRequester("channel-id", fakeSigner, []byte("tls-cert-hash"), fakeDialer, fakeDeliverStreamer)
-	assert.NotNil(t, dr)
+	require.NotNil(t, dr)
 
 	seekInfoEnv := &common.Envelope{}
 	endpoint := &orderers.Endpoint{
@@ -46,9 +45,9 @@ func TestDeliveryRequester_Connect_Success(t *testing.T) {
 	}
 
 	deliverClient, cancelFunc, err := dr.Connect(seekInfoEnv, endpoint)
-	assert.NoError(t, err)
-	assert.NotNil(t, deliverClient)
-	assert.NotNil(t, cancelFunc)
+	require.NoError(t, err)
+	require.NotNil(t, deliverClient)
+	require.NotNil(t, cancelFunc)
 }
 
 func TestDeliveryRequester_Connect_DialerError(t *testing.T) {
@@ -66,7 +65,7 @@ func TestDeliveryRequester_Connect_DialerError(t *testing.T) {
 	fakeDeliverStreamer.DeliverReturns(fakeDeliverClient, nil)
 
 	dr := blocksprovider.NewDeliveryRequester("channel-id", fakeSigner, []byte("tls-cert-hash"), fakeDialer, fakeDeliverStreamer)
-	assert.NotNil(t, dr)
+	require.NotNil(t, dr)
 
 	seekInfoEnv := &common.Envelope{}
 	endpoint := &orderers.Endpoint{
@@ -76,9 +75,9 @@ func TestDeliveryRequester_Connect_DialerError(t *testing.T) {
 	}
 
 	deliverClient, cancelFunc, err := dr.Connect(seekInfoEnv, endpoint)
-	assert.Error(t, err)
-	assert.Nil(t, deliverClient)
-	assert.Nil(t, cancelFunc)
+	require.Error(t, err)
+	require.Nil(t, deliverClient)
+	require.Nil(t, cancelFunc)
 }
 
 func TestDeliveryRequester_Connect_DeliverStreamerError(t *testing.T) {
@@ -102,7 +101,7 @@ func TestDeliveryRequester_Connect_DeliverStreamerError(t *testing.T) {
 	fakeDeliverStreamer.DeliverReturns(fakeDeliverClient, deliverStreamerError)
 
 	dr := blocksprovider.NewDeliveryRequester("channel-id", fakeSigner, []byte("tls-cert-hash"), fakeDialer, fakeDeliverStreamer)
-	assert.NotNil(t, dr)
+	require.NotNil(t, dr)
 
 	seekInfoEnv := &common.Envelope{}
 	endpoint := &orderers.Endpoint{
@@ -112,9 +111,9 @@ func TestDeliveryRequester_Connect_DeliverStreamerError(t *testing.T) {
 	}
 
 	deliverClient, cancelFunc, err := dr.Connect(seekInfoEnv, endpoint)
-	assert.Error(t, err)
-	assert.Nil(t, deliverClient)
-	assert.Nil(t, cancelFunc)
+	require.Error(t, err)
+	require.Nil(t, deliverClient)
+	require.Nil(t, cancelFunc)
 }
 
 func TestDeliveryRequester_Connect_DeliverClientError(t *testing.T) {
@@ -138,7 +137,7 @@ func TestDeliveryRequester_Connect_DeliverClientError(t *testing.T) {
 	fakeDeliverStreamer.DeliverReturns(fakeDeliverClient, nil)
 
 	dr := blocksprovider.NewDeliveryRequester("channel-id", fakeSigner, []byte("tls-cert-hash"), fakeDialer, fakeDeliverStreamer)
-	assert.NotNil(t, dr)
+	require.NotNil(t, dr)
 
 	seekInfoEnv := &common.Envelope{}
 	endpoint := &orderers.Endpoint{
@@ -148,9 +147,9 @@ func TestDeliveryRequester_Connect_DeliverClientError(t *testing.T) {
 	}
 
 	deliverClient, cancelFunc, err := dr.Connect(seekInfoEnv, endpoint)
-	assert.Error(t, err)
-	assert.Nil(t, deliverClient)
-	assert.Nil(t, cancelFunc)
+	require.Error(t, err)
+	require.Nil(t, deliverClient)
+	require.Nil(t, cancelFunc)
 }
 
 func TestDeliveryRequester_SeekInfoBlocksFrom(t *testing.T) {
@@ -168,11 +167,11 @@ func TestDeliveryRequester_SeekInfoBlocksFrom(t *testing.T) {
 	fakeDeliverStreamer.DeliverReturns(fakeDeliverClient, nil)
 
 	dr := blocksprovider.NewDeliveryRequester("channel-id", fakeSigner, []byte("tls-cert-hash"), fakeDialer, fakeDeliverStreamer)
-	assert.NotNil(t, dr)
+	require.NotNil(t, dr)
 
 	envelope, err := dr.SeekInfoBlocksFrom(1000)
-	assert.NoError(t, err)
-	assert.NotNil(t, envelope)
+	require.NoError(t, err)
+	require.NotNil(t, envelope)
 }
 
 func TestDeliveryRequester_SeekInfoHeadersFrom(t *testing.T) {
@@ -190,9 +189,9 @@ func TestDeliveryRequester_SeekInfoHeadersFrom(t *testing.T) {
 	fakeDeliverStreamer.DeliverReturns(fakeDeliverClient, nil)
 
 	dr := blocksprovider.NewDeliveryRequester("channel-id", fakeSigner, []byte("tls-cert-hash"), fakeDialer, fakeDeliverStreamer)
-	assert.NotNil(t, dr)
+	require.NotNil(t, dr)
 
 	envelope, err := dr.SeekInfoHeadersFrom(1000)
-	assert.NoError(t, err)
-	assert.NotNil(t, envelope)
+	require.NoError(t, err)
+	require.NotNil(t, envelope)
 }

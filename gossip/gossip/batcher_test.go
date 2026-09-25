@@ -31,9 +31,9 @@ func TestBatchingEmitterAddAndSize(t *testing.T) {
 
 func TestBatchingEmitterStop(t *testing.T) {
 	// In this test we make sure the emitter doesn't do anything after it's stopped
-	disseminationAttempts := int32(0)
+	var disseminationAttempts atomic.Int32
 	cb := func(a []any) {
-		atomic.AddInt32(&disseminationAttempts, int32(1))
+		disseminationAttempts.Add(1)
 	}
 
 	emitter := newBatchingEmitter(10, 1, time.Duration(100)*time.Millisecond, cb)
@@ -41,7 +41,7 @@ func TestBatchingEmitterStop(t *testing.T) {
 	time.Sleep(time.Duration(100) * time.Millisecond)
 	emitter.Stop()
 	time.Sleep(time.Duration(1000) * time.Millisecond)
-	require.True(t, atomic.LoadInt32(&disseminationAttempts) < int32(5))
+	require.Less(t, disseminationAttempts.Load(), int32(5))
 }
 
 func TestBatchingEmitterExpiration(t *testing.T) {

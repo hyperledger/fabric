@@ -26,7 +26,7 @@ func TestCreateProcessor(t *testing.T) {
 	env := protoutil.MarshalOrPanic(&common.Envelope{Payload: protoutil.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{ChannelId: "myc", TxId: "tid", Type: invalidType}), SignatureHeader: protoutil.MarshalOrPanic(&common.SignatureHeader{Creator: []byte("creator"), Nonce: []byte("nonce")})}}), Signature: []byte("signature")})
 
 	_, _, err := f.CreateProcessor(env)
-	require.Equal(t, err.Error(), "ValidationCode = UNKNOWN_TX_TYPE, ActualErr = invalid transaction type -1")
+	require.EqualError(t, err, "ValidationCode = UNKNOWN_TX_TYPE, ActualErr = invalid transaction type -1")
 }
 
 func TestBasicTxValidity(t *testing.T) {
@@ -101,5 +101,5 @@ func TestBasicTxValidity(t *testing.T) {
 	env := protoutil.MarshalOrPanic(&common.Envelope{Payload: protoutil.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{ChannelId: "myc", TxId: "tid", Type: int32(common.HeaderType_CONFIG)}), SignatureHeader: protoutil.MarshalOrPanic(&common.SignatureHeader{Creator: []byte("creator"), Nonce: []byte("nonce")})}}), Signature: []byte("signature")})
 
 	_, _, err := f.CreateProcessor(env)
-	require.Equal(t, err.Error(), "ValidationCode = UNKNOWN_TX_TYPE, ActualErr = invalid transaction type 1")
+	require.EqualError(t, err, "ValidationCode = UNKNOWN_TX_TYPE, ActualErr = invalid transaction type 1")
 }

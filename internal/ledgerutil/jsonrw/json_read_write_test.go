@@ -189,5 +189,5 @@ func TestJSONFileWriter(t *testing.T) {
 	// Read from generated output file
 	output, err := os.ReadFile(fp)
 	require.NoError(t, err)
-	require.Equal(t, expectedOutputJSON, string(output))
+	require.JSONEq(t, expectedOutputJSON, string(output))
 }

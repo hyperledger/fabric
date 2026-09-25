@@ -191,7 +191,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 		listAll := &types.ChannelList{}
 		err := json.Unmarshal(resp.Body.Bytes(), listAll)
 		require.NoError(t, err, "cannot be unmarshaled")
-		require.Equal(t, 2, len(listAll.Channels))
+		require.Len(t, listAll.Channels, 2)
 		require.Equal(t, list.SystemChannel, listAll.SystemChannel)
 		m := make(map[string]bool)
 		for _, item := range listAll.Channels {
@@ -217,7 +217,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 		listAll := &types.ChannelList{}
 		err := json.Unmarshal(resp.Body.Bytes(), listAll)
 		require.NoError(t, err, "cannot be unmarshaled")
-		require.Equal(t, 0, len(listAll.Channels))
+		require.Empty(t, listAll.Channels)
 		require.NotNil(t, listAll.Channels)
 		require.Nil(t, listAll.SystemChannel)
 	})
@@ -238,7 +238,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 			listAll := &types.ChannelList{}
 			err := json.Unmarshal(resp.Body.Bytes(), listAll)
 			require.NoError(t, err, "cannot be unmarshaled")
-			require.Equal(t, 0, len(listAll.Channels))
+			require.Empty(t, listAll.Channels)
 			require.Nil(t, listAll.Channels)
 			require.Nil(t, listAll.SystemChannel)
 		}

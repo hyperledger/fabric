@@ -11,7 +11,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWorker(t *testing.T) {
@@ -53,5 +53,5 @@ func TestWorker(t *testing.T) {
 
 	wg.Wait()
 
-	assert.Len(t, workDone, 13)
+	require.Len(t, workDone, 13)
 }

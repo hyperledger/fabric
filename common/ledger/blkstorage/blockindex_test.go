@@ -284,7 +284,7 @@ func TestExportUniqueTxIDs(t *testing.T) {
 	require.Empty(t, fileHashes)
 	files, err := os.ReadDir(testSnapshotDir)
 	require.NoError(t, err)
-	require.Len(t, files, 0)
+	require.Empty(t, files)
 
 	// add genesis block and test the exported bytes
 	bg, gb := testutil.NewBlockGenerator(t, "myChannel", false)

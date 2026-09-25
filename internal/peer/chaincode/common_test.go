@@ -40,7 +40,7 @@ func TestCheckChaincodeCmdParamsWithNewCallingSchema(t *testing.T) {
 	require := require.New(t)
 	result := checkChaincodeCmdParams(&cobra.Command{})
 
-	require.Nil(result)
+	require.NoError(result)
 }
 
 func TestCheckChaincodeCmdParamsWithOldCallingSchema(t *testing.T) {
@@ -50,7 +50,7 @@ func TestCheckChaincodeCmdParamsWithOldCallingSchema(t *testing.T) {
 	require := require.New(t)
 	result := checkChaincodeCmdParams(&cobra.Command{})
 
-	require.Nil(result)
+	require.NoError(result)
 }
 
 func TestCheckChaincodeCmdParamsWithoutName(t *testing.T) {
@@ -236,7 +236,7 @@ func TestCollectionParsing(t *testing.T) {
 	require.Equal(t, "foo", conf.GetName())
 	require.True(t, proto.Equal(pol, conf.GetMemberOrgsPolicy().GetSignaturePolicy()))
 	require.Equal(t, 10, int(conf.GetBlockToLive()))
-	require.Equal(t, true, conf.GetMemberOnlyRead())
+	require.True(t, conf.GetMemberOnlyRead())
 	require.Nil(t, conf.GetEndorsementPolicy())
 	t.Logf("conf=%s", conf)
 
@@ -252,7 +252,7 @@ func TestCollectionParsing(t *testing.T) {
 	require.Equal(t, "foo", conf.GetName())
 	require.True(t, proto.Equal(pol, conf.GetMemberOrgsPolicy().GetSignaturePolicy()))
 	require.Equal(t, 10, int(conf.GetBlockToLive()))
-	require.Equal(t, true, conf.GetMemberOnlyRead())
+	require.True(t, conf.GetMemberOnlyRead())
 	require.Nil(t, conf.GetEndorsementPolicy())
 	t.Logf("conf=%s", conf)
 
@@ -267,7 +267,7 @@ func TestCollectionParsing(t *testing.T) {
 	require.Equal(t, "foo", conf.GetName())
 	require.True(t, proto.Equal(pol, conf.GetMemberOrgsPolicy().GetSignaturePolicy()))
 	require.Equal(t, 10, int(conf.GetBlockToLive()))
-	require.Equal(t, true, conf.GetMemberOnlyRead())
+	require.True(t, conf.GetMemberOnlyRead())
 	require.True(t, proto.Equal(pol, conf.GetEndorsementPolicy().GetSignaturePolicy()))
 	t.Logf("conf=%s", conf)
 
@@ -282,7 +282,7 @@ func TestCollectionParsing(t *testing.T) {
 	require.Equal(t, "foo", conf.GetName())
 	require.True(t, proto.Equal(pol, conf.GetMemberOrgsPolicy().GetSignaturePolicy()))
 	require.Equal(t, 10, int(conf.GetBlockToLive()))
-	require.Equal(t, true, conf.GetMemberOnlyRead())
+	require.True(t, conf.GetMemberOnlyRead())
 	require.Equal(t, "/Channel/Application/Endorsement", conf.GetEndorsementPolicy().GetChannelConfigPolicyReference())
 	t.Logf("conf=%s", conf)
 
@@ -414,7 +414,7 @@ func TestInitCmdFactoryFailures(t *testing.T) {
 	require := require.New(t)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.Nil(err)
+	require.NoError(err)
 
 	// failure validating peer connection parameters
 	resetFlags()
@@ -730,7 +730,7 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 			mockCF.BroadcastClient,
 		)
 		require.Error(t, err)
-		require.Equal(t, err.Error(), "transaction invalidated with status (ENDORSEMENT_POLICY_FAILURE)")
+		require.EqualError(t, err, "transaction invalidated with status (ENDORSEMENT_POLICY_FAILURE)")
 	})
 
 	t.Run("failure - deliver returns response status instead of block", func(t *testing.T) {
@@ -756,7 +756,7 @@ func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {
 			mockCF.BroadcastClient,
 		)
 		require.Error(t, err)
-		require.Equal(t, err.Error(), "deliver completed with status (FORBIDDEN) before txid received")
+		require.EqualError(t, err, "deliver completed with status (FORBIDDEN) before txid received")
 	})
 
 	t.Run(" failure - timeout occurs - both deliver clients don't return an event with the expected txid before timeout", func(t *testing.T) {
@@ -798,7 +798,7 @@ func TestProcessProposals(t *testing.T) {
 		responses, err := processProposals([]pb.EndorserClient{mockClients[0]}, signedProposal)
 		require.NoError(t, err)
 		require.Len(t, responses, 1)
-		require.Equal(t, responses[0].GetResponse().GetStatus(), int32(200))
+		require.Equal(t, int32(200), responses[0].GetResponse().GetStatus())
 	})
 	t.Run("should process a proposal for multiple peers", func(t *testing.T) {
 		responses, err := processProposals(mockClients, signedProposal)
@@ -810,7 +810,7 @@ func TestProcessProposals(t *testing.T) {
 			statuses = append(statuses, response.GetResponse().GetStatus())
 		}
 		slices.Sort(statuses)
-		require.EqualValues(t, []int32{200, 300, 400, 500}, statuses)
+		require.Equal(t, []int32{200, 300, 400, 500}, statuses)
 	})
 	t.Run("should return an error from processing a proposal for a single peer", func(t *testing.T) {
 		responses, err := processProposals([]pb.EndorserClient{mockErrorClient}, signedProposal)

@@ -142,7 +142,7 @@ func (f *fetcherMock) fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtData
 		}
 	}
 	require.True(f.t, digests(f.expectedDigests).Equal(dig2src.keys()))
-	require.Equal(f.t, len(f.expectedEndorsers), len(uniqueEndorsements))
+	require.Len(f.t, uniqueEndorsements, len(f.expectedEndorsers))
 	args := f.Called(dig2src)
 	if args.Get(1) == nil {
 		return args.Get(0).(*privdatacommon.FetchedPvtDataContainer), nil
@@ -449,7 +449,7 @@ func TestPvtDataCollections_Marshal(t *testing.T) {
 	assertion := require.New(t)
 	assertion.NoError(err)
 	assertion.NotNil(bytes)
-	assertion.Equal(2, len(bytes))
+	assertion.Len(bytes, 2)
 }
 
 func TestPvtDataCollections_Unmarshal(t *testing.T) {
@@ -478,13 +478,13 @@ func TestPvtDataCollections_Unmarshal(t *testing.T) {
 	assertion := require.New(t)
 	assertion.NoError(err)
 	assertion.NotNil(bytes)
-	assertion.Equal(1, len(bytes))
+	assertion.Len(bytes, 1)
 
 	var newCol util.PvtDataCollections
 
 	err = newCol.Unmarshal(bytes)
 	assertion.NoError(err)
-	assertion.Equal(1, len(newCol))
+	assertion.Len(newCol, 1)
 	assertion.Equal(newCol[0].SeqInBlock, collection[0].SeqInBlock)
 	assertion.True(pb.Equal(newCol[0].WriteSet, collection[0].WriteSet))
 }
@@ -569,14 +569,14 @@ var expectedCommittedPrivateData3 = map[uint64]*ledger.TxPvtData{}
 
 func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
-	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	require.NoErrorf(t, err, "Failed to setup local msp for testing, got err %s", err)
 	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
-	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	require.NoErrorf(t, err, "Serialize should have succeeded, got err %s", err)
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
-	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	require.NoErrorf(t, err, "Could not sign identity, got err %s", err)
 	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
@@ -753,9 +753,9 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		missingPrivateDataPassed2Ledger := blockAndPvtData.MissingPvtData
 		require.Len(t, missingPrivateDataPassed2Ledger, 1)
 		require.Len(t, missingPrivateDataPassed2Ledger[1], 1)
-		require.Equal(t, missingPrivateDataPassed2Ledger[1][0].Namespace, "ns2")
-		require.Equal(t, missingPrivateDataPassed2Ledger[1][0].Collection, "c1")
-		require.Equal(t, missingPrivateDataPassed2Ledger[1][0].IsEligible, true)
+		require.Equal(t, "ns2", missingPrivateDataPassed2Ledger[1][0].Namespace)
+		require.Equal(t, "c1", missingPrivateDataPassed2Ledger[1][0].Collection)
+		require.True(t, missingPrivateDataPassed2Ledger[1][0].IsEligible)
 
 		commitOpts := args.Get(1).(*ledger.CommitOptions)
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
@@ -811,7 +811,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		require.Len(t, privateDataPassed2Ledger[1].WriteSet.GetNsPvtRwset()[0].GetCollectionPvtRwset(), 1)
 
 		missingPrivateDataPassed2Ledger := blockAndPvtData.MissingPvtData
-		require.Len(t, missingPrivateDataPassed2Ledger, 0)
+		require.Empty(t, missingPrivateDataPassed2Ledger)
 
 		commitOpts := args.Get(1).(*ledger.CommitOptions)
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
@@ -875,14 +875,14 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 		hash, hence it will fetch ns1:c1 from other peers
 	*/
 	err := msptesttools.LoadMSPSetupForTesting()
-	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	require.NoErrorf(t, err, "Failed to setup local msp for testing, got err %s", err)
 	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
-	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	require.NoErrorf(t, err, "Serialize should have succeeded, got err %s", err)
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
-	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	require.NoErrorf(t, err, "Could not sign identity, got err %s", err)
 	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
@@ -998,14 +998,14 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 
 func TestCoordinatorStoreBlock(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
-	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	require.NoErrorf(t, err, "Failed to setup local msp for testing, got err %s", err)
 	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
-	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	require.NoErrorf(t, err, "Serialize should have succeeded, got err %s", err)
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
-	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	require.NoErrorf(t, err, "Could not sign identity, got err %s", err)
 	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
@@ -1299,14 +1299,14 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 
 func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
-	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	require.NoErrorf(t, err, "Failed to setup local msp for testing, got err %s", err)
 	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
-	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	require.NoErrorf(t, err, "Serialize should have succeeded, got err %s", err)
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
-	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	require.NoErrorf(t, err, "Could not sign identity, got err %s", err)
 	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
@@ -1374,14 +1374,14 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 	// Scenario: we are missing private data (c2 in ns3) and it cannot be obtained from any peer.
 	// Block needs to be committed with missing private data.
 	err := msptesttools.LoadMSPSetupForTesting()
-	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	require.NoErrorf(t, err, "Failed to setup local msp for testing, got err %s", err)
 	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
-	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	require.NoErrorf(t, err, "Serialize should have succeeded, got err %s", err)
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
-	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	require.NoErrorf(t, err, "Could not sign identity, got err %s", err)
 	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
@@ -1487,14 +1487,14 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 	// Scenario: we are missing private data (c2 in ns3) and it cannot be obtained from any peer.
 	// Block needs to be committed with missing private data.
 	err := msptesttools.LoadMSPSetupForTesting()
-	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	require.NoErrorf(t, err, "Failed to setup local msp for testing, got err %s", err)
 	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
-	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	require.NoErrorf(t, err, "Serialize should have succeeded, got err %s", err)
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
-	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	require.NoErrorf(t, err, "Could not sign identity, got err %s", err)
 	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
@@ -1560,14 +1560,14 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 func TestCoordinatorGetBlocks(t *testing.T) {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 	err := msptesttools.LoadMSPSetupForTesting()
-	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	require.NoErrorf(t, err, "Failed to setup local msp for testing, got err %s", err)
 	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
-	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	require.NoErrorf(t, err, "Serialize should have succeeded, got err %s", err)
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
-	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	require.NoErrorf(t, err, "Could not sign identity, got err %s", err)
 	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
@@ -1807,14 +1807,14 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	// Also - we check that at commit time - the coordinator concluded that
 	// no missing private data was found.
 	err := msptesttools.LoadMSPSetupForTesting()
-	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	require.NoErrorf(t, err, "Failed to setup local msp for testing, got err %s", err)
 	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
-	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	require.NoErrorf(t, err, "Serialize should have succeeded, got err %s", err)
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
-	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	require.NoErrorf(t, err, "Could not sign identity, got err %s", err)
 	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
@@ -1880,14 +1880,14 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 
 func TestCoordinatorMetrics(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
-	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	require.NoErrorf(t, err, "Failed to setup local msp for testing, got err %s", err)
 	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
-	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	require.NoErrorf(t, err, "Serialize should have succeeded, got err %s", err)
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
-	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	require.NoErrorf(t, err, "Could not sign identity, got err %s", err)
 	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
@@ -1966,26 +1966,26 @@ func TestCoordinatorMetrics(t *testing.T) {
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeValidationDuration.WithArgsForCall(0),
 	)
-	require.True(t, testMetricProvider.FakeValidationDuration.ObserveArgsForCall(0) > 0)
+	require.Positive(t, testMetricProvider.FakeValidationDuration.ObserveArgsForCall(0))
 	require.Equal(
 		t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeListMissingPrivateDataDuration.WithArgsForCall(0),
 	)
-	require.True(t, testMetricProvider.FakeListMissingPrivateDataDuration.ObserveArgsForCall(0) > 0)
+	require.Positive(t, testMetricProvider.FakeListMissingPrivateDataDuration.ObserveArgsForCall(0))
 	require.Equal(
 		t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeFetchDuration.WithArgsForCall(0),
 	)
 	// fetch duration metric only reported when fetching from remote peer
-	require.True(t, testMetricProvider.FakeFetchDuration.ObserveArgsForCall(0) > 0)
+	require.Positive(t, testMetricProvider.FakeFetchDuration.ObserveArgsForCall(0))
 	require.Equal(
 		t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeCommitPrivateDataDuration.WithArgsForCall(0),
 	)
-	require.True(t, testMetricProvider.FakeCommitPrivateDataDuration.ObserveArgsForCall(0) > 0)
+	require.Positive(t, testMetricProvider.FakeCommitPrivateDataDuration.ObserveArgsForCall(0))
 	require.Equal(
 		t,
 		[]string{"channel", "testchannelid"},

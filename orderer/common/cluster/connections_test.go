@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cluster_test
 
 import (
+	"errors"
 	"sync"
 	"testing"
 
@@ -24,21 +25,28 @@ func TestConcurrentConnections(t *testing.T) {
 	// and also ensure they all return the same connection reference
 	n := 100
 	var wg sync.WaitGroup
-	wg.Add(n)
+	errs := make(chan error, n)
 	dialer := &mocks.SecureDialer{}
 	conn := &grpc.ClientConn{}
 	dialer.On("Dial", mock.Anything, mock.Anything).Return(conn, nil)
 	connStore := cluster.NewConnectionStore(dialer, &disabled.Gauge{})
-	connect := func() {
-		defer wg.Done()
-		conn2, err := connStore.Connection("", nil)
-		require.NoError(t, err)
-		require.True(t, conn2 == conn)
-	}
 	for range n {
-		go connect()
+		wg.Go(func() {
+			conn2, err := connStore.Connection("", nil)
+			if err != nil {
+				errs <- err
+				return
+			}
+			if conn2 != conn {
+				errs <- errors.New("connections differ")
+			}
+		})
 	}
 	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
 	dialer.AssertNumberOfCalls(t, "Dial", 1)
 }
 
@@ -79,17 +87,19 @@ func TestConcurrentLookupMiss(t *testing.T) {
 	connStore.Connections = spy
 
 	var goroutinesExited sync.WaitGroup
-	goroutinesExited.Add(2)
+	errs := make(chan error, 2)
 
 	for range 2 {
-		go func() {
-			defer goroutinesExited.Done()
+		goroutinesExited.Go(func() {
 			conn2, err := connStore.Connection("", nil)
-			require.NoError(t, err)
-			// Ensure all calls for Connection() return the same reference
-			// of the gRPC connection.
-			require.True(t, conn2 == conn)
-		}()
+			if err != nil {
+				errs <- err
+				return
+			}
+			if conn2 != conn {
+				errs <- errors.New("connections differ")
+			}
+		})
 	}
 	// Wait for the Lookup() to be invoked by both
 	// goroutines
@@ -102,4 +112,8 @@ func TestConcurrentLookupMiss(t *testing.T) {
 	close(spy.lookupDelay)
 	// Wait for all goroutines to exit
 	goroutinesExited.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
 }

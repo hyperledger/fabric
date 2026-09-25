@@ -144,7 +144,7 @@ func TestReinitialization(t *testing.T) {
 	fl, err := tev.flf.GetOrCreate("testchannelid")
 	ledger1, ok := fl.(*FileLedger)
 	require.NoError(t, err, "Expected to successfully get test channel")
-	require.Equal(t, 1, len(tev.flf.ChannelIDs()), "Expected not new channel to be created")
+	require.Len(t, tev.flf.ChannelIDs(), 1, "Expected not new channel to be created")
 	require.True(t, ok, "Expected type assertion to succeed")
 	require.Equal(t, uint64(2), ledger1.Height(), "Block height should be 2. Got %v", ledger1.Height())
 
@@ -157,7 +157,7 @@ func TestReinitialization(t *testing.T) {
 
 	// assert expected ledgers exist
 	channels := provider2.ChannelIDs()
-	require.Equal(t, 1, len(channels), "Should have recovered the channel")
+	require.Len(t, channels, 1, "Should have recovered the channel")
 
 	// get the existing test channel ledger
 	ledger2, err := provider2.GetOrCreate(channels[0])

@@ -23,8 +23,8 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -40,11 +40,11 @@ func TestNodeIdentitiesByID(t *testing.T) {
 
 		sID := &msp.SerializedIdentity{}
 		err := proto.Unmarshal(m[id], sID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		id2, ok := m.IdentityToID(m[id])
-		assert.True(t, ok)
-		assert.Equal(t, id, id2)
+		require.True(t, ok)
+		require.Equal(t, id, id2)
 	}
 
 	_, ok := m.IdentityToID(protoutil.MarshalOrPanic(&msp.SerializedIdentity{
@@ -52,10 +52,10 @@ func TestNodeIdentitiesByID(t *testing.T) {
 		Mspid:   "OrdererOrg",
 	}))
 
-	assert.False(t, ok)
+	require.False(t, ok)
 
 	_, ok = m.IdentityToID([]byte{1, 2, 3})
-	assert.False(t, ok)
+	require.False(t, ok)
 }
 
 func TestVerifySignature(t *testing.T) {
@@ -79,14 +79,14 @@ func TestVerifySignature(t *testing.T) {
 		err := v.VerifySignature(types.Signature{
 			ID: 2,
 		})
-		assert.EqualError(t, err, "node with id of 2 doesn't exist")
+		require.EqualError(t, err, "node with id of 2 doesn't exist")
 	})
 
 	t.Run("signature doesn't verify", func(t *testing.T) {
 		err := v.VerifySignature(types.Signature{
 			ID: 3,
 		})
-		assert.EqualError(t, err, "bad signature")
+		require.EqualError(t, err, "bad signature")
 	})
 }
 
@@ -387,8 +387,8 @@ func TestVerifyConsenterSig(t *testing.T) {
 
 			_, err := v.VerifyConsenterSig(signature, proposal)
 
-			assert.Error(t, err)
-			assert.Equal(t, testCase.expectedErr, strings.ReplaceAll(err.Error(), "\u00a0", " "))
+			require.Error(t, err)
+			require.Equal(t, testCase.expectedErr, strings.ReplaceAll(err.Error(), "\u00a0", " "))
 		})
 	}
 }
@@ -586,13 +586,13 @@ func TestVerifyProposal(t *testing.T) {
 			tuple := &smartbft.ByteBufferTuple{}
 			_ = tuple.FromBytes(proposal.Payload)
 			blockMD := &cb.BlockMetadata{}
-			assert.NoError(t, proto.Unmarshal(tuple.B, blockMD))
+			require.NoError(t, proto.Unmarshal(tuple.B, blockMD))
 
 			sigMD := &cb.Metadata{}
-			assert.NoError(t, proto.Unmarshal(blockMD.GetMetadata()[cb.BlockMetadataIndex_SIGNATURES], sigMD))
+			require.NoError(t, proto.Unmarshal(blockMD.GetMetadata()[cb.BlockMetadataIndex_SIGNATURES], sigMD))
 
 			ordererMetadataFromSignature := &cb.OrdererBlockMetadata{}
-			assert.NoError(t, proto.Unmarshal(sigMD.GetValue(), ordererMetadataFromSignature))
+			require.NoError(t, proto.Unmarshal(sigMD.GetValue(), ordererMetadataFromSignature))
 
 			// Mutate the OrdererBlockMetadata
 			testCase.ordererBlockMetadataMutator(ordererMetadataFromSignature)
@@ -620,17 +620,17 @@ func TestVerifyProposal(t *testing.T) {
 			reqInfo, err := v.VerifyProposal(proposal)
 
 			if testCase.expectedErr == "" {
-				assert.NoError(t, err)
-				assert.NotNil(t, reqInfo)
-				assert.Len(t, reqInfo, 1)
-				assert.Equal(t, hashOfZero, reqInfo[0].ClientID)
-				assert.Equal(t, hashOfZero, reqInfo[0].ID)
+				require.NoError(t, err)
+				require.NotNil(t, reqInfo)
+				require.Len(t, reqInfo, 1)
+				require.Equal(t, hashOfZero, reqInfo[0].ClientID)
+				require.Equal(t, hashOfZero, reqInfo[0].ID)
 				return
 			}
 
-			assert.Error(t, err)
-			assert.Equal(t, testCase.expectedErr, strings.ReplaceAll(err.Error(), "\u00a0", " "))
-			assert.Nil(t, reqInfo)
+			require.Error(t, err)
+			require.Equal(t, testCase.expectedErr, strings.ReplaceAll(err.Error(), "\u00a0", " "))
+			require.Nil(t, reqInfo)
 		})
 	}
 }

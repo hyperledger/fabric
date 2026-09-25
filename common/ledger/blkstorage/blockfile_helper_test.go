@@ -152,7 +152,7 @@ func TestGetLedgersBootstrappedFromSnapshot(t *testing.T) {
 
 		ledgersFromSnapshot, err := GetLedgersBootstrappedFromSnapshot(testDir)
 		require.NoError(t, err)
-		require.Equal(t, 0, len(ledgersFromSnapshot))
+		require.Empty(t, ledgersFromSnapshot)
 	})
 
 	t.Run("with_bootstrapping_snapshot_info_file", func(t *testing.T) {

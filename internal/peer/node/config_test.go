@@ -161,7 +161,7 @@ func TestLedgerConfig(t *testing.T) {
 				viper.Set(k, v)
 			}
 			conf := ledgerConfig()
-			require.EqualValues(t, _test.expected, conf)
+			require.Equal(t, _test.expected, conf)
 		})
 	}
 }

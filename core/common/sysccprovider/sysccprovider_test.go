@@ -20,5 +20,5 @@ func TestString(t *testing.T) {
 	}
 
 	require.NotNil(t, chaincodeInstance.String(), "str should not be nil")
-	require.Equal(t, chaincodeInstance.String(), "ChannelID.ChaincodeName#ChaincodeVersion", "str should be the correct value")
+	require.Equal(t, "ChannelID.ChaincodeName#ChaincodeVersion", chaincodeInstance.String(), "str should be the correct value")
 }

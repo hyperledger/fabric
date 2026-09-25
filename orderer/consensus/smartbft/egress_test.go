@@ -16,8 +16,8 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft/mocks"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEgressSendConsensus(t *testing.T) {
@@ -59,7 +59,7 @@ func TestEgressSendTransaction(t *testing.T) {
 		badTransactionAttempt := func() {
 			egress.SendTransaction(42, []byte{1, 2, 3})
 		}
-		assert.Panics(t, badTransactionAttempt)
+		require.Panics(t, badTransactionAttempt)
 	})
 
 	t.Run("valid transaction", func(t *testing.T) {

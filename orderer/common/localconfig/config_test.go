@@ -21,7 +21,7 @@ func TestLoadGoodConfig(t *testing.T) {
 	cfg, err := cc.load()
 	require.NoError(t, err)
 	require.NotNil(t, cfg, "Could not load config")
-	require.Nil(t, err, "Load good config returned unexpected error")
+	require.NoError(t, err, "Load good config returned unexpected error")
 }
 
 func TestMissingConfigValueOverridden(t *testing.T) {
@@ -71,7 +71,7 @@ func TestLoadMissingConfigFile(t *testing.T) {
 	cc := &configCache{}
 	cfg, err := cc.load()
 	require.Nil(t, cfg, "Loaded missing config file")
-	require.NotNil(t, err, "Loaded missing config file without error")
+	require.Error(t, err, "Loaded missing config file without error")
 }
 
 func TestLoadMalformedConfigFile(t *testing.T) {
@@ -79,7 +79,7 @@ func TestLoadMalformedConfigFile(t *testing.T) {
 
 	// Create a malformed orderer.yaml file in temp dir
 	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
-	require.Nil(t, err, "Error creating file: %s", err)
+	require.NoErrorf(t, err, "Error creating file: %s", err)
 	f.WriteString("General: 42")
 	require.NoError(t, f.Close(), "Error closing file")
 
@@ -88,7 +88,7 @@ func TestLoadMalformedConfigFile(t *testing.T) {
 	cc := &configCache{}
 	cfg, err := cc.load()
 	require.Nil(t, cfg, "Loaded missing config file")
-	require.NotNil(t, err, "Loaded missing config file without error")
+	require.Error(t, err, "Loaded missing config file without error")
 }
 
 // TestEnvInnerVar verifies that with the Unmarshal function that
@@ -179,7 +179,7 @@ Consensus:
 `
 
 	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
-	require.Nil(t, err, "Error creating file: %s", err)
+	require.NoErrorf(t, err, "Error creating file: %s", err)
 	f.WriteString(content)
 	require.NoError(t, f.Close(), "Error closing file")
 
@@ -201,8 +201,8 @@ Consensus:
 	}{}
 	err = mapstructure.Decode(consensus, foo)
 	require.NoError(t, err, "Failed to decode Consensus to struct")
-	require.Equal(t, foo.Foo, "bar")
-	require.Equal(t, foo.Hello.World, 42)
+	require.Equal(t, "bar", foo.Foo)
+	require.Equal(t, 42, foo.Hello.World)
 }
 
 func TestConnectionTimeout(t *testing.T) {
@@ -223,7 +223,7 @@ func TestConnectionTimeout(t *testing.T) {
 		cfg, err := cc.load()
 		require.NotNil(t, cfg, "Could not load config")
 		require.NoError(t, err, "Load good config returned unexpected error")
-		require.Equal(t, cfg.General.ConnectionTimeout, 10*time.Second)
+		require.Equal(t, 10*time.Second, cfg.General.ConnectionTimeout)
 	})
 }
 

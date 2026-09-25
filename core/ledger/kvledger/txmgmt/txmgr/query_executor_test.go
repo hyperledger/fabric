@@ -238,10 +238,10 @@ func testGetPvtdataHash(t *testing.T, env testEnv) {
 			},
 		},
 	}
-	require.Equal(t, len(expectedRwSet.NsRwSets), len(txrwset.NsRwSets))
+	require.Len(t, txrwset.NsRwSets, len(expectedRwSet.NsRwSets))
 	require.Equal(t, expectedRwSet.NsRwSets[0].NameSpace, txrwset.NsRwSets[0].NameSpace)
 	require.True(t, proto.Equal(expectedRwSet.NsRwSets[0].KvRwSet, txrwset.NsRwSets[0].KvRwSet))
-	require.Equal(t, len(expectedRwSet.NsRwSets[0].CollHashedRwSets), len(txrwset.NsRwSets[0].CollHashedRwSets))
+	require.Len(t, txrwset.NsRwSets[0].CollHashedRwSets, len(expectedRwSet.NsRwSets[0].CollHashedRwSets))
 	require.Equal(t, expectedRwSet.NsRwSets[0].CollHashedRwSets[0].CollectionName, txrwset.NsRwSets[0].CollHashedRwSets[0].CollectionName)
 	require.True(t, proto.Equal(expectedRwSet.NsRwSets[0].CollHashedRwSets[0].HashedRwSet, txrwset.NsRwSets[0].CollHashedRwSets[0].HashedRwSet))
 }

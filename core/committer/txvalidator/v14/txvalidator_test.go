@@ -299,7 +299,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	require.True(t, txsfltr.IsInvalid(0))
 
 	// We expect the tx to be invalid because of a bad txid
-	require.True(t, txsfltr.Flag(0) == peer.TxValidationCode_BAD_PROPOSAL_TXID)
+	require.Equal(t, peer.TxValidationCode_BAD_PROPOSAL_TXID, txsfltr.Flag(0))
 }
 
 func createCCUpgradeEnvelope(channelID, chaincodeName, chaincodeVersion string, signer msp.SigningIdentity) (*common.Envelope, error) {
@@ -371,8 +371,8 @@ func TestGetTxCCInstance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get chaincode from tx error: %s", err)
 	}
-	require.EqualValues(t, expectInvokeCCIns, invokeCCIns)
-	require.EqualValues(t, expectUpgradeCCIns, upgradeCCIns)
+	require.Equal(t, expectInvokeCCIns, invokeCCIns)
+	require.Equal(t, expectUpgradeCCIns, upgradeCCIns)
 }
 
 func TestInvalidTXsForUpgradeCC(t *testing.T) {
@@ -419,7 +419,7 @@ func TestInvalidTXsForUpgradeCC(t *testing.T) {
 	}
 	tValidator.invalidTXsForUpgradeCC(txsChaincodeNames, upgradedChaincodes, txsfltr)
 
-	require.EqualValues(t, expectTxsFltr, txsfltr)
+	require.Equal(t, expectTxsFltr, txsfltr)
 }
 
 func constructLedgerMgrWithTestDefaults(t *testing.T) (*ledgermgmt.LedgerMgr, func()) {

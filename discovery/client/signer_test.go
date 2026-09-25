@@ -47,18 +47,26 @@ func TestDifferentMessages(t *testing.T) {
 	}
 
 	ms := NewMemoizeSigner(sign, n)
+	type result struct {
+		err error
+		i   uint
+		sig []byte
+	}
 	parallelSignRange := func(start, end uint) {
+		res := make(chan result, end-start)
 		var wg sync.WaitGroup
-		wg.Add(int(end - start))
 		for i := start; i < end; i++ {
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				sig, err := ms.Sign([]byte{byte(i)})
-				require.NoError(t, err)
-				require.Equal(t, []byte{byte(i)}, sig)
-			}()
+				res <- result{err, i, sig}
+			})
 		}
 		wg.Wait()
+		close(res)
+		for r := range res {
+			require.NoError(t, r.err)
+			require.Equal(t, []byte{byte(r.i)}, r.sig)
+		}
 	}
 
 	// Query once
@@ -77,7 +85,7 @@ func TestDifferentMessages(t *testing.T) {
 
 	// Ensure that some of the early messages 0-n were purged from memory
 	parallelSignRange(0, n)
-	require.True(t, oldSignedInvokedCount < signedInvokedCount.Load())
+	require.Less(t, oldSignedInvokedCount, signedInvokedCount.Load())
 }
 
 func TestFailure(t *testing.T) {

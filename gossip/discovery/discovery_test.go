@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -476,8 +475,8 @@ func TestClone(t *testing.T) {
 
 	nm2 := nm.Clone()
 	require.Equal(t, *nm, nm2, "Clones are different")
-	require.False(t, nm.Properties == nm2.Properties, "Cloning should be deep and not shallow")
-	require.False(t, nm.Envelope == nm2.Envelope, "Cloning should be deep and not shallow")
+	require.NotSame(t, nm.Properties, nm2.Properties, "Cloning should be deep and not shallow")
+	require.NotSame(t, nm.Envelope, nm2.Envelope, "Cloning should be deep and not shallow")
 }
 
 func TestHasExternalEndpoints(t *testing.T) {
@@ -600,10 +599,10 @@ func TestNoSigningIfNoMembership(t *testing.T) {
 	inst := createDiscoveryInstance(8931, "foreveralone", nil)
 	defer inst.Stop()
 	time.Sleep(defaultTestConfig.AliveTimeInterval * 10)
-	assert.Zero(t, inst.comm.signCount.Load())
+	require.Zero(t, inst.comm.signCount.Load())
 
 	inst.InitiateSync(10000)
-	assert.Zero(t, inst.comm.signCount.Load())
+	require.Zero(t, inst.comm.signCount.Load())
 }
 
 func TestValidation(t *testing.T) {
@@ -1072,7 +1071,7 @@ func TestDisclosurePolicyWithPull(t *testing.T) {
 	for _, inst := range append(instances1, instances2...) {
 		portsOfKnownMembers := portsOfMembers(inst.GetMembership())
 		// Ensure the expected membership is equal to the actual membership
-		// of each peer. the portsOfMembers returns a sorted slice so assert.Equal does the job.
+		// of each peer. the portsOfMembers returns a sorted slice so require.Equal does the job.
 		require.Equal(t, peersThatShouldBeKnownToPeers[inst.port], portsOfKnownMembers)
 		// Next, check that internal endpoints aren't leaked across groups,
 		for _, knownPeer := range inst.GetMembership() {
@@ -1604,7 +1603,7 @@ func TestAliveMsgStore(t *testing.T) {
 
 func TestMemRespDisclosurePol(t *testing.T) {
 	pol := func(remotePeer *NetworkMember) (Sieve, EnvelopeFilter) {
-		assert.Equal(t, remotePeer.InternalEndpoint, remotePeer.Endpoint)
+		require.Equal(t, remotePeer.InternalEndpoint, remotePeer.Endpoint)
 		return func(_ *protoext.SignedGossipMessage) bool {
 				return remotePeer.Endpoint != "localhost:7879"
 			}, func(m *protoext.SignedGossipMessage) *proto.Envelope {
@@ -1613,7 +1612,7 @@ func TestMemRespDisclosurePol(t *testing.T) {
 	}
 
 	wasMembershipResponseReceived := func(msg *protoext.SignedGossipMessage) {
-		assert.Nil(t, msg.GetMemRes())
+		require.Nil(t, msg.GetMemRes())
 	}
 
 	d1 := createDiscoveryInstanceThatGossips(7878, "d1", []string{}, true, pol, defaultTestConfig)
@@ -1626,8 +1625,8 @@ func TestMemRespDisclosurePol(t *testing.T) {
 	// all peers know each other
 	assertMembership(t, []*gossipInstance{d1, d2, d3}, 2)
 	// d2 received some messages, but we asserted that none of them are membership responses.
-	assert.NotZero(t, d2.receivedMsgCount())
-	assert.NotZero(t, d2.sentMsgCount())
+	require.NotZero(t, d2.receivedMsgCount())
+	require.NotZero(t, d2.sentMsgCount())
 }
 
 func TestMembersByID(t *testing.T) {
@@ -1752,7 +1751,7 @@ func TestMembershipAfterExpiration(t *testing.T) {
 	mockTracker := &mockAnchorPeerTracker{[]string{anchorPeer}}
 
 	l, err := zap.NewDevelopment()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expired := make(chan struct{}, 1)
 
 	// use a custom logger to verify messages from expiration callback

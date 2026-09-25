@@ -100,7 +100,7 @@ func TestGetDeploymentPayload(t *testing.T) {
 
 	payload, err := platform.GetDeploymentPayload(chaincodePathFolderGradle)
 	require.NoError(t, err)
-	require.NotZero(t, len(payload))
+	require.NotEmpty(t, payload)
 
 	is := bytes.NewReader(payload)
 	gr, err := gzip.NewReader(is)

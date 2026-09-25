@@ -22,7 +22,7 @@ func TestSingleLayoutPlan(t *testing.T) {
 		"g2": {peer2Mock, peer3Mock},
 	}
 	plan := newPlan(layouts, groupEndorsers)
-	require.Equal(t, plan.size, 3) // total number of endorsers in all layouts
+	require.Equal(t, 3, plan.size) // total number of endorsers in all layouts
 
 	endorsers := plan.endorsers()
 	require.Len(t, endorsers, 3)
@@ -54,7 +54,7 @@ func TestSingleLayoutRetry(t *testing.T) {
 		"g2": {peer2Mock, peer3Mock, peer4Mock},
 	}
 	plan := newPlan(layouts, groupEndorsers)
-	require.Equal(t, plan.size, 5) // total number of endorsers in all layouts
+	require.Equal(t, 5, plan.size) // total number of endorsers in all layouts
 
 	endorsers := plan.endorsers()
 	require.Len(t, endorsers, 3)
@@ -93,7 +93,7 @@ func TestMultiLayoutRetry(t *testing.T) {
 		"g3": {peer4Mock},
 	}
 	plan := newPlan(layouts, groupEndorsers)
-	require.Equal(t, plan.size, 5) // total number of endorsers in all layouts
+	require.Equal(t, 5, plan.size) // total number of endorsers in all layouts
 
 	endorsers := plan.endorsers()
 	require.Len(t, endorsers, 2)
@@ -140,7 +140,7 @@ func TestMultiLayoutFailures(t *testing.T) {
 		"g3": {peer4Mock},
 	}
 	plan := newPlan(layouts, groupEndorsers)
-	require.Equal(t, plan.size, 5) // total number of endorsers in all layouts
+	require.Equal(t, 5, plan.size) // total number of endorsers in all layouts
 
 	endorsers := plan.endorsers() // first layout
 	require.Len(t, endorsers, 3)
@@ -193,7 +193,7 @@ func TestMultiLayoutFailures1(t *testing.T) {
 		"g3": {peer4Mock},
 	}
 	plan := newPlan(layouts, groupEndorsers)
-	require.Equal(t, plan.size, 5) // total number of endorsers in all layouts
+	require.Equal(t, 5, plan.size) // total number of endorsers in all layouts
 
 	endorsers := plan.endorsers() // first layout
 	require.Len(t, endorsers, 3)
@@ -233,7 +233,7 @@ func TestMultiPlan(t *testing.T) {
 	}
 	// plan 1 is used to determine the first endorser
 	plan1 := newPlan(layouts1, groupEndorsers1)
-	require.Equal(t, plan1.size, 2)
+	require.Equal(t, 2, plan1.size)
 
 	layouts2 := []*layout{
 		{required: map[string]int{"g1": 1, "g2": 1}},
@@ -247,7 +247,7 @@ func TestMultiPlan(t *testing.T) {
 	}
 	// plan 2 is derived from the chaincode interest from the first endorsement
 	plan2 := newPlan(layouts2, groupEndorsers2)
-	require.Equal(t, plan2.size, 5)
+	require.Equal(t, 5, plan2.size)
 
 	endorsers := plan1.endorsers()
 	require.Len(t, endorsers, 1)
@@ -279,7 +279,7 @@ func TestMultiPlanNoOverlap(t *testing.T) {
 	}
 	// plan 1 is used to determine the first endorser
 	plan1 := newPlan(layouts1, groupEndorsers1)
-	require.Equal(t, plan1.size, 2)
+	require.Equal(t, 2, plan1.size)
 
 	layouts2 := []*layout{
 		{required: map[string]int{"g2": 1, "g3": 1}},
@@ -290,7 +290,7 @@ func TestMultiPlanNoOverlap(t *testing.T) {
 	}
 	// plan 2 is derived from the chaincode interest from the first endorsement, but doesn't include first endorser
 	plan2 := newPlan(layouts2, groupEndorsers2)
-	require.Equal(t, plan2.size, 3)
+	require.Equal(t, 3, plan2.size)
 
 	endorsers := plan1.endorsers()
 	require.Len(t, endorsers, 1)

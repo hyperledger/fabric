@@ -90,7 +90,7 @@ func TestAllChaincodesInfo(t *testing.T) {
 	ccInfoProvider := &lscc.DeployedCCInfoProvider{}
 	deployedChaincodesInfo, err := ccInfoProvider.AllChaincodesInfo("testchannel", mockQE)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(deployedChaincodesInfo))
+	require.Len(t, deployedChaincodesInfo, 2)
 	require.Equal(t, cc1, deployedChaincodesInfo["cc1"])
 
 	// because ExplicitCollectionConfigPkg is a protobuf object, we have to compare individual fields for cc2

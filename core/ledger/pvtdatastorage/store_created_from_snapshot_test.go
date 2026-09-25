@@ -143,7 +143,7 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 
 		m, err = store.FetchBootKVHashes(25, 200, "ns", "eligible-coll")
 		require.NoError(t, err)
-		require.Len(t, m, 0)
+		require.Empty(t, m)
 
 		_, err = store.FetchBootKVHashes(26, 200, "ns", "eligible-coll")
 		require.EqualError(t, err, "unexpected call. Boot KV Hashes are persisted only for the data imported from snapshot")
@@ -243,15 +243,15 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 
 		missingDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, 4)
 		require.NoError(t, err)
-		require.Len(t, missingDataInfo, 0)
+		require.Empty(t, missingDataInfo)
 
 		m, err = store.FetchBootKVHashes(20, 200, "ns", "eligible-coll")
 		require.NoError(t, err)
-		require.Len(t, m, 0)
+		require.Empty(t, m)
 
 		m, err = store.FetchBootKVHashes(25, 250, "ns", "eligible-coll")
 		require.NoError(t, err)
-		require.Len(t, m, 0)
+		require.Empty(t, m)
 
 		m, err = store.FetchBootKVHashes(21, 210, "ns", "ineligible-coll")
 		require.NoError(t, err)
@@ -310,11 +310,11 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 
 		m, err = store.FetchBootKVHashes(20, 200, "ns", "eligible-coll")
 		require.NoError(t, err)
-		require.Len(t, m, 0)
+		require.Empty(t, m)
 
 		m, err = store.FetchBootKVHashes(21, 210, "ns", "ineligible-coll")
 		require.NoError(t, err)
-		require.Len(t, m, 0)
+		require.Empty(t, m)
 	})
 }
 

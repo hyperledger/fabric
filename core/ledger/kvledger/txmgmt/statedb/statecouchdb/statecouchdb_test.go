@@ -222,7 +222,7 @@ func TestGetVersionFromCache(t *testing.T) {
 	// db also, get version call would not update
 	// the cache.
 	ver, err := db.GetVersion("ns", "key1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Nil(t, ver)
 	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns", "key1")
 
@@ -315,7 +315,7 @@ func TestGetMultipleStatesFromCache(t *testing.T) {
 
 	// key5 does not exist at all while key3 and key4 does not exist in the cache
 	vvalues, err := db.GetStateMultipleKeys("ns", []string{"key1", "key2", "key3", "key4", "key5"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	vv1, err := constructVersionedValue(cacheValue1)
 	require.NoError(t, err)
 	vv2, err := constructVersionedValue(cacheValue2)
@@ -513,7 +513,7 @@ func TestUtilityFunctions(t *testing.T) {
 
 	// ValidateKeyValue should return nil for a valid key and value
 	err = db.ValidateKeyValue("testKey", []byte("Some random bytes"))
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// ValidateKeyValue should return an error for a key that is not a utf-8 valid string
 	err = db.ValidateKeyValue(string([]byte{0xff, 0xfe, 0xfd}), []byte("Some random bytes"))
@@ -530,9 +530,9 @@ func TestUtilityFunctions(t *testing.T) {
 	for _, reservedField := range reservedFields {
 		testVal := fmt.Sprintf(`{"%s":"dummyVal"}`, reservedField)
 		err = db.ValidateKeyValue("testKey", []byte(testVal))
-		require.Error(t, err, fmt.Sprintf(
+		require.Errorf(t, err,
 			"ValidateKey should have thrown an error for a json value %s, as contains one of the reserved fields", testVal,
-		))
+		)
 	}
 
 	// ValidateKeyValue should not return an error for a json value that contains one of the reserved fields
@@ -540,9 +540,9 @@ func TestUtilityFunctions(t *testing.T) {
 	for _, reservedField := range reservedFields {
 		testVal := fmt.Sprintf(`{"data.%s":"dummyVal"}`, reservedField)
 		err = db.ValidateKeyValue("testKey", []byte(testVal))
-		require.NoError(t, err, fmt.Sprintf(
+		require.NoErrorf(t, err,
 			"ValidateKey should not have thrown an error the json value %s since the reserved field was not at the top level", testVal,
-		))
+		)
 	}
 
 	// ValidateKeyValue should return an error for a key that begins with an underscore
@@ -1301,7 +1301,7 @@ func TestMissingRevisionRetrievalFromDB(t *testing.T) {
 	// retrieve the versions of key1, key2, and key3
 	revisions := make(map[string]string)
 	require.NoError(t, db.(*VersionedDB).addMissingRevisionsFromDB("ns1", []string{"key1", "key2", "key3"}, revisions))
-	require.Equal(t, 3, len(revisions))
+	require.Len(t, revisions, 3)
 
 	// update key1 and key2 but not key3
 	batch = statedb.NewUpdateBatch()
@@ -1315,7 +1315,7 @@ func TestMissingRevisionRetrievalFromDB(t *testing.T) {
 	// for key3, the revision should be the same but not for key1 and key2
 	newRevisions := make(map[string]string)
 	require.NoError(t, db.(*VersionedDB).addMissingRevisionsFromDB("ns1", []string{"key1", "key2", "key3"}, newRevisions))
-	require.Equal(t, 3, len(newRevisions))
+	require.Len(t, newRevisions, 3)
 	require.NotEqual(t, revisions["key1"], newRevisions["key1"])
 	require.NotEqual(t, revisions["key2"], newRevisions["key2"])
 	require.Equal(t, revisions["key3"], newRevisions["key3"])

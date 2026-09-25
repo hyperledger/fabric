@@ -101,8 +101,8 @@ func TestGetServerConfig(t *testing.T) {
 	viper.Set("peer.connectiontimeout", "7s")
 	sc, err := GetServerConfig()
 	require.NoError(t, err)
-	require.Equal(t, false, sc.SecOpts.UseTLS, "ServerConfig.SecOpts.UseTLS should be false")
-	require.Equal(t, sc.ConnectionTimeout, 7*time.Second, "ServerConfig.ConnectionTimeout should be 7 seconds")
+	require.False(t, sc.SecOpts.UseTLS, "ServerConfig.SecOpts.UseTLS should be false")
+	require.Equal(t, 7*time.Second, sc.ConnectionTimeout, "ServerConfig.ConnectionTimeout should be 7 seconds")
 
 	// keepalive options
 	require.Equal(t, comm.DefaultKeepaliveOptions, sc.KaOpts, "ServerConfig.KaOpts should be set to default values")
@@ -140,16 +140,16 @@ func TestGetServerConfig(t *testing.T) {
 
 	sc, err = GetServerConfig()
 	require.NoError(t, err, "failed to build server config")
-	require.Equal(t, true, sc.SecOpts.UseTLS, "ServerConfig.SecOpts.UseTLS should be true")
-	require.Equal(t, false, sc.SecOpts.RequireClientCert, "ServerConfig.SecOpts.RequireClientCert should be false")
+	require.True(t, sc.SecOpts.UseTLS, "ServerConfig.SecOpts.UseTLS should be true")
+	require.False(t, sc.SecOpts.RequireClientCert, "ServerConfig.SecOpts.RequireClientCert should be false")
 	viper.Set("peer.tls.clientAuthRequired", true)
 	viper.Set("peer.tls.clientRootCAs.files", []string{
 		filepath.Join(tempdir, "org1-ca-cert.pem"),
 		filepath.Join(tempdir, "org2-ca-cert.pem"),
 	})
 	sc, _ = GetServerConfig()
-	require.Equal(t, true, sc.SecOpts.RequireClientCert, "ServerConfig.SecOpts.RequireClientCert should be true")
-	require.Equal(t, 2, len(sc.SecOpts.ClientRootCAs), "ServerConfig.SecOpts.ClientRootCAs should contain 2 entries")
+	require.True(t, sc.SecOpts.RequireClientCert, "ServerConfig.SecOpts.RequireClientCert should be true")
+	require.Len(t, sc.SecOpts.ClientRootCAs, 2, "ServerConfig.SecOpts.ClientRootCAs should contain 2 entries")
 
 	// GRPC max message size options
 	require.Equal(t, comm.DefaultMaxRecvMsgSize, sc.MaxRecvMsgSize, "ServerConfig.MaxRecvMsgSize should be set to default value %v", comm.DefaultMaxRecvMsgSize)
@@ -386,7 +386,7 @@ func TestGlobalConfig(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, coreConfig, expectedConfig)
+	require.Equal(t, expectedConfig, coreConfig)
 }
 
 func TestGlobalConfigDefault(t *testing.T) {

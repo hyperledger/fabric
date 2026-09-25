@@ -154,7 +154,7 @@ func TestHandleChaincodeDeployGreenPath(t *testing.T) {
 	assertLogged(t, recorder, "Listeners for channel mychannel invoked")
 	require.Len(t, lsnr.Calls, 2)
 	sortedMetadata := sortedMetadataSet(lsnr.Calls[1].Arguments.Get(1).(chaincode.MetadataSet)).sort()
-	require.Equal(t, sortedMetadata, chaincode.MetadataSet{{
+	require.Equal(t, chaincode.MetadataSet{{
 		Name:    "cc1",
 		Version: "1.0",
 		Id:      []byte{42},
@@ -163,7 +163,7 @@ func TestHandleChaincodeDeployGreenPath(t *testing.T) {
 		Name:    "cc3",
 		Version: "1.0",
 		Id:      []byte{50},
-	}})
+	}}, sortedMetadata)
 
 	// Next, update the chaincode metadata of the second chaincode to ensure that the listener is called with the updated
 	// metadata and not with the old metadata.
@@ -179,7 +179,7 @@ func TestHandleChaincodeDeployGreenPath(t *testing.T) {
 	assertLogged(t, recorder, "Listeners for channel mychannel invoked")
 	require.Len(t, lsnr.Calls, 3)
 	sortedMetadata = sortedMetadataSet(lsnr.Calls[2].Arguments.Get(1).(chaincode.MetadataSet)).sort()
-	require.Equal(t, sortedMetadata, chaincode.MetadataSet{{
+	require.Equal(t, chaincode.MetadataSet{{
 		Name:    "cc1",
 		Version: "1.0",
 		Id:      []byte{42},
@@ -188,7 +188,7 @@ func TestHandleChaincodeDeployGreenPath(t *testing.T) {
 		Name:    "cc3",
 		Version: "1.1",
 		Id:      []byte{50},
-	}})
+	}}, sortedMetadata)
 }
 
 func TestHandleChaincodeDeployFailures(t *testing.T) {
@@ -343,7 +343,7 @@ func TestMultipleUpdates(t *testing.T) {
 	// We need to sort the metadata passed to the call because map iteration is involved in building the
 	// metadata set.
 	expectedMetadata := sortedMetadataSet(lsnr.Calls[2].Arguments.Get(1).(chaincode.MetadataSet)).sort()
-	require.Equal(t, metadataSetWithBothChaincodes, expectedMetadata)
+	require.Equal(t, expectedMetadata, metadataSetWithBothChaincodes)
 
 	// Wait for all listeners to fire
 	g := NewGomegaWithT(t)

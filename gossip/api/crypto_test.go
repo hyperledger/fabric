@@ -60,7 +60,7 @@ func TestPeerIdentityTypeString(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
-			require.Equal(t, testCase.identity.String(), testCase.expectedOut)
+			require.Equal(t, testCase.expectedOut, testCase.identity.String())
 		})
 	}
 }

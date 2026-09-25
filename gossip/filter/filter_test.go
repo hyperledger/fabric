@@ -148,8 +148,8 @@ func BenchmarkSelectPeers(t *testing.B) {
 	}
 	t.StopTimer()
 
-	require.Equal(t, l1, 2)
-	require.Equal(t, l2, 3)
-	require.Equal(t, l3, 2)
-	require.Equal(t, l4, 1)
+	require.Equal(t, 2, l1)
+	require.Equal(t, 3, l2)
+	require.Equal(t, 2, l3)
+	require.Equal(t, 1, l4)
 }

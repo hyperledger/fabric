@@ -175,21 +175,21 @@ func TestBlockStoreProvider(t *testing.T) {
 		defer store.Shutdown()
 		stores = append(stores, store)
 	}
-	require.Equal(t, numStores, len(stores))
+	require.Len(t, stores, numStores)
 
 	storeNames, err = provider.List()
 	require.NoError(t, err)
-	require.Equal(t, numStores, len(storeNames))
+	require.Len(t, storeNames, numStores)
 
 	for i := range numStores {
 		exists, err := provider.Exists(constructLedgerid(i))
 		require.NoError(t, err)
-		require.Equal(t, true, exists)
+		require.True(t, exists)
 	}
 
 	exists, err := provider.Exists(constructLedgerid(numStores + 1))
 	require.NoError(t, err)
-	require.Equal(t, false, exists)
+	require.False(t, exists)
 }
 
 func TestDrop(t *testing.T) {

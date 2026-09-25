@@ -20,7 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // sleepTime - the time that must be set for the Init transaction to execute.
@@ -57,7 +57,7 @@ func TestLaunchTestAndExecInit(t *testing.T) {
 	fakeRouter.WaitCalls(func(_ string) (int, error) {
 		// 4. register handler
 		err := chaincodeHandlerRegistry.Register(h)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		h.stateLock.Lock()
 		h.state = Established
@@ -119,12 +119,12 @@ func TestLaunchTestAndExecInit(t *testing.T) {
 		}
 
 		ccid, cctype, err := cs.CheckInvocation(txParams, invokeInfo.ChaincodeID, input)
-		assert.NoError(t, err)
-		assert.Equal(t, ccid, invokeInfo.ChaincodeID)
-		assert.Equal(t, cctype, pb.ChaincodeMessage_TRANSACTION)
+		require.NoError(t, err)
+		require.Equal(t, invokeInfo.ChaincodeID, ccid)
+		require.Equal(t, pb.ChaincodeMessage_TRANSACTION, cctype)
 
 		_, err = cs.Launch(ccid)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	// 3. init chaincode
@@ -136,19 +136,19 @@ func TestLaunchTestAndExecInit(t *testing.T) {
 		}
 
 		ccid, cctype, err := cs.CheckInvocation(txParams, invokeInfo.ChaincodeID, input)
-		assert.NoError(t, err)
-		assert.Equal(t, ccid, invokeInfo.ChaincodeID)
-		assert.Equal(t, cctype, pb.ChaincodeMessage_TRANSACTION)
+		require.NoError(t, err)
+		require.Equal(t, invokeInfo.ChaincodeID, ccid)
+		require.Equal(t, pb.ChaincodeMessage_TRANSACTION, cctype)
 
 		_, err = cs.Launch(ccid)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		result <- "init"
 	})
 
 	// 7. check result
 	res := <-result
-	assert.Equal(t, "ready", res)
+	require.Equal(t, "ready", res)
 
 	cancel()
 	wg.Wait()

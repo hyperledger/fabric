@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -31,12 +32,25 @@ func TestBlocksItrBlockingNext(t *testing.T) {
 	defer itr.Close()
 	readyChan := make(chan struct{})
 	doneChan := make(chan bool)
-	go testIterateAndVerify(t, itr, blocks[1:], 4, readyChan, doneChan)
-	<-readyChan
-	testAppendBlocks(blkfileMgrWrapper, blocks[5:7])
-	blkfileMgr.moveToNextFile()
-	time.Sleep(time.Millisecond * 10)
-	testAppendBlocks(blkfileMgrWrapper, blocks[7:])
+	go func() {
+		<-readyChan
+		blkfileMgrWrapper.addBlocks(blocks[5:7])
+		blkfileMgr.moveToNextFile()
+		time.Sleep(time.Millisecond * 10)
+		blkfileMgrWrapper.addBlocks(blocks[7:])
+		doneChan <- true
+	}()
+
+	for i, b := range blocks[1:] {
+		t.Logf("blocksIterated: %d", i)
+		block, err := itr.Next()
+		require.NoError(t, err)
+		require.Equal(t, b, block)
+		if i == 3 {
+			close(readyChan)
+		}
+	}
+
 	<-doneChan
 }
 
@@ -119,62 +133,56 @@ func TestCloseMultipleItrsWaitForFutureBlock(t *testing.T) {
 	blkfileMgrWrapper.addBlocks(blocks[:5])
 
 	wg := &sync.WaitGroup{}
-	wg.Add(2)
 	itr1, err := blkfileMgr.retrieveBlocks(7)
 	require.NoError(t, err)
 	// itr1 does not retrieve any block because it closes before new blocks are added
-	go iterateInBackground(t, itr1, 9, wg, []uint64{})
+	iterateErrs := make(chan error, 2)
+	wg.Go(func() {
+		iterateErrs <- iterateInBackground(itr1, 9, []uint64{})
+	})
 
 	itr2, err := blkfileMgr.retrieveBlocks(8)
 	require.NoError(t, err)
 	// itr2 retrieves two blocks 8 and 9. Because it started waiting for 8 and quits at 9
-	go iterateInBackground(t, itr2, 9, wg, []uint64{8, 9})
+	wg.Go(func() {
+		iterateErrs <- iterateInBackground(itr2, 9, []uint64{8, 9})
+	})
 
 	// sleep for the background iterators to get started
 	time.Sleep(2 * time.Second)
 	itr1.Close()
 	blkfileMgrWrapper.addBlocks(blocks[5:])
 	wg.Wait()
+	close(iterateErrs)
+	for err = range iterateErrs {
+		require.NoError(t, err)
+	}
 }
 
-func iterateInBackground(t *testing.T, itr *blocksItr, quitAfterBlkNum uint64, wg *sync.WaitGroup, expectedBlockNums []uint64) {
-	defer wg.Done()
+func iterateInBackground(itr *blocksItr, quitAfterBlkNum uint64, expectedBlockNums []uint64) error {
 	retrievedBlkNums := []uint64{}
-	defer func() { require.Equal(t, expectedBlockNums, retrievedBlkNums) }()
 
 	for {
 		blk, err := itr.Next()
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 		if blk == nil {
-			return
+			break
 		}
 		blkNum := blk.(*common.Block).GetHeader().GetNumber()
 		retrievedBlkNums = append(retrievedBlkNums, blkNum)
-		t.Logf("blk.Num=%d", blk.(*common.Block).GetHeader().GetNumber())
 		if blkNum == quitAfterBlkNum {
-			return
-		}
-	}
-}
-
-func testIterateAndVerify(t *testing.T, itr *blocksItr, blocks []*common.Block, readyAt int, readyChan chan<- struct{}, doneChan chan bool) {
-	blocksIterated := 0
-	for {
-		t.Logf("blocksIterated: %v", blocksIterated)
-		block, err := itr.Next()
-		require.NoError(t, err)
-		require.Equal(t, blocks[blocksIterated], block)
-		blocksIterated++
-		if blocksIterated == readyAt {
-			close(readyChan)
-		}
-		if blocksIterated == len(blocks) {
 			break
 		}
 	}
-	doneChan <- true
-}
-
-func testAppendBlocks(blkfileMgrWrapper *testBlockfileMgrWrapper, blocks []*common.Block) {
-	blkfileMgrWrapper.addBlocks(blocks)
+	if len(retrievedBlkNums) != len(expectedBlockNums) {
+		return fmt.Errorf("expected block numbers %v, got %v", expectedBlockNums, retrievedBlkNums)
+	}
+	for i, expected := range expectedBlockNums {
+		if retrievedBlkNums[i] != expected {
+			return fmt.Errorf("expected block numbers %v, got %v", expectedBlockNums, retrievedBlkNums)
+		}
+	}
+	return nil
 }

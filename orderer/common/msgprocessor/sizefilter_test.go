@@ -31,25 +31,25 @@ func TestMaxBytesRule(t *testing.T) {
 	msf := NewSizeFilter(mockResources)
 
 	t.Run("Less Than", func(t *testing.T) {
-		require.Nil(t, msf.Apply(makeMessage(make([]byte, dataSize-1))))
+		require.NoError(t, msf.Apply(makeMessage(make([]byte, dataSize-1))))
 	})
 
 	t.Run("Exact", func(t *testing.T) {
-		require.Nil(t, msf.Apply(makeMessage(make([]byte, dataSize))))
+		require.NoError(t, msf.Apply(makeMessage(make([]byte, dataSize))))
 	})
 
 	t.Run("Too Big", func(t *testing.T) {
-		require.NotNil(t, msf.Apply(makeMessage(make([]byte, dataSize+1))))
+		require.Error(t, msf.Apply(makeMessage(make([]byte, dataSize+1))))
 	})
 
 	t.Run("Dynamic Resources", func(t *testing.T) {
-		require.NotNil(t, msf.Apply(makeMessage(make([]byte, dataSize+1))))
+		require.Error(t, msf.Apply(makeMessage(make([]byte, dataSize+1))))
 		mockOrdererConfig.BatchSizeReturns(
 			&ab.BatchSize{
 				AbsoluteMaxBytes: maxBytes + 2,
 			},
 		)
-		require.Nil(t, msf.Apply(makeMessage(make([]byte, dataSize+1))))
+		require.NoError(t, msf.Apply(makeMessage(make([]byte, dataSize+1))))
 	})
 }
 

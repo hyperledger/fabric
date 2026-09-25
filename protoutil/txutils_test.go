@@ -544,7 +544,7 @@ func TestGetorComputeTxIDFromEnvelope(t *testing.T) {
 		txID := "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492"
 		envelopeBytes := createSampleTxEnvelopeBytes(txID)
 		actualTxID, err := protoutil.GetOrComputeTxIDFromEnvelope(envelopeBytes)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492", actualTxID)
 	})
 
@@ -552,7 +552,7 @@ func TestGetorComputeTxIDFromEnvelope(t *testing.T) {
 		txID := ""
 		envelopeBytes := createSampleTxEnvelopeBytes(txID)
 		actualTxID, err := protoutil.GetOrComputeTxIDFromEnvelope(envelopeBytes)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492", actualTxID)
 	})
 }

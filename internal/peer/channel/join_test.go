@@ -99,7 +99,8 @@ func TestJoinNonExistentBlock(t *testing.T) {
 
 	err = cmd.Execute()
 	require.Error(t, err, "expected join command to fail")
-	require.IsType(t, GBFileNotFoundErr(err.Error()), err, "expected error type of GBFileNotFoundErr")
+	var target GBFileNotFoundErr
+	require.ErrorAs(t, err, &target, "expected error type of GBFileNotFoundErr")
 }
 
 func TestBadProposalResponse(t *testing.T) {
@@ -136,7 +137,8 @@ func TestBadProposalResponse(t *testing.T) {
 
 	err = cmd.Execute()
 	require.Error(t, err, "expected join command to fail")
-	require.IsType(t, ProposalFailedErr(err.Error()), err, "expected error type of ProposalFailedErr")
+	var target ProposalFailedErr
+	require.ErrorAs(t, err, &target, "expected error type of ProposalFailedErr")
 }
 
 func TestJoinNilCF(t *testing.T) {

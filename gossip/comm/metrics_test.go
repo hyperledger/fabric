@@ -65,22 +65,25 @@ func TestMetrics(t *testing.T) {
 		}
 	}
 
-	require.EqualValues(
+	require.InDelta(
 		t,
-		1,
+		float64(1),
 		testMetricProvider.FakeSentMessages.AddArgsForCall(0),
+		0,
 	)
 
-	require.EqualValues(
+	require.InDelta(
 		t,
-		1,
+		float64(1),
 		testMetricProvider.FakeReceivedMessages.AddArgsForCall(0),
+		0,
 	)
 
-	require.EqualValues(
+	require.InDelta(
 		t,
-		1,
+		float64(1),
 		testMetricProvider.FakeBufferOverflow.AddArgsForCall(0),
+		0,
 	)
 
 	require.Equal(t, uint32(1), overflown.Load())
