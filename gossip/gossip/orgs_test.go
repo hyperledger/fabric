@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
@@ -23,16 +24,52 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
+	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest/observer"
 )
 
 func init() {
 	util.SetupTestLogging()
 	factory.InitFactories(nil)
+}
+
+type receivedMsgFromPeer struct {
+	protoext.ReceivedMessage
+	identity api.PeerIdentityType
+}
+
+func (r *receivedMsgFromPeer) GetConnectionInfo() *protoext.ConnectionInfo {
+	return &protoext.ConnectionInfo{Identity: r.identity}
+}
+
+func TestPullFilterUnknownOrgNoWarning(t *testing.T) {
+	cs := &configurableCryptoService{m: make(map[string]api.OrgIdentityType)}
+	selfIdentity := api.PeerIdentityType("self")
+	remoteIdentity := api.PeerIdentityType("remote")
+	cs.m[string(selfIdentity)] = api.OrgIdentityType("A")
+	cs.m[string(remoteIdentity)] = api.OrgIdentityType("B")
+
+	core, logs := observer.New(zapcore.WarnLevel)
+	g := &Node{
+		selfOrg:    api.OrgIdentityType("A"),
+		secAdvisor: cs,
+		logger:     flogging.NewFabricLogger(zap.New(core)),
+		idMapper:   identity.NewIdentityMapper(cs, selfIdentity, func(common.PKIidType, api.PeerIdentityType) {}, cs),
+	}
+
+	filter := g.sameOrgOrOurOrgPullFilter(&receivedMsgFromPeer{identity: remoteIdentity})
+	// The identity is unknown (for example, it expired and was purged),
+	// so its org can't be found. It must be filtered out without a warning,
+	// since this runs for every identity in every pull round.
+	require.False(t, filter(string(common.PKIidType("unknown"))))
+	require.Zero(t, logs.Len())
 }
 
 type configurableCryptoService struct {

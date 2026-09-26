@@ -1159,7 +1159,9 @@ func (g *Node) sameOrgOrOurOrgPullFilter(msg protoext.ReceivedMessage) func(stri
 		pkiID := common.PKIidType(item)
 		msgsOrg := g.getOrgOfPeer(pkiID)
 		if len(msgsOrg) == 0 {
-			g.logger.Warning("Failed determining organization of", pkiID)
+			// This runs for every identity in every pull round, so an identity
+			// we can't map to an org (e.g. an expired one) would flood the log.
+			g.logger.Debug("Failed determining organization of", pkiID)
 			return false
 		}
 		// Don't gossip identities of dead peers or of peers
