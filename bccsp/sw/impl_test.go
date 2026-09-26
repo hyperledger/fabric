@@ -1330,5 +1330,5 @@ func TestAddWrapper(t *testing.T) {
 	// Add invalid wrapper
 	err := sw.AddWrapper(reflect.TypeFor[func()](), func() {})
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "wrapper type not valid, must be on of: KeyGenerator, KeyDeriver, KeyImporter, Encryptor, Decryptor, Signer, Verifier, Hasher")
+	require.EqualError(t, err, "wrapper type not valid, must be on of: KeyGenerator, KeyDeriver, KeyImporter, Encryptor, Decryptor, Signer, Verifier, Hasher")
 }

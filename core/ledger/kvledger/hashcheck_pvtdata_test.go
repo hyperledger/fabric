@@ -253,7 +253,7 @@ func TestExtractValidPvtData(t *testing.T) {
 			2,
 		)
 		require.NoError(t, err)
-		require.Len(t, blocksValidPvtData, 0)
+		require.Empty(t, blocksValidPvtData)
 	})
 
 	t.Run("for-data-before-snapshot:drops-collection-with-corrupted-writeset", func(t *testing.T) {

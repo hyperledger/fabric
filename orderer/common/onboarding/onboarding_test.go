@@ -587,7 +587,7 @@ func TestReplicate(t *testing.T) {
 			zapHooks: []func(entry zapcore.Entry) error{
 				func(entry zapcore.Entry) error {
 					hooksActivated = true
-					require.Equal(t, entry.Message, "Booted with a genesis block, replication isn't an option")
+					require.Equal(t, "Booted with a genesis block, replication isn't an option", entry.Message)
 					return nil
 				},
 			},
@@ -644,7 +644,7 @@ func TestReplicate(t *testing.T) {
 			zapHooks: []func(entry zapcore.Entry) error{
 				func(entry zapcore.Entry) error {
 					hooksActivated = true
-					require.Equal(t, entry.Message, "Replication isn't needed")
+					require.Equal(t, "Replication isn't needed", entry.Message)
 					return nil
 				},
 			},

@@ -92,25 +92,28 @@ func TestStatsBlockCommit(t *testing.T) {
 		[]string{"channel", ledgerid},
 		testMetricProvider.fakeBlockProcessingTimeHist.WithArgsForCall(1),
 	)
-	require.Equal(t,
+	require.InDelta(t,
 		float64(1),
 		testMetricProvider.fakeBlockProcessingTimeHist.ObserveArgsForCall(1),
+		0,
 	)
 	require.Equal(t,
 		[]string{"channel", ledgerid},
 		testMetricProvider.fakeBlockstorageCommitWithPvtDataTimeHist.WithArgsForCall(1),
 	)
-	require.Equal(t,
+	require.InDelta(t,
 		float64(2),
 		testMetricProvider.fakeBlockstorageCommitWithPvtDataTimeHist.ObserveArgsForCall(1),
+		0,
 	)
 	require.Equal(t,
 		[]string{"channel", ledgerid},
 		testMetricProvider.fakeStatedbCommitTimeHist.WithArgsForCall(1),
 	)
-	require.Equal(t,
+	require.InDelta(t,
 		float64(3),
 		testMetricProvider.fakeStatedbCommitTimeHist.ObserveArgsForCall(1),
+		0,
 	)
 	require.Equal(t,
 		[]string{
@@ -121,9 +124,10 @@ func TestStatsBlockCommit(t *testing.T) {
 		},
 		testMetricProvider.fakeTransactionsCount.WithArgsForCall(1),
 	)
-	require.Equal(t,
+	require.InDelta(t,
 		float64(1),
 		testMetricProvider.fakeTransactionsCount.AddArgsForCall(1),
+		0,
 	)
 
 	require.Equal(t,
@@ -135,9 +139,10 @@ func TestStatsBlockCommit(t *testing.T) {
 		},
 		testMetricProvider.fakeTransactionsCount.WithArgsForCall(2),
 	)
-	require.Equal(t,
+	require.InDelta(t,
 		float64(1),
 		testMetricProvider.fakeTransactionsCount.AddArgsForCall(2),
+		0,
 	)
 }
 

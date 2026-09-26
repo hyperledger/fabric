@@ -109,11 +109,11 @@ func TestDirExists(t *testing.T) {
 
 	r, err = dirExists(os.TempDir())
 	require.NoError(t, err)
-	require.Equal(t, true, r)
+	require.True(t, r)
 
 	r, err = dirExists(filepath.Join(os.TempDir(), "7rhf90239vhev90"))
 	require.NoError(t, err)
-	require.Equal(t, false, r)
+	require.False(t, r)
 }
 
 func TestDirEmpty(t *testing.T) {
@@ -126,9 +126,9 @@ func TestDirEmpty(t *testing.T) {
 
 	r, err := dirEmpty(path)
 	require.NoError(t, err)
-	require.Equal(t, true, r)
+	require.True(t, r)
 
 	r, err = dirEmpty(os.TempDir())
 	require.NoError(t, err)
-	require.Equal(t, false, r)
+	require.False(t, r)
 }

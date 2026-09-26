@@ -16,7 +16,7 @@ import (
 func TestNewClientConnections(t *testing.T) {
 	require := require.New(t)
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.Nil(err)
+	require.NoError(err)
 
 	t.Run("bad connection profile", func(t *testing.T) {
 		input := &ClientConnectionsInput{

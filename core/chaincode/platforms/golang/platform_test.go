@@ -477,15 +477,15 @@ func TestDescribeCode(t *testing.T) {
 
 func TestNeedVersionGo(t *testing.T) {
 	newGoVer, need := getNeedVersionGo("testdata/src/chaincodes/noop", "v1.26.3")
-	require.Equal(t, newGoVer, "")
+	require.Empty(t, newGoVer)
 	require.False(t, need)
 
 	newGoVer, need = getNeedVersionGo("testdata/src/chaincodes/noop", "v1.12.0")
-	require.Equal(t, newGoVer, "1.13")
+	require.Equal(t, "1.13", newGoVer)
 	require.True(t, need)
 
 	newGoVer, need = getNeedVersionGo("testdata/src/chaincodes/toolchain", "v1.25.0")
-	require.Equal(t, newGoVer, "1.26.3")
+	require.Equal(t, "1.26.3", newGoVer)
 	require.True(t, need)
 }
 

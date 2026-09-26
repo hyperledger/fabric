@@ -20,8 +20,8 @@ func TestConsortiumConfig(t *testing.T) {
 	cc, err := NewConsortiumConfig(&cb.ConfigGroup{}, NewMSPConfigHandler(msp.MSPv1_0, cryptoProvider))
 	require.NoError(t, err)
 	orgs := cc.Organizations()
-	require.Equal(t, 0, len(orgs))
+	require.Empty(t, orgs)
 
 	policy := cc.ChannelCreationPolicy()
-	require.EqualValues(t, cb.Policy_UNKNOWN, policy.GetType(), "Expected policy type to be UNKNOWN")
+	require.Equal(t, int32(cb.Policy_UNKNOWN), policy.GetType(), "Expected policy type to be UNKNOWN")
 }

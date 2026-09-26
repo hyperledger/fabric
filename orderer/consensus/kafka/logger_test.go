@@ -41,7 +41,7 @@ func TestEventLogger(t *testing.T) {
 	select {
 	// expect event from first listener
 	case receivedEvent := <-eventChan:
-		require.Equal(t, eventMessage, receivedEvent, "")
+		require.Equal(t, eventMessage, receivedEvent)
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("expected event on eventChan")
 	}
@@ -49,7 +49,7 @@ func TestEventLogger(t *testing.T) {
 	// expect event from sesond listener
 	select {
 	case receivedEvent := <-eventChan2:
-		require.Equal(t, eventMessage, receivedEvent, "")
+		require.Equal(t, eventMessage, receivedEvent)
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("expected event on eventChan2")
 	}
@@ -70,7 +70,7 @@ func TestEventLogger(t *testing.T) {
 	// expect event from sesond listener
 	select {
 	case receivedEvent := <-eventChan2:
-		require.Equal(t, eventMessage, receivedEvent, "")
+		require.Equal(t, eventMessage, receivedEvent)
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("expected event on eventChan2")
 	}

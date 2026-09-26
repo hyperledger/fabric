@@ -22,7 +22,7 @@ func TestSetupBCCSPKeystoreConfig(t *testing.T) {
 	// Case 1 : Check with empty FactoryOpts
 	rtnConfig := SetupBCCSPKeystoreConfig(nil, keystoreDir)
 	require.NotNil(t, rtnConfig)
-	require.Equal(t, rtnConfig.Default, "SW")
+	require.Equal(t, "SW", rtnConfig.Default)
 	require.NotNil(t, rtnConfig.SW)
 	require.NotNil(t, rtnConfig.SW.FileKeystore)
 	require.Equal(t, rtnConfig.SW.FileKeystore.KeyStorePath, keystoreDir)
@@ -120,7 +120,7 @@ func TestGetPemMaterialFromDirWithSymlinks(t *testing.T) {
 	require.NoError(t, err)
 	expected, err := getPemMaterialFromDir(filepath.Join(mspDir, "signcerts"))
 	require.NoError(t, err)
-	require.Equal(t, pemdataSymlink, expected)
+	require.Equal(t, expected, pemdataSymlink)
 }
 
 func TestReadFileUtils(t *testing.T) {

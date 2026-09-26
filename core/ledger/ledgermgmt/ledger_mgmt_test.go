@@ -116,7 +116,7 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 
 		ledgerids, err := ledgerMgr.GetLedgerIDs()
 		require.NoError(t, err)
-		require.Equal(t, ledgerids, []string{channelID})
+		require.Equal(t, []string{channelID}, ledgerids)
 	})
 
 	t.Run("create_existing_ledger_returns_error", func(t *testing.T) {
@@ -163,7 +163,7 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 
 		ids, err := ledgerMgr.GetLedgerIDs()
 		require.NoError(t, err)
-		require.Equal(t, 0, len(ids))
+		require.Empty(t, ids)
 	})
 }
 
@@ -179,13 +179,17 @@ func TestConcurrentCreateLedgerFromGB(t *testing.T) {
 	}
 
 	// verify CreateLedger (from genesisblock) can be called concurrently
+	createErrs := make(chan error, len(gbs))
 	for i := range gbs {
 		gb := gbs[i]
 		ledgerID := fmt.Sprintf("l%d", i)
 		go func() {
 			_, err := ledgerMgr.CreateLedger(ledgerID, gb)
-			require.NoError(t, err)
+			createErrs <- err
 		}()
+	}
+	for range gbs {
+		require.NoError(t, <-createErrs)
 	}
 
 	ledgersGenerated := func() bool {
@@ -239,7 +243,7 @@ func TestConcurrentCreateLedgerFromSnapshot(t *testing.T) {
 
 	ledgerIDs, err := ledgerMgr2.GetLedgerIDs()
 	require.NoError(t, err)
-	require.Equal(t, ledgerIDs, []string{channelID1})
+	require.Equal(t, []string{channelID1}, ledgerIDs)
 
 	// CreateLedger should work after the previous CreateLedgerFromSnapshot is done
 	_, err = ledgerMgr2.CreateLedger(channelID3, gb)

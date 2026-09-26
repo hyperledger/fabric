@@ -134,5 +134,5 @@ func TestContainerRuntimeWait(t *testing.T) {
 	fakeRouter.WaitReturns(3, errors.New("moles-and-trolls"))
 	code, err := cr.Wait("chaincode-id-name:chaincode-version")
 	require.EqualError(t, err, "moles-and-trolls")
-	require.Equal(t, code, 3)
+	require.Equal(t, 3, code)
 }

@@ -29,7 +29,7 @@ func TestLoadPrivateKey(t *testing.T) {
 		t.Fatalf("Failed to generate private key: %s", err)
 	}
 	pkFile := filepath.Join(testDir, "priv_sk")
-	require.Equal(t, true, checkForFile(pkFile),
+	require.True(t, checkForFile(pkFile),
 		"Expected to find private key file")
 	loadedPriv, err := csp.LoadPrivateKey(testDir)
 	require.NoError(t, err, "Failed to load private key")
@@ -99,7 +99,7 @@ func TestGeneratePrivateKey(t *testing.T) {
 	priv, err := csp.GeneratePrivateKey(testDir)
 	require.NoError(t, err, "Failed to generate private key")
 	require.NotNil(t, priv, "Should have returned an *ecdsa.Key")
-	require.Equal(t, true, checkForFile(expectedFile),
+	require.True(t, checkForFile(expectedFile),
 		"Expected to find private key file")
 
 	_, err = csp.GeneratePrivateKey("notExist")

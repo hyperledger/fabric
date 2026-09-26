@@ -46,7 +46,7 @@ func TestSign(t *testing.T) {
 	csp := CSP{Signers: signers}
 	value, err := csp.Sign(expectedKey, expectetDigest, expectedOpts)
 	require.Equal(t, expectetValue, value)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	signers = make(map[reflect.Type]Signer)
 	signers[reflect.TypeFor[*mocks2.MockKey]()] = &mocks.Signer{

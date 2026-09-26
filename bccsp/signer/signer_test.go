@@ -100,7 +100,7 @@ func TestSign(t *testing.T) {
 	}
 	_, err = signer.Sign(nil, expectedDigest, expectedOpts)
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "no signature")
+	require.EqualError(t, err, "no signature")
 
 	signer = &bccspCryptoSigner{
 		key: nil,
@@ -108,7 +108,7 @@ func TestSign(t *testing.T) {
 	}
 	_, err = signer.Sign(nil, expectedDigest, expectedOpts)
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "invalid key")
+	require.EqualError(t, err, "invalid key")
 
 	signer = &bccspCryptoSigner{
 		key: expectedKey,
@@ -116,7 +116,7 @@ func TestSign(t *testing.T) {
 	}
 	_, err = signer.Sign(nil, nil, expectedOpts)
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "invalid digest")
+	require.EqualError(t, err, "invalid digest")
 
 	signer = &bccspCryptoSigner{
 		key: expectedKey,
@@ -124,5 +124,5 @@ func TestSign(t *testing.T) {
 	}
 	_, err = signer.Sign(nil, expectedDigest, nil)
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "invalid opts")
+	require.EqualError(t, err, "invalid opts")
 }

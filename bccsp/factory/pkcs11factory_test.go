@@ -19,7 +19,7 @@ import (
 
 func TestPKCS11FactoryName(t *testing.T) {
 	f := &PKCS11Factory{}
-	require.Equal(t, f.Name(), PKCS11BasedFactoryName)
+	require.Equal(t, PKCS11BasedFactoryName, f.Name())
 }
 
 func TestPKCS11FactoryGetInvalidArgs(t *testing.T) {

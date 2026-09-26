@@ -249,5 +249,5 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	require.True(t, txsfltr.IsInvalid(0))
 
 	// We expect the tx to be invalid because of a bad txid
-	require.True(t, txsfltr.Flag(0) == peer.TxValidationCode_BAD_PROPOSAL_TXID)
+	require.Equal(t, peer.TxValidationCode_BAD_PROPOSAL_TXID, txsfltr.Flag(0))
 }

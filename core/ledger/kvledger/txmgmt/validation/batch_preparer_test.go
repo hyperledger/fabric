@@ -138,7 +138,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 		return nil
 	}
 	// good block
-	//_, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+	// _, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	gb := testutil.ConstructTestBlock(t, 10, 1, 1)
 	_, _, err := preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
 	require.NoError(t, err)
@@ -237,7 +237,7 @@ func TestPreprocessProtoBlockInvalidWriteset(t *testing.T) {
 	require.False(t, txfilter.IsValid(0)) // tx at index 0 should be marked as invalid
 	require.True(t, txfilter.IsValid(1))  // tx at index 1 should be marked as valid
 	require.Len(t, internalBlock.txs, 1)
-	require.Equal(t, internalBlock.txs[0].indexInBlock, 1)
+	require.Equal(t, 1, internalBlock.txs[0].indexInBlock)
 }
 
 func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {

@@ -87,14 +87,14 @@ func TestVerify(t *testing.T) {
 				}
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, anyError, testCase.expectedReturnValue)
+				require.Equal(t, testCase.expectedReturnValue, anyError)
 
 				actualResult, err := jsonrw.OutputFileToString(VerificationResultFile, outputDir)
 				require.NoError(t, err)
 				expectedResult, err := jsonrw.OutputFileToString(testCase.expectedResultFile, SampleResultDir)
 				require.NoError(t, err)
 
-				require.Equal(t, actualResult, expectedResult)
+				require.Equal(t, expectedResult, actualResult)
 			}
 		})
 	}

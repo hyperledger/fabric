@@ -25,7 +25,7 @@ func TestPauseAndResume(t *testing.T) {
 	numLedgers := 10
 	activeLedgerIDs, err := provider.List()
 	require.NoError(t, err)
-	require.Len(t, activeLedgerIDs, 0)
+	require.Empty(t, activeLedgerIDs)
 	genesisBlocks := make([]*common.Block, numLedgers)
 	for i := range numLedgers {
 		genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(i))

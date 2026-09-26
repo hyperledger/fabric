@@ -264,7 +264,7 @@ func TestEvictionSuspector(t *testing.T) {
 			}
 
 			require.True(t, foundExpectedLog, "expected to find %s but didn't", testCase.expectedLog)
-			require.Equal(t, testCase.expectedCommittedBlockCount, len(committedBlocks))
+			require.Len(t, committedBlocks, testCase.expectedCommittedBlockCount)
 		})
 	}
 }

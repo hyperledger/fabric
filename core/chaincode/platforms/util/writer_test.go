@@ -57,8 +57,8 @@ func TestWriteFileToPackage(t *testing.T) {
 	require.Equal(t, int64(0o100644), header.Mode, "expected regular file mode")
 	require.Equal(t, 500, header.Uid, "expected 500 uid")
 	require.Equal(t, 500, header.Gid, "expected 500 gid")
-	require.Equal(t, "", header.Uname, "expected empty user name")
-	require.Equal(t, "", header.Gname, "expected empty group name")
+	require.Empty(t, header.Uname, "expected empty user name")
+	require.Empty(t, header.Gname, "expected empty group name")
 
 	b := make([]byte, 5)
 	n, err := tr.Read(b)

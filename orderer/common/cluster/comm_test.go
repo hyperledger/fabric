@@ -482,7 +482,7 @@ func TestBlockingSend(t *testing.T) {
 			}
 			elapsed := time.Since(t1)
 			t.Log("Elapsed time:", elapsed)
-			require.True(t, elapsed > testCase.elapsedGreaterThan)
+			require.Greater(t, elapsed, testCase.elapsedGreaterThan)
 
 			if !testCase.streamUnblocks {
 				close(unBlock)
@@ -691,13 +691,27 @@ func testStreamAbort(t *testing.T, node2 *clusterNode, newMembership []cluster.R
 	rm1, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
 	require.NoError(t, err)
 
+	streamErr := make(chan error, 1)
 	go func() {
 		stream := assertEventualEstablishStream(t, rm1)
 		// Signal the reconfiguration
-		err = stream.Send(wrapSubmitReq(testReq))
-		require.NoError(t, err)
-		_, err := stream.Recv()
-		require.Contains(t, err.Error(), expectedError)
+		err := stream.Send(wrapSubmitReq(testReq))
+		if err != nil {
+			streamErr <- err
+			close(stopChan)
+			return
+		}
+		// The stream is expected to be aborted, verify the error returned
+		// to the caller. Any error is reported to the test goroutine.
+		_, err = stream.Recv()
+		if err == nil {
+			err = errors.New("expected the stream to be aborted")
+		} else if !strings.Contains(err.Error(), expectedError) {
+			err = fmt.Errorf("expected error to contain %q, got %q", expectedError, err.Error())
+		} else {
+			err = nil
+		}
+		streamErr <- err
 		close(stopChan)
 	}()
 
@@ -709,6 +723,7 @@ func testStreamAbort(t *testing.T, node2 *clusterNode, newMembership []cluster.R
 	}()
 
 	<-stopChan
+	require.NoError(t, <-streamErr)
 }
 
 func TestDoubleReconfigure(t *testing.T) {
@@ -731,7 +746,7 @@ func TestDoubleReconfigure(t *testing.T) {
 	rm2, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
 	require.NoError(t, err)
 	// Ensure the references are equal
-	require.True(t, rm1 == rm2)
+	require.Same(t, rm1, rm2)
 }
 
 func TestInvalidChannel(t *testing.T) {
@@ -898,7 +913,7 @@ func TestReconnect(t *testing.T) {
 	// Scenario: node 1 and node 2 are connected,
 	// and node 2 is taken offline.
 	// Node 1 tries to send a message to node 2 but fails,
-	// and afterwards node 2 is brought back, after which
+	// and afterward node 2 is brought back, after which
 	// node 1 sends more messages, and it should succeed
 	// sending a message to node 2 eventually.
 
@@ -1256,8 +1271,8 @@ func TestMetrics(t *testing.T) {
 				assertBiDiCommunication(t, node1, node2, testReq)
 				require.Equal(t, []string{"host", node2.nodeInfo.Endpoint, "msg_type", "transaction", "channel", testChannel},
 					testMetrics.egressQueueLength.WithArgsForCall(0))
-				require.Equal(t, float64(0), testMetrics.egressQueueLength.SetArgsForCall(0))
-				require.Equal(t, float64(1), testMetrics.egressQueueCapacity.SetArgsForCall(0))
+				require.InDelta(t, float64(0), testMetrics.egressQueueLength.SetArgsForCall(0), 0)
+				require.InDelta(t, float64(1), testMetrics.egressQueueCapacity.SetArgsForCall(0), 0)
 
 				var messageReceived sync.WaitGroup
 				messageReceived.Add(1)
@@ -1274,8 +1289,8 @@ func TestMetrics(t *testing.T) {
 
 				require.Equal(t, []string{"host", node2.nodeInfo.Endpoint, "msg_type", "consensus", "channel", testChannel},
 					testMetrics.egressQueueLength.WithArgsForCall(1))
-				require.Equal(t, float64(0), testMetrics.egressQueueLength.SetArgsForCall(1))
-				require.Equal(t, float64(1), testMetrics.egressQueueCapacity.SetArgsForCall(1))
+				require.InDelta(t, float64(0), testMetrics.egressQueueLength.SetArgsForCall(1), 0)
+				require.InDelta(t, float64(1), testMetrics.egressQueueCapacity.SetArgsForCall(1), 0)
 			},
 		},
 		{
@@ -1302,7 +1317,7 @@ func TestMetrics(t *testing.T) {
 				require.Equal(t, []string{"channel", testChannel2}, testMetrics.egressStreamCount.WithArgsForCall(1))
 
 				// A single TLS connection despite 2 streams
-				require.Equal(t, float64(1), testMetrics.egressTLSConnCount.SetArgsForCall(0))
+				require.InDelta(t, float64(1), testMetrics.egressTLSConnCount.SetArgsForCall(0), 0)
 				require.Equal(t, 1, testMetrics.egressTLSConnCount.SetCallCount())
 			},
 		},
@@ -1315,8 +1330,8 @@ func TestMetrics(t *testing.T) {
 				assertBiDiCommunicationForChannel(t, node1, node2, testReq2, testChannel2)
 				require.Equal(t, []string{"channel", testChannel2}, testMetrics.egressStreamCount.WithArgsForCall(1))
 
-				require.Equal(t, float64(1), testMetrics.egressWorkerSize.SetArgsForCall(0))
-				require.Equal(t, float64(1), testMetrics.egressWorkerSize.SetArgsForCall(1))
+				require.InDelta(t, float64(1), testMetrics.egressWorkerSize.SetArgsForCall(0), 0)
+				require.InDelta(t, float64(1), testMetrics.egressWorkerSize.SetArgsForCall(1), 0)
 			},
 		},
 		{

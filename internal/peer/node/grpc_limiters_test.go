@@ -23,7 +23,7 @@ func TestInitGrpcSemaphores(t *testing.T) {
 		LimitsConcurrencyGatewayService:  5,
 	}
 	semaphores := initGrpcSemaphores(&config)
-	require.Equal(t, 3, len(semaphores))
+	require.Len(t, semaphores, 3)
 }
 
 func TestInitGrpcNoSemaphores(t *testing.T) {
@@ -33,7 +33,7 @@ func TestInitGrpcNoSemaphores(t *testing.T) {
 		LimitsConcurrencyGatewayService:  0,
 	}
 	semaphores := initGrpcSemaphores(&config)
-	require.Equal(t, 0, len(semaphores))
+	require.Empty(t, semaphores)
 }
 
 func TestInitGrpcSemaphoresPanic(t *testing.T) {

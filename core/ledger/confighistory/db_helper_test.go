@@ -30,8 +30,8 @@ func TestEncodeDecodeCompositeKey(t *testing.T) {
 }
 
 func TestCompareEncodedHeight(t *testing.T) {
-	require.Equal(t, bytes.Compare(encodeBlockNum(20), encodeBlockNum(40)), 1)
-	require.Equal(t, bytes.Compare(encodeBlockNum(40), encodeBlockNum(10)), -1)
+	require.Equal(t, 1, bytes.Compare(encodeBlockNum(20), encodeBlockNum(40)))
+	require.Equal(t, -1, bytes.Compare(encodeBlockNum(40), encodeBlockNum(10)))
 }
 
 func TestQueries(t *testing.T) {

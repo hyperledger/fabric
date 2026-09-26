@@ -72,9 +72,9 @@ func TestAssemblePvtRWSet(t *testing.T) {
 	require.NotNil(t, configPackages)
 	configs, found := configPackages["myCC"]
 	require.True(t, found)
-	require.Equal(t, 1, len(configs.GetConfig()))
+	require.Len(t, configs.GetConfig(), 1)
 	require.NotNil(t, configs.GetConfig()[0])
 	require.NotNil(t, configs.GetConfig()[0].GetStaticCollectionConfig())
 	require.Equal(t, "mycollection-1", configs.GetConfig()[0].GetStaticCollectionConfig().GetName())
-	require.Equal(t, 1, len(pvtReadWriteSetWithConfigInfo.GetPvtRwset().GetNsPvtRwset()))
+	require.Len(t, pvtReadWriteSetWithConfigInfo.GetPvtRwset().GetNsPvtRwset(), 1)
 }

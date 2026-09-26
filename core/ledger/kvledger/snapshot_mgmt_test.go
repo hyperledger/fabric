@@ -131,10 +131,14 @@ func TestSnapshotRequests(t *testing.T) {
 	kvledger := l.(*kvLedger)
 
 	// Test 1: submit requests in parallel and verify PendingSnapshotRequest
+	submitErrs := make(chan error, 5)
 	for _, blockNumber := range []uint64{100, 5, 3, 10, 30} {
 		go func(blockNumber uint64) {
-			require.NoError(t, l.SubmitSnapshotRequest(blockNumber))
+			submitErrs <- l.SubmitSnapshotRequest(blockNumber)
 		}(blockNumber)
+	}
+	for range 5 {
+		require.NoError(t, <-submitErrs)
 	}
 	// wait until all requests are submitted
 	requestsUpdated := func() bool {
@@ -145,10 +149,14 @@ func TestSnapshotRequests(t *testing.T) {
 	require.Eventually(t, requestsUpdated, time.Minute, 100*time.Millisecond)
 
 	// Test 2: cancel requests in parallel and verify PendingSnapshotRequest
+	cancelErrs := make(chan error, 2)
 	for _, blockNumber := range []uint64{3, 30} {
 		go func(blockNumber uint64) {
-			require.NoError(t, l.CancelSnapshotRequest(blockNumber))
+			cancelErrs <- l.CancelSnapshotRequest(blockNumber)
 		}(blockNumber)
+	}
+	for range 2 {
+		require.NoError(t, <-cancelErrs)
 	}
 	// wait until all requests are cancelled
 	requestsUpdated = func() bool {

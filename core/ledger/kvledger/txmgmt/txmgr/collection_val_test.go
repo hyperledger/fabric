@@ -63,7 +63,8 @@ func TestPvtGetNoCollection(t *testing.T) {
 	require.Nil(t, valueHash)
 	require.Nil(t, metadataBytes)
 	require.Error(t, err)
-	require.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
+	var target *ledger.CollConfigNotDefinedError
+	require.ErrorAs(t, err, &target)
 }
 
 func TestPvtPutNoCollection(t *testing.T) {
@@ -75,7 +76,8 @@ func TestPvtPutNoCollection(t *testing.T) {
 	require.NoError(t, err)
 	err = txsim.SetPrivateDataMetadata("cc", "coll", "key", map[string][]byte{})
 	require.Error(t, err)
-	require.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
+	var target *ledger.CollConfigNotDefinedError
+	require.ErrorAs(t, err, &target)
 }
 
 func TestNoCollectionValidationCheck(t *testing.T) {

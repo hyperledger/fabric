@@ -117,7 +117,8 @@ func TestKeylevelValidation(t *testing.T) {
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), endorsements)
 	require.Error(t, err)
-	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	var target *errors.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func TestKeylevelValidationPvtData(t *testing.T) {
@@ -155,7 +156,8 @@ func TestKeylevelValidationPvtData(t *testing.T) {
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 	require.Error(t, err)
-	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	var target *errors.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func TestKeylevelValidationMetaUpdate(t *testing.T) {
@@ -193,7 +195,8 @@ func TestKeylevelValidationMetaUpdate(t *testing.T) {
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 	require.Error(t, err)
-	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	var target *errors.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func TestKeylevelValidationPvtMetaUpdate(t *testing.T) {
@@ -231,7 +234,8 @@ func TestKeylevelValidationPvtMetaUpdate(t *testing.T) {
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 	require.Error(t, err)
-	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	var target *errors.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func TestKeylevelValidationPolicyRetrievalFailure(t *testing.T) {
@@ -259,7 +263,8 @@ func TestKeylevelValidationPolicyRetrievalFailure(t *testing.T) {
 
 	err := validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 	require.Error(t, err)
-	require.IsType(t, &errors.VSCCExecutionFailureError{}, err)
+	var target *errors.VSCCExecutionFailureError
+	require.ErrorAs(t, err, &target)
 }
 
 func TestKeylevelValidationLedgerFailures(t *testing.T) {
@@ -300,7 +305,8 @@ func TestKeylevelValidationLedgerFailures(t *testing.T) {
 
 		err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 		require.Error(t, err)
-		require.IsType(t, &errors.VSCCExecutionFailureError{}, err)
+		var target *errors.VSCCExecutionFailureError
+		require.ErrorAs(t, err, &target)
 	})
 }
 
@@ -341,7 +347,8 @@ func TestCCEPValidation(t *testing.T) {
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 	require.Error(t, err)
-	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	var target *errors.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func TestCCEPValidationReads(t *testing.T) {
@@ -378,7 +385,8 @@ func TestCCEPValidationReads(t *testing.T) {
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 	require.Error(t, err)
-	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	var target *errors.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func TestOnlySBEPChecked(t *testing.T) {
@@ -460,7 +468,8 @@ func TestCCEPValidationPvtReads(t *testing.T) {
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 	require.Error(t, err)
-	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	var target *errors.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func TestKeylevelValidationFailure(t *testing.T) {
@@ -490,5 +499,6 @@ func TestKeylevelValidationFailure(t *testing.T) {
 
 	err := validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
 	require.Error(t, err)
-	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	var target *errors.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }

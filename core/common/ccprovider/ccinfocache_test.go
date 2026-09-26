@@ -193,7 +193,7 @@ func TestCCInfoFSPeerInstance(t *testing.T) {
 	resp, err := GetInstalledChaincodes()
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	require.NotZero(t, len(resp.GetChaincodes()), "GetInstalledChaincodes should not have returned 0 chaincodes")
+	require.NotEmpty(t, resp.GetChaincodes(), "GetInstalledChaincodes should not have returned 0 chaincodes")
 
 	// get chaincode data
 	_, err = GetChaincodeData("bar:1.0")
@@ -215,7 +215,7 @@ func TestGetInstalledChaincodesErrorPaths(t *testing.T) {
 	require.NoError(t, err)
 	resp, err := GetInstalledChaincodes()
 	require.NoError(t, err)
-	require.Equal(t, 0, len(resp.GetChaincodes()),
+	require.Emptyf(t, resp.GetChaincodes(),
 		"Expected 0 chaincodes but GetInstalledChaincodes returned %s chaincodes", len(resp.GetChaincodes()))
 }
 
@@ -242,16 +242,16 @@ func TestSetChaincodesPath(t *testing.T) {
 	// Following code works on mac but does not work in CI
 	// // Make the directory read only
 	// err = os.Chmod(dir, 0444)
-	// assert.NoError(t, err)
+	// require.NoError(t, err)
 	// cdir := filepath.Join(dir, "chaincodesdir")
-	// assert.Panics(t, func() {
+	// require.Panics(t, func() {
 	// 	SetChaincodesPath(cdir)
 	// }, "SetChaincodesPath should have paniced if it is not able to stat the dir")
 
 	// // Make the directory read and execute
 	// err = os.Chmod(dir, 0555)
-	// assert.NoError(t, err)
-	// assert.Panics(t, func() {
+	// require.NoError(t, err)
+	// require.Panics(t, func() {
 	// 	SetChaincodesPath(cdir)
 	// }, "SetChaincodesPath should have paniced if it is not able to create the dir")
 }

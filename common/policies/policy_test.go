@@ -336,7 +336,7 @@ func TestSignatureSetToValidIdentitiesDeserializeErr(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.spec, func(t *testing.T) {
 			ids := SignatureSetToValidIdentities(tc.signedData, fakeIdentityDeserializer)
-			require.Len(t, ids, 0)
+			require.Empty(t, ids)
 			assertLogContains(t, recorder, tc.expectedLogEntryContains...)
 		})
 	}
@@ -361,7 +361,7 @@ func TestSignatureSetToValidIdentitiesVerifyErr(t *testing.T) {
 	fIDDs.DeserializeIdentityReturns(fID, nil)
 
 	ids := SignatureSetToValidIdentities(sd, fIDDs)
-	require.Len(t, ids, 0)
+	require.Empty(t, ids)
 	data, sig := fID.VerifyArgsForCall(0)
 	require.Equal(t, []byte("data1"), data)
 	require.Equal(t, []byte("signature1"), sig)

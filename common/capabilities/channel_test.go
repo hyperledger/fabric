@@ -17,7 +17,7 @@ import (
 func TestChannelV10(t *testing.T) {
 	cp := NewChannelProvider(map[string]*cb.Capability{})
 	require.NoError(t, cp.Supported())
-	require.True(t, cp.MSPVersion() == msp.MSPv1_0)
+	require.Equal(t, msp.MSPv1_0, cp.MSPVersion())
 	require.False(t, cp.ConsensusTypeMigration())
 	require.False(t, cp.OrgSpecificOrdererEndpoints())
 }
@@ -27,7 +27,7 @@ func TestChannelV11(t *testing.T) {
 		ChannelV1_1: {},
 	})
 	require.NoError(t, cp.Supported())
-	require.True(t, cp.MSPVersion() == msp.MSPv1_1)
+	require.Equal(t, msp.MSPv1_1, cp.MSPVersion())
 	require.False(t, cp.ConsensusTypeMigration())
 	require.False(t, cp.OrgSpecificOrdererEndpoints())
 }
@@ -38,7 +38,7 @@ func TestChannelV13(t *testing.T) {
 		ChannelV1_3: {},
 	})
 	require.NoError(t, cp.Supported())
-	require.True(t, cp.MSPVersion() == msp.MSPv1_3)
+	require.Equal(t, msp.MSPv1_3, cp.MSPVersion())
 	require.False(t, cp.ConsensusTypeMigration())
 	require.False(t, cp.OrgSpecificOrdererEndpoints())
 
@@ -46,7 +46,7 @@ func TestChannelV13(t *testing.T) {
 		ChannelV1_3: {},
 	})
 	require.NoError(t, cp.Supported())
-	require.True(t, cp.MSPVersion() == msp.MSPv1_3)
+	require.Equal(t, msp.MSPv1_3, cp.MSPVersion())
 	require.False(t, cp.ConsensusTypeMigration())
 	require.False(t, cp.OrgSpecificOrdererEndpoints())
 }
@@ -57,7 +57,7 @@ func TestChannelV142(t *testing.T) {
 		ChannelV1_4_2: {},
 	})
 	require.NoError(t, cp.Supported())
-	require.True(t, cp.MSPVersion() == msp.MSPv1_3)
+	require.Equal(t, msp.MSPv1_3, cp.MSPVersion())
 	require.True(t, cp.ConsensusTypeMigration())
 	require.True(t, cp.OrgSpecificOrdererEndpoints())
 
@@ -65,7 +65,7 @@ func TestChannelV142(t *testing.T) {
 		ChannelV1_4_2: {},
 	})
 	require.NoError(t, cp.Supported())
-	require.True(t, cp.MSPVersion() == msp.MSPv1_3)
+	require.Equal(t, msp.MSPv1_3, cp.MSPVersion())
 	require.True(t, cp.ConsensusTypeMigration())
 	require.True(t, cp.OrgSpecificOrdererEndpoints())
 }
@@ -77,7 +77,7 @@ func TestChannelV143(t *testing.T) {
 		ChannelV1_4_3: {},
 	})
 	require.NoError(t, cp.Supported())
-	require.True(t, cp.MSPVersion() == msp.MSPv1_4_3)
+	require.Equal(t, msp.MSPv1_4_3, cp.MSPVersion())
 	require.True(t, cp.ConsensusTypeMigration())
 	require.True(t, cp.OrgSpecificOrdererEndpoints())
 
@@ -85,7 +85,7 @@ func TestChannelV143(t *testing.T) {
 		ChannelV1_4_3: {},
 	})
 	require.NoError(t, cp.Supported())
-	require.True(t, cp.MSPVersion() == msp.MSPv1_4_3)
+	require.Equal(t, msp.MSPv1_4_3, cp.MSPVersion())
 	require.True(t, cp.ConsensusTypeMigration())
 	require.True(t, cp.OrgSpecificOrdererEndpoints())
 }
@@ -95,7 +95,7 @@ func TestChannelV20(t *testing.T) {
 		ChannelV2_0: {},
 	})
 	require.NoError(t, cp.Supported())
-	require.True(t, cp.MSPVersion() == msp.MSPv1_4_3)
+	require.Equal(t, msp.MSPv1_4_3, cp.MSPVersion())
 	require.True(t, cp.ConsensusTypeMigration())
 	require.True(t, cp.OrgSpecificOrdererEndpoints())
 }

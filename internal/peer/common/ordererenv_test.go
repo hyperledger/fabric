@@ -32,8 +32,8 @@ func TestOrdererCmdEnv(t *testing.T) {
 			require.Equal(t, cert, viper.GetString("orderer.tls.clientCert.file"))
 			require.Equal(t, endpoint, viper.GetString("orderer.address"))
 			require.Equal(t, sn, viper.GetString("orderer.tls.serverhostoverride"))
-			require.Equal(t, true, viper.GetBool("orderer.tls.enabled"))
-			require.Equal(t, true, viper.GetBool("orderer.tls.clientAuthRequired"))
+			require.True(t, viper.GetBool("orderer.tls.enabled"))
+			require.True(t, viper.GetBool("orderer.tls.clientAuthRequired"))
 		},
 		PersistentPreRun: common.SetOrdererEnv,
 	}
@@ -55,6 +55,6 @@ func TestOrdererCmdEnv(t *testing.T) {
 	require.Equal(t, cert, viper.GetString("orderer.tls.clientCert.file"))
 	require.Equal(t, endpoint, viper.GetString("orderer.address"))
 	require.Equal(t, sn, viper.GetString("orderer.tls.serverhostoverride"))
-	require.Equal(t, true, viper.GetBool("orderer.tls.enabled"))
-	require.Equal(t, true, viper.GetBool("orderer.tls.clientAuthRequired"))
+	require.True(t, viper.GetBool("orderer.tls.enabled"))
+	require.True(t, viper.GetBool("orderer.tls.clientAuthRequired"))
 }

@@ -221,7 +221,7 @@ func TestPullEngineAll2AllWithIncrementalSpawning(t *testing.T) {
 
 	for i := range instanceCount {
 		pID := fmt.Sprintf("p%d", i+1)
-		require.Equal(t, instanceCount, len(peers[pID].state.ToArray()))
+		require.Len(t, peers[pID].state.ToArray(), instanceCount)
 	}
 }
 
@@ -241,39 +241,39 @@ func TestPullEngineSelectiveUpdates(t *testing.T) {
 	// Ensure inst2 sent a proper digest to inst1
 	inst1.hook(func(m any) {
 		if dig, isDig := m.(*digestMsg); isDig {
-			require.True(t, util.IndexInSlice(dig.digest, "0", Strcmp) != -1)
-			require.True(t, util.IndexInSlice(dig.digest, "1", Strcmp) != -1)
-			require.True(t, util.IndexInSlice(dig.digest, "2", Strcmp) != -1)
-			require.True(t, util.IndexInSlice(dig.digest, "3", Strcmp) != -1)
+			require.NotEqual(t, -1, util.IndexInSlice(dig.digest, "0", Strcmp))
+			require.NotEqual(t, -1, util.IndexInSlice(dig.digest, "1", Strcmp))
+			require.NotEqual(t, -1, util.IndexInSlice(dig.digest, "2", Strcmp))
+			require.NotEqual(t, -1, util.IndexInSlice(dig.digest, "3", Strcmp))
 		}
 	})
 
 	// Ensure inst1 requested only needed updates from inst2
 	inst2.hook(func(m any) {
 		if req, isReq := m.(*reqMsg); isReq {
-			require.True(t, util.IndexInSlice(req.items, "1", Strcmp) == -1)
-			require.True(t, util.IndexInSlice(req.items, "3", Strcmp) == -1)
+			require.Equal(t, -1, util.IndexInSlice(req.items, "1", Strcmp))
+			require.Equal(t, -1, util.IndexInSlice(req.items, "3", Strcmp))
 
-			require.True(t, util.IndexInSlice(req.items, "0", Strcmp) != -1)
-			require.True(t, util.IndexInSlice(req.items, "2", Strcmp) != -1)
+			require.NotEqual(t, -1, util.IndexInSlice(req.items, "0", Strcmp))
+			require.NotEqual(t, -1, util.IndexInSlice(req.items, "2", Strcmp))
 		}
 	})
 
 	// Ensure inst1 received only needed updates from inst2
 	inst1.hook(func(m any) {
 		if res, isRes := m.(*resMsg); isRes {
-			require.True(t, util.IndexInSlice(res.items, "1", Strcmp) == -1)
-			require.True(t, util.IndexInSlice(res.items, "3", Strcmp) == -1)
+			require.Equal(t, -1, util.IndexInSlice(res.items, "1", Strcmp))
+			require.Equal(t, -1, util.IndexInSlice(res.items, "3", Strcmp))
 
-			require.True(t, util.IndexInSlice(res.items, "0", Strcmp) != -1)
-			require.True(t, util.IndexInSlice(res.items, "2", Strcmp) != -1)
+			require.NotEqual(t, -1, util.IndexInSlice(res.items, "0", Strcmp))
+			require.NotEqual(t, -1, util.IndexInSlice(res.items, "2", Strcmp))
 		}
 	})
 
 	inst1.setNextPeerSelection([]string{"p2"})
 
 	time.Sleep(time.Duration(2000) * time.Millisecond)
-	require.Equal(t, len(inst2.state.ToArray()), len(inst1.state.ToArray()))
+	require.Len(t, inst1.state.ToArray(), len(inst2.state.ToArray()))
 }
 
 func TestByzantineResponder(t *testing.T) {
@@ -323,13 +323,13 @@ func TestByzantineResponder(t *testing.T) {
 
 	require.Equal(t, int32(1), atomic.LoadInt32(&receivedDigestFromInst3), "inst1 hasn't received a digest from inst3")
 
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "1", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "2", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "3", Strcmp) != -1)
+	require.NotEqual(t, -1, util.IndexInSlice(inst1.state.ToArray(), "1", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst1.state.ToArray(), "2", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst1.state.ToArray(), "3", Strcmp))
 
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "5", Strcmp) == -1)
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "6", Strcmp) == -1)
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "7", Strcmp) == -1)
+	require.Equal(t, -1, util.IndexInSlice(inst1.state.ToArray(), "5", Strcmp))
+	require.Equal(t, -1, util.IndexInSlice(inst1.state.ToArray(), "6", Strcmp))
+	require.Equal(t, -1, util.IndexInSlice(inst1.state.ToArray(), "7", Strcmp))
 }
 
 func TestMultipleInitiators(t *testing.T) {
@@ -353,10 +353,10 @@ func TestMultipleInitiators(t *testing.T) {
 	time.Sleep(time.Duration(2000) * time.Millisecond)
 
 	for _, inst := range []*pullTestInstance{inst1, inst2, inst3} {
-		require.True(t, util.IndexInSlice(inst.state.ToArray(), "1", Strcmp) != -1)
-		require.True(t, util.IndexInSlice(inst.state.ToArray(), "2", Strcmp) != -1)
-		require.True(t, util.IndexInSlice(inst.state.ToArray(), "3", Strcmp) != -1)
-		require.True(t, util.IndexInSlice(inst.state.ToArray(), "4", Strcmp) != -1)
+		require.NotEqual(t, -1, util.IndexInSlice(inst.state.ToArray(), "1", Strcmp))
+		require.NotEqual(t, -1, util.IndexInSlice(inst.state.ToArray(), "2", Strcmp))
+		require.NotEqual(t, -1, util.IndexInSlice(inst.state.ToArray(), "3", Strcmp))
+		require.NotEqual(t, -1, util.IndexInSlice(inst.state.ToArray(), "4", Strcmp))
 	}
 }
 
@@ -380,15 +380,15 @@ func TestLatePeers(t *testing.T) {
 
 	time.Sleep(time.Duration(2000) * time.Millisecond)
 
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "1", Strcmp) == -1)
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "2", Strcmp) == -1)
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "3", Strcmp) == -1)
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "4", Strcmp) == -1)
+	require.Equal(t, -1, util.IndexInSlice(inst1.state.ToArray(), "1", Strcmp))
+	require.Equal(t, -1, util.IndexInSlice(inst1.state.ToArray(), "2", Strcmp))
+	require.Equal(t, -1, util.IndexInSlice(inst1.state.ToArray(), "3", Strcmp))
+	require.Equal(t, -1, util.IndexInSlice(inst1.state.ToArray(), "4", Strcmp))
 
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "5", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "6", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "7", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "8", Strcmp) != -1)
+	require.NotEqual(t, -1, util.IndexInSlice(inst1.state.ToArray(), "5", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst1.state.ToArray(), "6", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst1.state.ToArray(), "7", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst1.state.ToArray(), "8", Strcmp))
 }
 
 func TestBiDiUpdates(t *testing.T) {
@@ -408,15 +408,15 @@ func TestBiDiUpdates(t *testing.T) {
 
 	time.Sleep(time.Duration(2000) * time.Millisecond)
 
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "0", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "1", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "2", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "3", Strcmp) != -1)
+	require.NotEqual(t, -1, util.IndexInSlice(inst1.state.ToArray(), "0", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst1.state.ToArray(), "1", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst1.state.ToArray(), "2", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst1.state.ToArray(), "3", Strcmp))
 
-	require.True(t, util.IndexInSlice(inst2.state.ToArray(), "0", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst2.state.ToArray(), "1", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst2.state.ToArray(), "2", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst2.state.ToArray(), "3", Strcmp) != -1)
+	require.NotEqual(t, -1, util.IndexInSlice(inst2.state.ToArray(), "0", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst2.state.ToArray(), "1", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst2.state.ToArray(), "2", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst2.state.ToArray(), "3", Strcmp))
 }
 
 func TestSpread(t *testing.T) {
@@ -474,7 +474,7 @@ func TestSpread(t *testing.T) {
 		if pI == "p5" {
 			require.Equal(t, 0, counter)
 		} else {
-			require.True(t, counter > 0, "%s was not selected!", pI)
+			require.Positive(t, counter, "%s was not selected!", pI)
 		}
 	}
 	lock.Unlock()
@@ -509,19 +509,19 @@ func TestFilter(t *testing.T) {
 
 	time.Sleep(time.Second * 2)
 
-	require.True(t, util.IndexInSlice(inst2.state.ToArray(), "0", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst2.state.ToArray(), "1", Strcmp) == -1)
-	require.True(t, util.IndexInSlice(inst2.state.ToArray(), "2", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst2.state.ToArray(), "3", Strcmp) == -1)
-	require.True(t, util.IndexInSlice(inst2.state.ToArray(), "4", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst2.state.ToArray(), "5", Strcmp) == -1)
+	require.NotEqual(t, -1, util.IndexInSlice(inst2.state.ToArray(), "0", Strcmp))
+	require.Equal(t, -1, util.IndexInSlice(inst2.state.ToArray(), "1", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst2.state.ToArray(), "2", Strcmp))
+	require.Equal(t, -1, util.IndexInSlice(inst2.state.ToArray(), "3", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst2.state.ToArray(), "4", Strcmp))
+	require.Equal(t, -1, util.IndexInSlice(inst2.state.ToArray(), "5", Strcmp))
 
-	require.True(t, util.IndexInSlice(inst3.state.ToArray(), "0", Strcmp) == -1)
-	require.True(t, util.IndexInSlice(inst3.state.ToArray(), "1", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst3.state.ToArray(), "2", Strcmp) == -1)
-	require.True(t, util.IndexInSlice(inst3.state.ToArray(), "3", Strcmp) != -1)
-	require.True(t, util.IndexInSlice(inst3.state.ToArray(), "4", Strcmp) == -1)
-	require.True(t, util.IndexInSlice(inst3.state.ToArray(), "5", Strcmp) != -1)
+	require.Equal(t, -1, util.IndexInSlice(inst3.state.ToArray(), "0", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst3.state.ToArray(), "1", Strcmp))
+	require.Equal(t, -1, util.IndexInSlice(inst3.state.ToArray(), "2", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst3.state.ToArray(), "3", Strcmp))
+	require.Equal(t, -1, util.IndexInSlice(inst3.state.ToArray(), "4", Strcmp))
+	require.NotEqual(t, -1, util.IndexInSlice(inst3.state.ToArray(), "5", Strcmp))
 }
 
 func Strcmp(a any, b any) bool {

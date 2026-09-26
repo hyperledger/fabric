@@ -358,7 +358,7 @@ func TestInvocationsBadArgs(t *testing.T) {
 	require.NoError(t, err)
 
 	_, code := ValidateTransaction(nil, cryptoProvider)
-	require.Equal(t, code, peer.TxValidationCode_NIL_ENVELOPE)
+	require.Equal(t, peer.TxValidationCode_NIL_ENVELOPE, code)
 	err = validateEndorserTransaction(nil, nil)
 	require.Error(t, err)
 	err = validateConfigTransaction(nil, nil)

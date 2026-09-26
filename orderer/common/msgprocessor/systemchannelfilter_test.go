@@ -165,7 +165,7 @@ func TestGoodProposal(t *testing.T) {
 	mv := &mocks.MetadataValidator{}
 
 	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()))
-	require.Nil(t, err, "Error constructing configtx")
+	require.NoError(t, err, "Error constructing configtx")
 	ingressTx := makeConfigTxFromConfigUpdateTx(configUpdate)
 
 	wrapped := wrapConfigTx(ingressTx)
@@ -181,16 +181,16 @@ func TestProposalRejectedByConfig(t *testing.T) {
 	mv := &mocks.MetadataValidator{}
 
 	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()))
-	require.Nil(t, err, "Error constructing configtx")
+	require.NoError(t, err, "Error constructing configtx")
 	ingressTx := makeConfigTxFromConfigUpdateTx(configUpdate)
 
 	wrapped := wrapConfigTx(ingressTx)
 
 	err = NewSystemChannelFilter(mcc.ms, mcc, mv).Apply(wrapped)
 
-	require.NotNil(t, err, "Did not accept valid transaction")
+	require.Error(t, err, "Did not accept valid transaction")
 	require.Regexp(t, mcc.NewChannelConfigErr.Error(), err)
-	require.Len(t, mcc.newChains, 0, "Proposal should not have created a new chain")
+	require.Empty(t, mcc.newChains, "Proposal should not have created a new chain")
 }
 
 func TestNumChainsExceeded(t *testing.T) {
@@ -202,14 +202,14 @@ func TestNumChainsExceeded(t *testing.T) {
 	mv := &mocks.MetadataValidator{}
 
 	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()))
-	require.Nil(t, err, "Error constructing configtx")
+	require.NoError(t, err, "Error constructing configtx")
 	ingressTx := makeConfigTxFromConfigUpdateTx(configUpdate)
 
 	wrapped := wrapConfigTx(ingressTx)
 
 	err = NewSystemChannelFilter(mcc.ms, mcc, mv).Apply(wrapped)
 
-	require.NotNil(t, err, "Transaction had created too many channels")
+	require.Error(t, err, "Transaction had created too many channels")
 	require.Regexp(t, "exceed maximimum number", err)
 }
 
@@ -221,7 +221,7 @@ func TestMaintenanceMode(t *testing.T) {
 	mv := &mocks.MetadataValidator{}
 
 	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()))
-	require.Nil(t, err, "Error constructing configtx")
+	require.NoError(t, err, "Error constructing configtx")
 	ingressTx := makeConfigTxFromConfigUpdateTx(configUpdate)
 
 	wrapped := wrapConfigTx(ingressTx)
@@ -425,7 +425,7 @@ func TestBadProposal(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := sysFilter.Apply(&cb.Envelope{Payload: protoutil.MarshalOrPanic(tc.payload)})
-			require.NotNil(t, err)
+			require.Error(t, err)
 			require.Regexp(t, tc.regexp, err.Error())
 		})
 	}

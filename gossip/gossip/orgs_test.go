@@ -378,8 +378,12 @@ func TestConfidentiality(t *testing.T) {
 	}
 
 	msgs2Inspect := make(chan *msg, 3000)
-	defer close(msgs2Inspect)
-	go inspectMsgs(t, msgs2Inspect, cs, peersWithExternalEndpoints)
+	inspectResult := make(chan error, 1)
+	inspectDone := make(chan struct{})
+	go func() {
+		defer close(inspectDone)
+		inspectResult <- inspectMsgs(msgs2Inspect, cs, peersWithExternalEndpoints)
+	}()
 	finished := int32(0)
 	var wg sync.WaitGroup
 
@@ -391,12 +395,10 @@ func TestConfidentiality(t *testing.T) {
 	// Listen to all peers membership messages and forward them to the inspection channel
 	// where they will be inspected, and the test would fail if a confidentiality violation is found
 	for _, p := range peers {
-		wg.Add(1)
 		_, msgs := p.Accept(msgSelector, true)
 		peerNetMember := p.selfNetworkMember()
 		targetORg := string(cs.OrgByPeerIdentity(api.PeerIdentityType(peerNetMember.InternalEndpoint)))
-		go func(targetOrg string, msgs <-chan protoext.ReceivedMessage) {
-			defer wg.Done()
+		wg.Go(func() {
 			for receivedMsg := range msgs {
 				m := &msg{
 					src:           string(cs.OrgByPeerIdentity(receivedMsg.GetConnectionInfo().Identity)),
@@ -408,7 +410,7 @@ func TestConfidentiality(t *testing.T) {
 				}
 				msgs2Inspect <- m
 			}
-		}(targetORg, msgs)
+		})
 	}
 
 	// Now, construct the join channel messages
@@ -455,7 +457,7 @@ func TestConfidentiality(t *testing.T) {
 					return false
 				}
 				// Make sure no one knows too much
-				require.True(t, membersCount <= expMemberSize, "%s knows too much (%d > %d) peers: %v",
+				require.LessOrEqual(t, membersCount, expMemberSize, "%s knows too much (%d > %d) peers: %v",
 					membersCount, expMemberSize, peerNetMember.PKIid, members)
 			}
 		}
@@ -466,6 +468,12 @@ func TestConfidentiality(t *testing.T) {
 	stopPeers(peers)
 	wg.Wait()
 	atomic.StoreInt32(&finished, int32(1))
+
+	// Stop feeding the inspection goroutine and verify the messages it
+	// inspected did not violate any confidentiality constraint
+	close(msgs2Inspect)
+	<-inspectDone
+	require.NoError(t, <-inspectResult)
 }
 
 func expectedMembershipSize(peersInOrg, externalEndpointsInOrg int, org string, hasExternalEndpoint bool) int {
@@ -551,7 +559,10 @@ func extractOrgsFromMsg(msg *proto.GossipMessage, sec api.SecurityAdvisor) []str
 	return res
 }
 
-func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor, peersWithExternalEndpoints map[string]struct{}) {
+// inspectMsgs is meant to be called from a goroutine other than the one
+// running the test, so it reports confidentiality violations through the
+// returned error instead of asserting.
+func inspectMsgs(msgChan chan *msg, sec api.SecurityAdvisor, peersWithExternalEndpoints map[string]struct{}) error {
 	for msg := range msgChan {
 		// If the destination org is the same as the source org,
 		// the message can contain any organizations
@@ -559,7 +570,9 @@ func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor, peers
 			continue
 		}
 		if protoext.IsStateInfoMsg(msg.GossipMessage) || protoext.IsStateInfoSnapshot(msg.GossipMessage) {
-			inspectStateInfoMsg(t, msg, peersWithExternalEndpoints)
+			if err := inspectStateInfoMsg(msg, peersWithExternalEndpoints); err != nil {
+				return err
+			}
 			continue
 		}
 		// Else, it's a cross-organizational message.
@@ -567,16 +580,21 @@ func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor, peers
 		// The total organizations of the message must be a subset of s U d.
 		orgs := extractOrgsFromMsg(msg.GossipMessage, sec)
 		s := []string{msg.src, msg.dst}
-		require.True(t, isSubset(orgs, s), "%v isn't a subset of %v", orgs, s)
+		if !isSubset(orgs, s) {
+			return fmt.Errorf("%v isn't a subset of %v", orgs, s)
+		}
 
 		// Ensure no one but B knows about D and vice versa
 		if msg.dst == "D" {
-			require.NotContains(t, "A", orgs)
-			require.NotContains(t, "C", orgs)
+			if err := requireNoOrgs(orgs, "A", "C"); err != nil {
+				return err
+			}
 		}
 
 		if msg.dst == "A" || msg.dst == "C" {
-			require.NotContains(t, "D", orgs)
+			if err := requireNoOrgs(orgs, "D"); err != nil {
+				return err
+			}
 		}
 
 		// If this is an identity snapshot, make sure that only identities of peers
@@ -589,26 +607,42 @@ func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor, peers
 			identityMsg, _ := protoext.EnvelopeToGossipMessage(envp)
 			pkiID := identityMsg.GetPeerIdentity().GetPkiId()
 			_, hasExternalEndpoint := peersWithExternalEndpoints[string(pkiID)]
-			require.True(t, hasExternalEndpoint,
-				"Peer %s doesn't have an external endpoint but its identity was gossiped", string(pkiID))
+			if !hasExternalEndpoint {
+				return fmt.Errorf("Peer %s doesn't have an external endpoint but its identity was gossiped", string(pkiID))
+			}
 		}
 	}
+	return nil
 }
 
-func inspectStateInfoMsg(t *testing.T, m *msg, peersWithExternalEndpoints map[string]struct{}) {
+func requireNoOrgs(orgs []string, forbidden ...string) error {
+	for _, f := range forbidden {
+		if slices.Contains(orgs, f) {
+			return fmt.Errorf("%v is not supposed to be in %v", f, orgs)
+		}
+	}
+	return nil
+}
+
+func inspectStateInfoMsg(m *msg, peersWithExternalEndpoints map[string]struct{}) error {
 	if protoext.IsStateInfoMsg(m.GossipMessage) {
 		pkiID := m.GetStateInfo().GetPkiId()
 		_, hasExternalEndpoint := peersWithExternalEndpoints[string(pkiID)]
-		require.True(t, hasExternalEndpoint, "peer %s has no external endpoint but crossed an org", string(pkiID))
-		return
+		if !hasExternalEndpoint {
+			return fmt.Errorf("peer %s has no external endpoint but crossed an org", string(pkiID))
+		}
+		return nil
 	}
 
 	for _, envp := range m.GetStateSnapshot().GetElements() {
 		msg, _ := protoext.EnvelopeToGossipMessage(envp)
 		pkiID := msg.GetStateInfo().GetPkiId()
 		_, hasExternalEndpoint := peersWithExternalEndpoints[string(pkiID)]
-		require.True(t, hasExternalEndpoint, "peer %s has no external endpoint but crossed an org", string(pkiID))
+		if !hasExternalEndpoint {
+			return fmt.Errorf("peer %s has no external endpoint but crossed an org", string(pkiID))
+		}
 	}
+	return nil
 }
 
 type msg struct {

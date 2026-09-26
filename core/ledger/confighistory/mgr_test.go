@@ -348,7 +348,7 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		require.Empty(t, fileHashes)
 		files, err := os.ReadDir(env.testSnapshotDir)
 		require.NoError(t, err)
-		require.Len(t, files, 0)
+		require.Empty(t, files)
 	})
 
 	t.Run("export confighistory", func(t *testing.T) {

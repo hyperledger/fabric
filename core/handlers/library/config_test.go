@@ -60,7 +60,7 @@ peer:
 			"vscc": &HandlerConfig{Name: "DefaultValidation", Library: "/path/to/vscc.so"},
 		},
 	}
-	require.EqualValues(t, expect, actual)
+	require.Equal(t, expect, actual)
 }
 
 func TestLoadConfigEnvVarOverride(t *testing.T) {
@@ -102,5 +102,5 @@ peer:
 		Validators:  PluginMapping{"vscc": &HandlerConfig{Name: "DefaultValidation"}},
 	}
 
-	require.EqualValues(t, expect, actual)
+	require.Equal(t, expect, actual)
 }

@@ -254,10 +254,10 @@ func TestCacheConcurrentConfigUpdate(t *testing.T) {
 	as.On("ConfigSequence", "mychannel").Return(uint64(1)).Times(2)
 
 	// First request returns OK
+	firstResultChan := make(chan error, 1)
 	go func() {
 		defer firstRequestFinished.Done()
-		firstResult := cache.EligibleForService("mychannel", sd)
-		require.NoError(t, firstResult)
+		firstResultChan <- cache.EligibleForService("mychannel", sd)
 	}()
 	firstRequestInvoked.Wait()
 	// Second request returns that the identity isn't authorized
@@ -266,6 +266,7 @@ func TestCacheConcurrentConfigUpdate(t *testing.T) {
 	secondRequestFinished.Done()
 	// Wait for first request to return
 	firstRequestFinished.Wait()
+	require.NoError(t, <-firstResultChan)
 	require.Contains(t, secondResult.Error(), "unauthorized")
 
 	// Now make another request and ensure that the second request's result (an-authorized) was cached,

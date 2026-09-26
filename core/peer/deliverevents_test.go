@@ -234,7 +234,7 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 								block := response.GetFilteredBlock()
 								config.Equal(uint64(0), block.GetNumber())
 								config.Equal(config.channelID, block.GetChannelId())
-								config.Equal(1, len(block.GetFilteredTransactions()))
+								config.Len(block.GetFilteredTransactions(), 1)
 								tx := block.GetFilteredTransactions()[0]
 								config.Equal(config.txID, tx.GetTxid())
 								config.Equal(peer.TxValidationCode_VALID, tx.GetTxValidationCode())
@@ -242,7 +242,7 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 								transactionActions := tx.GetTransactionActions()
 								config.NotNil(transactionActions)
 								chaincodeActions := transactionActions.GetChaincodeActions()
-								config.Equal(1, len(chaincodeActions))
+								config.Len(chaincodeActions, 1)
 								config.Equal(config.eventName, chaincodeActions[0].GetChaincodeEvent().GetEventName())
 								config.Equal(config.txID, chaincodeActions[0].GetChaincodeEvent().GetTxId())
 								config.Equal(config.chaincodeName, chaincodeActions[0].GetChaincodeEvent().GetChaincodeId())
@@ -308,7 +308,7 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 								block := response.GetFilteredBlock()
 								config.Equal(uint64(0), block.GetNumber())
 								config.Equal(config.channelID, block.GetChannelId())
-								config.Equal(1, len(block.GetFilteredTransactions()))
+								config.Len(block.GetFilteredTransactions(), 1)
 								tx := block.GetFilteredTransactions()[0]
 								config.Equal(config.txID, tx.GetTxid())
 								config.Equal(peer.TxValidationCode_VALID, tx.GetTxValidationCode())
@@ -318,7 +318,7 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 								chaincodeActions := transactionActions.GetChaincodeActions()
 								// we expecting to get zero chaincode action,
 								// since provided nil payload
-								config.Equal(0, len(chaincodeActions))
+								config.Empty(chaincodeActions)
 							default:
 								config.FailNow("Unexpected response type")
 							}
@@ -462,19 +462,19 @@ func TestEventsServer_DeliverWithPrivateData(t *testing.T) {
 								blockAndPvtData := response.GetBlockAndPrivateData()
 								block := blockAndPvtData.GetBlock()
 								config.Equal(uint64(0), block.GetHeader().GetNumber())
-								config.Equal(1, len(blockAndPvtData.GetPrivateDataMap()))
+								config.Len(blockAndPvtData.GetPrivateDataMap(), 1)
 								config.NotNil(blockAndPvtData.GetPrivateDataMap()[uint64(0)])
 								txPvtRwset := blockAndPvtData.GetPrivateDataMap()[uint64(0)]
 								// expect to have 2 NsPvtRwset (i.e., 2 namespaces)
-								config.Equal(2, len(txPvtRwset.GetNsPvtRwset()))
+								config.Len(txPvtRwset.GetNsPvtRwset(), 2)
 								// check namespace because the index may be out of order
 								for _, nsPvtRwset := range txPvtRwset.GetNsPvtRwset() {
 									switch nsPvtRwset.GetNamespace() {
 									case "ns-0":
-										config.Equal(1, len(nsPvtRwset.GetCollectionPvtRwset()))
+										config.Len(nsPvtRwset.GetCollectionPvtRwset(), 1)
 										config.Equal("coll-0", nsPvtRwset.GetCollectionPvtRwset()[0].GetCollectionName())
 									case "ns-2":
-										config.Equal(2, len(nsPvtRwset.GetCollectionPvtRwset()))
+										config.Len(nsPvtRwset.GetCollectionPvtRwset(), 2)
 										config.Equal("coll-20", nsPvtRwset.GetCollectionPvtRwset()[0].GetCollectionName())
 										config.Equal("coll-21", nsPvtRwset.GetCollectionPvtRwset()[1].GetCollectionName())
 									default:

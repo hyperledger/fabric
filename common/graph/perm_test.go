@@ -36,11 +36,11 @@ func TestPermute(t *testing.T) {
 	}
 
 	permutations := vR.ToTree().Permute(1000)
-	// For a sub-tree with r-(D,E) we have 9 combinations (3 combinations of each sub-tree where D and E are the roots)
-	// For a sub-tree with r-(D,F) we have 9 combinations from the same logic
-	// For a sub-tree with r-(E,F) we have 9 combinations too
+	// For a subtree with r-(D,E) we have 9 combinations (3 combinations of each subtree where D and E are the roots)
+	// For a subtree with r-(D,F) we have 9 combinations from the same logic
+	// For a subtree with r-(E,F) we have 9 combinations too
 	// Total 27 combinations
-	require.Equal(t, 27, len(permutations))
+	require.Len(t, permutations, 27)
 
 	listCombination := func(i Iterator) []string {
 		var traversal []string

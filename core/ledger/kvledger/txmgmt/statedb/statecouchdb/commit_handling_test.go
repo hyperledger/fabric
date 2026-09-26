@@ -70,14 +70,14 @@ func TestGetRevision(t *testing.T) {
 	revisionsMap, err := db.getRevisions("ns", nsUpdates)
 	require.NoError(t, err)
 	require.Equal(t, "revision-cache-number", revisionsMap["key-in-cache"])
-	require.NotEqual(t, "", revisionsMap["key-in-db"])
+	require.NotEmpty(t, revisionsMap["key-in-db"])
 	require.Equal(t, "revision-db-number", revisionsMap["key-in-both-db-cache"])
-	require.Equal(t, "", revisionsMap["bad-key"])
+	require.Empty(t, revisionsMap["bad-key"])
 
 	// Get revisions of non-existing nameSpace.
 	revisionsMap, err = db.getRevisions("bad-namespace", nsUpdates)
 	require.NoError(t, err)
-	require.Equal(t, "", revisionsMap["key-in-db"])
+	require.Empty(t, revisionsMap["key-in-db"])
 }
 
 func TestBuildCommittersForNs(t *testing.T) {
@@ -108,7 +108,7 @@ func TestBuildCommittersForNs(t *testing.T) {
 
 	committers, err := db.buildCommittersForNs("ns", nsUpdates)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(committers))
+	require.Len(t, committers, 2)
 	require.Equal(t, "ns", committers[0].namespace)
 	require.Equal(t, "ns", committers[1].namespace)
 }
@@ -134,7 +134,7 @@ func TestBuildCommitters(t *testing.T) {
 
 	committer, err := db.buildCommitters(batch)
 	require.NoError(t, err)
-	require.Equal(t, 3, len(committer))
+	require.Len(t, committer, 3)
 	for _, commit := range committer {
 		require.True(t, namespaceSet[commit.namespace])
 	}

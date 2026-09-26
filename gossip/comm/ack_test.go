@@ -37,7 +37,7 @@ func TestInterceptAcks(t *testing.T) {
 	sub := pubsub.Subscribe(topicForAck(1, pkiID), time.Second)
 	wrappedHandler(ack)
 	// Ensure ack was consumed and not passed onwards to the wrapped hander
-	require.Len(t, msgs, 0)
+	require.Empty(t, msgs)
 	_, err := sub.Listen()
 	// Ensure ack was published
 	require.NoError(t, err)
@@ -106,7 +106,7 @@ func TestAck(t *testing.T) {
 	require.Empty(t, res[0].Error())
 	require.Empty(t, res[1].Error())
 	// Collection of 2 out of 3 acks should have taken much less than the timeout (10 seconds)
-	require.True(t, elapsed < time.Second*5)
+	require.Less(t, elapsed, time.Second*5)
 
 	// Collect 2 out of 3 acks - should fail, because peer3 now have sent an error along with the ack
 	go ack(inc2)
@@ -141,7 +141,7 @@ func TestAck(t *testing.T) {
 
 	// Send a message to no one
 	res = comm1.SendWithAck(createGossipMsg(), time.Second*3, 1)
-	require.Len(t, res, 0)
+	require.Empty(t, res)
 
 	// Send a message while stopping
 	comm1.Stop()

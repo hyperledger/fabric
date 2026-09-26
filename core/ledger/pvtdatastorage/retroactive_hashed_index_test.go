@@ -70,7 +70,7 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 
 		pvtdata, err := s.GetPvtDataByBlockNum(10, nil)
 		require.NoError(t, err)
-		require.Equal(t, 1, len(pvtdata))
+		require.Len(t, pvtdata, 1)
 		require.Equal(t, uint64(0), pvtdata[0].SeqInBlock)
 		pvtWS, err := rwsetutil.TxPvtRwSetFromProtoMsg(pvtdata[0].WriteSet)
 		require.NoError(t, err)
@@ -116,7 +116,7 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 
 		pvtdata, err = s.GetPvtDataByBlockNum(14, nil)
 		require.NoError(t, err)
-		require.Equal(t, 1, len(pvtdata))
+		require.Len(t, pvtdata, 1)
 		require.Equal(t, uint64(0), pvtdata[0].SeqInBlock)
 		pvtWS, err = rwsetutil.TxPvtRwSetFromProtoMsg(pvtdata[0].WriteSet)
 		require.NoError(t, err)

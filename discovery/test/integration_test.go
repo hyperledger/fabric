@@ -192,8 +192,8 @@ func TestGreenPath(t *testing.T) {
 			endorsersByMSP[endorser.MSPID] = append(endorsersByMSP[endorser.MSPID], string(endorser.Identity))
 		}
 		// For cc2cc we expect 2 peers from Org1MSP and 1 from Org2MSP
-		require.Equal(t, 2, len(endorsersByMSP["Org1MSP"]))
-		require.Equal(t, 1, len(endorsersByMSP["Org2MSP"]))
+		require.Len(t, endorsersByMSP["Org1MSP"], 2)
+		require.Len(t, endorsersByMSP["Org2MSP"], 1)
 	})
 
 	t.Run("Endorser chaincode with collection", func(t *testing.T) {
@@ -208,8 +208,8 @@ func TestGreenPath(t *testing.T) {
 		for _, endorser := range endorsers {
 			endorsersByMSP[endorser.MSPID] = append(endorsersByMSP[endorser.MSPID], string(endorser.Identity))
 		}
-		require.Equal(t, 1, len(endorsersByMSP["Org1MSP"]))
-		require.Equal(t, 1, len(endorsersByMSP["Org2MSP"]))
+		require.Len(t, endorsersByMSP["Org1MSP"], 1)
+		require.Len(t, endorsersByMSP["Org2MSP"], 1)
 	})
 
 	t.Run("Config query", func(t *testing.T) {
