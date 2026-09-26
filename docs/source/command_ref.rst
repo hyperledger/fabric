@@ -5,12 +5,14 @@ Commands Reference
    :maxdepth: 1
 
    commands/peercommand.md
-   commands/peerchaincode.md
-   commands/peerlifecycle.md
-   commands/peerchannel.md
-   commands/peersnapshot.md
-   commands/peerversion.md
    commands/peernode.md
+   commands/peerversion.md
+   commands/clicommand.md
+   commands/clichaincode.md
+   commands/clilifecycle.md
+   commands/clichannel.md
+   commands/clisnapshot.md
+   commands/cliversion.md
    commands/osnadminchannel.md
    commands/configtxgen.md
    commands/configtxlator.md
