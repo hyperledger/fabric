@@ -77,7 +77,7 @@ localhost:7051"`.
 
 ## peer chaincode invoke
 ```
-Invoke the specified chaincode. It will try to commit the endorsed transaction to the network.
+[DEPRECATED] Invoke the specified chaincode. It will try to commit the endorsed transaction to the network. Instead of this command, use "peercli chaincode invoke".
 
 Usage:
   peer chaincode invoke [flags]
@@ -110,7 +110,7 @@ Global Flags:
 
 ## peer chaincode query
 ```
-Get endorsed result of chaincode function call and print it. It won't generate transaction.
+[DEPRECATED] Get endorsed result of chaincode function call and print it. It won't generate transaction. Instead of this command, use "peercli chaincode query".
 
 Usage:
   peer chaincode query [flags]

@@ -9,8 +9,14 @@ Commands Reference
    commands/peerlifecycle.md
    commands/peerchannel.md
    commands/peersnapshot.md
-   commands/peerversion.md
    commands/peernode.md
+   commands/peerversion.md
+   commands/peerclicommand.md
+   commands/peerclichaincode.md
+   commands/peerclilifecycle.md
+   commands/peerclichannel.md
+   commands/peerclisnapshot.md
+   commands/peercliversion.md
    commands/osnadminchannel.md
    commands/configtxgen.md
    commands/configtxlator.md
