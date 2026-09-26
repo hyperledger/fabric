@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-GOTOOLS = counterfeiter gendoc ginkgo gocov gocov-xml golangci-lint govulncheck mockery protoc-gen-go protoc-gen-go-grpc swagger
+GOTOOLS = counterfeiter gendoc ginkgo gocov gocov-xml golangci-lint mockery protoc-gen-go protoc-gen-go-grpc swagger
 BUILD_DIR ?= build
 GOTOOLS_BINDIR ?= $(shell go env GOPATH)/bin
 
