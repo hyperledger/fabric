@@ -141,7 +141,7 @@ func TestCertRevocation(t *testing.T) {
 	// Drain channel
 	<-askedForIdentity
 	// Now it's 0
-	require.Len(t, askedForIdentity, 0)
+	require.Empty(t, askedForIdentity)
 
 	sentHello := false
 	l := sync.Mutex{}
@@ -180,7 +180,7 @@ func TestCertRevocation(t *testing.T) {
 	case <-askedForIdentity:
 		require.Fail(t, "Shouldn't have asked for an identity, because we already have it")
 	}
-	require.Len(t, askedForIdentity, 0)
+	require.Empty(t, askedForIdentity)
 	// Revoke the identity
 	cs.revoke(common.PKIidType("B"))
 	cStore.suspectPeers(func(id api.PeerIdentityType) bool {

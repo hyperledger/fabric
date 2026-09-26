@@ -1028,7 +1028,7 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 	fetchedMessages, err := p1.fetch(d2s)
 
 	require.NoError(t, err)
-	require.Equal(t, 1, len(fetchedMessages.PurgedElements))
+	require.Len(t, fetchedMessages.PurgedElements, 1)
 	require.Equal(t, dig1, fetchedMessages.PurgedElements[0])
 	p3.PrivateDataRetriever.(*dataRetrieverMock).AssertNumberOfCalls(t, "CollectionRWSet", 1)
 }
@@ -1133,10 +1133,10 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 	d2s := dasf.mapDigest(dig1).toSources("p2").mapDigest(dig2).toSources("p2").create()
 	fetchedMessages, err := p1.fetch(d2s)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(fetchedMessages.AvailableElements))
+	require.Len(t, fetchedMessages.AvailableElements, 2)
 	require.Equal(t, 1, dataRetreiver.getNumberOfCalls())
-	require.Equal(t, 2, len(fetchedMessages.AvailableElements[0].GetPayload()))
-	require.Equal(t, 2, len(fetchedMessages.AvailableElements[1].GetPayload()))
+	require.Len(t, fetchedMessages.AvailableElements[0].GetPayload(), 2)
+	require.Len(t, fetchedMessages.AvailableElements[1].GetPayload(), 2)
 }
 
 func toDigKey(dig *proto.PvtDataDigest) *privdatacommon.DigKey {
@@ -1215,10 +1215,10 @@ func TestPullerMetrics(t *testing.T) {
 		[]string{"channel", "A"},
 		testMetricProvider.FakePullDuration.WithArgsForCall(0),
 	)
-	require.True(t, testMetricProvider.FakePullDuration.ObserveArgsForCall(0) > 0)
+	require.Positive(t, testMetricProvider.FakePullDuration.ObserveArgsForCall(0))
 	require.Equal(t,
 		[]string{"channel", "A"},
 		testMetricProvider.FakeRetrieveDuration.WithArgsForCall(0),
 	)
-	require.True(t, testMetricProvider.FakeRetrieveDuration.ObserveArgsForCall(0) > 0)
+	require.Positive(t, testMetricProvider.FakeRetrieveDuration.ObserveArgsForCall(0))
 }

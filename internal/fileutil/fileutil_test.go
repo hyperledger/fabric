@@ -189,7 +189,7 @@ func TestListSubdirs(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(testPath, "some-random-file"), []byte("random-text"), 0o644))
 		subFolders, err := ListSubdirs(testPath)
 		require.NoError(t, err)
-		require.Len(t, subFolders, 0)
+		require.Empty(t, subFolders)
 	})
 
 	t.Run("empty-dir", func(t *testing.T) {
@@ -197,7 +197,7 @@ func TestListSubdirs(t *testing.T) {
 
 		subFolders, err := ListSubdirs(testPath)
 		require.NoError(t, err)
-		require.Len(t, subFolders, 0)
+		require.Empty(t, subFolders)
 	})
 
 	t.Run("non-existent-dir", func(t *testing.T) {

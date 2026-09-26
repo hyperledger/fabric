@@ -70,9 +70,10 @@ func TestMetrics(t *testing.T) {
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeHeightGauge.WithArgsForCall(0),
 	)
-	require.EqualValues(t,
-		101,
+	require.InDelta(t,
+		float64(101),
 		testMetricProvider.FakeHeightGauge.SetArgsForCall(0),
+		0,
 	)
 
 	// after push or pop payload buffer size should be reported

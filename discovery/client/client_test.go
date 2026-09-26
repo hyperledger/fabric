@@ -516,7 +516,7 @@ func TestClient(t *testing.T) {
 		for _, name := range names {
 			used[name] = struct{}{}
 		}
-		require.Equalf(t, len(acceptablePeers), len(used), "expecting each endorser to be returned at least once")
+		require.Len(t, used, len(acceptablePeers), "expecting each endorser to be returned at least once")
 	})
 
 	t.Run("Endorser query with custom filter", func(t *testing.T) {
@@ -540,7 +540,7 @@ func TestClient(t *testing.T) {
 				used[name] = struct{}{}
 			}
 		}
-		require.Equalf(t, len(acceptablePeers), len(used), "expecting each endorser to be returned at least once")
+		require.Len(t, used, len(acceptablePeers), "expecting each endorser to be returned at least once")
 
 		threshold = 0 // only use the peers at the highest ledger height (same as using the PrioritiesByHeight selector)
 		acceptablePeers = []string{"p5", "p9", "p11", "p15"}
@@ -553,7 +553,7 @@ func TestClient(t *testing.T) {
 			used[name] = struct{}{}
 		}
 		t.Logf("Used peers: %#v\n", used)
-		require.Equalf(t, len(acceptablePeers), len(used), "expecting each endorser to be returned at least once")
+		require.Len(t, used, len(acceptablePeers), "expecting each endorser to be returned at least once")
 	})
 }
 

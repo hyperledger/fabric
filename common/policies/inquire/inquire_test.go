@@ -159,5 +159,5 @@ func TestSatisfiedByTooManyCombinations(t *testing.T) {
 		actual[fmt.Sprintf("%v", principals)] = struct{}{}
 	}
 	// Total combinations are capped by the combinationsUpperBound.
-	require.True(t, len(actual) < combinationsUpperBound)
+	require.Less(t, len(actual), combinationsUpperBound)
 }

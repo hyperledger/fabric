@@ -158,7 +158,7 @@ func TestFollowerNewChain(t *testing.T) {
 
 		consensusRelation, status := chain.StatusReport()
 		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
-		require.True(t, status == types.StatusActive)
+		require.Equal(t, types.StatusActive, status)
 	})
 
 	t.Run("can not find config block in chain", func(t *testing.T) {
@@ -232,8 +232,8 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		setup()
 		mockClusterConsenter.IsChannelMemberCalls(amIReallyInChannel)
 		localBlockchain.fill(joinNum / 2) // A gap between the ledger and the join block
-		require.True(t, joinBlockAppRaft.GetHeader().GetNumber() > ledgerResources.Height())
-		require.True(t, ledgerResources.Height() > 0)
+		require.Greater(t, joinBlockAppRaft.GetHeader().GetNumber(), ledgerResources.Height())
+		require.Positive(t, ledgerResources.Height())
 
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
@@ -275,7 +275,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		mockClusterConsenter.IsChannelMemberCalls(amIReallyInChannel)
 		localBlockchain.fill(joinNum)
 		localBlockchain.appendConfig(1) // No gap between the ledger and the join block
-		require.True(t, joinBlockAppRaft.GetHeader().GetNumber() < ledgerResources.Height())
+		require.Less(t, joinBlockAppRaft.GetHeader().GetNumber(), ledgerResources.Height())
 
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
@@ -503,7 +503,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 			require.Equal(t, remoteBlockchain.Block(i).GetHeader(), localBlockchain.Block(i).GetHeader(), "failed block i=%d", i)
 		}
 		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
-		require.True(t, puller.HeightsByEndpointsCallCount() >= 30)
+		require.GreaterOrEqual(t, puller.HeightsByEndpointsCallCount(), 30)
 		require.Equal(t, int64(10000), maxDelay.Load())
 	})
 	t.Run("Configs in the middle, latest height increasing", func(t *testing.T) {

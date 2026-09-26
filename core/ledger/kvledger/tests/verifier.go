@@ -116,7 +116,7 @@ func (v *verifier) verifyBlockAndPvtData(blockNum uint64, filter ledger.PvtNsCol
 func (v *verifier) verifyInPvtdataStore(blockNum uint64, filter ledger.PvtNsCollFilter, expectedPvtdata []*ledger.TxPvtData) {
 	retrievedPvtdata, err := v.lgr.GetPvtDataByNum(blockNum, filter)
 	v.assert.NoError(err)
-	v.assert.Equal(len(expectedPvtdata), len(retrievedPvtdata))
+	v.assert.Len(retrievedPvtdata, len(expectedPvtdata))
 	for i := range expectedPvtdata {
 		v.assert.Equal(expectedPvtdata[i].SeqInBlock, retrievedPvtdata[i].SeqInBlock)
 		v.assert.True(proto.Equal(expectedPvtdata[i].WriteSet, retrievedPvtdata[i].WriteSet))
@@ -208,7 +208,7 @@ func (r *retrievedBlockAndPvtdata) hasNumTx(numTx int) {
 }
 
 func (r *retrievedBlockAndPvtdata) hasNoPvtdata() {
-	r.assert.Len(r.PvtData, 0)
+	r.assert.Empty(r.PvtData)
 }
 
 func (r *retrievedBlockAndPvtdata) pvtdataShouldContain(txSeq int, ns, coll, key, value string) {
@@ -268,7 +268,7 @@ func (r *retrievedBlockAndPvtdata) sameMetadata(expectedBlock *common.Block) {
 	// so explicitly comparing each metadata
 	retrievedMetadata := r.Block.GetMetadata().GetMetadata()
 	expectedMetadata := expectedBlock.GetMetadata().GetMetadata()
-	r.assert.Equal(len(expectedMetadata), len(retrievedMetadata))
+	r.assert.Len(retrievedMetadata, len(expectedMetadata))
 	for i := range expectedMetadata {
 		if i == int(common.BlockMetadataIndex_COMMIT_HASH) {
 			// in order to compare the exact hash value, we need to duplicate the
@@ -287,7 +287,7 @@ func (r *retrievedBlockAndPvtdata) containsValidationCode(txSeq int, validationC
 }
 
 func (r *retrievedBlockAndPvtdata) samePvtdata(expectedPvtdata map[uint64]*ledger.TxPvtData) {
-	r.assert.Equal(len(expectedPvtdata), len(r.PvtData))
+	r.assert.Len(r.PvtData, len(expectedPvtdata))
 	for txNum, pvtData := range expectedPvtdata {
 		actualPvtData := r.PvtData[txNum]
 		r.assert.Equal(pvtData.SeqInBlock, actualPvtData.SeqInBlock)
@@ -303,7 +303,7 @@ func (r *retrievedBlockAndPvtdata) containsCommitHash() {
 		commitHash,
 	)
 	r.assert.NoError(err)
-	r.assert.Equal(len(commitHash.GetValue()), 32)
+	r.assert.Len(commitHash.GetValue(), 32)
 }
 
 func (r *retrievedBlockAndPvtdata) notContainCommitHash() {

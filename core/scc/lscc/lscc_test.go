@@ -401,9 +401,9 @@ func TestDeploy(t *testing.T) {
 	errMessage := "invalid collection configuration supplied for chaincode example02:1.0"
 	testDeploy(t, "example02", "1.0", path, false, false, true, errMessage, scc, stub, []byte("invalid collection"))
 	// Should contain an entry for the chaincodeData only
-	require.Equal(t, 1, len(stub.State))
+	require.Len(t, stub.State, 1)
 	_, ok := stub.State["example02"]
-	require.Equal(t, true, ok)
+	require.True(t, ok)
 
 	collName1 := "mycollection1"
 	policyEnvelope := policydsl.SignedByAnyMember([]string{"SampleOrg"})
@@ -435,11 +435,11 @@ func TestDeploy(t *testing.T) {
 	// As the PrivateChannelData is enabled and collectionConfigBytes is valid, no error is expected
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", scc, stub, ccpBytes)
 	// Should contain two entries: one for the chaincodeData and another for the collectionConfigBytes
-	require.Equal(t, 2, len(stub.State))
+	require.Len(t, stub.State, 2)
 	_, ok = stub.State["example02"]
-	require.Equal(t, true, ok)
+	require.True(t, ok)
 	actualccpBytes, ok := stub.State["example02~collection"]
-	require.Equal(t, true, ok)
+	require.True(t, ok)
 	require.Equal(t, ccpBytes, actualccpBytes)
 
 	scc = &SCC{
@@ -461,9 +461,9 @@ func TestDeploy(t *testing.T) {
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", scc, stub, []byte("nil"))
 	// Should contain an entry for the chaincodeData only. As the collectionConfigBytes is nil, it
 	// is ignored
-	require.Equal(t, 1, len(stub.State))
+	require.Len(t, stub.State, 1)
 	_, ok = stub.State["example02"]
-	require.Equal(t, true, ok)
+	require.True(t, ok)
 }
 
 func createCollectionConfig(collectionName string, signaturePolicyEnvelope *common.SignaturePolicyEnvelope,
@@ -748,9 +748,9 @@ func TestUpgrade(t *testing.T) {
 	// As the PrivateChannelData is enabled and collectionConfigBytes is valid, no error is expected
 	testUpgrade(t, "example02", "0", "example02", "1", path, "", scc, stub, []byte("nil"))
 	// Should contain an entry for the chaincodeData only as the collectionConfigBytes is nil
-	require.Equal(t, 1, len(stub.State))
+	require.Len(t, stub.State, 1)
 	_, ok := stub.State["example02"]
-	require.Equal(t, true, ok)
+	require.True(t, ok)
 
 	scc = &SCC{
 		BuiltinSCCs:      map[string]struct{}{"lscc": {}},
@@ -773,11 +773,11 @@ func TestUpgrade(t *testing.T) {
 	// Should contain two entries: one for the chaincodeData and another for the collectionConfigBytes
 	// as the V1_2Validation is enabled. Only in V1_2Validation, collection upgrades are allowed.
 	// Note that V1_2Validation would be replaced with CollectionUpgrade capability.
-	require.Equal(t, 2, len(stub.State))
+	require.Len(t, stub.State, 2)
 	_, ok = stub.State["example02"]
-	require.Equal(t, true, ok)
+	require.True(t, ok)
 	actualccpBytes, ok := stub.State["example02~collection"]
-	require.Equal(t, true, ok)
+	require.True(t, ok)
 	require.Equal(t, ccpBytes, actualccpBytes)
 }
 
@@ -843,7 +843,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 			newVer := cd.Version
 
 			expectVer := "1"
-			require.Equal(t, newVer, expectVer, fmt.Sprintf("Upgrade chaincode version error, expected %s, got %s", expectVer, newVer))
+			require.Equalf(t, newVer, expectVer, "Upgrade chaincode version error, expected %s, got %s", expectVer, newVer)
 
 			chaincodeEvent := <-stub.ChaincodeEventsChannel
 			require.Equal(t, "upgrade", chaincodeEvent.GetEventName())
@@ -892,7 +892,7 @@ func TestFunctionsWithAliases(t *testing.T) {
 			mockAclProvider.On("CheckACL", resource, "testchannel1", sProp).Return(nil)
 			res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(function), []byte("testchannel1"), []byte("nonexistentchaincode")}, sProp)
 			require.NotEqual(t, int32(shim.OK), res.GetStatus(), res.GetMessage())
-			require.Equal(t, res.GetMessage(), "could not find chaincode with name 'nonexistentchaincode'")
+			require.Equal(t, "could not find chaincode with name 'nonexistentchaincode'", res.GetMessage())
 		})
 	}
 
@@ -979,10 +979,10 @@ func TestGetChaincodesFilter(t *testing.T) {
 	err = proto.Unmarshal(resp.GetPayload(), cqr)
 	require.NoError(t, err)
 
-	require.Equal(t, cqr.GetChaincodes(), []*pb.ChaincodeInfo{
+	require.Equal(t, []*pb.ChaincodeInfo{
 		{Name: "name-one", Version: "1.0", Escc: "escc", Vscc: "vscc"},
 		{Name: "name-two", Version: "2.0", Escc: "escc-2", Vscc: "vscc-2"},
-	})
+	}, cqr.GetChaincodes())
 }
 
 func TestGetInstalledChaincodes(t *testing.T) {
@@ -1088,7 +1088,7 @@ func TestGetChaincodeData(t *testing.T) {
 
 	_, err = scc.getChaincodeData("barf", protoutil.MarshalOrPanic(&ccprovider.ChaincodeData{Name: "barf s'more"}))
 	require.Error(t, err)
-	require.True(t, len(err.Error()) > 0)
+	require.Error(t, err)
 }
 
 func TestExecuteInstall(t *testing.T) {
@@ -1119,10 +1119,10 @@ func TestErrors(t *testing.T) {
 	// tons of lines of mocking code) to
 	// get in testing
 	err1 := TXNotFoundErr("")
-	require.True(t, len(err1.Error()) > 0)
+	require.Error(t, err1)
 
 	err3 := MarshallErr("")
-	require.True(t, len(err3.Error()) > 0)
+	require.Error(t, err3)
 }
 
 func TestPutChaincodeCollectionData(t *testing.T) {
@@ -1217,7 +1217,7 @@ func TestGetChaincodeCollectionData(t *testing.T) {
 			mockAclProvider.On("CheckACL", resources.Lscc_GetCollectionsConfig, "test", sProp).Return(nil)
 			res = stub.MockInvokeWithSignedProposal("1", util.ToChaincodeArgs(function, "bar"), sProp)
 			require.NotEqual(t, int32(shim.OK), res.GetStatus())
-			require.Equal(t, res.GetMessage(), "collections config not defined for chaincode bar")
+			require.Equal(t, "collections config not defined for chaincode bar", res.GetMessage())
 		})
 		t.Run("Success", func(t *testing.T) {
 			res = stub.MockInvokeWithSignedProposal("1", util.ToChaincodeArgs(function, "foo"), sProp)

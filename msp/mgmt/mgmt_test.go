@@ -80,7 +80,7 @@ func TestUpdateLocalMspCache(t *testing.T) {
 
 func TestNewMSPMgmtMgr(t *testing.T) {
 	cryptoProvider, err := LoadMSPSetupForTesting()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	id, err := GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	require.NoError(t, err)

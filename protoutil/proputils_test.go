@@ -67,19 +67,19 @@ func TestCDSProposals(t *testing.T) {
 	prop, txid, err = protoutil.CreateInstallProposalFromCDS(cds, creator)
 	require.NotNil(t, prop, "Install proposal should not be nil")
 	require.NoError(t, err, "Unexpected error creating install proposal")
-	require.NotEqual(t, "", txid, "txid should not be empty")
+	require.NotEmpty(t, txid, "txid should not be empty")
 
 	// deploy
 	prop, txid, err = protoutil.CreateDeployProposalFromCDS(chainID, cds, creator, policy, escc, vscc, nil)
 	require.NotNil(t, prop, "Deploy proposal should not be nil")
 	require.NoError(t, err, "Unexpected error creating deploy proposal")
-	require.NotEqual(t, "", txid, "txid should not be empty")
+	require.NotEmpty(t, txid, "txid should not be empty")
 
 	// upgrade
 	prop, txid, err = protoutil.CreateUpgradeProposalFromCDS(chainID, cds, creator, policy, escc, vscc, nil)
 	require.NotNil(t, prop, "Upgrade proposal should not be nil")
 	require.NoError(t, err, "Unexpected error creating upgrade proposal")
-	require.NotEqual(t, "", txid, "txid should not be empty")
+	require.NotEmpty(t, txid, "txid should not be empty")
 }
 
 func TestProposal(t *testing.T) {
@@ -205,9 +205,9 @@ func TestProposalWithTxID(t *testing.T) {
 		"testtx",
 		map[string][]byte{"certx": []byte("transient")},
 	)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, prop)
-	require.Equal(t, txid, "testtx")
+	require.Equal(t, "testtx", txid)
 
 	prop, txid, err = protoutil.CreateChaincodeProposalWithTxIDAndTransient(
 		common.HeaderType_ENDORSER_TRANSACTION,
@@ -217,7 +217,7 @@ func TestProposalWithTxID(t *testing.T) {
 		"",
 		map[string][]byte{"certx": []byte("transient")},
 	)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, prop)
 	require.NotEmpty(t, txid)
 }
@@ -446,7 +446,7 @@ func TestProposalTxID(t *testing.T) {
 
 	txid := protoutil.ComputeTxID(nonce, creator)
 	require.NotEmpty(t, txid, "TxID cannot be empty.")
-	require.Nil(t, protoutil.CheckTxID(txid, nonce, creator))
+	require.NoError(t, protoutil.CheckTxID(txid, nonce, creator))
 	require.Error(t, protoutil.CheckTxID("", nonce, creator))
 
 	txid = protoutil.ComputeTxID(nil, nil)

@@ -131,7 +131,7 @@ func TestPeersForEndorsement(t *testing.T) {
 			},
 		})
 		require.Nil(t, desc)
-		require.Equal(t, err.Error(), "no peer combination can satisfy the endorsement policy")
+		require.EqualError(t, err, "no peer combination can satisfy the endorsement policy")
 	})
 
 	t.Run("DisjointViews", func(t *testing.T) {
@@ -665,7 +665,7 @@ func TestPeersForEndorsement(t *testing.T) {
 		for g1 := range desc.GetLayouts()[0].GetQuantitiesByGroup() {
 			for g2 := range desc.GetLayouts()[1].GetQuantitiesByGroup() {
 				if g1 == g2 {
-					require.Equal(t, intersectionSize, 0)
+					require.Equal(t, 0, intersectionSize)
 					intersectionSize++
 					require.Equal(t, peerIdentityString("p12"), string(desc.GetEndorsersByGroups()[g1].GetPeers()[0].GetIdentity()))
 				}
@@ -1074,7 +1074,7 @@ func TestPop(t *testing.T) {
 	require.Len(t, slice, 1)
 	_, slice, err = popComparablePrincipalSets(slice)
 	require.NoError(t, err)
-	require.Len(t, slice, 0)
+	require.Empty(t, slice)
 	_, _, err = popComparablePrincipalSets(slice)
 	require.Error(t, err)
 	require.Equal(t, "no principal sets remained after filtering", err.Error())

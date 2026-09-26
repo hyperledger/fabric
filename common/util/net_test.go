@@ -30,7 +30,7 @@ func (*addr) String() string {
 
 func TestExtractAddress(t *testing.T) {
 	ctx := context.Background()
-	require.Zero(t, ExtractRemoteAddress(ctx))
+	require.Empty(t, ExtractRemoteAddress(ctx))
 
 	ctx = peer.NewContext(ctx, &peer.Peer{
 		Addr: &addr{},

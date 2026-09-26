@@ -14,27 +14,27 @@ import (
 )
 
 func TestReset(t *testing.T) {
-	require.Equal(t, fabenc.ResetColor(), "\x1b[0m")
+	require.Equal(t, "\x1b[0m", fabenc.ResetColor())
 }
 
 func TestNormalColors(t *testing.T) {
-	require.Equal(t, fabenc.ColorBlack.Normal(), "\x1b[30m")
-	require.Equal(t, fabenc.ColorRed.Normal(), "\x1b[31m")
-	require.Equal(t, fabenc.ColorGreen.Normal(), "\x1b[32m")
-	require.Equal(t, fabenc.ColorYellow.Normal(), "\x1b[33m")
-	require.Equal(t, fabenc.ColorBlue.Normal(), "\x1b[34m")
-	require.Equal(t, fabenc.ColorMagenta.Normal(), "\x1b[35m")
-	require.Equal(t, fabenc.ColorCyan.Normal(), "\x1b[36m")
-	require.Equal(t, fabenc.ColorWhite.Normal(), "\x1b[37m")
+	require.Equal(t, "\x1b[30m", fabenc.ColorBlack.Normal())
+	require.Equal(t, "\x1b[31m", fabenc.ColorRed.Normal())
+	require.Equal(t, "\x1b[32m", fabenc.ColorGreen.Normal())
+	require.Equal(t, "\x1b[33m", fabenc.ColorYellow.Normal())
+	require.Equal(t, "\x1b[34m", fabenc.ColorBlue.Normal())
+	require.Equal(t, "\x1b[35m", fabenc.ColorMagenta.Normal())
+	require.Equal(t, "\x1b[36m", fabenc.ColorCyan.Normal())
+	require.Equal(t, "\x1b[37m", fabenc.ColorWhite.Normal())
 }
 
 func TestBoldColors(t *testing.T) {
-	require.Equal(t, fabenc.ColorBlack.Bold(), "\x1b[30;1m")
-	require.Equal(t, fabenc.ColorRed.Bold(), "\x1b[31;1m")
-	require.Equal(t, fabenc.ColorGreen.Bold(), "\x1b[32;1m")
-	require.Equal(t, fabenc.ColorYellow.Bold(), "\x1b[33;1m")
-	require.Equal(t, fabenc.ColorBlue.Bold(), "\x1b[34;1m")
-	require.Equal(t, fabenc.ColorMagenta.Bold(), "\x1b[35;1m")
-	require.Equal(t, fabenc.ColorCyan.Bold(), "\x1b[36;1m")
-	require.Equal(t, fabenc.ColorWhite.Bold(), "\x1b[37;1m")
+	require.Equal(t, "\x1b[30;1m", fabenc.ColorBlack.Bold())
+	require.Equal(t, "\x1b[31;1m", fabenc.ColorRed.Bold())
+	require.Equal(t, "\x1b[32;1m", fabenc.ColorGreen.Bold())
+	require.Equal(t, "\x1b[33;1m", fabenc.ColorYellow.Bold())
+	require.Equal(t, "\x1b[34;1m", fabenc.ColorBlue.Bold())
+	require.Equal(t, "\x1b[35;1m", fabenc.ColorMagenta.Bold())
+	require.Equal(t, "\x1b[36;1m", fabenc.ColorCyan.Bold())
+	require.Equal(t, "\x1b[37;1m", fabenc.ColorWhite.Bold())
 }

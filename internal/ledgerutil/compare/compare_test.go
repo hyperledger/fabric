@@ -915,7 +915,7 @@ func TestNSKeyCompare(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(strconv.Itoa(i+1), func(t *testing.T) {
-			require.Equal(t, nsKeyCompare(&testCase.nsKey1, &testCase.nsKey2), testCase.expected)
+			require.Equal(t, testCase.expected, nsKeyCompare(&testCase.nsKey1, &testCase.nsKey2))
 		})
 	}
 }

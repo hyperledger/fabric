@@ -48,7 +48,7 @@ func TestVerify(t *testing.T) {
 	csp := CSP{Verifiers: verifiers}
 	value, err := csp.Verify(expectedKey, expectetSignature, expectetDigest, expectedOpts)
 	require.Equal(t, expectetValue, value)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	verifiers = make(map[reflect.Type]Verifier)
 	verifiers[reflect.TypeFor[*mocks2.MockKey]()] = &mocks.Verifier{

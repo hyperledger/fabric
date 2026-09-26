@@ -277,7 +277,7 @@ func TestCreateChannelBySnapshot(t *testing.T) {
 	require.Nil(t, pmgr)
 
 	channels := peerInstance.GetChannelsInfo()
-	require.Equal(t, 1, len(channels))
+	require.Len(t, channels, 1)
 }
 
 func TestDeliverSupportManager(t *testing.T) {

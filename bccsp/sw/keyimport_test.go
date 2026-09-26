@@ -59,7 +59,7 @@ func TestKeyImport(t *testing.T) {
 	csp = CSP{KeyImporters: keyImporters}
 	value, err = csp.KeyImport(expectedRaw, expectedOpts)
 	require.Equal(t, expectetValue, value)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestAES256ImportKeyOptsKeyImporter(t *testing.T) {

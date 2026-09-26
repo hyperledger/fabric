@@ -368,7 +368,7 @@ func TestGetVMNameForDocker(t *testing.T) {
 
 	for _, test := range tc {
 		name, err := test.vm.GetVMNameForDocker(test.ccid)
-		require.Nil(t, err, "Expected nil error")
+		require.NoError(t, err, "Expected nil error")
 		require.Equal(t, test.expectedOutput, name, "Unexpected output for test case name: %s", test.name)
 	}
 }

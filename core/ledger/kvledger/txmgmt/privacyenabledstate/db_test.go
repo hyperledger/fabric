@@ -468,9 +468,9 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	require.Len(t, fileEntries["META-INF/statedb/couchdb/collections/collectionMarbles/indexes"], 1)
 
 	// Verify the content of the array item
-	expectedJSON := []byte(`{"index":{"fields":["docType","owner"]},"ddoc":"indexCollectionMarbles", "name":"indexCollectionMarbles","type":"json"}`)
+	expectedJSON := `{"index":{"fields":["docType","owner"]},"ddoc":"indexCollectionMarbles", "name":"indexCollectionMarbles","type":"json"}`
 	actualJSON := fileEntries["META-INF/statedb/couchdb/collections/collectionMarbles/indexes"][0].FileContent
-	require.Equal(t, expectedJSON, actualJSON)
+	require.JSONEq(t, expectedJSON, string(actualJSON))
 
 	// The collection config is added to the chaincodeDef but missing collectionMarblesPrivateDetails.
 	// Hence, the index on collectionMarblesPrivateDetails cannot be created

@@ -33,7 +33,7 @@ func TestEndorserCmd(t *testing.T) {
 		cmd.SetChannel(&channel)
 
 		err := cmd.Execute(common.Config{})
-		require.Equal(t, err.Error(), "no server specified")
+		require.EqualError(t, err, "no server specified")
 	})
 
 	t.Run("no channel supplied", func(t *testing.T) {
@@ -41,7 +41,7 @@ func TestEndorserCmd(t *testing.T) {
 		cmd.SetServer(&server)
 
 		err := cmd.Execute(common.Config{})
-		require.Equal(t, err.Error(), "no channel specified")
+		require.EqualError(t, err, "no channel specified")
 	})
 
 	t.Run("Endorsement query with no chaincodes", func(t *testing.T) {
@@ -217,7 +217,7 @@ func TestParseEndorsementResponse(t *testing.T) {
 		}).Once()
 		err := parser.ParseResponse("mychannel", res)
 		require.NoError(t, err)
-		require.Equal(t, expectedEndorsersOutput, buff.String())
+		require.JSONEq(t, expectedEndorsersOutput, buff.String())
 	})
 }
 

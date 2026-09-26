@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cache
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -119,22 +120,29 @@ func TestDeserializeIdentity(t *testing.T) {
 	// Stress the cache and ensure concurrent operations
 	// do not result in a failure
 	var wg sync.WaitGroup
-	wg.Add(100)
+	errs := make([]error, 100)
 	for i := range 100 {
-		go func(m msp.MSP, i int) {
+		wg.Go(func() {
 			sIdentity := serializedIdentity
 			expectedIdentity := mockIdentity
-			defer wg.Done()
 			if i%2 == 0 {
 				sIdentity = serializedIdentity2
 				expectedIdentity = mockIdentity2
 			}
 			id, err := wrappedMSP.DeserializeIdentity(sIdentity)
-			require.NoError(t, err)
-			require.Equal(t, expectedIdentity, id.(*cachedIdentity).Identity)
-		}(wrappedMSP, i)
+			if err != nil {
+				errs[i] = err
+				return
+			}
+			if expectedIdentity != id.(*cachedIdentity).Identity {
+				errs[i] = fmt.Errorf("expected identity %v, got %v", expectedIdentity, id.(*cachedIdentity).Identity)
+			}
+		})
 	}
 	wg.Wait()
+	for _, err = range errs {
+		require.NoError(t, err)
+	}
 
 	mockMSP.AssertExpectations(t)
 	// Check the cache
@@ -144,7 +152,7 @@ func TestDeserializeIdentity(t *testing.T) {
 	// Check the same object is returned
 	id, err := wrappedMSP.DeserializeIdentity(serializedIdentity)
 	require.NoError(t, err)
-	require.True(t, mockIdentity == id.(*cachedIdentity).Identity)
+	require.Equal(t, mockIdentity, id.(*cachedIdentity).Identity)
 	mockMSP.AssertExpectations(t)
 
 	// Check id is not cached

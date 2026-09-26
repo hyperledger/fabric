@@ -40,9 +40,12 @@ func TestStartCmd(t *testing.T) {
 
 	msptesttools.LoadMSPSetupForTesting()
 
+	// The command runs in the background, so its result is delivered to the
+	// goroutine running the test
+	startErr := make(chan error, 1)
 	go func() {
 		cmd := startCmd()
-		require.NoError(t, cmd.Execute(), "expected to successfully start command")
+		startErr <- cmd.Execute()
 	}()
 
 	grpcProbe := func(addr string) bool {
@@ -54,6 +57,14 @@ func TestStartCmd(t *testing.T) {
 		return false
 	}
 	g.Eventually(grpcProbe("localhost:6051")).Should(BeTrue())
+
+	// The command is not expected to return while the peer is running, but if
+	// it did, it should not have failed
+	select {
+	case err := <-startErr:
+		require.NoError(t, err, "expected to successfully start command")
+	default:
+	}
 }
 
 func TestHandlerMap(t *testing.T) {

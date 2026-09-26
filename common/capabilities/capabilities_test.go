@@ -20,7 +20,7 @@ func TestSatisfied(t *testing.T) {
 		NewOrdererProvider(capsMap).registry,
 		NewApplicationProvider(capsMap).registry,
 	} {
-		require.Nil(t, provider.Supported())
+		require.NoError(t, provider.Supported())
 	}
 }
 

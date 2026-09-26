@@ -16,7 +16,7 @@ import (
 func TestGetPolicy(t *testing.T) {
 	accessPolicy, err := getPolicy(getAccessPolicy([]string{"signer0", "signer1"}), &mockDeserializer{})
 	require.NotNil(t, accessPolicy)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestGetPolicyFailed(t *testing.T) {

@@ -346,7 +346,7 @@ func TestSnapshotReaderNextFunction(t *testing.T) {
 
 	retrievedNs, retrievedSr, err = r.Next()
 	require.NoError(t, err)
-	require.Equal(t, "", retrievedNs)
+	require.Empty(t, retrievedNs)
 	require.Nil(t, retrievedSr)
 }
 

@@ -40,9 +40,9 @@ func TestConfig_InitViper(t *testing.T) {
 }
 
 func TestConfig_GetPath(t *testing.T) {
-	// Case 1: non existent viper property
+	// Case 1: non-existent viper property
 	path := GetPath("foo")
-	require.Equal(t, "", path, "GetPath should have returned empty string for path 'foo'")
+	require.Empty(t, path, "GetPath should have returned empty string for path 'foo'")
 
 	// Case 2: viper property that has absolute path
 	viper.Set("testpath", "/test/config.yml")

@@ -661,7 +661,7 @@ func TestPendingBatch(t *testing.T) {
 	// as the block commit is pending, we cannot read the pvtData
 	hasPendingBatch, err := s.hasPendingCommit()
 	require.NoError(t, err)
-	require.Equal(t, true, hasPendingBatch)
+	require.True(t, hasPendingBatch)
 	pvtData, err := s.GetPvtDataByBlockNum(26, nil)
 	require.EqualError(t, err, "last committed block number [25] smaller than the requested block number [26]")
 	require.Nil(t, pvtData)
@@ -673,7 +673,7 @@ func TestPendingBatch(t *testing.T) {
 	testLastCommittedBlockHeight(t, existingLastBlockNum+2, s)
 	hasPendingBatch, err = s.hasPendingCommit()
 	require.NoError(t, err)
-	require.Equal(t, false, hasPendingBatch)
+	require.False(t, hasPendingBatch)
 	testDataKeyExists(t, s, dataKey)
 
 	expectedPvtData := &rwset.TxPvtReadWriteSet{
@@ -688,7 +688,7 @@ func TestPendingBatch(t *testing.T) {
 	}
 	pvtData, err = s.GetPvtDataByBlockNum(26, nil)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(pvtData))
+	require.Len(t, pvtData, 1)
 	require.Equal(t, uint64(1), pvtData[0].SeqInBlock)
 	require.True(t, proto.Equal(expectedPvtData, pvtData[0].WriteSet))
 }
@@ -745,7 +745,7 @@ func TestDrop(t *testing.T) {
 	// pvt data retrieval for block 1 should return full pvtdata
 	retrievedData, err = store.GetPvtDataByBlockNum(1, nilFilter)
 	require.NoError(t, err)
-	require.Equal(t, len(testData), len(retrievedData))
+	require.Len(t, retrievedData, len(testData))
 	for i, data := range retrievedData {
 		require.Equal(t, data.SeqInBlock, testData[i].SeqInBlock)
 		require.True(t, proto.Equal(data.WriteSet, testData[i].WriteSet))
@@ -1517,7 +1517,7 @@ func TestFetchPrivateDataRawKey(t *testing.T) {
 
 	key, err = s.FetchPrivateDataRawKey("ns-1", "coll-2", util.ComputeStringHash("non-existing-key"))
 	require.NoError(t, err)
-	require.Equal(t, "", key)
+	require.Empty(t, key)
 }
 
 func TestRemoveAppInitiatedPurgesUsingReconMarker(t *testing.T) {

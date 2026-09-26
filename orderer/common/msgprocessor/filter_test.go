@@ -24,28 +24,28 @@ func (r rejectRule) Apply(message *cb.Envelope) error {
 
 func TestEmptyRejectRule(t *testing.T) {
 	t.Run("Reject", func(t *testing.T) {
-		require.NotNil(t, EmptyRejectRule.Apply(&cb.Envelope{}))
+		require.Error(t, EmptyRejectRule.Apply(&cb.Envelope{}))
 	})
 	t.Run("Accept", func(t *testing.T) {
-		require.Nil(t, EmptyRejectRule.Apply(&cb.Envelope{Payload: []byte("fakedata")}))
+		require.NoError(t, EmptyRejectRule.Apply(&cb.Envelope{Payload: []byte("fakedata")}))
 	})
 }
 
 func TestAcceptRule(t *testing.T) {
-	require.Nil(t, AcceptRule.Apply(&cb.Envelope{}))
+	require.NoError(t, AcceptRule.Apply(&cb.Envelope{}))
 }
 
 func TestRuleSet(t *testing.T) {
 	t.Run("RejectAccept", func(t *testing.T) {
-		require.NotNil(t, NewRuleSet([]Rule{RejectRule, AcceptRule}).Apply(&cb.Envelope{}))
+		require.Error(t, NewRuleSet([]Rule{RejectRule, AcceptRule}).Apply(&cb.Envelope{}))
 	})
 	t.Run("AcceptReject", func(t *testing.T) {
-		require.NotNil(t, NewRuleSet([]Rule{AcceptRule, RejectRule}).Apply(&cb.Envelope{}))
+		require.Error(t, NewRuleSet([]Rule{AcceptRule, RejectRule}).Apply(&cb.Envelope{}))
 	})
 	t.Run("AcceptAccept", func(t *testing.T) {
-		require.Nil(t, NewRuleSet([]Rule{AcceptRule, AcceptRule}).Apply(&cb.Envelope{}))
+		require.NoError(t, NewRuleSet([]Rule{AcceptRule, AcceptRule}).Apply(&cb.Envelope{}))
 	})
 	t.Run("Empty", func(t *testing.T) {
-		require.Nil(t, NewRuleSet(nil).Apply(&cb.Envelope{}))
+		require.NoError(t, NewRuleSet(nil).Apply(&cb.Envelope{}))
 	})
 }

@@ -79,7 +79,7 @@ func TestResetAllLedgers(t *testing.T) {
 	require.NoError(t, kvledger.ClearPreResetHeight(env.initializer.Config.RootFSPath, ledgerIDs))
 	preResetHt, err = kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, ledgerIDs)
 	require.NoError(t, err)
-	require.Len(t, preResetHt, 0)
+	require.Empty(t, preResetHt)
 
 	// reset again to test ClearPreResetHeight with different ledgerIDs
 	env.closeLedgerMgmt()
@@ -90,7 +90,7 @@ func TestResetAllLedgers(t *testing.T) {
 	newLedgerIDs := ledgerIDs[:len(ledgerIDs)-3]
 	preResetHt, err = kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, newLedgerIDs)
 	require.NoError(t, err)
-	require.Equal(t, numLedgers-3, len(preResetHt))
+	require.Len(t, preResetHt, numLedgers-3)
 	for i := range len(preResetHt) {
 		require.Contains(t, preResetHt, fmt.Sprintf("ledger-%d", i))
 	}

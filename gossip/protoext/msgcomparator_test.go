@@ -60,7 +60,7 @@ func TestAliveMessageNoActionTaken(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, comparator(sMsg1, sMsg2), common.MessageNoAction)
+	require.Equal(t, common.MessageNoAction, comparator(sMsg1, sMsg2))
 }
 
 func TestStateInfoMessageNoActionTaken(t *testing.T) {
@@ -86,7 +86,7 @@ func TestStateInfoMessageNoActionTaken(t *testing.T) {
 
 	// We only should compare comparable messages, e.g. message from same peer
 	// In any other cases no invalidation should be taken.
-	require.Equal(t, comparator(sMsg1, sMsg2), common.MessageNoAction)
+	require.Equal(t, common.MessageNoAction, comparator(sMsg1, sMsg2))
 }
 
 func TestStateInfoMessagesInvalidation(t *testing.T) {
@@ -121,16 +121,16 @@ func TestStateInfoMessagesInvalidation(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, comparator(sMsg1, sMsg2), common.MessageInvalidated)
+	require.Equal(t, common.MessageInvalidated, comparator(sMsg1, sMsg2))
 
-	require.Equal(t, comparator(sMsg1, sMsg3), common.MessageInvalidated)
-	require.Equal(t, comparator(sMsg3, sMsg1), common.MessageInvalidates)
+	require.Equal(t, common.MessageInvalidated, comparator(sMsg1, sMsg3))
+	require.Equal(t, common.MessageInvalidates, comparator(sMsg3, sMsg1))
 
-	require.Equal(t, comparator(sMsg1, sMsg4), common.MessageInvalidated)
-	require.Equal(t, comparator(sMsg4, sMsg1), common.MessageInvalidates)
+	require.Equal(t, common.MessageInvalidated, comparator(sMsg1, sMsg4))
+	require.Equal(t, common.MessageInvalidates, comparator(sMsg4, sMsg1))
 
-	require.Equal(t, comparator(sMsg3, sMsg4), common.MessageInvalidated)
-	require.Equal(t, comparator(sMsg4, sMsg3), common.MessageInvalidates)
+	require.Equal(t, common.MessageInvalidated, comparator(sMsg3, sMsg4))
+	require.Equal(t, common.MessageInvalidates, comparator(sMsg4, sMsg3))
 }
 
 func TestAliveMessageInvalidation(t *testing.T) {
@@ -199,10 +199,10 @@ func TestAliveMessageInvalidation(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, comparator(sMsg1, sMsg2), common.MessageInvalidated)
-	require.Equal(t, comparator(sMsg2, sMsg1), common.MessageInvalidates)
-	require.Equal(t, comparator(sMsg1, sMsg3), common.MessageInvalidated)
-	require.Equal(t, comparator(sMsg3, sMsg1), common.MessageInvalidates)
+	require.Equal(t, common.MessageInvalidated, comparator(sMsg1, sMsg2))
+	require.Equal(t, common.MessageInvalidates, comparator(sMsg2, sMsg1))
+	require.Equal(t, common.MessageInvalidated, comparator(sMsg1, sMsg3))
+	require.Equal(t, common.MessageInvalidates, comparator(sMsg3, sMsg1))
 }
 
 func TestDataMessageInvalidation(t *testing.T) {
@@ -238,10 +238,10 @@ func TestDataMessageInvalidation(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, comparator(sMsg1, sMsg1Clone), common.MessageInvalidated)
-	require.Equal(t, comparator(sMsg1, sMsg3), common.MessageNoAction)
-	require.Equal(t, comparator(sMsg1, sMsg4), common.MessageInvalidated)
-	require.Equal(t, comparator(sMsg4, sMsg1), common.MessageInvalidates)
+	require.Equal(t, common.MessageInvalidated, comparator(sMsg1, sMsg1Clone))
+	require.Equal(t, common.MessageNoAction, comparator(sMsg1, sMsg3))
+	require.Equal(t, common.MessageInvalidated, comparator(sMsg1, sMsg4))
+	require.Equal(t, common.MessageInvalidates, comparator(sMsg4, sMsg1))
 }
 
 func TestIdentityMessagesInvalidation(t *testing.T) {
@@ -289,8 +289,8 @@ func TestIdentityMessagesInvalidation(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, comparator(msg1, msg2), common.MessageInvalidated)
-	require.Equal(t, comparator(msg1, msg3), common.MessageNoAction)
+	require.Equal(t, common.MessageInvalidated, comparator(msg1, msg2))
+	require.Equal(t, common.MessageNoAction, comparator(msg1, msg3))
 }
 
 func TestLeadershipMessagesNoAction(t *testing.T) {
@@ -312,7 +312,7 @@ func TestLeadershipMessagesNoAction(t *testing.T) {
 	}
 
 	// If message with different pkid's no action should be taken
-	require.Equal(t, comparator(msg1, msg2), common.MessageNoAction)
+	require.Equal(t, common.MessageNoAction, comparator(msg1, msg2))
 }
 
 func TestLeadershipMessagesInvalidation(t *testing.T) {
@@ -342,12 +342,12 @@ func TestLeadershipMessagesInvalidation(t *testing.T) {
 	}
 
 	// If message with different pkid's no action should be taken
-	require.Equal(t, comparator(msg1, msg2), common.MessageInvalidated)
-	require.Equal(t, comparator(msg2, msg1), common.MessageInvalidates)
-	require.Equal(t, comparator(msg1, msg3), common.MessageInvalidated)
-	require.Equal(t, comparator(msg3, msg1), common.MessageInvalidates)
-	require.Equal(t, comparator(msg2, msg3), common.MessageInvalidated)
-	require.Equal(t, comparator(msg3, msg2), common.MessageInvalidates)
+	require.Equal(t, common.MessageInvalidated, comparator(msg1, msg2))
+	require.Equal(t, common.MessageInvalidates, comparator(msg2, msg1))
+	require.Equal(t, common.MessageInvalidated, comparator(msg1, msg3))
+	require.Equal(t, common.MessageInvalidates, comparator(msg3, msg1))
+	require.Equal(t, common.MessageInvalidated, comparator(msg2, msg3))
+	require.Equal(t, common.MessageInvalidates, comparator(msg3, msg2))
 }
 
 func stateInfoMessage(incNum uint64, seqNum uint64, pkid []byte, mac []byte) *gossip.GossipMessage_StateInfo {

@@ -58,7 +58,8 @@ func TestJoinBySnapshot(t *testing.T) {
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	require.EqualError(t, err, "proposal failed (err: bad proposal response 500: )")
-	require.IsType(t, ProposalFailedErr(err.Error()), err, "expected error type of ProposalFailedErr")
+	var target ProposalFailedErr
+	require.ErrorAs(t, err, &target, "expected error type of ProposalFailedErr")
 
 	// error due to connection failure to endorser client
 	viper.Set("peer.client.connTimeout", 10*time.Millisecond)

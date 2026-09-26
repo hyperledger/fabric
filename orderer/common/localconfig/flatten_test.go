@@ -49,9 +49,9 @@ func TestFlattenStruct(t *testing.T) {
 
 	var x []string
 	flatten("", &x, reflect.ValueOf(d))
-	require.Equal(t, 4, len(x), "expect 3 items")
-	require.Equal(t, x[0], "B.A = I'm 'foo'")
-	require.Equal(t, x[1], "B.i = 42")
-	require.Equal(t, x[2], "B.X = \"bar \"")
-	require.Equal(t, x[3], "c =")
+	require.Len(t, x, 4, "expect 3 items")
+	require.Equal(t, "B.A = I'm 'foo'", x[0])
+	require.Equal(t, "B.i = 42", x[1])
+	require.Equal(t, "B.X = \"bar \"", x[2])
+	require.Equal(t, "c =", x[3])
 }

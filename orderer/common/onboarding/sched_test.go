@@ -23,7 +23,7 @@ func TestExponentialDuration(t *testing.T) {
 		n := exp()
 		require.Equal(t, prev*2, n)
 		prev = n
-		require.True(t, n < time.Second)
+		require.Less(t, n, time.Second)
 	}
 
 	for range 10 {

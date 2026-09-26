@@ -43,15 +43,15 @@ func TestStatsBlockchainHeight(t *testing.T) {
 	require.Equal(t, expectedCallCount, fakeBlockchainHeightGauge.SetCallCount())
 
 	// verify the call for OpenBlockStore
-	require.Equal(t, float64(0), fakeBlockchainHeightGauge.SetArgsForCall(0))
+	require.InDelta(t, float64(0), fakeBlockchainHeightGauge.SetArgsForCall(0), 0)
 	require.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(0))
 
 	// verify the call for adding genesis block
-	require.Equal(t, float64(1), fakeBlockchainHeightGauge.SetArgsForCall(1))
+	require.InDelta(t, float64(1), fakeBlockchainHeightGauge.SetArgsForCall(1), 0)
 	require.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(1))
 
 	// verify the call for adding block b1
-	require.Equal(t, float64(2), fakeBlockchainHeightGauge.SetArgsForCall(2))
+	require.InDelta(t, float64(2), fakeBlockchainHeightGauge.SetArgsForCall(2), 0)
 	require.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(2))
 
 	// shutdown and reopen the store to verify blockchain height
@@ -60,12 +60,12 @@ func TestStatsBlockchainHeight(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the call when opening an existing ledger - should set height correctly
-	require.Equal(t, float64(2), fakeBlockchainHeightGauge.SetArgsForCall(3))
+	require.InDelta(t, float64(2), fakeBlockchainHeightGauge.SetArgsForCall(3), 0)
 	require.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(3))
 
 	// invoke updateBlockStats api explicitly and verify the call with fake metrics
 	store.updateBlockStats(10, 1*time.Second)
-	require.Equal(t, float64(11), fakeBlockchainHeightGauge.SetArgsForCall(4))
+	require.InDelta(t, float64(11), fakeBlockchainHeightGauge.SetArgsForCall(4), 0)
 	require.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(4))
 }
 
@@ -109,9 +109,10 @@ func TestStatsBlockCommit(t *testing.T) {
 		[]string{"channel", ledgerid},
 		testMetricProvider.fakeBlockstorageCommitTimeHist.WithArgsForCall(4),
 	)
-	require.Equal(t,
+	require.InDelta(t,
 		float64(10),
 		testMetricProvider.fakeBlockstorageCommitTimeHist.ObserveArgsForCall(4),
+		0,
 	)
 }
 

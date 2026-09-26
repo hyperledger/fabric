@@ -69,7 +69,7 @@ func TestCoreCheck(t *testing.T) {
 	ce = core.Check(zapcore.Entry{Level: zapcore.WarnLevel}, nil)
 	require.NotNil(t, ce)
 
-	require.Equal(t, enabledArgs, []zapcore.Level{zapcore.DebugLevel, zapcore.InfoLevel, zapcore.WarnLevel})
+	require.Equal(t, []zapcore.Level{zapcore.DebugLevel, zapcore.InfoLevel, zapcore.WarnLevel}, enabledArgs)
 }
 
 type sw struct {

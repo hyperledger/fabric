@@ -15,7 +15,7 @@ import (
 type MSPVersion int
 
 const (
-	MSPv1_0 = iota
+	MSPv1_0 MSPVersion = iota
 	MSPv1_1
 	MSPv1_3
 	MSPv1_4_3
@@ -67,14 +67,14 @@ func New(opts NewOpts, cryptoProvider bccsp.BCCSP) (MSP, error) {
 		case MSPv1_4_3:
 			fallthrough
 		case MSPv1_3:
-			msp, err := idemix.NewIdemixMsp(MSPv1_3)
+			msp, err := idemix.NewIdemixMsp(idemix.MSPVersion(MSPv1_3))
 			if err != nil {
 				return nil, err
 			}
 
 			return &idemixMSPWrapper{msp.(*idemix.Idemixmsp)}, nil
 		case MSPv1_1:
-			msp, err := idemix.NewIdemixMsp(MSPv1_1)
+			msp, err := idemix.NewIdemixMsp(idemix.MSPVersion(MSPv1_1))
 			if err != nil {
 				return nil, err
 			}

@@ -660,7 +660,7 @@ func TestLargeBlockGap(t *testing.T) {
 		blockSeq := <-blocksPassedToLedger
 		require.Equal(t, expectedSequence, int(blockSeq))
 		// Ensure payload buffer isn't over-populated
-		require.True(t, p.s.payloads.Size() <= defMaxBlockDistance*2+defAntiEntropyBatchSize, "payload buffer size is %d", p.s.payloads.Size())
+		require.LessOrEqual(t, p.s.payloads.Size(), defMaxBlockDistance*2+defAntiEntropyBatchSize, "payload buffer size is %d", p.s.payloads.Size())
 		expectedSequence++
 		time.Sleep(blockProcessingTime)
 	}
@@ -727,7 +727,7 @@ func TestOverPopulation(t *testing.T) {
 
 	// Ensure we don't store too many blocks in memory
 	sp := p.s
-	require.True(t, sp.payloads.Size() < defMaxBlockDistance)
+	require.Less(t, sp.payloads.Size(), defMaxBlockDistance)
 }
 
 func TestBlockingEnqueue(t *testing.T) {
@@ -1512,12 +1512,12 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 
 	assertion := require.New(t)
 	// Nonce should be equal to Nonce of the request
-	assertion.Equal(response.GetGossipMessage().Nonce, uint64(1))
+	assertion.Equal(uint64(1), response.GetGossipMessage().Nonce)
 	// Payload should not need be nil
 	assertion.NotNil(stateResponse)
 	assertion.NotNil(stateResponse.GetPayloads())
 	// Exactly two messages expected
-	assertion.Equal(len(stateResponse.GetPayloads()), 2)
+	assertion.Len(stateResponse.GetPayloads(), 2)
 
 	// Assert we have all data and it's same as we expected it
 	for _, each := range stateResponse.GetPayloads() {

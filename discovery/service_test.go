@@ -36,7 +36,7 @@ func TestConfig(t *testing.T) {
 		service := NewService(conf, &mockSupport{})
 		require.Equal(t, trueOfFalse, service.auth.conf.enabled)
 		require.Equal(t, 42, service.auth.conf.maxCacheSize)
-		require.Equal(t, 0.5, service.auth.conf.purgeRetentionRatio)
+		require.InDelta(t, 0.5, service.auth.conf.purgeRetentionRatio, 0)
 	}
 }
 

@@ -337,9 +337,10 @@ func TestReportMetrics(t *testing.T) {
 		[]string{"channel", "channel0"},
 		testMetricProvider.FakeDeclarationGauge.WithArgsForCall(0),
 	)
-	require.EqualValues(t,
-		1,
+	require.InDelta(t,
+		float64(1),
 		testMetricProvider.FakeDeclarationGauge.SetArgsForCall(0),
+		0,
 	)
 
 	adapter.ReportMetrics(false)
@@ -348,8 +349,9 @@ func TestReportMetrics(t *testing.T) {
 		[]string{"channel", "channel0"},
 		testMetricProvider.FakeDeclarationGauge.WithArgsForCall(1),
 	)
-	require.EqualValues(t,
-		0,
+	require.InDelta(t,
+		float64(0),
 		testMetricProvider.FakeDeclarationGauge.SetArgsForCall(1),
+		0,
 	)
 }

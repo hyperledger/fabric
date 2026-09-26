@@ -59,7 +59,7 @@ func TestProtolatorDecode(t *testing.T) {
 	// Remove all the whitespace
 	compactJSON := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(rec.Body.String(), "\n", ""), "\t", ""), " ", "")
 
-	require.Equal(t, testOutput, compactJSON)
+	require.JSONEq(t, testOutput, compactJSON)
 }
 
 func TestProtolatorEncode(t *testing.T) {

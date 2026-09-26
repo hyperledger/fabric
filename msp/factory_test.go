@@ -42,7 +42,7 @@ func TestNew(t *testing.T) {
 	i, err := New(&BCCSPNewOpts{NewBaseOpts{Version: MSPv1_0}}, cryptoProvider)
 	require.NoError(t, err)
 	require.NotNil(t, i)
-	require.Equal(t, MSPVersion(MSPv1_0), i.(*bccspmsp).version)
+	require.Equal(t, MSPv1_0, i.(*bccspmsp).version)
 	require.Equal(t,
 		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalSetupFunc).Pointer()).Name(),
 		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).setupV1).Pointer()).Name(),
@@ -55,7 +55,7 @@ func TestNew(t *testing.T) {
 	i, err = New(&BCCSPNewOpts{NewBaseOpts{Version: MSPv1_1}}, cryptoProvider)
 	require.NoError(t, err)
 	require.NotNil(t, i)
-	require.Equal(t, MSPVersion(MSPv1_1), i.(*bccspmsp).version)
+	require.Equal(t, MSPv1_1, i.(*bccspmsp).version)
 	require.Equal(t,
 		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalSetupFunc).Pointer()).Name(),
 		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).setupV11).Pointer()).Name(),

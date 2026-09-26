@@ -34,7 +34,7 @@ func TestNoopBindingInspector(t *testing.T) {
 	extract := func(msg proto.Message) []byte {
 		return nil
 	}
-	require.Nil(t, NewBindingInspector(false, extract)(context.Background(), &common.Envelope{}))
+	require.NoError(t, NewBindingInspector(false, extract)(context.Background(), &common.Envelope{}))
 	err := NewBindingInspector(false, extract)(context.Background(), nil)
 	require.Error(t, err)
 	require.Equal(t, "message is nil", err.Error())

@@ -31,7 +31,7 @@ func TestMembershipStore(t *testing.T) {
 
 	// Test initially created store is empty
 	require.Nil(t, membershipStore.MsgByID(id1))
-	require.Equal(t, membershipStore.Size(), 0)
+	require.Equal(t, 0, membershipStore.Size())
 	// Test put works as expected
 	membershipStore.Put(id1, msg1)
 	require.NotNil(t, membershipStore.MsgByID(id1))
@@ -40,11 +40,11 @@ func TestMembershipStore(t *testing.T) {
 	require.Equal(t, msg1, membershipStore.MsgByID(id1))
 	require.NotEqual(t, msg2, membershipStore.MsgByID(id1))
 	// Test capacity grows
-	require.Equal(t, membershipStore.Size(), 2)
+	require.Equal(t, 2, membershipStore.Size())
 	// Test remove works
 	membershipStore.Remove(id1)
 	require.Nil(t, membershipStore.MsgByID(id1))
-	require.Equal(t, membershipStore.Size(), 1)
+	require.Equal(t, 1, membershipStore.Size())
 	// Test returned instance is not a copy
 	msg3 := &protoext.SignedGossipMessage{GossipMessage: &proto.GossipMessage{}}
 	msg3Clone := &protoext.SignedGossipMessage{GossipMessage: &proto.GossipMessage{}}

@@ -336,15 +336,15 @@ func TestMarshalEtcdRaftMetadata(t *testing.T) {
 		},
 	}
 	packed, err := MarshalEtcdRaftMetadata(md)
-	require.Nil(t, err, "marshalling should succeed")
+	require.NoError(t, err, "marshalling should succeed")
 	require.NotNil(t, packed)
 
 	packed, err = MarshalEtcdRaftMetadata(md)
-	require.Nil(t, err, "marshalling should succeed a second time because we did not mutate ourselves")
+	require.NoError(t, err, "marshalling should succeed a second time because we did not mutate ourselves")
 	require.NotNil(t, packed)
 
 	unpacked := &etcdraft.ConfigMetadata{}
-	require.Nil(t, proto.Unmarshal(packed, unpacked), "unmarshalling should succeed")
+	require.NoError(t, proto.Unmarshal(packed, unpacked), "unmarshalling should succeed")
 
 	var outputCerts, inputCerts [3][]byte
 	for i := range unpacked.GetConsenters() {

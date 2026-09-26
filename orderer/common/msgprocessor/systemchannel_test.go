@@ -51,7 +51,7 @@ func TestProcessSystemChannelNormalMsg(t *testing.T) {
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		require.NoError(t, err)
 		_, err = NewSystemChannel(ms, mscs, nil, cryptoProvider).ProcessNormalMsg(&cb.Envelope{})
-		require.NotNil(t, err)
+		require.Error(t, err)
 		require.Regexp(t, "header not set", err.Error())
 	})
 	t.Run("Mismatched channel ID", func(t *testing.T) {
@@ -89,7 +89,7 @@ func TestProcessSystemChannelNormalMsg(t *testing.T) {
 				},
 			}),
 		})
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, ms.SequenceVal, cs)
 	})
 }
@@ -103,7 +103,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		require.NoError(t, err)
 		_, _, err = NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessConfigUpdateMsg(&cb.Envelope{})
-		require.NotNil(t, err)
+		require.Error(t, err)
 		require.Regexp(t, "header not set", err.Error())
 	})
 	t.Run("NormalUpdate", func(t *testing.T) {
@@ -128,7 +128,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		})
 		require.NotNil(t, config)
 		require.Equal(t, cs, ms.SequenceVal)
-		require.Nil(t, err)
+		require.NoError(t, err)
 	})
 	t.Run("BadNewChannelConfig", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
@@ -261,7 +261,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		})
 		require.Equal(t, cs, ms.SequenceVal)
 		require.NotNil(t, config)
-		require.Nil(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -317,7 +317,7 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 			})
 			require.Equal(t, seq, ms.SequenceVal)
 			require.NotNil(t, config)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			hdr, err := protoutil.ChannelHeader(config)
 			require.NoError(t, err)
 			require.Equal(
@@ -433,7 +433,7 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 			})
 			require.Equal(t, seq, ms.SequenceVal)
 			require.NotNil(t, config)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			hdr, err := protoutil.ChannelHeader(config)
 			require.NoError(t, err)
 			require.Equal(
@@ -747,9 +747,9 @@ func TestNewChannelConfig(t *testing.T) {
 	// Successful
 	t.Run("Success", func(t *testing.T) {
 		createTx, err := encoder.MakeChannelCreationTransaction("foo", nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()))
-		require.Nil(t, err)
+		require.NoError(t, err)
 		res, err := templator.NewChannelConfig(createTx)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.NotEmpty(t, res.ConfigtxValidator().ConfigProto().GetChannelGroup().GetModPolicy())
 		require.True(t, proto.Equal(originalCG, ctxm.ConfigtxValidator().ConfigProto().GetChannelGroup()), "Underlying system channel config proto was mutated")
 	})
@@ -762,9 +762,9 @@ func TestNewChannelConfig(t *testing.T) {
 			genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()),
 			genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile, configtest.GetDevConfigDir()),
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		_, err = templator.NewChannelConfig(createTx)
-		require.Nil(t, err)
+		require.NoError(t, err)
 	})
 }
 

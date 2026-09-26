@@ -126,7 +126,7 @@ func TestNewSimpleCollectionWithGoodConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	// check name
-	require.True(t, sc.CollectionID() == "test collection")
+	require.Equal(t, "test collection", sc.CollectionID())
 
 	// check members
 	members := sc.MemberOrgs()
@@ -134,7 +134,7 @@ func TestNewSimpleCollectionWithGoodConfig(t *testing.T) {
 	require.Contains(t, members, "signer1")
 
 	// check required peer count
-	require.True(t, sc.RequiredPeerCount() == 1)
+	require.Equal(t, 1, sc.RequiredPeerCount())
 }
 
 func TestSetupWithBadConfig(t *testing.T) {
@@ -173,7 +173,7 @@ func TestSetupGoodConfigCollection(t *testing.T) {
 	require.NoError(t, err)
 
 	// check name
-	require.True(t, sc.CollectionID() == "test collection")
+	require.Equal(t, "test collection", sc.CollectionID())
 
 	// check members
 	members := sc.MemberOrgs()
@@ -181,7 +181,7 @@ func TestSetupGoodConfigCollection(t *testing.T) {
 	require.Contains(t, members, "signer1")
 
 	// check required peer count
-	require.True(t, sc.RequiredPeerCount() == 1)
+	require.Equal(t, 1, sc.RequiredPeerCount())
 }
 
 func TestSimpleCollectionFilter(t *testing.T) {

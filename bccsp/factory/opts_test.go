@@ -22,5 +22,5 @@ import (
 )
 
 func TestFactoryOptsFactoryName(t *testing.T) {
-	require.Equal(t, GetDefaultOpts().FactoryName(), "SW")
+	require.Equal(t, "SW", GetDefaultOpts().FactoryName())
 }

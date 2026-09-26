@@ -243,7 +243,7 @@ func TestGetClientCertificate(t *testing.T) {
 		_, cleanup := initPeerTestEnv(t)
 		defer cleanup()
 		cert, err := common.GetClientCertificate()
-		require.NotEqual(t, cert, &tls.Certificate{})
+		require.NotEqual(t, &tls.Certificate{}, cert)
 		require.NoError(t, err)
 	})
 
@@ -257,7 +257,7 @@ func TestGetClientCertificate(t *testing.T) {
 
 		cert, err := common.GetClientCertificate()
 		require.NoError(t, err)
-		require.NotEqual(t, cert, tls.Certificate{})
+		require.NotEqual(t, tls.Certificate{}, cert)
 	})
 
 	t.Run("GetClientCertificate_empty_keyfile", func(t *testing.T) {
@@ -270,7 +270,7 @@ func TestGetClientCertificate(t *testing.T) {
 
 		cert, err := common.GetClientCertificate()
 		require.EqualError(t, err, "failed to load client certificate: tls: failed to find any PEM data in key input")
-		require.Equal(t, cert, tls.Certificate{})
+		require.Equal(t, tls.Certificate{}, cert)
 	})
 
 	t.Run("GetClientCertificate_empty_certfile", func(t *testing.T) {
@@ -283,7 +283,7 @@ func TestGetClientCertificate(t *testing.T) {
 
 		cert, err := common.GetClientCertificate()
 		require.EqualError(t, err, "failed to load client certificate: tls: failed to find any PEM data in certificate input")
-		require.Equal(t, cert, tls.Certificate{})
+		require.Equal(t, tls.Certificate{}, cert)
 	})
 
 	t.Run("GetClientCertificate_bad_keyfilepath", func(t *testing.T) {
@@ -297,7 +297,7 @@ func TestGetClientCertificate(t *testing.T) {
 
 		cert, err := common.GetClientCertificate()
 		require.EqualError(t, err, fmt.Sprintf("unable to load peer.tls.clientKey.file: open %s/certs/nokey.key: no such file or directory", cfgPath))
-		require.Equal(t, cert, tls.Certificate{})
+		require.Equal(t, tls.Certificate{}, cert)
 	})
 
 	t.Run("GetClientCertificate_missing_certfilepath", func(t *testing.T) {
@@ -308,7 +308,7 @@ func TestGetClientCertificate(t *testing.T) {
 
 		cert, err := common.GetClientCertificate()
 		require.EqualError(t, err, "unable to load peer.tls.clientKey.file: open testdata/certs/client.key: no such file or directory")
-		require.Equal(t, cert, tls.Certificate{})
+		require.Equal(t, tls.Certificate{}, cert)
 	})
 }
 

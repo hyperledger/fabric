@@ -109,7 +109,7 @@ func TestExpirationRejectRule(t *testing.T) {
 		mockCapabilities.ExpirationCheckReturns(true)
 		err := NewExpirationRejectRule(mockResources).Apply(env)
 		require.Error(t, err)
-		require.Equal(t, err.Error(), "broadcast client identity expired")
+		require.EqualError(t, err, "broadcast client identity expired")
 
 		mockCapabilities.ExpirationCheckReturns(false)
 		err = NewExpirationRejectRule(mockResources).Apply(env)
@@ -118,15 +118,15 @@ func TestExpirationRejectRule(t *testing.T) {
 	t.Run("IdemixIdentity", func(t *testing.T) {
 		env := createEnvelope(t, createIdemixIdentity(t))
 		mockCapabilities.ExpirationCheckReturns(true)
-		require.Nil(t, NewExpirationRejectRule(mockResources).Apply(env))
+		require.NoError(t, NewExpirationRejectRule(mockResources).Apply(env))
 		mockCapabilities.ExpirationCheckReturns(false)
-		require.Nil(t, NewExpirationRejectRule(mockResources).Apply(env))
+		require.NoError(t, NewExpirationRejectRule(mockResources).Apply(env))
 	})
 	t.Run("NoneExpiredX509Identity", func(t *testing.T) {
 		env := createEnvelope(t, createX509Identity(t, "cert.pem"))
 		mockCapabilities.ExpirationCheckReturns(true)
-		require.Nil(t, NewExpirationRejectRule(mockResources).Apply(env))
+		require.NoError(t, NewExpirationRejectRule(mockResources).Apply(env))
 		mockCapabilities.ExpirationCheckReturns(false)
-		require.Nil(t, NewExpirationRejectRule(mockResources).Apply(env))
+		require.NoError(t, NewExpirationRejectRule(mockResources).Apply(env))
 	})
 }

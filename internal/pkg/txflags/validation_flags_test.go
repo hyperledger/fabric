@@ -15,12 +15,12 @@ import (
 
 func TestTransactionValidationFlags(t *testing.T) {
 	txFlags := NewWithValues(10, peer.TxValidationCode_VALID)
-	require.Equal(t, 10, len(txFlags))
+	require.Len(t, txFlags, 10)
 
 	txFlags.SetFlag(0, peer.TxValidationCode_VALID)
 	require.Equal(t, peer.TxValidationCode_VALID, txFlags.Flag(0))
-	require.Equal(t, true, txFlags.IsValid(0))
+	require.True(t, txFlags.IsValid(0))
 
 	txFlags.SetFlag(1, peer.TxValidationCode_MVCC_READ_CONFLICT)
-	require.Equal(t, true, txFlags.IsInvalid(1))
+	require.True(t, txFlags.IsInvalid(1))
 }

@@ -51,7 +51,7 @@ func TestRollback(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expectedblkfilesInfoLastBlockNumber, actualBlkfilesInfo.lastPersistedBlock)
 	require.Equal(t, expectedBlkfilesInfoIsNoFiles, actualBlkfilesInfo.noBlockFiles)
-	require.Equal(t, actualBlkfilesInfo.latestFileNumber, 4)
+	require.Equal(t, 4, actualBlkfilesInfo.latestFileNumber)
 
 	// 4. Check whether all blocks are stored correctly
 	blkfileMgrWrapper.testGetBlockByNumber(blocks)
@@ -144,7 +144,7 @@ func TestRollbackWithOnlyBlockIndexAttributes(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expectedBlkfilesInfoLastBlockNumber, actualBlkfilesInfo.lastPersistedBlock)
 	require.Equal(t, expectedBlkfilesInfoIsNoBlkFiles, actualBlkfilesInfo.noBlockFiles)
-	require.Equal(t, actualBlkfilesInfo.latestFileNumber, 4)
+	require.Equal(t, 4, actualBlkfilesInfo.latestFileNumber)
 
 	// 4. Close the blkfileMgrWrapper
 	env.provider.Close()
@@ -194,7 +194,7 @@ func TestRollbackWithNoIndexDir(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expectedBlkfilesInfoLastBlockNumber, actualBlkfilesInfo.lastPersistedBlock)
 	require.Equal(t, expectedBlkfilesInfoIsChainEmpty, actualBlkfilesInfo.noBlockFiles)
-	require.Equal(t, actualBlkfilesInfo.latestFileNumber, 4)
+	require.Equal(t, 4, actualBlkfilesInfo.latestFileNumber)
 
 	// 4. Close the blkfileMgrWrapper
 	env.provider.Close()

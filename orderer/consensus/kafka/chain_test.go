@@ -137,10 +137,10 @@ func TestChain(t *testing.T) {
 			logger.Debug("startChan is open as it should be")
 		}
 
-		require.Equal(t, fakeLastOffsetPersisted.WithCallCount(), 1)
-		require.Equal(t, fakeLastOffsetPersisted.WithArgsForCall(0), []string{"channel", channelNameForTest(t)})
-		require.Equal(t, fakeLastOffsetPersisted.SetCallCount(), 1)
-		require.Equal(t, fakeLastOffsetPersisted.SetArgsForCall(0), float64(newestOffset-1))
+		require.Equal(t, 1, fakeLastOffsetPersisted.WithCallCount())
+		require.Equal(t, []string{"channel", channelNameForTest(t)}, fakeLastOffsetPersisted.WithArgsForCall(0))
+		require.Equal(t, 1, fakeLastOffsetPersisted.SetCallCount())
+		require.InDelta(t, float64(newestOffset-1), fakeLastOffsetPersisted.SetArgsForCall(0), 0)
 	})
 
 	t.Run("Start", func(t *testing.T) {
@@ -821,7 +821,7 @@ func TestCloseKafkaObjects(t *testing.T) {
 
 		errs := bareMinimumChain.closeKafkaObjects()
 
-		require.Len(t, errs, 0, "Expected zero errors")
+		require.Empty(t, errs, "Expected zero errors")
 
 		require.NotPanics(t, func() {
 			channelConsumer.Close()
@@ -833,7 +833,7 @@ func TestCloseKafkaObjects(t *testing.T) {
 
 		// TODO For some reason this panic cannot be captured by the `assert`
 		// test framework. Not a dealbreaker but need to investigate further.
-		/* assert.Panics(t, func() {
+		/* require.Panics(t, func() {
 			producer.Close()
 		}) */
 	})
@@ -1521,10 +1521,10 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				require.Equal(t, uint64(1), counts[indexProcessRegularPass], "Expected 1 REGULAR message processed")
 				require.Equal(t, lastCutBlockNumber+1, bareMinimumChain.lastCutBlockNumber, "Expected lastCutBlockNumber to be bumped up by one")
 
-				require.Equal(t, fakeLastOffsetPersisted.WithCallCount(), 1)
-				require.Equal(t, fakeLastOffsetPersisted.WithArgsForCall(0), []string{"channel", "mockChannelFoo"})
-				require.Equal(t, fakeLastOffsetPersisted.SetCallCount(), 1)
-				require.Equal(t, fakeLastOffsetPersisted.SetArgsForCall(0), float64(9))
+				require.Equal(t, 1, fakeLastOffsetPersisted.WithCallCount())
+				require.Equal(t, []string{"channel", "mockChannelFoo"}, fakeLastOffsetPersisted.WithArgsForCall(0))
+				require.Equal(t, 1, fakeLastOffsetPersisted.SetCallCount())
+				require.InDelta(t, float64(9), fakeLastOffsetPersisted.SetArgsForCall(0), 0)
 			})
 
 			// This test ensures the corner case in FAB-5709 is taken care of
@@ -2250,12 +2250,12 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				require.Equal(t, normalBlkOffset, extractEncodedOffset(normalBlk.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in first block to be %d", normalBlkOffset)
 				require.Equal(t, configBlkOffset, extractEncodedOffset(configBlk.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in second block to be %d", configBlkOffset)
 
-				require.Equal(t, fakeLastOffsetPersisted.WithCallCount(), 2)
-				require.Equal(t, fakeLastOffsetPersisted.WithArgsForCall(0), []string{"channel", "mockChannelFoo"})
-				require.Equal(t, fakeLastOffsetPersisted.WithArgsForCall(1), []string{"channel", "mockChannelFoo"})
-				require.Equal(t, fakeLastOffsetPersisted.SetCallCount(), 2)
-				require.Equal(t, fakeLastOffsetPersisted.SetArgsForCall(0), float64(normalBlkOffset))
-				require.Equal(t, fakeLastOffsetPersisted.SetArgsForCall(1), float64(configBlkOffset))
+				require.Equal(t, 2, fakeLastOffsetPersisted.WithCallCount())
+				require.Equal(t, []string{"channel", "mockChannelFoo"}, fakeLastOffsetPersisted.WithArgsForCall(0))
+				require.Equal(t, []string{"channel", "mockChannelFoo"}, fakeLastOffsetPersisted.WithArgsForCall(1))
+				require.Equal(t, 2, fakeLastOffsetPersisted.SetCallCount())
+				require.InDelta(t, float64(normalBlkOffset), fakeLastOffsetPersisted.SetArgsForCall(0), 0)
+				require.InDelta(t, float64(configBlkOffset), fakeLastOffsetPersisted.SetArgsForCall(1), 0)
 			})
 
 			// This ensures config message is re-validated if config seq has advanced
@@ -2645,7 +2645,7 @@ func TestResubmission(t *testing.T) {
 				proto.Unmarshal(block.GetMetadata().GetMetadata()[cb.BlockMetadataIndex_ORDERER], metadata)
 				kafkaMetadata := &ab.KafkaMetadata{}
 				proto.Unmarshal(metadata.GetValue(), kafkaMetadata)
-				require.Equal(t, kafkaMetadata.GetLastOriginalOffsetProcessed(), int64(4))
+				require.Equal(t, int64(4), kafkaMetadata.GetLastOriginalOffsetProcessed())
 			case <-time.After(shortTimeout):
 				t.Fatalf("Expected one block being cut")
 			}
@@ -3011,8 +3011,8 @@ func TestResubmission(t *testing.T) {
 				err = proto.Unmarshal(metadata.GetValue(), kafkaMetadata)
 				require.NoError(t, err, "Failed to unmarshal metadata")
 
-				require.Equal(t, kafkaMetadata.GetLastResubmittedConfigOffset(), int64(5), "LastResubmittedConfigOffset didn't catch up")
-				require.Equal(t, kafkaMetadata.GetLastOriginalOffsetProcessed(), int64(5), "LastOriginalOffsetProcessed doesn't match")
+				require.Equal(t, int64(5), kafkaMetadata.GetLastResubmittedConfigOffset(), "LastResubmittedConfigOffset didn't catch up")
+				require.Equal(t, int64(5), kafkaMetadata.GetLastOriginalOffsetProcessed(), "LastOriginalOffsetProcessed doesn't match")
 			case <-time.After(shortTimeout):
 				t.Fatalf("Expected one block being cut")
 			}

@@ -29,7 +29,7 @@ func TestSend(t *testing.T) {
 
 	// bad send, should panic, unblock and return error
 	err := stream.Send(msg)
-	require.NotNil(t, err, "should have errored on panic")
+	require.Error(t, err, "should have errored on panic")
 }
 
 func TestRecvChannelClosedError(t *testing.T) {

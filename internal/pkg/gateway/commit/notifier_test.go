@@ -47,7 +47,7 @@ func assertMarshallProto(t *testing.T, message proto.Message) []byte {
 }
 
 func assertEqualChaincodeEvents(t *testing.T, expected []*peer.ChaincodeEvent, actual []*peer.ChaincodeEvent) {
-	require.Equal(t, len(expected), len(actual), "number of events")
+	require.Len(t, actual, len(expected), "number of events")
 	for i, event := range actual {
 		require.Truef(t, proto.Equal(expected[i], event), "expected %v, got %v", expected, actual)
 	}
@@ -99,7 +99,7 @@ func TestNotifier(t *testing.T) {
 				TransactionID: "TX_ID",
 				Code:          peer.TxValidationCode_MVCC_READ_CONFLICT,
 			}
-			require.EqualValues(t, expected, actual)
+			require.Equal(t, expected, actual)
 		})
 
 		t.Run("ignores non-matching transaction in same block", func(t *testing.T) {
@@ -130,7 +130,7 @@ func TestNotifier(t *testing.T) {
 				TransactionID: "TX_ID",
 				Code:          peer.TxValidationCode_MVCC_READ_CONFLICT,
 			}
-			require.EqualValues(t, expected, actual)
+			require.Equal(t, expected, actual)
 		})
 
 		t.Run("ignores blocks without matching transaction", func(t *testing.T) {
@@ -166,7 +166,7 @@ func TestNotifier(t *testing.T) {
 				TransactionID: "TX_ID",
 				Code:          peer.TxValidationCode_MVCC_READ_CONFLICT,
 			}
-			require.EqualValues(t, expected, actual)
+			require.Equal(t, expected, actual)
 		})
 
 		t.Run("processes blocks in order", func(t *testing.T) {
@@ -202,7 +202,7 @@ func TestNotifier(t *testing.T) {
 				TransactionID: "TX_ID",
 				Code:          peer.TxValidationCode_MVCC_READ_CONFLICT,
 			}
-			require.EqualValues(t, expected, actual)
+			require.Equal(t, expected, actual)
 		})
 
 		t.Run("closes channel after notification", func(t *testing.T) {
@@ -289,8 +289,8 @@ func TestNotifier(t *testing.T) {
 				TransactionID: "TX_ID",
 				Code:          peer.TxValidationCode_MVCC_READ_CONFLICT,
 			}
-			require.EqualValues(t, expected, actual1)
-			require.EqualValues(t, expected, actual2)
+			require.Equal(t, expected, actual1)
+			require.Equal(t, expected, actual2)
 		})
 
 		t.Run("multiple listeners can stop listening independently", func(t *testing.T) {
@@ -406,7 +406,7 @@ func TestNotifier(t *testing.T) {
 				TransactionID: "TX_ID",
 				Code:          peer.TxValidationCode_MVCC_READ_CONFLICT,
 			}
-			require.EqualValues(t, expected, actual)
+			require.Equal(t, expected, actual)
 		})
 	})
 

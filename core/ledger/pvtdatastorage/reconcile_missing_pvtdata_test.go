@@ -497,7 +497,7 @@ func TestCommitPvtDataOfOldBlocksWithDeprioritization(t *testing.T) {
 
 			prioMissingData, err := store.getMissingData(elgPrioritizedMissingDataGroup, math.MaxUint64, 3)
 			require.NoError(t, err)
-			require.Equal(t, len(tt.expectedPrioMissingDataKeys), len(prioMissingData))
+			require.Len(t, prioMissingData, len(tt.expectedPrioMissingDataKeys))
 			for blkNum, txsMissingData := range tt.expectedPrioMissingDataKeys {
 				for txNum, expectedMissingData := range txsMissingData {
 					require.ElementsMatch(t, expectedMissingData, prioMissingData[blkNum][txNum])
@@ -506,7 +506,7 @@ func TestCommitPvtDataOfOldBlocksWithDeprioritization(t *testing.T) {
 
 			deprioMissingData, err := store.getMissingData(elgDeprioritizedMissingDataGroup, math.MaxUint64, 3)
 			require.NoError(t, err)
-			require.Equal(t, len(tt.deprioritizedList), len(deprioMissingData))
+			require.Len(t, deprioMissingData, len(tt.deprioritizedList))
 			for blkNum, txsMissingData := range tt.deprioritizedList {
 				for txNum, expectedMissingData := range txsMissingData {
 					require.ElementsMatch(t, expectedMissingData, deprioMissingData[blkNum][txNum])
@@ -634,7 +634,7 @@ func constructPvtDataForTest(t *testing.T, blockInfo []*blockTxPvtDataInfoForTes
 func assertMissingDataInfo(t *testing.T, store *Store, expected ledger.MissingPvtDataInfo, numRecentBlocks int) {
 	missingPvtDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, numRecentBlocks)
 	require.NoError(t, err)
-	require.Equal(t, len(expected), len(missingPvtDataInfo))
+	require.Len(t, missingPvtDataInfo, len(expected))
 	for blkNum, txsMissingData := range expected {
 		for txNum, expectedMissingData := range txsMissingData {
 			require.ElementsMatch(t, expectedMissingData, missingPvtDataInfo[blkNum][txNum])

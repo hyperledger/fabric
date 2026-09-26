@@ -192,7 +192,7 @@ func TestDistributor(t *testing.T) {
 	require.Equal(t, 1, expectedMinAck["ns2~c2"])
 
 	// Channel is empty after we read 8 times from it
-	require.Len(t, sendings, 0)
+	require.Empty(t, sendings)
 
 	// Bad path: dependencies (gossip and others) don't work properly
 	g.err = errors.New("failed obtaining filter")
@@ -236,5 +236,5 @@ func TestDistributor(t *testing.T) {
 		[]string{"channel", channelID},
 		testMetricProvider.FakeSendDuration.WithArgsForCall(0),
 	)
-	require.True(t, testMetricProvider.FakeSendDuration.ObserveArgsForCall(0) > 0)
+	require.Positive(t, testMetricProvider.FakeSendDuration.ObserveArgsForCall(0))
 }

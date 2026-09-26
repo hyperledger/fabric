@@ -26,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -182,7 +181,7 @@ func TestVerifyConfigMetadata(t *testing.T) {
 			singleConsenter,
 		},
 	}
-	assert.Nil(t, VerifyConfigMetadata(goodMetadata, goodVerifyingOpts))
+	require.NoError(t, VerifyConfigMetadata(goodMetadata, goodVerifyingOpts))
 
 	// test variety of bad metadata
 	for _, testCase := range []struct {
@@ -364,8 +363,8 @@ func TestVerifyConfigMetadata(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
-			err := VerifyConfigMetadata(testCase.metadata, testCase.verifyOpts)
-			require.NotNil(t, err, testCase.description)
+			err = VerifyConfigMetadata(testCase.metadata, testCase.verifyOpts)
+			require.Error(t, err, testCase.description)
 			require.Regexp(t, testCase.errRegex, err)
 		})
 	}
@@ -408,6 +407,6 @@ func TestVerifyConfigMetadata(t *testing.T) {
 			},
 		}
 
-		require.Nil(t, VerifyConfigMetadata(metadataWithExpiredConsenter, goodVerifyingOpts))
+		require.NoError(t, VerifyConfigMetadata(metadataWithExpiredConsenter, goodVerifyingOpts))
 	})
 }

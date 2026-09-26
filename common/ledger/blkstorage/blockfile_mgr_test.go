@@ -502,7 +502,7 @@ func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteBlkfile
 
 	// Add 5 more blocks and assert that they are added to last file (block file number 1) and full scanning across two files works as expected
 	blkfileMgrWrapper.addBlocks(blocks[5:])
-	require.True(t, testutilGetFileSize(t, lastFilePath) > 0)
+	require.Positive(t, testutilGetFileSize(t, lastFilePath))
 	require.Equal(t, firstBlkFileSize, testutilGetFileSize(t, firstFilePath))
 	blkfileMgrWrapper.testGetBlockByNumber(blocks)
 	testBlockfileMgrBlockIterator(t, blkfileMgrWrapper.blockfileMgr, 0, len(blocks)-1, blocks)

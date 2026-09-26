@@ -50,5 +50,5 @@ func TestGlobalConfig(t *testing.T) {
 		SkipPullingInvalidTransactionsDuringCommit: false,
 	}
 
-	require.Equal(t, coreConfig, expectedConfig)
+	require.Equal(t, expectedConfig, coreConfig)
 }

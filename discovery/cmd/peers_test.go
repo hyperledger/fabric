@@ -34,7 +34,7 @@ func TestPeerCmd(t *testing.T) {
 	t.Run("no server supplied", func(t *testing.T) {
 		cmd.SetServer(nil)
 		err := cmd.Execute(common.Config{})
-		require.Equal(t, err.Error(), "no server specified")
+		require.EqualError(t, err, "no server specified")
 	})
 
 	t.Run("Server return error", func(t *testing.T) {

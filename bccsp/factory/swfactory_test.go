@@ -24,7 +24,7 @@ import (
 
 func TestSWFactoryName(t *testing.T) {
 	f := &SWFactory{}
-	require.Equal(t, f.Name(), SoftwareBasedFactoryName)
+	require.Equal(t, SoftwareBasedFactoryName, f.Name())
 }
 
 func TestSWFactoryGetInvalidArgs(t *testing.T) {

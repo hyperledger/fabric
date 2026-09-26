@@ -209,7 +209,7 @@ func TestAnchorPeer(t *testing.T) {
 		if m.GetMemReq() == nil {
 			return
 		}
-		require.True(t, index > 0)
+		require.Positive(t, index)
 		req := m.GetMemReq()
 		am, err := protoext.EnvelopeToGossipMessage(req.GetSelfInformation())
 		require.NoError(t, err)
@@ -221,7 +221,7 @@ func TestAnchorPeer(t *testing.T) {
 		if m.GetMemReq() == nil {
 			return
 		}
-		require.True(t, index > 0)
+		require.Positive(t, index)
 		req := m.GetMemReq()
 		am, err := protoext.EnvelopeToGossipMessage(req.GetSelfInformation())
 		require.NoError(t, err)

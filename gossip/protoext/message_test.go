@@ -142,7 +142,7 @@ func TestGossipPullMessageType(t *testing.T) {
 	}
 	require.True(t, protoext.IsHelloMsg(msg))
 	require.True(t, protoext.IsPullMsg(msg))
-	require.Equal(t, protoext.GetPullMsgType(msg), gossip.PullMsgType_BLOCK_MSG)
+	require.Equal(t, gossip.PullMsgType_BLOCK_MSG, protoext.GetPullMsgType(msg))
 
 	// Create data request message
 	msg = &gossip.GossipMessage{
@@ -156,7 +156,7 @@ func TestGossipPullMessageType(t *testing.T) {
 	}
 	require.True(t, protoext.IsDigestMsg(msg))
 	require.True(t, protoext.IsPullMsg(msg))
-	require.Equal(t, protoext.GetPullMsgType(msg), gossip.PullMsgType_IDENTITY_MSG)
+	require.Equal(t, gossip.PullMsgType_IDENTITY_MSG, protoext.GetPullMsgType(msg))
 
 	// Create data request message
 	msg = &gossip.GossipMessage{
@@ -170,7 +170,7 @@ func TestGossipPullMessageType(t *testing.T) {
 	}
 	require.True(t, protoext.IsDataReq(msg))
 	require.True(t, protoext.IsPullMsg(msg))
-	require.Equal(t, protoext.GetPullMsgType(msg), gossip.PullMsgType_BLOCK_MSG)
+	require.Equal(t, gossip.PullMsgType_BLOCK_MSG, protoext.GetPullMsgType(msg))
 
 	// Create data update message
 	msg = &gossip.GossipMessage{
@@ -184,14 +184,14 @@ func TestGossipPullMessageType(t *testing.T) {
 	}
 	require.True(t, protoext.IsDataUpdate(msg))
 	require.True(t, protoext.IsPullMsg(msg))
-	require.Equal(t, protoext.GetPullMsgType(msg), gossip.PullMsgType_IDENTITY_MSG)
+	require.Equal(t, gossip.PullMsgType_IDENTITY_MSG, protoext.GetPullMsgType(msg))
 
 	// Create gossip data message
 	msg = &gossip.GossipMessage{
 		Content: dataMessage(1, []byte{1, 2, 3, 4, 5}),
 	}
 	require.True(t, protoext.IsDataMsg(msg))
-	require.Equal(t, protoext.GetPullMsgType(msg), gossip.PullMsgType_UNDEFINED)
+	require.Equal(t, gossip.PullMsgType_UNDEFINED, protoext.GetPullMsgType(msg))
 }
 
 func TestGossipMessageDataMessageTagType(t *testing.T) {

@@ -48,7 +48,7 @@ linters:
     - spancheck
     - staticcheck
     - testableexamples
-#    - testifylint
+    - testifylint
     - tparallel
     - unconvert
     - usestdlibvars

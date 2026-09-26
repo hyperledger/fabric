@@ -62,12 +62,12 @@ func TestLevelDBHelper(t *testing.T) {
 	require.NoError(t, db.Delete([]byte("key2"), true))
 
 	val1, err1 := db.Get([]byte("key1"))
-	require.NoError(t, err1, "")
-	require.Equal(t, "", string(val1))
+	require.NoError(t, err1)
+	require.Empty(t, val1)
 
 	val2, err2 := db.Get([]byte("key2"))
-	require.NoError(t, err2, "")
-	require.Equal(t, "", string(val2))
+	require.NoError(t, err2)
+	require.Empty(t, val2)
 
 	db.Close()
 	// second time Close should not have any side effect
@@ -78,7 +78,7 @@ func TestLevelDBHelper(t *testing.T) {
 
 	val3, err3 := db.Get([]byte("key3"))
 	require.Error(t, err3)
-	require.Equal(t, "", string(val3))
+	require.Empty(t, val3)
 
 	db.Open()
 	IsEmpty, err = db.IsEmpty()
@@ -92,16 +92,16 @@ func TestLevelDBHelper(t *testing.T) {
 	require.NoError(t, db.WriteBatch(batch, true))
 
 	val1, err1 = db.Get([]byte("key1"))
-	require.NoError(t, err1, "")
+	require.NoError(t, err1)
 	require.Equal(t, "value1", string(val1))
 
 	val2, err2 = db.Get([]byte("key2"))
-	require.NoError(t, err2, "")
+	require.NoError(t, err2)
 	require.Equal(t, "value2", string(val2))
 
 	val3, err3 = db.Get([]byte("key3"))
-	require.NoError(t, err3, "")
-	require.Equal(t, "", string(val3))
+	require.NoError(t, err3)
+	require.Empty(t, val3)
 
 	keys := []string{}
 	itr := db.GetIterator(nil, nil)
@@ -185,8 +185,8 @@ func TestFileLockLockUnlockLock(t *testing.T) {
 }
 
 func TestCreateDBInEmptyDir(t *testing.T) {
-	require.NoError(t, os.RemoveAll(testDBPath), "")
-	require.NoError(t, os.MkdirAll(testDBPath, 0o775), "")
+	require.NoError(t, os.RemoveAll(testDBPath))
+	require.NoError(t, os.MkdirAll(testDBPath, 0o775))
 	db := CreateDB(&Conf{DBPath: testDBPath})
 	defer db.Close()
 	defer func() {
@@ -198,10 +198,10 @@ func TestCreateDBInEmptyDir(t *testing.T) {
 }
 
 func TestCreateDBInNonEmptyDir(t *testing.T) {
-	require.NoError(t, os.RemoveAll(testDBPath), "")
-	require.NoError(t, os.MkdirAll(testDBPath, 0o775), "")
+	require.NoError(t, os.RemoveAll(testDBPath))
+	require.NoError(t, os.MkdirAll(testDBPath, 0o775))
 	file, err := os.Create(filepath.Join(testDBPath, "dummyfile.txt"))
-	require.NoError(t, err, "")
+	require.NoError(t, err)
 	file.Close()
 	db := CreateDB(&Conf{DBPath: testDBPath})
 	defer db.Close()

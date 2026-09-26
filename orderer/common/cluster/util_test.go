@@ -78,9 +78,9 @@ func TestParallelStubActivation(t *testing.T) {
 	// Ensure the instance is the reference we stored
 	// and not any other reference, i.e - it wasn't
 	// copied by value.
-	require.True(t, activatedStub == instance)
+	require.Same(t, activatedStub, instance)
 	// Ensure the method was invoked only once.
-	require.Equal(t, activationCount, 1)
+	require.Equal(t, 1, activationCount)
 }
 
 func TestDialerCustomKeepAliveOptions(t *testing.T) {

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cluster_test
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -24,21 +25,29 @@ func TestConcurrentConnections(t *testing.T) {
 	// and also ensure they all return the same connection reference
 	n := 100
 	var wg sync.WaitGroup
-	wg.Add(n)
 	dialer := &mocks.SecureDialer{}
 	conn := &grpc.ClientConn{}
 	dialer.On("Dial", mock.Anything, mock.Anything).Return(conn, nil)
 	connStore := cluster.NewConnectionStore(dialer, &disabled.Gauge{})
-	connect := func() {
-		defer wg.Done()
-		conn2, err := connStore.Connection("", nil)
-		require.NoError(t, err)
-		require.True(t, conn2 == conn)
-	}
-	for range n {
-		go connect()
+	errs := make([]error, n)
+	for i := range n {
+		wg.Go(func() {
+			conn2, err := connStore.Connection("", nil)
+			if err != nil {
+				errs[i] = err
+				return
+			}
+			// Ensure all calls for Connection() return the same reference
+			// of the gRPC connection.
+			if conn2 != conn {
+				errs[i] = fmt.Errorf("expected the same connection, got %v", conn2)
+			}
+		})
 	}
 	wg.Wait()
+	for _, err := range errs {
+		require.NoError(t, err)
+	}
 	dialer.AssertNumberOfCalls(t, "Dial", 1)
 }
 
@@ -79,17 +88,21 @@ func TestConcurrentLookupMiss(t *testing.T) {
 	connStore.Connections = spy
 
 	var goroutinesExited sync.WaitGroup
-	goroutinesExited.Add(2)
+	errs := make([]error, 2)
 
-	for range 2 {
-		go func() {
-			defer goroutinesExited.Done()
+	for i := range 2 {
+		goroutinesExited.Go(func() {
 			conn2, err := connStore.Connection("", nil)
-			require.NoError(t, err)
+			if err != nil {
+				errs[i] = err
+				return
+			}
 			// Ensure all calls for Connection() return the same reference
 			// of the gRPC connection.
-			require.True(t, conn2 == conn)
-		}()
+			if conn2 != conn {
+				errs[i] = fmt.Errorf("expected the same connection, got %v", conn2)
+			}
+		})
 	}
 	// Wait for the Lookup() to be invoked by both
 	// goroutines
@@ -102,4 +115,7 @@ func TestConcurrentLookupMiss(t *testing.T) {
 	close(spy.lookupDelay)
 	// Wait for all goroutines to exit
 	goroutinesExited.Wait()
+	for _, err := range errs {
+		require.NoError(t, err)
+	}
 }

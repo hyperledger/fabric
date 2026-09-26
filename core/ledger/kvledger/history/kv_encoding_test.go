@@ -30,8 +30,8 @@ func TestCompositeKeyConstruction(t *testing.T) {
 	for _, testDatum := range testData {
 		key := constructDataKey(testDatum.ns, testDatum.key, testDatum.blkNum, testDatum.tranNum)
 		rangeScan := constructRangeScan(testDatum.ns, testDatum.key)
-		require.Equal(t, bytes.Compare(rangeScan.startKey, key), -1) // startKey should be smaller than key
-		require.Equal(t, bytes.Compare(rangeScan.endKey, key), 1)    // endKey should be greater than key
+		require.Equal(t, -1, bytes.Compare(rangeScan.startKey, key)) // startKey should be smaller than key
+		require.Equal(t, 1, bytes.Compare(rangeScan.endKey, key))    // endKey should be greater than key
 	}
 
 	for i, testDatum := range testData {
@@ -51,6 +51,6 @@ func TestSplitCompositeKey(t *testing.T) {
 	rangeScan := constructRangeScan("ns1", "key1")
 	blkNum, txNum, err := rangeScan.decodeBlockNumTranNum(dataKey)
 	require.NoError(t, err)
-	require.Equal(t, blkNum, uint64(20))
-	require.Equal(t, txNum, uint64(200))
+	require.Equal(t, uint64(20), blkNum)
+	require.Equal(t, uint64(200), txNum)
 }

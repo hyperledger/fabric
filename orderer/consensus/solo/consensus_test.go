@@ -95,7 +95,7 @@ func TestStart(t *testing.T) {
 	defer bs.Halt()
 
 	support.BlockCutterVal.CutNext = true
-	require.Nil(t, bs.Order(testMessage, 0))
+	require.NoError(t, bs.Order(testMessage, 0))
 	select {
 	case <-support.Blocks:
 	case <-bs.Errored():
@@ -114,7 +114,7 @@ func TestOrderAfterHalt(t *testing.T) {
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)
 	bs.Halt()
-	require.NotNil(t, bs.Order(testMessage, 0), "Order should not be accepted after halt")
+	require.Error(t, bs.Order(testMessage, 0), "Order should not be accepted after halt")
 	select {
 	case <-bs.Errored():
 	default:
@@ -261,7 +261,7 @@ func TestConfigMsg(t *testing.T) {
 	defer bs.Halt()
 
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
-	require.Nil(t, bs.Configure(testMessage, 0))
+	require.NoError(t, bs.Configure(testMessage, 0))
 
 	select {
 	case <-support.Blocks:
@@ -336,7 +336,7 @@ func TestRevalidation(t *testing.T) {
 		support.ProcessConfigMsgVal = testMessage
 
 		t.Run("Valid", func(t *testing.T) {
-			require.Nil(t, bs.Configure(testMessage, 0))
+			require.NoError(t, bs.Configure(testMessage, 0))
 
 			select {
 			case <-support.Blocks:
@@ -347,7 +347,7 @@ func TestRevalidation(t *testing.T) {
 
 		t.Run("Invalid", func(t *testing.T) {
 			support.ProcessConfigMsgErr = errors.New("Config message is not valid")
-			require.Nil(t, bs.Configure(testMessage, 0))
+			require.NoError(t, bs.Configure(testMessage, 0))
 
 			select {
 			case <-support.Blocks:
@@ -375,7 +375,7 @@ func TestRevalidation(t *testing.T) {
 			// We are not calling `syncQueueMessage` here because we don't expect
 			// `Ordered` to be invoked at all in this case, so we don't need to
 			// synchronize on `support.BlockCutterVal.Block`.
-			require.Nil(t, bs.Order(testMessage, 0))
+			require.NoError(t, bs.Order(testMessage, 0))
 
 			select {
 			case <-support.Blocks:

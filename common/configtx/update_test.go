@@ -217,7 +217,7 @@ func TestPolicyForItem(t *testing.T) {
 
 func TestValidateModPolicy(t *testing.T) {
 	t.Run("Valid", func(t *testing.T) {
-		require.Nil(t, validateModPolicy("/foo/bar"))
+		require.NoError(t, validateModPolicy("/foo/bar"))
 	})
 	t.Run("Empty", func(t *testing.T) {
 		require.Regexp(t, "mod_policy not set", validateModPolicy(""))

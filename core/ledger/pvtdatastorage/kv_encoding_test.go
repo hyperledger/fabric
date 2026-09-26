@@ -47,10 +47,10 @@ func TestDataKeyRange(t *testing.T) {
 				txNum: txNum,
 			},
 		)
-		require.Equal(t, bytes.Compare(keyOfPreviousBlock, startKey), -1)
-		require.Equal(t, bytes.Compare(keyOfBlock, startKey), 1)
-		require.Equal(t, bytes.Compare(keyOfBlock, endKey), -1)
-		require.Equal(t, bytes.Compare(keyOfNextBlock, endKey), 1)
+		require.Equal(t, -1, bytes.Compare(keyOfPreviousBlock, startKey))
+		require.Equal(t, 1, bytes.Compare(keyOfBlock, startKey))
+		require.Equal(t, -1, bytes.Compare(keyOfBlock, endKey))
+		require.Equal(t, 1, bytes.Compare(keyOfNextBlock, endKey))
 	}
 }
 
@@ -79,10 +79,10 @@ func TestEligibleMissingDataRange(t *testing.T) {
 				blkNum: blockNum + 1,
 			},
 		)
-		require.Equal(t, bytes.Compare(keyOfNextBlock, startKey), -1)
-		require.Equal(t, bytes.Compare(keyOfBlock, startKey), 1)
-		require.Equal(t, bytes.Compare(keyOfBlock, endKey), -1)
-		require.Equal(t, bytes.Compare(keyOfPreviousBlock, endKey), 1)
+		require.Equal(t, -1, bytes.Compare(keyOfNextBlock, startKey))
+		require.Equal(t, 1, bytes.Compare(keyOfBlock, startKey))
+		require.Equal(t, -1, bytes.Compare(keyOfBlock, endKey))
+		require.Equal(t, 1, bytes.Compare(keyOfPreviousBlock, endKey))
 	}
 }
 

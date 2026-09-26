@@ -8,6 +8,7 @@ package statebased
 
 import (
 	crand "crypto/rand"
+	"fmt"
 	"math/rand/v2"
 	"runtime"
 	"strconv"
@@ -170,17 +171,29 @@ func pvtRwsetUpdatingMetadataFor(cc, coll, key string) []byte {
 
 func runFunctions(t *testing.T, seed [32]byte, funcs ...func()) {
 	r := rand.New(rand.NewChaCha8(seed))
-	c := make(chan struct{})
+	c := make(chan error, len(funcs))
 	for _, i := range r.Perm(len(funcs)) {
 		iLcl := i
 		go func() {
-			require.NotPanics(t, funcs[iLcl], "assert failure occurred with seed %d", seed)
-			c <- struct{}{}
+			c <- funcDidNotPanic(funcs[iLcl])
 		}()
 	}
 	for range funcs {
-		<-c
+		require.NoError(t, <-c, "assert failure occurred with seed %d", seed)
 	}
+}
+
+// funcDidNotPanic runs f and reports the panic, if any, through the returned
+// error. It is meant to be called from a goroutine other than the one running
+// the test, so it does not assert.
+func funcDidNotPanic(f func()) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic occurred: %v", r)
+		}
+	}()
+	f()
+	return nil
 }
 
 func TestTranslatorBadPolicy(t *testing.T) {
@@ -350,7 +363,8 @@ func TestDependencyConflict(t *testing.T) {
 	sp := <-resC
 	err := <-errC
 	require.Errorf(t, err, "assert failure occurred with seed %d", seed)
-	require.IsType(t, &ValidationParameterUpdatedError{}, err, "assert failure occurred with seed %d", seed)
+	var target *ValidationParameterUpdatedError
+	require.ErrorAsf(t, err, &target, "assert failure occurred with seed %d", seed)
 	require.Nil(t, sp, "assert failure occurred with seed %d", seed)
 }
 
@@ -451,7 +465,8 @@ func TestMultipleDependencyConflict(t *testing.T) {
 	sp := <-resC
 	err := <-errC
 	require.Errorf(t, err, "assert failure occurred with seed %d", seed)
-	require.IsType(t, &ValidationParameterUpdatedError{}, err, "assert failure occurred with seed %d", seed)
+	var target *ValidationParameterUpdatedError
+	require.ErrorAsf(t, err, &target, "assert failure occurred with seed %d", seed)
 	require.Nil(t, sp, "assert failure occurred with seed %d", seed)
 }
 
@@ -529,9 +544,9 @@ func TestPvtDependencyConflict(t *testing.T) {
 	sp := <-resC
 	err := <-errC
 	require.Errorf(t, err, "assert failure occurred with seed %d", seed)
-	require.IsType(t, &ValidationParameterUpdatedError{}, err, "assert failure occurred with seed %d", seed)
-	require.True(t, len(err.Error()) > 0, "assert failure occurred with seed %d", seed)
-	require.Nil(t, sp, "assert failure occurred with seed %d", seed)
+	var target *ValidationParameterUpdatedError
+	require.ErrorAsf(t, err, &target, "assert failure occurred with seed %d", seed)
+	require.Nilf(t, sp, "assert failure occurred with seed %d", seed)
 }
 
 func TestBlockValidationTerminatesBeforeNewBlock(t *testing.T) {
@@ -764,7 +779,8 @@ func TestCombinedCalls(t *testing.T) {
 	sp = <-res2C
 	err = <-err2C
 	require.Errorf(t, err, "assert failure occurred with seed %d", seed)
-	require.IsType(t, &ValidationParameterUpdatedError{}, err, "assert failure occurred with seed %d", seed)
+	var target *ValidationParameterUpdatedError
+	require.ErrorAsf(t, err, &target, "assert failure occurred with seed %d", seed)
 	require.Nil(t, sp, "assert failure occurred with seed %d", seed)
 
 	require.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)

@@ -70,7 +70,7 @@ func TestFileCreateAndRead(t *testing.T) {
 
 	str, err = fileReader.DecodeString()
 	require.NoError(t, err)
-	require.Equal(t, "", str)
+	require.Empty(t, str)
 
 	number, err := fileReader.DecodeUVarInt()
 	require.NoError(t, err)
@@ -117,7 +117,7 @@ func TestFileCreateAndLargeValue(t *testing.T) {
 
 	bytesRead, err := fileReader.DecodeBytes()
 	require.NoError(t, err)
-	require.Equal(t, 20*1024, len(bytesRead))
+	require.Len(t, bytesRead, 20*1024)
 	require.Equal(t, byte(1), bytesRead[0])
 	require.Equal(t, byte(2), bytesRead[len(bytesRead)-1])
 }

@@ -342,7 +342,7 @@ func (h *testHelper) checkOnlyPvtKeyExists(ns, coll, key string, value []byte) {
 
 func (h *testHelper) checkOnlyPvtKeyDoesNotExist(ns, coll, key string) {
 	kv, err := h.db.GetPrivateData(ns, coll, key)
-	require.Nil(h.t, err)
+	require.NoError(h.t, err)
 	require.Nil(h.t, kv)
 }
 
@@ -370,5 +370,5 @@ func (h *testHelper) checkExpiryEntryExistsForBlockNum(expiringBlk uint64, expec
 func (h *testHelper) checkNoExpiryEntryExistsForBlockNum(expiringBlk uint64) {
 	expInfo, err := h.purgeMgr.expKeeper.retrieve(expiringBlk)
 	require.NoError(h.t, err)
-	require.Len(h.t, expInfo, 0)
+	require.Empty(h.t, expInfo)
 }

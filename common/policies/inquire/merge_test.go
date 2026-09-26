@@ -36,7 +36,7 @@ func TestClone(t *testing.T) {
 	require.Equal(t, cps, clone)
 	// Nil out the first entry and ensure that it isn't reflected in the clone
 	cps[0] = nil
-	require.False(t, cps[0] == clone[0])
+	require.NotSame(t, cps[0], clone[0])
 }
 
 func TestMergeInclusiveWithPlurality(t *testing.T) {

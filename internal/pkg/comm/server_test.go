@@ -407,7 +407,7 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 		"listen tcp: lookup tcp/1BBB: Servname not supported for ai_socktype",
 		"listen tcp: lookup tcp/1BBB: unknown port",
 	}
-	require.Error(t, err, fmt.Sprintf("[%s], [%s] [%s] or [%s] expected", msgs[0], msgs[1], msgs[2], msgs[3]))
+	require.Errorf(t, err, "[%s], [%s] [%s] or [%s] expected", msgs[0], msgs[1], msgs[2], msgs[3])
 	require.Contains(t, msgs, err.Error())
 
 	// bad hostname
@@ -520,8 +520,8 @@ func TestNewGRPCServer(t *testing.T) {
 	// make sure our properties are as expected
 	require.Equal(t, srv.Address(), addr.String())
 	require.Equal(t, srv.Listener().Addr().String(), addr.String())
-	require.Equal(t, srv.TLSEnabled(), false)
-	require.Equal(t, srv.MutualTLSRequired(), false)
+	require.False(t, srv.TLSEnabled())
+	require.False(t, srv.MutualTLSRequired())
 
 	// register the GRPC test server
 	testpb.RegisterEmptyServiceServer(srv.Server(), &emptyServiceServer{})
@@ -554,8 +554,8 @@ func TestNewGRPCServerFromListener(t *testing.T) {
 
 	require.Equal(t, srv.Address(), testAddress)
 	require.Equal(t, srv.Listener().Addr().String(), testAddress)
-	require.Equal(t, srv.TLSEnabled(), false)
-	require.Equal(t, srv.MutualTLSRequired(), false)
+	require.False(t, srv.TLSEnabled())
+	require.False(t, srv.MutualTLSRequired())
 
 	// register the GRPC test server
 	testpb.RegisterEmptyServiceServer(srv.Server(), &emptyServiceServer{})
@@ -599,8 +599,8 @@ func TestNewSecureGRPCServer(t *testing.T) {
 	cert, _ := tls.X509KeyPair([]byte(selfSignedCertPEM), []byte(selfSignedKeyPEM))
 	require.Equal(t, srv.ServerCertificate(), cert)
 
-	require.Equal(t, srv.TLSEnabled(), true)
-	require.Equal(t, srv.MutualTLSRequired(), false)
+	require.True(t, srv.TLSEnabled())
+	require.False(t, srv.MutualTLSRequired())
 
 	// register the GRPC test server
 	testpb.RegisterEmptyServiceServer(srv.Server(), &emptyServiceServer{})
@@ -876,7 +876,7 @@ func runMutualAuth(t *testing.T, servers []testServer, trustedClients, unTrusted
 		}
 
 		// MutualTLSRequired should be true
-		require.Equal(t, srv.MutualTLSRequired(), true)
+		require.True(t, srv.MutualTLSRequired())
 
 		// register the GRPC test server and start the GRPCServer
 		testpb.RegisterEmptyServiceServer(srv.Server(), &emptyServiceServer{})

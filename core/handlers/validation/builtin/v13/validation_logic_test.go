@@ -321,13 +321,15 @@ func TestStateBasedValidationFailure(t *testing.T) {
 	sbvm.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&commonerrors.VSCCEndorsementPolicyError{Err: errors.New("some sbe validation err")}).Once()
 	err = v.Validate(b, "foo", 0, 0, policy)
 	require.Error(t, err)
-	require.IsType(t, &commonerrors.VSCCEndorsementPolicyError{}, err)
+	var target *commonerrors.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 
 	// bad path: execution error
 	sbvm.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&commonerrors.VSCCExecutionFailureError{Err: errors.New("some sbe validation err")}).Once()
 	err = v.Validate(b, "foo", 0, 0, policy)
 	require.Error(t, err)
-	require.IsType(t, &commonerrors.VSCCExecutionFailureError{}, err)
+	var target1 *commonerrors.VSCCExecutionFailureError
+	require.ErrorAs(t, err, &target1)
 
 	// good path: signed by the right MSP
 	sbvm.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()

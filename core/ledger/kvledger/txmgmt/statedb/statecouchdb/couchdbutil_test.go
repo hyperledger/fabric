@@ -48,7 +48,7 @@ func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
 
 	// Retrieve the info for the new database and make sure the name matches
 	_, _, errdb := db.getDatabaseInfo()
-	require.NotNil(t, errdb)
+	require.Error(t, errdb)
 }
 
 // Unit test of couch db util functionality
@@ -113,7 +113,7 @@ func TestDatabaseMapping(t *testing.T) {
 	require.Error(t, err, "Error should have been thrown for an invalid name")
 
 	transformedName, err := mapAndValidateDatabaseName("test.my.db-1")
-	require.NoError(t, err, "")
+	require.NoError(t, err)
 	require.Equal(t, "test$my$db-1", transformedName)
 }
 
@@ -122,7 +122,7 @@ func TestConstructMetadataDBName(t *testing.T) {
 	chainName := "tob2g.y-z0f.qwp-rq5g4-ogid5g6oucyryg9sc16mz0t4vuake5q557esz7sn493nf0ghch0xih6dwuirokyoi4jvs67gh6r5v6mhz3-292un2-9egdcs88cstg3f7xa9m1i8v4gj0t3jedsm-woh3kgiqehwej6h93hdy5tr4v.1qmmqjzz0ox62k.507sh3fkw3-mfqh.ukfvxlm5szfbwtpfkd1r4j.cy8oft5obvwqpzjxb27xuw6"
 
 	truncatedChainName := "tob2g.y-z0f.qwp-rq5g4-ogid5g6oucyryg9sc16mz0t4vuak"
-	require.Equal(t, chainNameAllowedLength, len(truncatedChainName))
+	require.Len(t, truncatedChainName, chainNameAllowedLength)
 
 	// <first 50 chars (i.e., chainNameAllowedLength) of chainName> + 1 char for '(' + <64 chars for SHA256 hash
 	// (hex encoding) of untruncated chainName> + 1 char for ')' + 1 char for '_' = 117 chars
@@ -131,7 +131,7 @@ func TestConstructMetadataDBName(t *testing.T) {
 	expectedDBNameLength := 117
 
 	constructedDBName := constructMetadataDBName(chainName)
-	require.Equal(t, expectedDBNameLength, len(constructedDBName))
+	require.Len(t, constructedDBName, expectedDBNameLength)
 	require.Equal(t, expectedDBName, constructedDBName)
 }
 
@@ -150,9 +150,9 @@ func TestConstructedNamespaceDBName(t *testing.T) {
 	truncatedChainName := "tob2g.y-z0f.qwp-rq5g4-ogid5g6oucyryg9sc16mz0t4vuak"
 	truncatedEscapedNs := "w$m$cn$s$xi$v9$yo$iq$n$qy$nv$f$v$td$m8$xn$utvr$o$f"
 	truncatedEscapedColl := "pv$wjtf$s$t$x$v$k8$w$jus5s6z$wo$m$ici$xd7q$h$r$z$i"
-	require.Equal(t, chainNameAllowedLength, len(truncatedChainName))
-	require.Equal(t, namespaceNameAllowedLength, len(truncatedEscapedNs))
-	require.Equal(t, collectionNameAllowedLength, len(truncatedEscapedColl))
+	require.Len(t, truncatedChainName, chainNameAllowedLength)
+	require.Len(t, truncatedEscapedNs, namespaceNameAllowedLength)
+	require.Len(t, truncatedEscapedColl, collectionNameAllowedLength)
 
 	untruncatedDBName := chainName + "_" + ns + "$$" + coll
 	hash := hex.EncodeToString(util.ComputeSHA256([]byte(untruncatedDBName)))
@@ -165,7 +165,7 @@ func TestConstructedNamespaceDBName(t *testing.T) {
 
 	namespace := ns + "$$" + coll
 	constructedDBName := constructNamespaceDBName(chainName, namespace)
-	require.Equal(t, expectedDBNameLength, len(constructedDBName))
+	require.Len(t, constructedDBName, expectedDBNameLength)
 	require.Equal(t, expectedDBName, constructedDBName)
 
 	// === SCENARIO 2: chainName_ns ===
@@ -180,7 +180,7 @@ func TestConstructedNamespaceDBName(t *testing.T) {
 
 	namespace = ns
 	constructedDBName = constructNamespaceDBName(chainName, namespace)
-	require.Equal(t, expectedDBNameLength, len(constructedDBName))
+	require.Len(t, constructedDBName, expectedDBNameLength)
 	require.Equal(t, expectedDBName, constructedDBName)
 }
 
@@ -202,14 +202,14 @@ func TestDropApplicationDBs(t *testing.T) {
 
 	dbs, err := couchInstance.retrieveApplicationDBNames()
 	require.NoError(t, err, "Error when retrieving application db names")
-	require.Equal(t, numCouchdbs, len(dbs), "Expected number of databases are not created")
+	require.Len(t, dbs, numCouchdbs, "Expected number of databases are not created")
 
 	err = DropApplicationDBs(config)
 	require.NoError(t, err, "Error when dropping all application dbs")
 
 	dbs, err = couchInstance.retrieveApplicationDBNames()
 	require.NoError(t, err, "Error when retrieving application db names")
-	require.Equal(t, 0, len(dbs), "Databases should be dropped")
+	require.Empty(t, dbs, "Databases should be dropped")
 }
 
 func TestDropApplicationDBsWhenDBNotStarted(t *testing.T) {
