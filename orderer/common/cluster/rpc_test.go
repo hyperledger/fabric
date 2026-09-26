@@ -88,7 +88,7 @@ func TestSendSubmitWithReport(t *testing.T) {
 	wg2.Wait()
 
 	// Ensure stale stream is cleaned up and removed from the mapping
-	require.Len(t, node1RPC.StreamsByType[cluster.SubmitOperation], 0)
+	require.Empty(t, node1RPC.StreamsByType[cluster.SubmitOperation])
 
 	// Wait for connection to be re-established
 	time.Sleep(time.Second * 5)

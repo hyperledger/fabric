@@ -168,46 +168,46 @@ func TestNilSignaturePolicyEnvelope(t *testing.T) {
 
 func TestSignedByMspClient(t *testing.T) {
 	e := policydsl.SignedByMspClient("A")
-	require.Equal(t, 1, len(e.GetIdentities()))
+	require.Len(t, e.GetIdentities(), 1)
 
 	role := &mb.MSPRole{}
 	err := proto.Unmarshal(e.GetIdentities()[0].GetPrincipal(), role)
 	require.NoError(t, err)
 
-	require.Equal(t, role.GetMspIdentifier(), "A")
-	require.Equal(t, role.GetRole(), mb.MSPRole_CLIENT)
+	require.Equal(t, "A", role.GetMspIdentifier())
+	require.Equal(t, mb.MSPRole_CLIENT, role.GetRole())
 
 	e = policydsl.SignedByAnyClient([]string{"A"})
-	require.Equal(t, 1, len(e.GetIdentities()))
+	require.Len(t, e.GetIdentities(), 1)
 
 	role = &mb.MSPRole{}
 	err = proto.Unmarshal(e.GetIdentities()[0].GetPrincipal(), role)
 	require.NoError(t, err)
 
-	require.Equal(t, role.GetMspIdentifier(), "A")
-	require.Equal(t, role.GetRole(), mb.MSPRole_CLIENT)
+	require.Equal(t, "A", role.GetMspIdentifier())
+	require.Equal(t, mb.MSPRole_CLIENT, role.GetRole())
 }
 
 func TestSignedByMspPeer(t *testing.T) {
 	e := policydsl.SignedByMspPeer("A")
-	require.Equal(t, 1, len(e.GetIdentities()))
+	require.Len(t, e.GetIdentities(), 1)
 
 	role := &mb.MSPRole{}
 	err := proto.Unmarshal(e.GetIdentities()[0].GetPrincipal(), role)
 	require.NoError(t, err)
 
-	require.Equal(t, role.GetMspIdentifier(), "A")
-	require.Equal(t, role.GetRole(), mb.MSPRole_PEER)
+	require.Equal(t, "A", role.GetMspIdentifier())
+	require.Equal(t, mb.MSPRole_PEER, role.GetRole())
 
 	e = policydsl.SignedByAnyPeer([]string{"A"})
-	require.Equal(t, 1, len(e.GetIdentities()))
+	require.Len(t, e.GetIdentities(), 1)
 
 	role = &mb.MSPRole{}
 	err = proto.Unmarshal(e.GetIdentities()[0].GetPrincipal(), role)
 	require.NoError(t, err)
 
-	require.Equal(t, role.GetMspIdentifier(), "A")
-	require.Equal(t, role.GetRole(), mb.MSPRole_PEER)
+	require.Equal(t, "A", role.GetMspIdentifier())
+	require.Equal(t, mb.MSPRole_PEER, role.GetRole())
 }
 
 func TestReturnNil(t *testing.T) {

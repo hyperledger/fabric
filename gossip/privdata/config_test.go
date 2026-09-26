@@ -36,7 +36,7 @@ func TestGlobalConfig(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, coreConfig, expectedConfig)
+	require.Equal(t, expectedConfig, coreConfig)
 }
 
 func TestGlobalConfigDefaults(t *testing.T) {
@@ -54,7 +54,7 @@ func TestGlobalConfigDefaults(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, coreConfig, expectedConfig)
+	require.Equal(t, expectedConfig, coreConfig)
 }
 
 func TestGlobalConfigPanic(t *testing.T) {

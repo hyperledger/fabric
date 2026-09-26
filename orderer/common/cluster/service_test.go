@@ -108,7 +108,7 @@ func TestSubmitSuccess(t *testing.T) {
 	dispatcher.On("DispatchSubmit", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		expectedRequest := <-responses
 		actualRequest := args.Get(1).(*orderer.StepRequest)
-		require.True(t, expectedRequest == actualRequest)
+		require.Same(t, expectedRequest, actualRequest)
 	})
 
 	svc := &cluster.Service{
@@ -216,9 +216,9 @@ func TestIngresStreamsMetrics(t *testing.T) {
 
 	svc.Step(stream)
 	// The stream started so stream count incremented from 0 to 1
-	require.Equal(t, float64(1), testMetrics.ingressStreamsCount.SetArgsForCall(0))
+	require.InDelta(t, float64(1), testMetrics.ingressStreamsCount.SetArgsForCall(0), 0)
 	// The stream ended so stream count is decremented from 1 to 0
-	require.Equal(t, float64(0), testMetrics.ingressStreamsCount.SetArgsForCall(1))
+	require.InDelta(t, float64(0), testMetrics.ingressStreamsCount.SetArgsForCall(1), 0)
 }
 
 func TestServiceGRPC(t *testing.T) {

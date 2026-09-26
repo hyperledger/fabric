@@ -59,7 +59,7 @@ func testLedgerProvider(t *testing.T, enableHistoryDB bool) {
 	numLedgers := 10
 	existingLedgerIDs, err := provider.List()
 	require.NoError(t, err)
-	require.Len(t, existingLedgerIDs, 0)
+	require.Empty(t, existingLedgerIDs)
 	genesisBlocks := make([]*common.Block, numLedgers)
 	for i := range numLedgers {
 		genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(i))
@@ -111,7 +111,7 @@ func testLedgerProvider(t *testing.T, enableHistoryDB bool) {
 
 	status, err := provider.Exists(constructTestLedgerID(numLedgers))
 	require.NoError(t, err, "Failed to check for ledger existence")
-	require.Equal(t, status, false)
+	require.False(t, status)
 
 	_, err = provider.Open(constructTestLedgerID(numLedgers))
 	require.EqualError(t, err, "cannot open ledger [ledger_000010], ledger does not exist")
@@ -724,5 +724,5 @@ func verifyLedgerIDExists(t *testing.T, provider *Provider, ledgerID string, exp
 
 	metadata, err := provider.idStore.getLedgerMetadata(ledgerID)
 	require.NoError(t, err)
-	require.Equal(t, metadata.GetStatus(), expectedStatus)
+	require.Equal(t, expectedStatus, metadata.GetStatus())
 }

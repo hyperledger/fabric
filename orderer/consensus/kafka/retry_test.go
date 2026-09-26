@@ -30,7 +30,7 @@ func TestRetry(t *testing.T) {
 		exitChan := make(chan struct{})
 		rp = newRetryProcess(mockRetryOptions, exitChan, mockChannel, "foo", noErrorFn)
 		require.NoError(t, rp.retry(), "Expected retry to return no errors")
-		require.Equal(t, true, flag, "Expected flag to be set to true")
+		require.True(t, flag, "Expected flag to be set to true")
 	})
 
 	t.Run("WithError", func(t *testing.T) {

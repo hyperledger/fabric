@@ -144,23 +144,28 @@ func newCommInstanceOnlyWithMetrics(t *testing.T, commMetrics *metrics.CommMetri
 		sec, commMetrics, testCommConfig, dialOpts...)
 	require.NoError(t, err)
 
+	// The gRPC server runs in the background, so its start error is delivered
+	// to the goroutine running the test in Stop
+	startErrChan := make(chan error, 1)
 	go func() {
-		err := gRPCServer.Start()
-		require.NoError(t, err)
+		startErrChan <- gRPCServer.Start()
 	}()
 
-	return &commGRPC{commInst.(*commImpl), gRPCServer}
+	return &commGRPC{commImpl: commInst.(*commImpl), gRPCServer: gRPCServer, t: t, startErrChan: startErrChan}
 }
 
 type commGRPC struct {
 	*commImpl
-	gRPCServer *comm.GRPCServer
+	gRPCServer   *comm.GRPCServer
+	t            *testing.T
+	startErrChan chan error
 }
 
 func (c *commGRPC) Stop() {
 	c.commImpl.Stop()
 	c.idMapper.Stop()
 	c.gRPCServer.Stop()
+	require.NoError(c.t, <-c.startErrChan)
 }
 
 func newCommInstanceOnly(t *testing.T, sec *naiveSecProvider,
@@ -369,7 +374,7 @@ func TestHandshake(t *testing.T) {
 	_, tempEndpoint, tempL = getAvailablePort(t)
 	acceptChan = handshaker(port, tempEndpoint, comm, t, mutator, oneWayTLS)
 	time.Sleep(time.Second)
-	require.Equal(t, 0, len(acceptChan))
+	require.Empty(t, acceptChan)
 	tempL.Close()
 
 	// Negative path, signature is wrong
@@ -380,7 +385,7 @@ func TestHandshake(t *testing.T) {
 	}
 	acceptChan = handshaker(port, tempEndpoint, comm, t, mutator, mutualTLS)
 	time.Sleep(time.Second)
-	require.Equal(t, 0, len(acceptChan))
+	require.Empty(t, acceptChan)
 	tempL.Close()
 
 	// Negative path, the PKIid doesn't match the identity
@@ -394,7 +399,7 @@ func TestHandshake(t *testing.T) {
 	_, tempEndpoint2, tempL2 := getAvailablePort(t)
 	acceptChan = handshaker(port, tempEndpoint2, comm, t, mutator, mutualTLS)
 	time.Sleep(time.Second)
-	require.Equal(t, 0, len(acceptChan))
+	require.Empty(t, acceptChan)
 	tempL.Close()
 	tempL2.Close()
 
@@ -407,7 +412,7 @@ func TestHandshake(t *testing.T) {
 	}
 	acceptChan = handshaker(port, tempEndpoint, comm, t, mutator, mutualTLS)
 	time.Sleep(time.Second)
-	require.Equal(t, 0, len(acceptChan))
+	require.Empty(t, acceptChan)
 	tempL.Close()
 
 	// Negative path, no PKI-ID was sent
@@ -419,7 +424,7 @@ func TestHandshake(t *testing.T) {
 	}
 	acceptChan = handshaker(port, tempEndpoint, comm, t, mutator, mutualTLS)
 	time.Sleep(time.Second)
-	require.Equal(t, 0, len(acceptChan))
+	require.Empty(t, acceptChan)
 	tempL.Close()
 
 	// Negative path, connection message is of a different type
@@ -433,7 +438,7 @@ func TestHandshake(t *testing.T) {
 	}
 	acceptChan = handshaker(port, tempEndpoint, comm, t, mutator, mutualTLS)
 	time.Sleep(time.Second)
-	require.Equal(t, 0, len(acceptChan))
+	require.Empty(t, acceptChan)
 	tempL.Close()
 
 	// Negative path, the peer didn't respond to the handshake in due time
@@ -444,7 +449,7 @@ func TestHandshake(t *testing.T) {
 	}
 	acceptChan = handshaker(port, tempEndpoint, comm, t, mutator, mutualTLS)
 	time.Sleep(time.Second)
-	require.Equal(t, 0, len(acceptChan))
+	require.Empty(t, acceptChan)
 	tempL.Close()
 }
 

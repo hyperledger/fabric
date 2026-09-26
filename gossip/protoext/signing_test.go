@@ -329,7 +329,7 @@ func TestSignedGossipMessage_Verify(t *testing.T) {
 		return nil
 	}
 	res := msg.Verify(peerID, verifier)
-	require.Nil(t, res)
+	require.NoError(t, res)
 
 	msg = &protoext.SignedGossipMessage{
 		GossipMessage: &gossip.GossipMessage{
@@ -405,7 +405,7 @@ func TestEnvelope_SignSecret(t *testing.T) {
 	})
 
 	require.NotNil(t, env.GetSecretEnvelope())
-	require.Equal(t, protoext.InternalEndpoint(env.GetSecretEnvelope()), "localhost:5050")
+	require.Equal(t, "localhost:5050", protoext.InternalEndpoint(env.GetSecretEnvelope()))
 }
 
 func TestInternalEndpoint(t *testing.T) {

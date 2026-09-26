@@ -41,7 +41,7 @@ func TestBatchingEmitterStop(t *testing.T) {
 	time.Sleep(time.Duration(100) * time.Millisecond)
 	emitter.Stop()
 	time.Sleep(time.Duration(1000) * time.Millisecond)
-	require.True(t, atomic.LoadInt32(&disseminationAttempts) < int32(5))
+	require.Less(t, atomic.LoadInt32(&disseminationAttempts), int32(5))
 }
 
 func TestBatchingEmitterExpiration(t *testing.T) {

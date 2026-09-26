@@ -45,7 +45,7 @@ func TestHash(t *testing.T) {
 	csp := CSP{Hashers: hashers}
 	value, err := csp.Hash(expectetMsg, expectedOpts)
 	require.Equal(t, expectetValue, value)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	hashers = make(map[reflect.Type]Hasher)
 	hashers[reflect.TypeFor[*mocks2.HashOpts]()] = &mocks.Hasher{
@@ -76,7 +76,7 @@ func TestGetHash(t *testing.T) {
 	csp := CSP{Hashers: hashers}
 	value, err := csp.GetHash(expectedOpts)
 	require.Equal(t, expectetValue, value)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	hashers = make(map[reflect.Type]Hasher)
 	hashers[reflect.TypeFor[*mocks2.HashOpts]()] = &mocks.Hasher{

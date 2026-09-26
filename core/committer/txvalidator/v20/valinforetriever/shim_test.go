@@ -47,7 +47,7 @@ func TestValidationInfoRetrieverFromNew(t *testing.T) {
 	require.NoError(t, unexpectedErr)
 	require.Error(t, validationErr)
 	require.Contains(t, validationErr.Error(), "validation error")
-	require.Equal(t, "", plugin)
+	require.Empty(t, plugin)
 	require.Equal(t, []byte(nil), args)
 	legacyResources.AssertNotCalled(t, "ValidationInfo")
 
@@ -58,7 +58,7 @@ func TestValidationInfoRetrieverFromNew(t *testing.T) {
 	require.Error(t, validationErr)
 	require.Contains(t, unexpectedErr.Error(), "unexpected error")
 	require.Contains(t, validationErr.Error(), "validation error")
-	require.Equal(t, "", plugin)
+	require.Empty(t, plugin)
 	require.Equal(t, []byte(nil), args)
 	legacyResources.AssertNotCalled(t, "ValidationInfo")
 }
@@ -94,7 +94,7 @@ func TestValidationInfoRetrieverFromLegacy(t *testing.T) {
 	require.NoError(t, unexpectedErr)
 	require.Error(t, validationErr)
 	require.Contains(t, validationErr.Error(), "validation error")
-	require.Equal(t, "", plugin)
+	require.Empty(t, plugin)
 	require.Equal(t, []byte(nil), args)
 
 	// get unexpected error from legacy source
@@ -103,7 +103,7 @@ func TestValidationInfoRetrieverFromLegacy(t *testing.T) {
 	require.Error(t, unexpectedErr)
 	require.NoError(t, validationErr)
 	require.Contains(t, unexpectedErr.Error(), "unexpected error")
-	require.Equal(t, "", plugin)
+	require.Empty(t, plugin)
 	require.Equal(t, []byte(nil), args)
 }
 

@@ -829,7 +829,7 @@ func TestParticipant(t *testing.T) {
 			if testCase.expectedError != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), testCase.expectedError)
-				require.Len(t, configBlocks, 0)
+				require.Empty(t, configBlocks)
 			} else {
 				require.Len(t, configBlocks, 1)
 				require.Equal(t, testCase.predicateReturns, err)
@@ -1069,7 +1069,7 @@ func TestBlockPullerFromConfigBlockGreenPath(t *testing.T) {
 
 func TestNoopBlockVerifier(t *testing.T) {
 	v := &cluster.NoopBlockVerifier{}
-	require.Nil(t, v.VerifyBlockSignature(nil, nil))
+	require.NoError(t, v.VerifyBlockSignature(nil, nil))
 }
 
 func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {

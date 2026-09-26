@@ -297,7 +297,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	sortResults(expectedEndorsersResults)
 	sortResults(actualEndorsersResults)
 
-	require.Equal(len(expectedEndorsersResults), len(actualEndorsersResults))
+	require.Len(actualEndorsersResults, len(expectedEndorsersResults))
 	for i, expected := range expectedEndorsersResults {
 		require.Equal(expected.ReceivedAtBlockHeight, actualEndorsersResults[i].ReceivedAtBlockHeight)
 		require.True(proto.Equal(expected.PvtSimulationResultsWithConfig, actualEndorsersResults[i].PvtSimulationResultsWithConfig))
@@ -345,7 +345,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	sortResults(expectedEndorsersResults)
 	sortResults(actualEndorsersResults)
 
-	require.Equal(len(expectedEndorsersResults), len(actualEndorsersResults))
+	require.Len(actualEndorsersResults, len(expectedEndorsersResults))
 	for i, expected := range expectedEndorsersResults {
 		require.Equal(expected.ReceivedAtBlockHeight, actualEndorsersResults[i].ReceivedAtBlockHeight)
 		require.True(proto.Equal(expected.PvtSimulationResultsWithConfig, actualEndorsersResults[i].PvtSimulationResultsWithConfig))
@@ -457,7 +457,7 @@ func TestTransientStorePurgeBelowHeight(t *testing.T) {
 	sortResults(expectedEndorsersResults)
 	sortResults(actualEndorsersResults)
 
-	require.Equal(len(expectedEndorsersResults), len(actualEndorsersResults))
+	require.Len(actualEndorsersResults, len(expectedEndorsersResults))
 	for i, expected := range expectedEndorsersResults {
 		require.Equal(expected.ReceivedAtBlockHeight, actualEndorsersResults[i].ReceivedAtBlockHeight)
 		require.True(proto.Equal(expected.PvtSimulationResultsWithConfig, actualEndorsersResults[i].PvtSimulationResultsWithConfig))
@@ -525,7 +525,7 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 		config := expectedSimulationRes.GetCollectionConfigs()[ns]
 		require.NotNil(t, config)
 		ns1Config := config.GetConfig()
-		require.Equal(t, len(ns1Config), 1)
+		require.Len(t, ns1Config, 1)
 		ns1ColConfig := ns1Config[0].GetStaticCollectionConfig()
 		require.NotNil(t, ns1ColConfig.GetName(), colName)
 	}
@@ -539,7 +539,7 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 	// expectedRes and actualRes.
 	sortResults(expectedRes)
 	sortResults(actualRes)
-	require.Equal(t, len(expectedRes), len(actualRes))
+	require.Len(t, actualRes, len(expectedRes))
 	for i, expected := range expectedRes {
 		require.Equal(t, expected.ReceivedAtBlockHeight, actualRes[i].ReceivedAtBlockHeight)
 		require.True(t, proto.Equal(expected.PvtSimulationResultsWithConfig, actualRes[i].PvtSimulationResultsWithConfig))

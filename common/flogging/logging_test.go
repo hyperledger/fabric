@@ -121,13 +121,13 @@ func TestCheck(t *testing.T) {
 	l.Check(e, nil)
 	require.Equal(t, 1, observer.CheckCallCount())
 	e, ce := observer.CheckArgsForCall(0)
-	require.Equal(t, e, zapcore.Entry{})
+	require.Equal(t, zapcore.Entry{}, e)
 	require.Nil(t, ce)
 
 	l.WriteEntry(e, nil)
 	require.Equal(t, 1, observer.WriteEntryCallCount())
 	e, f := observer.WriteEntryArgsForCall(0)
-	require.Equal(t, e, zapcore.Entry{})
+	require.Equal(t, zapcore.Entry{}, e)
 	require.Nil(t, f)
 
 	//	remove observer

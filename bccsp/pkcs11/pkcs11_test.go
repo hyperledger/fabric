@@ -154,9 +154,9 @@ func TestFindPKCS11LibEnvVars(t *testing.T) {
 		t.Setenv("PKCS11_LABEL", dummy_PKCS11_LABEL)
 
 		lib, pin, label := FindPKCS11Lib()
-		require.EqualValues(t, dummy_PKCS11_LIB, lib, "FindPKCS11Lib did not return expected library")
-		require.EqualValues(t, dummy_PKCS11_PIN, pin, "FindPKCS11Lib did not return expected pin")
-		require.EqualValues(t, dummy_PKCS11_LABEL, label, "FindPKCS11Lib did not return expected label")
+		require.Equal(t, dummy_PKCS11_LIB, lib, "FindPKCS11Lib did not return expected library")
+		require.Equal(t, dummy_PKCS11_PIN, pin, "FindPKCS11Lib did not return expected pin")
+		require.Equal(t, dummy_PKCS11_LABEL, label, "FindPKCS11Lib did not return expected label")
 	})
 
 	t.Run("MissingEnvironment", func(t *testing.T) {
@@ -165,8 +165,8 @@ func TestFindPKCS11LibEnvVars(t *testing.T) {
 		os.Unsetenv("PKCS11_LABEL")
 
 		_, pin, label := FindPKCS11Lib()
-		require.EqualValues(t, "98765432", pin, "FindPKCS11Lib did not return expected pin")
-		require.EqualValues(t, "ForFabric", label, "FindPKCS11Lib did not return expected label")
+		require.Equal(t, "98765432", pin, "FindPKCS11Lib did not return expected pin")
+		require.Equal(t, "ForFabric", label, "FindPKCS11Lib did not return expected label")
 	})
 }
 
@@ -711,12 +711,12 @@ func TestSessionHandleCaching(t *testing.T) {
 		sess1, err := csp.getSession()
 		require.NoError(t, err)
 		require.Len(t, csp.sessions, 1, "expected one open session (sess1 from login)")
-		require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
+		require.Empty(t, csp.sessPool, "sessionPool should be empty")
 
 		sess2, err := csp.getSession()
 		require.NoError(t, err)
 		require.Len(t, csp.sessions, 2, "expected two open sessions (sess1 and sess2)")
-		require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
+		require.Empty(t, csp.sessPool, "sessionPool should be empty")
 
 		// Generate a key
 		k, err := csp.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
@@ -738,7 +738,7 @@ func TestSessionHandleCaching(t *testing.T) {
 		_, err = csp.getSession()
 		require.NoError(t, err)
 		require.Len(t, csp.sessions, 1, "expected one open session (sess1)")
-		require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
+		require.Empty(t, csp.sessPool, "sessionPool should be empty")
 		require.Len(t, csp.handleCache, 2, "expected two handles in handle cache")
 	})
 }

@@ -44,7 +44,8 @@ func Test0(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	var target *verr.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func Test1(t *testing.T) {
@@ -75,7 +76,8 @@ func Test1(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	var target *verr.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func Test1Multiple(t *testing.T) {
@@ -137,7 +139,8 @@ func Test1NoErr(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	var target *verr.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func Test1Err1(t *testing.T) {
@@ -168,7 +171,8 @@ func Test1Err1(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	var target *verr.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func Test1Err2(t *testing.T) {
@@ -199,7 +203,8 @@ func Test1Err2(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCExecutionFailureError{})
+	var target *verr.VSCCExecutionFailureError
+	require.ErrorAs(t, err, &target)
 }
 
 func Test1Meta(t *testing.T) {
@@ -230,7 +235,8 @@ func Test1Meta(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	var target *verr.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func Test1MetaMultiple(t *testing.T) {
@@ -293,7 +299,8 @@ func Test2(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	var target *verr.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func Test3(t *testing.T) {
@@ -327,7 +334,8 @@ func Test3(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	var target *verr.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func Test3Meta(t *testing.T) {
@@ -361,7 +369,8 @@ func Test3Meta(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	var target *verr.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func Test4(t *testing.T) {
@@ -396,7 +405,8 @@ func Test4(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	var target *verr.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func Test4Multiple(t *testing.T) {
@@ -463,7 +473,8 @@ func Test4Err(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCExecutionFailureError{})
+	var target *verr.VSCCExecutionFailureError
+	require.ErrorAs(t, err, &target)
 }
 
 func Test5(t *testing.T) {
@@ -499,7 +510,8 @@ func Test5(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	var target *verr.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }
 
 func Test6(t *testing.T) {
@@ -533,7 +545,8 @@ func Test6(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCExecutionFailureError{})
+	var target *verr.VSCCExecutionFailureError
+	require.ErrorAs(t, err, &target)
 }
 
 func Test7(t *testing.T) {
@@ -567,5 +580,6 @@ func Test7(t *testing.T) {
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
 	require.Error(t, err)
-	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	var target *verr.VSCCEndorsementPolicyError
+	require.ErrorAs(t, err, &target)
 }

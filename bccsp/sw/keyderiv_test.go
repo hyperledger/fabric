@@ -56,7 +56,7 @@ func TestKeyDeriv(t *testing.T) {
 	csp = CSP{KeyDerivers: keyDerivers}
 	value, err = csp.KeyDeriv(expectedKey, expectedOpts)
 	require.Equal(t, expectetValue, value)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestECDSAPublicKeyKeyDeriver(t *testing.T) {

@@ -44,7 +44,7 @@ func TestKeyGen(t *testing.T) {
 	csp = CSP{KeyGenerators: keyGenerators}
 	value, err = csp.KeyGen(expectedOpts)
 	require.Equal(t, expectetValue, value)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestECDSAKeyGenerator(t *testing.T) {
@@ -72,7 +72,7 @@ func TestAESKeyGenerator(t *testing.T) {
 	aesK, ok := k.(*aesPrivateKey)
 	require.True(t, ok)
 	require.NotNil(t, aesK.privKey)
-	require.Equal(t, len(aesK.privKey), 32)
+	require.Len(t, aesK.privKey, 32)
 }
 
 func TestAESKeyGeneratorInvalidInputs(t *testing.T) {

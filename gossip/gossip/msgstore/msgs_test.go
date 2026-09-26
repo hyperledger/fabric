@@ -176,12 +176,12 @@ func TestExpiration(t *testing.T) {
 	}
 
 	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after first batch expiration")
-	require.Equal(t, 10, len(expired), "Wrong number of expired msgs - after first batch expiration")
+	require.Len(t, expired, 10, "Wrong number of expired msgs - after first batch expiration")
 
 	time.Sleep(time.Second * 4)
 
 	require.Equal(t, 0, msgStore.Size(), "Wrong number of items in store - after second batch expiration")
-	require.Equal(t, 20, len(expired), "Wrong number of expired msgs - after second batch expiration")
+	require.Len(t, expired, 20, "Wrong number of expired msgs - after second batch expiration")
 
 	for i := range 10 {
 		require.True(t, msgStore.CheckValid(i))
@@ -225,7 +225,7 @@ func TestExpirationConcurrency(t *testing.T) {
 	}
 
 	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after first batch expiration, external lock taken")
-	require.Equal(t, 0, len(expired), "Wrong number of expired msgs - after first batch expiration, external lock taken")
+	require.Empty(t, expired, "Wrong number of expired msgs - after first batch expiration, external lock taken")
 	lock.Unlock()
 
 	time.Sleep(time.Second * 1)
@@ -236,7 +236,7 @@ func TestExpirationConcurrency(t *testing.T) {
 	}
 
 	require.Equal(t, 0, msgStore.Size(), "Wrong number of items in store - after first batch expiration, expiration should run")
-	require.Equal(t, 10, len(expired), "Wrong number of expired msgs - after first batch expiration, expiration should run")
+	require.Len(t, expired, 10, "Wrong number of expired msgs - after first batch expiration, expiration should run")
 
 	lock.Unlock()
 }
@@ -260,7 +260,7 @@ func TestStop(t *testing.T) {
 	time.Sleep(time.Second * 4)
 
 	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after first batch expiration, but store was stopped, so no expiration")
-	require.Equal(t, 0, len(expired), "Wrong number of expired msgs - after first batch expiration, but store was stopped, so no expiration")
+	require.Empty(t, expired, "Wrong number of expired msgs - after first batch expiration, but store was stopped, so no expiration")
 
 	msgStore.Stop()
 }

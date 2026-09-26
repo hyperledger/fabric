@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -20,13 +21,14 @@ func TestNewPubsub(t *testing.T) {
 	sub1 := ps.Subscribe("test", time.Second)
 	sub2 := ps.Subscribe("test2", time.Second)
 	require.NotNil(t, sub1)
+	publishErrs := make(chan error, 1)
 	go func() {
-		err := ps.Publish("test", 5)
-		require.NoError(t, err)
+		publishErrs <- ps.Publish("test", 5)
 	}()
 	item, err := sub1.Listen()
 	require.NoError(t, err)
 	require.Equal(t, 5, item)
+	require.NoError(t, <-publishErrs)
 	// Check that a publishing to a topic with no subscribers fails
 	err = ps.Publish("test3", 5)
 	require.Error(t, err)
@@ -47,33 +49,31 @@ func TestNewPubsub(t *testing.T) {
 	for range n {
 		subscriptions = append(subscriptions, ps.Subscribe("test4", time.Second))
 	}
+	overflowPublishErrs := make(chan error, subscriptionBuffSize+1)
 	go func() {
 		// Send items and fill the buffer and overflow
 		// it by 1 item
 		for i := 0; i <= subscriptionBuffSize; i++ {
-			err := ps.Publish("test4", 100+i)
-			require.NoError(t, err)
+			overflowPublishErrs <- ps.Publish("test4", 100+i)
 		}
+		close(overflowPublishErrs)
 	}()
 	wg := sync.WaitGroup{}
-	wg.Add(n)
-	for _, s := range subscriptions {
-		go func(s Subscription) {
+	listenErrs := make([]error, n)
+	for i, s := range subscriptions {
+		wg.Go(func() {
 			time.Sleep(time.Second)
-			defer wg.Done()
-			for i := range subscriptionBuffSize {
-				item, err := s.Listen()
-				require.NoError(t, err)
-				require.Equal(t, 100+i, item)
-			}
-			// The last item that we published was dropped
-			// due to the buffer being full
-			item, err := s.Listen()
-			require.Nil(t, item)
-			require.Error(t, err)
-		}(s)
+			listenErrs[i] = checkSubscription(s)
+		})
 	}
 	wg.Wait()
+
+	for err = range overflowPublishErrs {
+		require.NoError(t, err)
+	}
+	for _, err = range listenErrs {
+		require.NoError(t, err)
+	}
 
 	// Ensure subscriptions are cleaned after use
 	for range 10 {
@@ -88,4 +88,27 @@ func TestNewPubsub(t *testing.T) {
 	ps.Lock()
 	defer ps.Unlock()
 	require.Empty(t, ps.subscriptions)
+}
+
+// checkSubscription drains s, verifying that the buffered items are received
+// in order and that the item published after the buffer overflow is dropped.
+// It is meant to be called from a goroutine other than the one running the
+// test, so it reports failures through the returned error instead of asserting.
+func checkSubscription(s Subscription) error {
+	for i := range subscriptionBuffSize {
+		item, err := s.Listen()
+		if err != nil {
+			return err
+		}
+		if item != 100+i {
+			return fmt.Errorf("expected item %d, got %v", 100+i, item)
+		}
+	}
+	// The last item that we published was dropped
+	// due to the buffer being full
+	item, err := s.Listen()
+	if err == nil {
+		return fmt.Errorf("expected an error for the dropped item, got %v", item)
+	}
+	return nil
 }

@@ -137,7 +137,7 @@ func TestBlockLastConfig(t *testing.T) {
 }
 
 func TestWriteConfigBlock(t *testing.T) {
-	// TODO, use assert.PanicsWithValue once available
+	// TODO, use require.PanicsWithValue once available
 	t.Run("EmptyBlock", func(t *testing.T) {
 		require.Panics(t, func() { (&BlockWriter{}).WriteConfigBlock(&cb.Block{}, nil) })
 	})
@@ -279,7 +279,7 @@ func TestWriteConfigSynchronously(t *testing.T) {
 	bw.WriteConfigBlock(block, consenterMetadata)
 
 	cBlock, err := blockledger.GetBlockByNumber(l, block.GetHeader().GetNumber())
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, block.GetHeader(), cBlock.GetHeader())
 	require.Equal(t, block.GetData(), cBlock.GetData())
 
@@ -443,17 +443,17 @@ func TestRaceWriteBlocks(t *testing.T) {
 	bw.WriteConfigBlock(block3, consenterMetadata3)
 
 	cBlock, err := blockledger.GetBlockByNumber(l, block1.GetHeader().GetNumber())
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, block1.GetHeader(), cBlock.GetHeader())
 	require.Equal(t, block1.GetData(), cBlock.GetData())
 
 	cBlock, err = blockledger.GetBlockByNumber(l, block2.GetHeader().GetNumber())
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, block2.GetHeader(), cBlock.GetHeader())
 	require.Equal(t, block2.GetData(), cBlock.GetData())
 
 	cBlock, err = blockledger.GetBlockByNumber(l, block3.GetHeader().GetNumber())
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, block3.GetHeader(), cBlock.GetHeader())
 	require.Equal(t, block3.GetData(), cBlock.GetData())
 

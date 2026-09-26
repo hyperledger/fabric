@@ -53,7 +53,7 @@ func TestCheckSignatureFromCreator(t *testing.T) {
 	simRes := []byte("simulation_result")
 
 	env, err := createTestTransactionEnvelope("testchannelid", response, simRes)
-	require.Nil(t, err, "failed to create test transaction: %s", err)
+	require.NoError(t, err, "failed to create test transaction: %s", err)
 	require.NotNil(t, env)
 
 	// get the payload from the envelope

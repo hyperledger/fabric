@@ -116,7 +116,7 @@ func TestSetGetChaincodeInstallPath(t *testing.T) {
 
 	path := filepath.Join(tempDir, "blahblah")
 	ccprovider.SetChaincodesPath(path)
-	require.DirExistsf(t, path, "expect %s to be created")
+	require.DirExistsf(t, path, "expect %s to be created", path)
 
 	require.Equal(t, path, c.GetChaincodeInstallPath())
 }

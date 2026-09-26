@@ -123,7 +123,7 @@ func TestLoggerLevelsActivateSpecErrors(t *testing.T) {
 		t.Run(tc.spec, func(t *testing.T) {
 			ll := &flogging.LoggerLevels{}
 			err := ll.ActivateSpec("fatal:a=warn")
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			err = ll.ActivateSpec(tc.spec)
 			require.EqualError(t, err, tc.err.Error())

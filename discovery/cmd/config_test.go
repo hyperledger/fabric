@@ -32,7 +32,7 @@ func TestConfigCmd(t *testing.T) {
 		cmd.SetServer(nil)
 
 		err := cmd.Execute(common.Config{})
-		require.Equal(t, err.Error(), "no server specified")
+		require.EqualError(t, err, "no server specified")
 	})
 
 	t.Run("no channel supplied", func(t *testing.T) {
@@ -40,7 +40,7 @@ func TestConfigCmd(t *testing.T) {
 		cmd.SetServer(&server)
 
 		err := cmd.Execute(common.Config{})
-		require.Equal(t, err.Error(), "no channel specified")
+		require.EqualError(t, err, "no channel specified")
 	})
 
 	t.Run("Server return error", func(t *testing.T) {

@@ -224,7 +224,7 @@ func TestSatisfiesPrincipalClient(t *testing.T) {
 	require.True(t, thisMSP.(*bccspmsp).ouEnforcement)
 
 	// The admin of this msp is a client
-	require.Equal(t, 1, len(thisMSP.(*bccspmsp).admins))
+	require.Len(t, thisMSP.(*bccspmsp).admins, 1)
 	id := thisMSP.(*bccspmsp).admins[0]
 
 	err := id.Validate()

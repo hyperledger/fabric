@@ -55,7 +55,7 @@ func TestCheck(t *testing.T) {
 	require.Equal(t, []string{"level", "debug"}, counter.WithArgsForCall(0))
 
 	require.Equal(t, 1, counter.AddCallCount())
-	require.Equal(t, float64(1), counter.AddArgsForCall(0))
+	require.InDelta(t, float64(1), counter.AddArgsForCall(0), 0)
 }
 
 func TestWrite(t *testing.T) {
@@ -70,5 +70,5 @@ func TestWrite(t *testing.T) {
 	require.Equal(t, []string{"level", "debug"}, counter.WithArgsForCall(0))
 
 	require.Equal(t, 1, counter.AddCallCount())
-	require.Equal(t, float64(1), counter.AddArgsForCall(0))
+	require.InDelta(t, float64(1), counter.AddArgsForCall(0), 0)
 }

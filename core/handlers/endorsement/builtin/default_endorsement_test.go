@@ -55,7 +55,7 @@ func TestDefaultEndorsement(t *testing.T) {
 	sid.On("Sign", mock.Anything).Return([]byte{10, 20, 30}, nil).Once()
 	endorsement, resp, err := endorser.Endorse([]byte{1, 1, 1, 1, 1}, nil)
 	require.NoError(t, err)
-	require.Equal(t, resp, []byte{1, 1, 1, 1, 1})
+	require.Equal(t, []byte{1, 1, 1, 1, 1}, resp)
 	require.Equal(t, &peer.Endorsement{
 		Signature: []byte{10, 20, 30},
 		Endorser:  []byte{1, 2, 3},

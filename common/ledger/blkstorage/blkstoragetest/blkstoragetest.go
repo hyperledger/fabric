@@ -38,7 +38,7 @@ var (
 // - generate a snapshot from the block store
 // - bootstrap another block store from the snapshot
 func BootstrapBlockstoreFromSnapshot(t *testing.T, ledgerName string, blocks []*common.Block) (*blkstorage.BlockStore, func()) {
-	require.NotEqual(t, 0, len(blocks))
+	require.NotEmpty(t, blocks)
 
 	testDir := t.TempDir()
 	snapshotDir := filepath.Join(testDir, "snapshot")

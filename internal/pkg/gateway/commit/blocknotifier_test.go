@@ -35,7 +35,7 @@ func TestBlockNotifier(t *testing.T) {
 
 		wait.Wait()
 
-		require.Equal(t, listener.ReceiveBlockArgsForCall(0).BlockNumber, uint64(1))
+		require.Equal(t, uint64(1), listener.ReceiveBlockArgsForCall(0).BlockNumber)
 	})
 
 	t.Run("closes listeners on failure to read event", func(t *testing.T) {
@@ -51,7 +51,7 @@ func TestBlockNotifier(t *testing.T) {
 
 		wait.Wait()
 
-		require.Equal(t, listener.CloseCallCount(), 1)
+		require.Equal(t, 1, listener.CloseCallCount())
 	})
 
 	t.Run("close is idempotent", func(t *testing.T) {
@@ -61,6 +61,6 @@ func TestBlockNotifier(t *testing.T) {
 		notifier.close()
 		notifier.close()
 
-		require.Equal(t, listener.CloseCallCount(), 1)
+		require.Equal(t, 1, listener.CloseCallCount())
 	})
 }

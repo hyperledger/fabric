@@ -1797,7 +1797,7 @@ func TestDuplicateTxId(t *testing.T) {
 	// We expect the tx to be invalid because of a duplicate txid
 	txsfltr := txflags.ValidationFlags(b.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assertion.True(txsfltr.IsInvalid(0))
-	assertion.True(txsfltr.Flag(0) == peer.TxValidationCode_DUPLICATE_TXID)
+	assertion.Equal(peer.TxValidationCode_DUPLICATE_TXID, txsfltr.Flag(0))
 }
 
 func TestValidationInvalidEndorsing(t *testing.T) {

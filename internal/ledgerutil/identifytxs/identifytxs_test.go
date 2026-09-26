@@ -173,22 +173,22 @@ func TestIdentifyTxs(t *testing.T) {
 				require.ErrorContains(t, err, fmt.Sprintf("%s already exists in %s. Choose a different location or remove the existing results. Aborting identifytxs", testCase.resultsDirname, outputDir))
 				// Check identifytxs results directory
 				require.NoError(t, readDirErr)
-				require.Equal(t, testCase.expectedResultFilesCount, len(dirEntries))
+				require.Len(t, dirEntries, testCase.expectedResultFilesCount)
 			case "general-error":
 				require.ErrorContains(t, err, testCase.expectedError)
 				// Check identifytxs results directory
 				require.NoError(t, readDirErr)
-				require.Equal(t, testCase.expectedResultFilesCount, len(dirEntries))
+				require.Len(t, dirEntries, testCase.expectedResultFilesCount)
 			case "empty-bs-error":
 				require.ErrorContains(t, err, fmt.Sprintf("provided path %s is empty. Aborting identifytxs", fsDir))
 				// Check identifytxs results directory
 				require.NoError(t, readDirErr)
-				require.Equal(t, testCase.expectedResultFilesCount, len(dirEntries))
+				require.Len(t, dirEntries, testCase.expectedResultFilesCount)
 			case "json":
 				require.NoError(t, err)
 				// Check identifytxs results directory
 				require.NoError(t, readDirErr)
-				require.Equal(t, testCase.expectedResultFilesCount, len(dirEntries))
+				require.Len(t, dirEntries, testCase.expectedResultFilesCount)
 				// Check identifytxs individual txList results files
 				for i := 1; i <= testCase.expectedResultFilesCount; i++ {
 					txListFilename := fmt.Sprintf("txlist%d.json", i)
@@ -196,7 +196,7 @@ func TestIdentifyTxs(t *testing.T) {
 					require.NoError(t, err)
 					actualTxListJSON, err := jsonrw.OutputFileToString(txListFilename, resultsPath)
 					require.NoError(t, err)
-					require.Equal(t, expectedTxListJSON, actualTxListJSON)
+					require.JSONEq(t, expectedTxListJSON, actualTxListJSON)
 				}
 			}
 		})

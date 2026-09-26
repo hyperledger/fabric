@@ -407,7 +407,7 @@ func TestPull(t *testing.T) {
 	// Second phase: Disseminate 10 messages and ensure all nodes got them
 
 	stopped := int32(0)
-	go waitForTestCompletion(&stopped, t)
+	stopFailure := waitForTestCompletion(&stopped)
 
 	n := 5
 	msgsCount2Send := 10
@@ -418,15 +418,13 @@ func TestPull(t *testing.T) {
 
 	peers := make([]*gossipGRPC, n)
 	wg := sync.WaitGroup{}
-	wg.Add(n)
 	for i := 1; i <= n; i++ {
-		go func(i int) {
-			defer wg.Done()
+		wg.Go(func() {
 			pI := newGossipInstanceCreateGRPCWithOnlyPull(i, 100, mcs, metrics, port0)
 			pI.JoinChan(&joinChanMsg{}, common.ChannelID("A"))
 			pI.UpdateLedgerHeight(1, common.ChannelID("A"))
 			peers[i-1] = pI
-		}(i)
+		})
 	}
 	wg.Wait()
 
@@ -448,18 +446,16 @@ func TestPull(t *testing.T) {
 
 	receivedMessages := make([]int, n)
 	wg = sync.WaitGroup{}
-	wg.Add(n)
 	for i := 1; i <= n; i++ {
-		go func(i int) {
+		wg.Go(func() {
 			acceptChan, _ := peers[i-1].Accept(acceptData, false)
 			go func(index int, ch <-chan *proto.GossipMessage) {
-				defer wg.Done()
 				for range msgsCount2Send {
 					<-ch
 					receivedMessages[index]++
 				}
 			}(i-1, acceptChan)
-		}(i)
+		})
 	}
 
 	for i := 1; i <= msgsCount2Send; i++ {
@@ -487,6 +483,11 @@ func TestPull(t *testing.T) {
 
 	t.Log("Took", time.Since(t1))
 	atomic.StoreInt32(&stopped, int32(1))
+	select {
+	case err := <-stopFailure:
+		require.NoError(t, err)
+	default:
+	}
 	fmt.Println("<<<TestPull>>>")
 }
 
@@ -499,7 +500,7 @@ func TestConnectToAnchorPeers(t *testing.T) {
 	// Scenario: Spawn 5 peers, and make each of them connect to
 	// the other 2 using join channel.
 	stopped := int32(0)
-	go waitForTestCompletion(&stopped, t)
+	stopFailure := waitForTestCompletion(&stopped)
 	n := 10
 	anchorPeercount := 3
 
@@ -525,14 +526,12 @@ func TestConnectToAnchorPeers(t *testing.T) {
 	// Start peers
 	peers := make([]*gossipGRPC, n)
 	wg := sync.WaitGroup{}
-	wg.Add(n)
 	for i := range n {
-		go func(i int) {
+		wg.Go(func() {
 			peers[i] = newGossipInstanceCreateGRPC(i+anchorPeercount, 100)
 			peers[i].JoinChan(jcm, common.ChannelID("A"))
 			peers[i].UpdateLedgerHeight(1, common.ChannelID("A"))
-			wg.Done()
-		}(i)
+		})
 	}
 
 	waitUntilOrFailBlocking(t, wg.Wait, "waiting until all peers join the channel")
@@ -563,6 +562,11 @@ func TestConnectToAnchorPeers(t *testing.T) {
 
 	fmt.Println("<<<TestConnectToAnchorPeers>>>")
 	atomic.StoreInt32(&stopped, int32(1))
+	select {
+	case err := <-stopFailure:
+		require.NoError(t, err)
+	default:
+	}
 }
 
 func TestMembership(t *testing.T) {
@@ -572,7 +576,7 @@ func TestMembership(t *testing.T) {
 	// 2) Update metadata of last peer and ensure it propagates to all peers
 
 	stopped := int32(0)
-	go waitForTestCompletion(&stopped, t)
+	stopFailure := waitForTestCompletion(&stopped)
 
 	n := 10
 
@@ -583,15 +587,13 @@ func TestMembership(t *testing.T) {
 
 	peers := make([]*gossipGRPC, n)
 	wg := sync.WaitGroup{}
-	wg.Add(n - 1)
 	for i := 1; i < n; i++ {
-		go func(i int) {
-			defer wg.Done()
+		wg.Go(func() {
 			pI := newGossipInstanceCreateGRPC(i, 100, port0)
 			peers[i-1] = pI
 			pI.JoinChan(&joinChanMsg{}, common.ChannelID("A"))
 			pI.UpdateLedgerHeight(1, common.ChannelID("A"))
-		}(i)
+		})
 	}
 
 	portn, grpcn, certsn, secDialOptsn, _ := util.CreateGRPCLayer()
@@ -648,6 +650,11 @@ func TestMembership(t *testing.T) {
 
 	t.Log("Took", time.Since(t1))
 	atomic.StoreInt32(&stopped, int32(1))
+	select {
+	case err := <-stopFailure:
+		require.NoError(t, err)
+	default:
+	}
 	fmt.Println("<<<TestMembership>>>")
 }
 
@@ -668,15 +675,13 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 	}, true)
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
 
 	// Make sure sending peer is not getting his own
 	// message back
-	go func(ch <-chan protoext.ReceivedMessage) {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
-			case msg := <-ch:
+			case msg := <-commCh:
 				{
 					if protoext.IsDataMsg(msg.GetGossipMessage().GossipMessage) {
 						t.Errorf("Should not receive data message back, got %s", msg)
@@ -690,15 +695,14 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 				}
 			}
 		}
-	}(commCh)
+	})
 
 	peerCh, _ := peer.Accept(acceptData, false)
 
 	// Ensure recipient gets his message
-	go func(ch <-chan *proto.GossipMessage) {
-		defer wg.Done()
-		<-ch
-	}(peerCh)
+	wg.Go(func() {
+		<-peerCh
+	})
 
 	boot.Gossip(createDataMsg(uint64(2), []byte{}, common.ChannelID("A")))
 	waitUntilOrFailBlocking(t, wg.Wait, "waiting for everyone to get the message")
@@ -717,7 +721,7 @@ func TestDissemination(t *testing.T) {
 	// that each node got 10 messages after a few seconds
 
 	stopped := int32(0)
-	go waitForTestCompletion(&stopped, t)
+	stopFailure := waitForTestCompletion(&stopped)
 
 	n := 10
 	msgsCount2Send := 10
@@ -731,7 +735,6 @@ func TestDissemination(t *testing.T) {
 	peers := make([]*gossipGRPC, n)
 	receivedMessages := make([]int, n)
 	wg := sync.WaitGroup{}
-	wg.Add(n)
 	portn, grpcn, certsn, secDialOptsn, _ := util.CreateGRPCLayer()
 	for i := 1; i <= n; i++ {
 		var pI *gossipGRPC
@@ -745,13 +748,12 @@ func TestDissemination(t *testing.T) {
 		pI.UpdateLedgerHeight(1, common.ChannelID("A"))
 		pI.UpdateChaincodes([]*proto.Chaincode{{Name: "exampleCC", Version: "1.2"}}, common.ChannelID("A"))
 		acceptChan, _ := pI.Accept(acceptData, false)
-		go func(index int, ch <-chan *proto.GossipMessage) {
-			defer wg.Done()
+		wg.Go(func() {
 			for range msgsCount2Send {
-				<-ch
-				receivedMessages[index]++
+				<-acceptChan
+				receivedMessages[i-1]++
 			}
-		}(i-1, acceptChan)
+		})
 		// Change metadata in last node
 		if i == n {
 			pI.UpdateLedgerHeight(2, common.ChannelID("A"))
@@ -838,6 +840,11 @@ func TestDissemination(t *testing.T) {
 	t.Log("Stop took", time.Since(stopTime))
 	t.Log("Took", time.Since(t1))
 	atomic.StoreInt32(&stopped, int32(1))
+	select {
+	case err := <-stopFailure:
+		require.NoError(t, err)
+	default:
+	}
 	fmt.Println("<<<TestDissemination>>>")
 }
 
@@ -855,7 +862,7 @@ func TestMembershipConvergence(t *testing.T) {
 	t1 := time.Now()
 
 	stopped := int32(0)
-	go waitForTestCompletion(&stopped, t)
+	stopFailure := waitForTestCompletion(&stopped)
 
 	port0, grpc0, certs0, secDialOpts0, _ := util.CreateGRPCLayer()
 	port1, grpc1, certs1, secDialOpts1, _ := util.CreateGRPCLayer()
@@ -941,6 +948,11 @@ func TestMembershipConvergence(t *testing.T) {
 
 	waitUntilOrFailBlocking(t, stop, "waiting for instances to stop")
 	atomic.StoreInt32(&stopped, int32(1))
+	select {
+	case err := <-stopFailure:
+		require.NoError(t, err)
+	default:
+	}
 	t.Log("Took", time.Since(t1))
 	fmt.Println("<<<TestMembershipConvergence>>>")
 }
@@ -1063,18 +1075,16 @@ func TestDataLeakage(t *testing.T) {
 	}
 
 	stopped := int32(0)
-	go waitForTestCompletion(&stopped, t)
+	stopFailure := waitForTestCompletion(&stopped)
 
 	peers := make([]*gossipGRPC, n)
 	wg := sync.WaitGroup{}
 	for i := range n {
-		wg.Add(1)
-		go func(i int) {
+		wg.Go(func() {
 			totPeers := append([]int(nil), ports[:i]...)
 			bootPeers := append(totPeers, ports[i+1:]...)
 			peers[i] = newGossipInstanceWithGrpcMcsMetrics(i, ports[i], grpcs[i], certs[i], secDialOpts[i], 100, mcs, metrics, bootPeers...)
-			wg.Done()
-		}(i)
+		})
 	}
 
 	waitUntilOrFailBlocking(t, wg.Wait, "waiting to create all instances")
@@ -1126,19 +1136,24 @@ func TestDataLeakage(t *testing.T) {
 
 	gotMessages := func() {
 		var wg sync.WaitGroup
-		wg.Add(4)
+		errChan := make(chan error, 4)
 		for i, channel := range channels {
 			for j := 1; j < 3; j++ {
 				instanceIndex := (n/2)*i + j
-				go func(instanceIndex int, channel common.ChannelID) {
+				wg.Go(func() {
 					incMsgChan, _ := peers[instanceIndex].Accept(acceptData, false)
 					msg := <-incMsgChan
-					require.Equal(t, []byte(channel), msg.GetChannel())
-					wg.Done()
-				}(instanceIndex, channel)
+					if !bytes.Equal([]byte(channel), msg.GetChannel()) {
+						errChan <- fmt.Errorf("expected message on channel %s, got %s", channel, msg.GetChannel())
+					}
+				})
 			}
 		}
 		wg.Wait()
+		close(errChan)
+		for err := range errChan {
+			require.NoError(t, err)
+		}
 	}
 
 	t1 = time.Now()
@@ -1153,6 +1168,11 @@ func TestDataLeakage(t *testing.T) {
 	waitUntilOrFailBlocking(t, stop, "waiting for all instances to stop")
 	t.Log("Stop took", time.Since(stopTime))
 	atomic.StoreInt32(&stopped, int32(1))
+	select {
+	case err := <-stopFailure:
+		require.NoError(t, err)
+	default:
+	}
 	fmt.Println("<<<TestDataLeakage>>>")
 }
 
@@ -1164,7 +1184,7 @@ func TestDisseminateAll2All(t *testing.T) {
 	// Ensure all blocks are received
 
 	stopped := int32(0)
-	go waitForTestCompletion(&stopped, t)
+	stopFailure := waitForTestCompletion(&stopped)
 
 	totalPeers := []int{0, 1, 2, 3, 4, 5, 6}
 	n := len(totalPeers)
@@ -1185,16 +1205,14 @@ func TestDisseminateAll2All(t *testing.T) {
 	}
 
 	for i := range n {
-		wg.Add(1)
-		go func(i int) {
+		wg.Go(func() {
 			totPeers := append([]int(nil), ports[:i]...)
 			bootPeers := append(totPeers, ports[i+1:]...)
 			pI := newGossipInstanceWithGRPC(i, ports[i], grpcs[i], certs[i], secDialOpts[i], 100, bootPeers...)
 			pI.JoinChan(&joinChanMsg{}, common.ChannelID("A"))
 			pI.UpdateLedgerHeight(1, common.ChannelID("A"))
 			peers[i] = pI
-			wg.Done()
-		}(i)
+		})
 	}
 	wg.Wait()
 	waitUntilOrFail(t, checkPeersMembership(t, peers, n-1), "waiting for instances to form membership view")
@@ -1203,20 +1221,14 @@ func TestDisseminateAll2All(t *testing.T) {
 	bMutex.Add(10 * n * (n - 1))
 
 	wg = sync.WaitGroup{}
-	wg.Add(n)
-
-	reader := func(msgChan <-chan *proto.GossipMessage, i int) {
-		wg.Done()
-		for range msgChan {
-			bMutex.Done()
-		}
-	}
-
 	for i := range n {
 		msgChan, _ := peers[i].Accept(acceptData, false)
-		go reader(msgChan, i)
+		wg.Go(func() {
+			for range msgChan {
+				bMutex.Done()
+			}
+		})
 	}
-
 	wg.Wait()
 
 	for i := range n {
@@ -1235,6 +1247,11 @@ func TestDisseminateAll2All(t *testing.T) {
 	}
 	waitUntilOrFailBlocking(t, stop, "waiting for all instance to stop")
 	atomic.StoreInt32(&stopped, int32(1))
+	select {
+	case err := <-stopFailure:
+		require.NoError(t, err)
+	default:
+	}
 	fmt.Println("<<<TestDisseminateAll2All>>>")
 }
 
@@ -1534,13 +1551,21 @@ func heightOfPeer(members []discovery.NetworkMember, endpoint string) int {
 	return -1
 }
 
-func waitForTestCompletion(stopFlag *int32, t *testing.T) {
-	time.Sleep(timeout)
-	if atomic.LoadInt32(stopFlag) == int32(1) {
-		return
-	}
-	util.PrintStackTrace()
-	require.Fail(t, "Didn't stop within a timely manner")
+// waitForTestCompletion returns a channel that delivers an error if the test
+// has not stopped within a timely manner. The error must be consumed from the
+// goroutine running the test.
+func waitForTestCompletion(stopFlag *int32) <-chan error {
+	errChan := make(chan error, 1)
+	go func() {
+		time.Sleep(timeout)
+		if atomic.LoadInt32(stopFlag) == int32(1) {
+			errChan <- nil
+			return
+		}
+		util.PrintStackTrace()
+		errChan <- errors.New("didn't stop within a timely manner")
+	}()
+	return errChan
 }
 
 func stopPeers(peers []*gossipGRPC) {
@@ -1635,8 +1660,9 @@ func TestMembershipMetrics(t *testing.T) {
 		[]string{"channel", "A"},
 		testMetricProvider.FakeTotalGauge.WithArgsForCall(0),
 	)
-	require.EqualValues(t, 0,
+	require.InDelta(t, float64(0),
 		testMetricProvider.FakeTotalGauge.SetArgsForCall(0),
+		0,
 	)
 
 	pI1 := newGossipInstanceCreateGRPC(1, 100, port0)
