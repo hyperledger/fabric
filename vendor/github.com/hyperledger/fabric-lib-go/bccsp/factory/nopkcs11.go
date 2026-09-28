@@ -12,8 +12,8 @@ package factory
 import (
 	"reflect"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
 

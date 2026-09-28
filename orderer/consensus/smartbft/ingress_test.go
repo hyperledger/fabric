@@ -9,7 +9,7 @@ package smartbft_test
 import (
 	"testing"
 
-	protos "github.com/hyperledger-labs/SmartBFT/smartbftprotos"
+	protos "github.com/hyperledger/SmartBFT/smartbftprotos"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"

@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft
 
 import (
-	api "github.com/hyperledger-labs/SmartBFT/pkg/metrics"
+	api "github.com/hyperledger/SmartBFT/pkg/metrics"
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
 )
 
