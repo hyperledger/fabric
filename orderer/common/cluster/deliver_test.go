@@ -217,8 +217,11 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 }
 
 func (ds *deliverServer) deliverBlocks(stream orderer.AtomicBroadcast_DeliverServer) error {
+	// Read the block buffer once per stream. Tests end a stream by closing the
+	// buffer and then swap in a new one, and this stream must not take blocks
+	// from the new buffer that are meant for the next stream.
+	blockChan := ds.blocks()
 	for {
-		blockChan := ds.blocks()
 		var response *orderer.DeliverResponse
 		select {
 		case response = <-blockChan:
