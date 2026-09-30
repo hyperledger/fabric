@@ -751,6 +751,7 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block) (info t
 func (r *Registrar) UpdateChannel(channelID string, envelope *cb.Envelope) (info types.ChannelInfo, err error) {
 	r.lock.Lock()
 	if status, ok := r.pendingRemoval[channelID]; ok {
+		r.lock.Unlock()
 		if status.Status == types.StatusFailed {
 			return types.ChannelInfo{}, types.ErrChannelRemovalFailure
 		}
@@ -758,14 +759,15 @@ func (r *Registrar) UpdateChannel(channelID string, envelope *cb.Envelope) (info
 	}
 
 	if _, ok := r.followers[channelID]; ok {
+		r.lock.Unlock()
 		return types.ChannelInfo{}, types.ErrChannelNotReady
 	}
 
 	cs, ok := r.chains[channelID]
+	r.lock.Unlock()
 	if !ok {
 		return types.ChannelInfo{}, types.ErrChannelNotExist
 	}
-	r.lock.Unlock()
 
 	config, configSeq, err := cs.ProcessConfigUpdateMsg(envelope)
 	if err != nil {
