@@ -1096,6 +1096,11 @@ func TestRegistrar_UpdateChannel(t *testing.T) {
 		ledgerFactory.Close()
 	}
 
+	requireUnlocked := func(t *testing.T, r *Registrar) {
+		require.True(t, r.lock.TryLock(), "registrar lock was not released")
+		r.lock.Unlock()
+	}
+
 	t.Run("Reject update when removal is occurring", func(t *testing.T) {
 		setup(t)
 		defer cleanup()
@@ -1108,6 +1113,7 @@ func TestRegistrar_UpdateChannel(t *testing.T) {
 		info, err := registrar.UpdateChannel("some-app-channel", &cb.Envelope{})
 		require.Equal(t, err, types.ErrChannelPendingRemoval)
 		require.Equal(t, types.ChannelInfo{}, info)
+		requireUnlocked(t, registrar)
 	})
 
 	t.Run("Reject update when removal previously failed", func(t *testing.T) {
@@ -1122,6 +1128,7 @@ func TestRegistrar_UpdateChannel(t *testing.T) {
 		info, err := registrar.UpdateChannel("some-app-channel", &cb.Envelope{})
 		require.Equal(t, types.ErrChannelRemovalFailure, err)
 		require.Equal(t, types.ChannelInfo{}, info)
+		requireUnlocked(t, registrar)
 	})
 
 	t.Run("Reject update when channel is follower", func(t *testing.T) {
@@ -1136,6 +1143,7 @@ func TestRegistrar_UpdateChannel(t *testing.T) {
 		info, err := registrar.UpdateChannel("some-app-channel", &cb.Envelope{})
 		require.Equal(t, types.ErrChannelNotReady, err)
 		require.Equal(t, types.ChannelInfo{}, info)
+		requireUnlocked(t, registrar)
 	})
 
 	t.Run("Reject update when channel is not exist", func(t *testing.T) {
@@ -1148,6 +1156,7 @@ func TestRegistrar_UpdateChannel(t *testing.T) {
 		info, err := registrar.UpdateChannel("some-app-channel", &cb.Envelope{})
 		require.Equal(t, types.ErrChannelNotExist, err)
 		require.Equal(t, types.ChannelInfo{}, info)
+		requireUnlocked(t, registrar)
 	})
 
 	t.Run("Update config channel failed ProcessConfigUpdateMsg", func(t *testing.T) {
