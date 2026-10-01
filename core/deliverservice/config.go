@@ -46,6 +46,10 @@ type DeliverServiceConfig struct {
 	KeepaliveOptions comm.KeepaliveOptions
 	// SecOpts provides the TLS info for connections
 	SecOpts comm.SecureOptions
+	// MaxRecvMsgSize is the maximum message size in bytes the delivery client can receive
+	MaxRecvMsgSize int
+	// MaxSendMsgSize is the maximum message size in bytes the delivery client can send
+	MaxSendMsgSize int
 	// If a certain header from a header receiver is in front of the block receiver for more that this time, a
 	// censorship event is declared and the block source is changed.
 	BlockCensorshipTimeoutKey time.Duration
@@ -178,6 +182,15 @@ func (c *DeliverServiceConfig) loadDeliverServiceConfig() {
 	}
 	if viper.IsSet("peer.keepalive.deliveryClient.timeout") {
 		c.KeepaliveOptions.ClientTimeout = viper.GetDuration("peer.keepalive.deliveryClient.timeout")
+	}
+
+	c.MaxRecvMsgSize = comm.DefaultMaxRecvMsgSize
+	if viper.IsSet("peer.maxRecvMsgSize") {
+		c.MaxRecvMsgSize = int(viper.GetInt32("peer.maxRecvMsgSize"))
+	}
+	c.MaxSendMsgSize = comm.DefaultMaxSendMsgSize
+	if viper.IsSet("peer.maxSendMsgSize") {
+		c.MaxSendMsgSize = int(viper.GetInt32("peer.maxSendMsgSize"))
 	}
 
 	c.SecOpts = comm.SecureOptions{
