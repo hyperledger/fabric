@@ -136,6 +136,29 @@ func TestStartDeliverForChannel(t *testing.T) {
 		}
 	})
 
+	t.Run("Stop right after start", func(t *testing.T) {
+		ds := NewDeliverService(&Config{
+			DeliverServiceConfig: &DeliverServiceConfig{},
+			ChannelConfig:        channelConfigProto,
+			CryptoProvider:       cryptoProvider,
+		}).(*deliverServiceImpl)
+
+		finalized := make(chan struct{})
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {
+			close(finalized)
+		})
+		require.NoError(t, err)
+
+		err = ds.StopDeliverForChannel()
+		require.NoError(t, err)
+
+		select {
+		case <-finalized:
+		case <-time.After(time.Second):
+			require.FailNow(t, "finalizer should have executed")
+		}
+	})
+
 	t.Run("Exists", func(t *testing.T) {
 		ds := NewDeliverService(&Config{
 			DeliverServiceConfig: &DeliverServiceConfig{},
@@ -265,6 +288,30 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 		require.NoError(t, err)
 		select {
 		case <-finalized2:
+		case <-time.After(time.Second):
+			require.FailNow(t, "finalizer should have executed")
+		}
+	})
+
+	t.Run("Stop right after start", func(t *testing.T) {
+		ds := NewDeliverService(&Config{
+			DeliverServiceConfig: &DeliverServiceConfig{
+				Policy: DefaultPolicy,
+			},
+			ChannelConfig:  channelConfigProto,
+			CryptoProvider: cryptoProvider,
+		}).(*deliverServiceImpl)
+
+		finalized := make(chan struct{})
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {
+			close(finalized)
+		})
+		require.NoError(t, err)
+
+		ds.Stop()
+
+		select {
+		case <-finalized:
 		case <-time.After(time.Second):
 			require.FailNow(t, "finalizer should have executed")
 		}
