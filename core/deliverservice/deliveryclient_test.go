@@ -97,6 +97,36 @@ func TestStartDeliverForChannel(t *testing.T) {
 		require.Nil(t, bpd.TLSCertHash)
 	})
 
+	t.Run("Message size limits", func(t *testing.T) {
+		ds := NewDeliverService(&Config{
+			DeliverServiceConfig: &DeliverServiceConfig{
+				MaxRecvMsgSize: 200 * 1024 * 1024,
+				MaxSendMsgSize: 150 * 1024 * 1024,
+			},
+			ChannelConfig:  channelConfigProto,
+			CryptoProvider: cryptoProvider,
+		}).(*deliverServiceImpl)
+
+		finalized := make(chan struct{})
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {
+			close(finalized)
+		})
+		require.NoError(t, err)
+
+		select {
+		case <-finalized:
+		case <-time.After(time.Second):
+			require.FailNow(t, "finalizer should have executed")
+		}
+
+		require.NotNil(t, ds.blockDeliverer)
+		bpd := ds.blockDeliverer.(*blocksprovider.Deliverer)
+		dialer, ok := bpd.Dialer.(blocksprovider.DialerAdapter)
+		require.True(t, ok)
+		require.Equal(t, 200*1024*1024, dialer.ClientConfig.MaxRecvMsgSize)
+		require.Equal(t, 150*1024*1024, dialer.ClientConfig.MaxSendMsgSize)
+	})
+
 	t.Run("Leader yields and re-elected: Start->Stop->Start", func(t *testing.T) {
 		ds := NewDeliverService(&Config{
 			DeliverServiceConfig: &DeliverServiceConfig{},
@@ -227,6 +257,37 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 		require.NotNil(t, ds.blockDeliverer)
 		bpd := ds.blockDeliverer.(*blocksprovider.BFTDeliverer)
 		require.Nil(t, bpd.TLSCertHash)
+	})
+
+	t.Run("Message size limits", func(t *testing.T) {
+		ds := NewDeliverService(&Config{
+			DeliverServiceConfig: &DeliverServiceConfig{
+				MaxRecvMsgSize: 200 * 1024 * 1024,
+				MaxSendMsgSize: 150 * 1024 * 1024,
+				Policy:         DefaultPolicy,
+			},
+			ChannelConfig:  channelConfigProto,
+			CryptoProvider: cryptoProvider,
+		}).(*deliverServiceImpl)
+
+		finalized := make(chan struct{})
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {
+			close(finalized)
+		})
+		require.NoError(t, err)
+
+		select {
+		case <-finalized:
+		case <-time.After(time.Second):
+			require.FailNow(t, "finalizer should have executed")
+		}
+
+		require.NotNil(t, ds.blockDeliverer)
+		bpd := ds.blockDeliverer.(*blocksprovider.BFTDeliverer)
+		dialer, ok := bpd.Dialer.(blocksprovider.DialerAdapter)
+		require.True(t, ok)
+		require.Equal(t, 200*1024*1024, dialer.ClientConfig.MaxRecvMsgSize)
+		require.Equal(t, 150*1024*1024, dialer.ClientConfig.MaxSendMsgSize)
 	})
 
 	t.Run("Can restart for channel: Start->Stop->Start", func(t *testing.T) {
