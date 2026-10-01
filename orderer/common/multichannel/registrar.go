@@ -901,7 +901,7 @@ func (r *Registrar) RemoveChannel(channelID string) error {
 func (r *Registrar) removeMember(channelID string, cs *ChainSupport) {
 	relation, status := cs.StatusReport()
 	r.pendingRemoval[channelID] = consensus.StaticStatusReporter{ConsensusRelation: relation, Status: status}
-	r.removeLedgerAsync(channelID)
+	r.removeChannelDataAsync(channelID)
 
 	delete(r.chains, channelID)
 
@@ -920,7 +920,7 @@ func (r *Registrar) removeFollower(channelID string, follower *follower.Chain) e
 
 	relation, status := follower.StatusReport()
 	r.pendingRemoval[channelID] = consensus.StaticStatusReporter{ConsensusRelation: relation, Status: status}
-	r.removeLedgerAsync(channelID)
+	r.removeChannelDataAsync(channelID)
 
 	delete(r.followers, channelID)
 
@@ -971,19 +971,41 @@ func (r *Registrar) removeJoinBlock(channelID string) error {
 	return nil
 }
 
-func (r *Registrar) removeLedgerAsync(channelID string) {
+func (r *Registrar) removeChannelDataAsync(channelID string) {
 	go func() {
 		err := r.ledgerFactory.Remove(channelID)
+		if err != nil {
+			err = errors.WithMessagef(err, "ledger factory failed to remove empty ledger '%s'", channelID)
+		} else {
+			err = r.removeConsensusData(channelID)
+		}
+
 		r.lock.Lock()
 		defer r.lock.Unlock()
 		if err != nil {
 			r.pendingRemoval[channelID] = consensus.StaticStatusReporter{ConsensusRelation: r.pendingRemoval[channelID].ConsensusRelation, Status: types.StatusFailed}
 			r.channelParticipationMetrics.reportStatus(channelID, types.StatusFailed)
-			logger.Errorf("ledger factory failed to remove empty ledger '%s', error: %s", channelID, err)
+			logger.Errorf("Failed to remove channel '%s', error: %s", channelID, err)
 			return
 		}
 		delete(r.pendingRemoval, channelID)
 	}()
+}
+
+// removeConsensusData asks every consenter, not only the one of the channel's consensus type, to remove the
+// data it keeps for the channel outside the ledger. The data may be left from an earlier incarnation of the
+// channel with a different consensus type.
+func (r *Registrar) removeConsensusData(channelID string) error {
+	for consensusType, consenter := range r.consenters {
+		remover, ok := consenter.(consensus.ChannelDataRemover)
+		if !ok {
+			continue
+		}
+		if err := remover.RemoveChannelData(channelID); err != nil {
+			return errors.WithMessagef(err, "failed to remove %s data of channel '%s'", consensusType, channelID)
+		}
+	}
+	return nil
 }
 
 func (r *Registrar) ReportConsensusRelationAndStatusMetrics(channelID string, relation types.ConsensusRelation, status types.Status) {

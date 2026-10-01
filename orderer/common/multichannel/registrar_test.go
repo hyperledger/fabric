@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -88,6 +89,7 @@ type signerSerializer interface {
 type consenter interface {
 	consensus.Consenter
 	consensus.ClusterConsenter
+	consensus.ChannelDataRemover
 }
 
 //go:generate counterfeiter -o mocks/channel_support.go --fake-name ChannelSupport . channelSupporter
@@ -1859,6 +1861,108 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 				Status:            types.StatusFailed,
 			} == channelInfo
 		}, time.Minute, time.Second)
+		require.Zero(t, consenter.RemoveChannelDataCallCount())
+	})
+
+	t.Run("consensus data is removed after the ledger", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		type removal struct {
+			channelID string
+			ledgers   []string
+		}
+		removals := make(chan removal, 1)
+		release := make(chan struct{})
+		releaseRemoval := sync.OnceFunc(func() { close(release) })
+		defer releaseRemoval()
+		consenter.RemoveChannelDataCalls(func(channelID string) error {
+			removals <- removal{channelID: channelID, ledgers: ledgerFactory.ChannelIDs()}
+			<-release
+			return nil
+		})
+
+		consenter.IsChannelMemberReturns(true, nil)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		registrar.Initialize(mockConsenters)
+
+		_, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft)
+		require.NoError(t, err)
+		err = registrar.RemoveChannel("my-raft-channel")
+		require.NoError(t, err)
+
+		var r removal
+		select {
+		case r = <-removals:
+		case <-time.After(time.Minute):
+			t.Fatal("consensus data was not removed")
+		}
+		require.Equal(t, "my-raft-channel", r.channelID)
+		require.NotContains(t, r.ledgers, "my-raft-channel")
+
+		// Until the consensus data is gone, the channel cannot be joined again.
+		_, err = registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft)
+		require.Equal(t, types.ErrChannelPendingRemoval, err)
+
+		releaseRemoval()
+		require.Eventually(t, func() bool {
+			_, err := registrar.ChannelInfo("my-raft-channel")
+			return errors.Is(err, types.ErrChannelNotExist)
+		}, time.Minute, 10*time.Millisecond)
+		require.Equal(t, 1, consenter.RemoveChannelDataCallCount())
+	})
+
+	t.Run("consensus data of a follower is removed", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		consenter.IsChannelMemberReturns(false, nil)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		registrar.Initialize(mockConsenters)
+
+		genesisBlockAppRaftFollower := appBootstrapper.GenesisBlockForChannel("my-follower-raft-channel")
+		_, err := registrar.JoinChannel("my-follower-raft-channel", genesisBlockAppRaftFollower)
+		require.NoError(t, err)
+		require.NotNil(t, registrar.GetFollower("my-follower-raft-channel"))
+
+		err = registrar.RemoveChannel("my-follower-raft-channel")
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			_, err := registrar.ChannelInfo("my-follower-raft-channel")
+			return errors.Is(err, types.ErrChannelNotExist)
+		}, time.Minute, 10*time.Millisecond)
+		require.Equal(t, 1, consenter.RemoveChannelDataCallCount())
+		require.Equal(t, "my-follower-raft-channel", consenter.RemoveChannelDataArgsForCall(0))
+	})
+
+	t.Run("removing consensus data fails", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		consenter.RemoveChannelDataReturns(errors.New("permission denied"))
+		consenter.IsChannelMemberReturns(true, nil)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		registrar.Initialize(mockConsenters)
+
+		_, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft)
+		require.NoError(t, err)
+		err = registrar.RemoveChannel("my-raft-channel")
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			channelInfo, err := registrar.ChannelInfo("my-raft-channel")
+			require.NoError(t, err)
+			return types.ChannelInfo{
+				Name:              "my-raft-channel",
+				ConsensusRelation: types.ConsensusRelationConsenter,
+				Status:            types.StatusFailed,
+			} == channelInfo
+		}, time.Minute, 10*time.Millisecond)
+		require.NotContains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
+
+		_, err = registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft)
+		require.Equal(t, types.ErrChannelRemovalFailure, err)
 	})
 }
 

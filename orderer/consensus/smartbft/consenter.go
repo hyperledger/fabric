@@ -12,6 +12,7 @@ package smartbft
 import (
 	"bytes"
 	"encoding/pem"
+	"os"
 	"path"
 	"reflect"
 	"sync/atomic"
@@ -308,6 +309,21 @@ func (c *Consenter) IsChannelMember(joinBlock *cb.Block) (bool, error) {
 	}
 
 	return member, nil
+}
+
+// RemoveChannelData removes the WAL directory of the channel.
+func (c *Consenter) RemoveChannelData(channelID string) error {
+	if channelID == "" {
+		return errors.New("empty channel ID")
+	}
+	if c.WALBaseDir == "" {
+		return nil
+	}
+	dir := path.Join(c.WALBaseDir, channelID)
+	if err := os.RemoveAll(dir); err != nil {
+		return errors.Wrapf(err, "failed to remove %s", dir)
+	}
+	return nil
 }
 
 // TargetChannel extracts the channel from the given proto.Message.

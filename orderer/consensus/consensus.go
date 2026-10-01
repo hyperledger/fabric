@@ -35,6 +35,15 @@ type ClusterConsenter interface {
 	IsChannelMember(joinBlock *cb.Block) (bool, error)
 }
 
+// ChannelDataRemover is optionally implemented by a Consenter that keeps per-channel data outside the
+// ledger, such as a write-ahead log or snapshots.
+type ChannelDataRemover interface {
+	// RemoveChannelData removes the data the consenter keeps for the channel. It is called when the channel
+	// is removed, after its chain has been halted and its ledger removed, so that joining the channel again
+	// starts from a clean state.
+	RemoveChannelData(channelID string) error
+}
+
 // MetadataValidator performs the validation of updates to ConsensusMetadata during config updates to the channel.
 // NOTE: We expect the MetadataValidator interface to be optionally implemented by the Consenter implementation.
 //

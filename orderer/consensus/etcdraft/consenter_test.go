@@ -128,6 +128,47 @@ var _ = Describe("Consenter", func() {
 		})
 	})
 
+	When("the consenter removes the data of a channel", func() {
+		var consenter *consenter
+
+		BeforeEach(func() {
+			consenter = newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
+			consenter.EtcdRaftConfig.WALDir = walDir
+			consenter.EtcdRaftConfig.SnapDir = snapDir
+			for _, dir := range []string{walDir, snapDir} {
+				for _, channel := range []string{"mychannel", "otherchannel"} {
+					Expect(os.MkdirAll(path.Join(dir, channel), 0o755)).To(Succeed())
+					Expect(os.WriteFile(path.Join(dir, channel, "data"), []byte("data"), 0o644)).To(Succeed())
+				}
+			}
+		})
+
+		It("removes the WAL and snapshot directories of that channel only", func() {
+			Expect(consenter.RemoveChannelData("mychannel")).To(Succeed())
+			Expect(path.Join(walDir, "mychannel")).NotTo(BeAnExistingFile())
+			Expect(path.Join(snapDir, "mychannel")).NotTo(BeAnExistingFile())
+			Expect(path.Join(walDir, "otherchannel", "data")).To(BeARegularFile())
+			Expect(path.Join(snapDir, "otherchannel", "data")).To(BeARegularFile())
+		})
+
+		It("succeeds when the channel has no data", func() {
+			Expect(consenter.RemoveChannelData("unknownchannel")).To(Succeed())
+		})
+
+		It("rejects an empty channel ID", func() {
+			Expect(consenter.RemoveChannelData("")).To(MatchError("empty channel ID"))
+			Expect(path.Join(walDir, "mychannel", "data")).To(BeARegularFile())
+			Expect(path.Join(snapDir, "mychannel", "data")).To(BeARegularFile())
+		})
+
+		It("skips a directory that is not configured", func() {
+			consenter.EtcdRaftConfig.WALDir = ""
+			Expect(consenter.RemoveChannelData("mychannel")).To(Succeed())
+			Expect(path.Join(walDir, "mychannel", "data")).To(BeARegularFile())
+			Expect(path.Join(snapDir, "mychannel")).NotTo(BeAnExistingFile())
+		})
+	})
+
 	DescribeTable(
 		"identifies a bad block",
 		func(block *common.Block, errMatcher gtypes.GomegaMatcher) {
