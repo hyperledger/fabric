@@ -36,6 +36,17 @@ type Consenter struct {
 		result1 bool
 		result2 error
 	}
+	RemoveChannelDataStub        func(string) error
+	removeChannelDataMutex       sync.RWMutex
+	removeChannelDataArgsForCall []struct {
+		arg1 string
+	}
+	removeChannelDataReturns struct {
+		result1 error
+	}
+	removeChannelDataReturnsOnCall map[int]struct {
+		result1 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -169,13 +180,70 @@ func (fake *Consenter) IsChannelMemberReturnsOnCall(i int, result1 bool, result2
 	}{result1, result2}
 }
 
+func (fake *Consenter) RemoveChannelData(arg1 string) error {
+	fake.removeChannelDataMutex.Lock()
+	ret, specificReturn := fake.removeChannelDataReturnsOnCall[len(fake.removeChannelDataArgsForCall)]
+	fake.removeChannelDataArgsForCall = append(fake.removeChannelDataArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.RemoveChannelDataStub
+	fakeReturns := fake.removeChannelDataReturns
+	fake.recordInvocation("RemoveChannelData", []interface{}{arg1})
+	fake.removeChannelDataMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Consenter) RemoveChannelDataCallCount() int {
+	fake.removeChannelDataMutex.RLock()
+	defer fake.removeChannelDataMutex.RUnlock()
+	return len(fake.removeChannelDataArgsForCall)
+}
+
+func (fake *Consenter) RemoveChannelDataCalls(stub func(string) error) {
+	fake.removeChannelDataMutex.Lock()
+	defer fake.removeChannelDataMutex.Unlock()
+	fake.RemoveChannelDataStub = stub
+}
+
+func (fake *Consenter) RemoveChannelDataArgsForCall(i int) string {
+	fake.removeChannelDataMutex.RLock()
+	defer fake.removeChannelDataMutex.RUnlock()
+	argsForCall := fake.removeChannelDataArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Consenter) RemoveChannelDataReturns(result1 error) {
+	fake.removeChannelDataMutex.Lock()
+	defer fake.removeChannelDataMutex.Unlock()
+	fake.RemoveChannelDataStub = nil
+	fake.removeChannelDataReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Consenter) RemoveChannelDataReturnsOnCall(i int, result1 error) {
+	fake.removeChannelDataMutex.Lock()
+	defer fake.removeChannelDataMutex.Unlock()
+	fake.RemoveChannelDataStub = nil
+	if fake.removeChannelDataReturnsOnCall == nil {
+		fake.removeChannelDataReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.removeChannelDataReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *Consenter) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.handleChainMutex.RLock()
-	defer fake.handleChainMutex.RUnlock()
-	fake.isChannelMemberMutex.RLock()
-	defer fake.isChannelMemberMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

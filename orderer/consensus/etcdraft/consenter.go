@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
+	"os"
 	"path"
 	"reflect"
 	"time"
@@ -270,6 +271,23 @@ func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// RemoveChannelData removes the WAL and snapshot directories of the channel.
+func (c *Consenter) RemoveChannelData(channelID string) error {
+	if channelID == "" {
+		return errors.New("empty channel ID")
+	}
+	for _, baseDir := range []string{c.EtcdRaftConfig.WALDir, c.EtcdRaftConfig.SnapDir} {
+		if baseDir == "" {
+			continue
+		}
+		dir := path.Join(baseDir, channelID)
+		if err := os.RemoveAll(dir); err != nil {
+			return errors.Wrapf(err, "failed to remove %s", dir)
+		}
+	}
+	return nil
 }
 
 // ReadBlockMetadata attempts to read raft metadata from block metadata, if available.
