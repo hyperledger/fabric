@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/hyperledger/fabric-config/protolator"
@@ -360,4 +361,39 @@ func TestMarshalEtcdRaftMetadata(t *testing.T) {
 	for i := range len(inputCerts) - 1 {
 		require.NotEqual(t, outputCerts[i+1], outputCerts[i], "expected extracted certs to differ from each other")
 	}
+}
+
+func TestMarshalEtcdRaftMetadataNoPEMContent(t *testing.T) {
+	emptyCert := filepath.Join(t.TempDir(), "empty.pem")
+	require.NoError(t, os.WriteFile(emptyCert, nil, 0o600))
+
+	t.Run("client cert", func(t *testing.T) {
+		md := &etcdraft.ConfigMetadata{
+			Consenters: []*etcdraft.Consenter{
+				{
+					Host:          "node-1.example.com",
+					Port:          7050,
+					ClientTlsCert: []byte(emptyCert),
+					ServerTlsCert: []byte("testdata/tls-server-1.pem"),
+				},
+			},
+		}
+		_, err := MarshalEtcdRaftMetadata(md)
+		require.EqualError(t, err, "cannot load client cert for consenter node-1.example.com:7050: no PEM content in "+emptyCert)
+	})
+
+	t.Run("server cert", func(t *testing.T) {
+		md := &etcdraft.ConfigMetadata{
+			Consenters: []*etcdraft.Consenter{
+				{
+					Host:          "node-1.example.com",
+					Port:          7050,
+					ClientTlsCert: []byte("testdata/tls-client-1.pem"),
+					ServerTlsCert: []byte(emptyCert),
+				},
+			},
+		}
+		_, err := MarshalEtcdRaftMetadata(md)
+		require.EqualError(t, err, "cannot load server cert for consenter node-1.example.com:7050: no PEM content in "+emptyCert)
+	})
 }

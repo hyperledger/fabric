@@ -8,6 +8,8 @@ package encoder_test
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -434,6 +436,28 @@ var _ = Describe("Encoder", func() {
 					Expect(err).To(MatchError("cannot marshal metadata for orderer type etcdraft: cannot load client cert for consenter :0: open : no such file or directory"))
 				})
 			})
+
+			Context("when a consenter cert file has no PEM content", func() {
+				var emptyFile string
+
+				BeforeEach(func() {
+					emptyFile = filepath.Join(GinkgoT().TempDir(), "empty.pem")
+					Expect(os.WriteFile(emptyFile, nil, 0o600)).To(Succeed())
+					conf.EtcdRaft.Consenters = []*etcdraft.Consenter{
+						{
+							Host:          "host1",
+							Port:          1001,
+							ClientTlsCert: []byte(emptyFile),
+							ServerTlsCert: []byte("../../../sampleconfig/msp/admincerts/admincert.pem"),
+						},
+					}
+				})
+
+				It("returns an error", func() {
+					_, err := encoder.NewOrdererGroup(conf, channelCapabilities)
+					Expect(err).To(MatchError("cannot marshal metadata for orderer type etcdraft: cannot load client cert for consenter host1:1001: no PEM content in " + emptyFile))
+				})
+			})
 		})
 
 		Context("when the consensus type is BFT", func() {
@@ -481,6 +505,33 @@ var _ = Describe("Encoder", func() {
 				channelCapabilities["V2_0"] = true
 				_, err := encoder.NewOrdererGroup(conf, channelCapabilities)
 				Expect(err).To(MatchError("orderer type BFT must be used with V3_0 channel capability: map[V2_0:true]"))
+			})
+
+			Context("when a consenter file has no PEM content", func() {
+				var emptyFile string
+
+				BeforeEach(func() {
+					emptyFile = filepath.Join(GinkgoT().TempDir(), "empty.pem")
+					Expect(os.WriteFile(emptyFile, nil, 0o600)).To(Succeed())
+				})
+
+				It("returns an error for the client cert", func() {
+					conf.ConsenterMapping[1].ClientTLSCert = emptyFile
+					_, err := encoder.NewOrdererGroup(conf, channelCapabilities)
+					Expect(err).To(MatchError("cannot load consenter config for orderer type BFT: cannot load client cert for consenter host2:1002: no PEM content in " + emptyFile))
+				})
+
+				It("returns an error for the server cert", func() {
+					conf.ConsenterMapping[1].ServerTLSCert = emptyFile
+					_, err := encoder.NewOrdererGroup(conf, channelCapabilities)
+					Expect(err).To(MatchError("cannot load consenter config for orderer type BFT: cannot load server cert for consenter host2:1002: no PEM content in " + emptyFile))
+				})
+
+				It("returns an error for the identity", func() {
+					conf.ConsenterMapping[1].Identity = emptyFile
+					_, err := encoder.NewOrdererGroup(conf, channelCapabilities)
+					Expect(err).To(MatchError("cannot load consenter config for orderer type BFT: cannot load identity for consenter host2:1002: no PEM content in " + emptyFile))
+				})
 			})
 		})
 
