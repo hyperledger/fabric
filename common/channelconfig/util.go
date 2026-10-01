@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package channelconfig
 
 import (
+	"encoding/pem"
 	"fmt"
 	"math"
 	"os"
@@ -318,11 +319,17 @@ func MarshalEtcdRaftMetadata(md *etcdraft.ConfigMetadata) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %w", c.GetHost(), c.GetPort(), err)
 		}
+		if block, _ := pem.Decode(clientCert); block == nil {
+			return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: no PEM content in %s", c.GetHost(), c.GetPort(), c.GetClientTlsCert())
+		}
 		c.ClientTlsCert = clientCert
 
 		serverCert, err := os.ReadFile(string(c.GetServerTlsCert()))
 		if err != nil {
 			return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %w", c.GetHost(), c.GetPort(), err)
+		}
+		if block, _ := pem.Decode(serverCert); block == nil {
+			return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: no PEM content in %s", c.GetHost(), c.GetPort(), c.GetServerTlsCert())
 		}
 		c.ServerTlsCert = serverCert
 	}

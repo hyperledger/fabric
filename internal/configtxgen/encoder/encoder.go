@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package encoder
 
 import (
+	"encoding/pem"
 	"fmt"
 	"os"
 
@@ -262,6 +263,9 @@ func consenterProtosFromConfig(consenterMapping []*genesisconfig.Consenter) ([]*
 			if err != nil {
 				return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %w", c.GetHost(), c.GetPort(), err)
 			}
+			if block, _ := pem.Decode(clientCert); block == nil {
+				return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: no PEM content in %s", c.GetHost(), c.GetPort(), consenter.ClientTLSCert)
+			}
 			c.ClientTlsCert = clientCert
 		}
 
@@ -270,6 +274,9 @@ func consenterProtosFromConfig(consenterMapping []*genesisconfig.Consenter) ([]*
 			if err != nil {
 				return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %w", c.GetHost(), c.GetPort(), err)
 			}
+			if block, _ := pem.Decode(serverCert); block == nil {
+				return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: no PEM content in %s", c.GetHost(), c.GetPort(), consenter.ServerTLSCert)
+			}
 			c.ServerTlsCert = serverCert
 		}
 
@@ -277,6 +284,9 @@ func consenterProtosFromConfig(consenterMapping []*genesisconfig.Consenter) ([]*
 			identity, err := os.ReadFile(consenter.Identity)
 			if err != nil {
 				return nil, fmt.Errorf("cannot load identity for consenter %s:%d: %w", c.GetHost(), c.GetPort(), err)
+			}
+			if block, _ := pem.Decode(identity); block == nil {
+				return nil, fmt.Errorf("cannot load identity for consenter %s:%d: no PEM content in %s", c.GetHost(), c.GetPort(), consenter.Identity)
 			}
 			c.Identity = identity
 		}
