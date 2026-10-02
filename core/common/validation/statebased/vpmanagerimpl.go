@@ -341,10 +341,11 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 	policy, err := m.PolicyTranslator.Translate(mdMap[pb.MetaDataKeys_VALIDATION_PARAMETER.String()])
 	if err != nil {
 		if coll == "" {
-			return nil, errors.WithMessagef(err, "could not translate policy for %s:%s", cc, key)
+			err = errors.WithMessagef(err, "could not translate policy for %s:%s", cc, key)
 		} else {
-			return nil, errors.WithMessagef(err, "could not translate policy for %s:%s:%x", cc, coll, []byte(key))
+			err = errors.WithMessagef(err, "could not translate policy for %s:%s:%x", cc, coll, []byte(key))
 		}
+		return nil, &InvalidValidationParameterError{Err: err}
 	}
 
 	return policy, nil

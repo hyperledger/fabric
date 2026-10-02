@@ -25,6 +25,21 @@ func (f *ValidationParameterUpdatedError) Error() string {
 	return fmt.Sprintf("validation parameters for key [%s] in namespace [%s:%s] have been changed in transaction %d of block %d", f.Key, f.CC, f.Coll, f.Txnum, f.Height)
 }
 
+// InvalidValidationParameterError is returned whenever
+// the Validation Parameter stored for a key could not
+// be translated into a policy that can be evaluated
+type InvalidValidationParameterError struct {
+	Err error
+}
+
+func (f *InvalidValidationParameterError) Error() string {
+	return f.Err.Error()
+}
+
+func (f *InvalidValidationParameterError) Unwrap() error {
+	return f.Err
+}
+
 // KeyLevelValidationParameterManager is used by validation plugins in order
 // to retrieve validation parameters for individual KVS keys.
 // The functions are supposed to be called in the following order:
@@ -43,7 +58,9 @@ type KeyLevelValidationParameterManager interface {
 	// with txNum smaller than the one supplied by the caller. This protects from a
 	// scenario where a transaction changing validation parameters is marked as valid
 	// by VSCC and is later invalidated by the committer for other reasons (e.g. MVCC
-	// conflicts).  This function may be blocking until sufficient information has
+	// conflicts). Another one is InvalidValidationParameterError, which is returned
+	// in case the validation parameter stored for the key cannot be translated
+	// into a policy. This function may be blocking until sufficient information has
 	// been passed (by calling ApplyRWSetUpdates and ApplyValidatedRWSetUpdates) for
 	// all txes with txNum smaller than the one supplied by the caller.
 	GetValidationParameterForKey(cc, coll, key string, blockNum, txNum uint64) ([]byte, error)
