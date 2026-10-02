@@ -9,8 +9,8 @@ package smartbft
 import (
 	"sync/atomic"
 
-	"github.com/hyperledger-labs/SmartBFT/pkg/api"
-	protos "github.com/hyperledger-labs/SmartBFT/smartbftprotos"
+	"github.com/hyperledger/SmartBFT/pkg/api"
+	protos "github.com/hyperledger/SmartBFT/smartbftprotos"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
