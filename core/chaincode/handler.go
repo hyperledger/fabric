@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
@@ -1173,6 +1174,12 @@ func (h *Handler) putStateMetadata(msg *pb.PutStateMetadata, txContext *Transact
 	err := h.checkMetadataCap(channelId)
 	if err != nil {
 		return err
+	}
+
+	if msg.GetMetadata().GetMetakey() == pb.MetaDataKeys_VALIDATION_PARAMETER.String() {
+		if _, err = protoutil.UnmarshalSignaturePolicy(msg.GetMetadata().GetValue()); err != nil {
+			return errors.WithMessagef(err, "invalid validation parameter for key [%s]", msg.GetKey())
+		}
 	}
 
 	metadata := make(map[string][]byte)

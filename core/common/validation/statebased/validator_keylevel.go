@@ -42,6 +42,7 @@ func (p *baseEvaluator) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uin
 	if err != nil {
 		// error handling for GetValidationParameterForKey follows this rationale:
 		var validationParameterUpdatedError *ValidationParameterUpdatedError
+		var invalidValidationParameterError *InvalidValidationParameterError
 		var collConfigNotDefinedError *ledger.CollConfigNotDefinedError
 		var invalidCollNameError *ledger.InvalidCollNameError
 		switch err := errors.Cause(err); {
@@ -50,14 +51,20 @@ func (p *baseEvaluator) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uin
 		//    This should lead to invalidating the transaction by calling policyErr
 		case errors2.As(err, &validationParameterUpdatedError):
 			return policyErr(err)
-			// 2) if the ledger returns "determinstic" errors, that is, errors that
+			// 2) if the validation parameter stored for the key cannot be translated
+		//    into a policy, we will get InvalidValidationParameterError. Every peer
+		//    gets the same error for the same ledger state, so this should lead to
+		//    invalidating the transaction by calling policyErr
+		case errors2.As(err, &invalidValidationParameterError):
+			return policyErr(err)
+			// 3) if the ledger returns "determinstic" errors, that is, errors that
 		//    every peer in the channel will also return (such as errors linked to
 		//    an attempt to retrieve metadata from a non-defined collection) should be
 		//    logged and ignored. The ledger will take the most appropriate action
 		//    when performing its side of the validation.
 		case errors2.As(err, &collConfigNotDefinedError), errors2.As(err, &invalidCollNameError):
 			logger.Warning(errors.WithMessage(err, "skipping key-level validation").Error())
-			// 3) any other type of error should return an execution failure which will
+			// 4) any other type of error should return an execution failure which will
 		//    lead to halting the processing on this channel. Note that any non-categorized
 		//    deterministic error would be caught by the default and would lead to
 		//    a processing halt. This would certainly be a bug, but - in the absence of a

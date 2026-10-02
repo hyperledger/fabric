@@ -12,6 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/util"
 	ar "github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -743,6 +744,49 @@ var _ = Describe("Handler", func() {
 				_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
 				Expect(err).To(Not(BeNil()))
 				Expect(err.Error()).To(HavePrefix("unmarshal failed:"))
+			})
+		})
+
+		Context("when the metadata is a validation parameter", func() {
+			var policyBytes []byte
+
+			BeforeEach(func() {
+				policyBytes = []byte("not-a-signature-policy-envelope")
+			})
+
+			JustBeforeEach(func() {
+				request.Metadata = &pb.StateMetadata{
+					Metakey: pb.MetaDataKeys_VALIDATION_PARAMETER.String(),
+					Value:   policyBytes,
+				}
+				payload, err := proto.Marshal(request)
+				Expect(err).NotTo(HaveOccurred())
+				incomingMessage.Payload = payload
+			})
+
+			It("returns an error when the value is not a signature policy envelope", func() {
+				_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
+				Expect(err).To(MatchError(ContainSubstring("invalid validation parameter for key [put-state-key]: error unmarshalling SignaturePolicyEnvelope")))
+				Expect(fakeTxSimulator.SetStateMetadataCallCount()).To(Equal(0))
+			})
+
+			Context("when the value is a signature policy envelope", func() {
+				BeforeEach(func() {
+					var err error
+					policyBytes, err = proto.Marshal(policydsl.SignedByMspMember("Org1MSP"))
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("calls SetStateMetadata on the transaction simulator", func() {
+					_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(fakeTxSimulator.SetStateMetadataCallCount()).To(Equal(1))
+					_, _, value := fakeTxSimulator.SetStateMetadataArgsForCall(0)
+					Expect(value).To(Equal(map[string][]byte{
+						pb.MetaDataKeys_VALIDATION_PARAMETER.String(): policyBytes,
+					}))
+				})
 			})
 		})
 

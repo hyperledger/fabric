@@ -267,6 +267,43 @@ func TestKeylevelValidationPolicyRetrievalFailure(t *testing.T) {
 	require.ErrorAs(t, err, &target)
 }
 
+func TestKeylevelValidationPolicyTranslationFailure(t *testing.T) {
+	t.Parallel()
+
+	// Scenario: we validate a transaction that writes
+	// to a key whose key-level validation parameter
+	// cannot be translated into a policy. The
+	// transaction must be invalidated, not cause an
+	// execution failure that halts the channel.
+
+	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
+	prp := []byte("barf")
+
+	pvtRwsb := rwsetutil.NewRWSetBuilder()
+	pvtRwsb.AddToPvtAndHashedWriteSet("cc", "coll", "key", []byte("value"))
+	pvtRwsetBytes, err := pvtRwsb.GetTxReadWriteSet().ToProtoBytes()
+	require.NoError(t, err)
+
+	for name, rwsb := range map[string][]byte{
+		"public key":  rwsetBytes(t, "cc"),
+		"private key": pvtRwsetBytes,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: []byte("EP")}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: []byte("EP")}}
+			ms := &mockStateFetcher{FetchStateRv: mr}
+			pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{TranslateError: errors2.New("bad policy")}, StateFetcher: ms}
+			validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
+
+			err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
+			var target *errors.VSCCEndorsementPolicyError
+			require.ErrorAs(t, err, &target)
+			require.Contains(t, err.Error(), "could not translate policy")
+		})
+	}
+}
+
 func TestKeylevelValidationLedgerFailures(t *testing.T) {
 	// Scenario: we validate a transaction that updates
 	// the key-level validation parameters for a key.
