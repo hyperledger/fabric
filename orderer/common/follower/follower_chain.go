@@ -425,7 +425,7 @@ func (c *Chain) pullAfterJoin() error {
 		// Check membership
 		isMember, errMem := c.clusterConsenter.IsChannelMember(c.lastConfig)
 		if errMem != nil {
-			return errors.WithMessage(err, "failed to determine channel membership from last config")
+			return errors.WithMessage(errMem, "failed to determine channel membership from last config")
 		}
 		if isMember {
 			c.setConsensusRelation(types.ConsensusRelationConsenter)
