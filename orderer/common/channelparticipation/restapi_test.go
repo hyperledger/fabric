@@ -774,9 +774,8 @@ func checkErrorResponse(t *testing.T, expectedCode int, expectedErrMsg string, r
 	require.Len(t, headerArray, 1)
 	require.Equal(t, "application/json", headerArray[0])
 
-	decoder := json.NewDecoder(resp.Body)
 	respErr := &types.ErrorResponse{}
-	err := decoder.Decode(respErr)
+	err := json.Unmarshal(resp.Body.Bytes(), respErr)
 	require.NoError(t, err, "body: %s", resp.Body.String())
 	require.Contains(t, respErr.Error, expectedErrMsg)
 }

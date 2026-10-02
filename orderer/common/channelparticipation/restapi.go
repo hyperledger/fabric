@@ -326,7 +326,6 @@ func (h *HTTPHandler) serveFetchBlock(resp http.ResponseWriter, req *http.Reques
 
 	blockID, err := h.extractBlockID(req, resp)
 	if err != nil {
-		h.sendResponseJsonError(resp, http.StatusBadRequest, err)
 		return
 	}
 
