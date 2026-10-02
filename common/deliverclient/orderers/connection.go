@@ -8,7 +8,6 @@ package orderers
 
 import (
 	"bytes"
-	"crypto/md5"
 	"crypto/sha256"
 	"fmt"
 	"math/rand/v2"
@@ -41,7 +40,7 @@ func (e *Endpoint) String() string {
 	certHashStr := "<nil>"
 
 	if e.RootCerts != nil {
-		hasher := md5.New()
+		hasher := sha256.New()
 		for _, cert := range e.RootCerts {
 			hasher.Write(cert)
 		}
