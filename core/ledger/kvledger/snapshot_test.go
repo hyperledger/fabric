@@ -778,6 +778,21 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
 	})
 
+	t.Run("datafile-path-traversal", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		metadata.FilesAndHashes["../escape.data"] = "00"
+		overwriteModifiedSignableMetadata()
+
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.EqualError(
+			t, err,
+			"error while verifying snapshot: invalid file name [../escape.data] in snapshot metadata",
+		)
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
 	t.Run("hex-decoding-error-for-lastBlkHash", func(t *testing.T) {
 		init(t)
 		defer cleanup()
