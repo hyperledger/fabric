@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	dcontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/registry"
 	dcli "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 )
@@ -65,17 +66,18 @@ func (ci *ContainerInstance) Wait() (int, error) {
 
 // DockerVM is a vm. It is identified by an image id
 type DockerVM struct {
-	PeerID          string
-	NetworkID       string
-	BuildMetrics    *BuildMetrics
-	HostConfig      *dcontainer.HostConfig
-	Client          dcli.APIClient
-	AttachStdOut    bool
-	ChaincodePull   bool
-	NetworkMode     string
-	PlatformBuilder PlatformBuilder
-	LoggingEnv      []string
-	MSPID           string
+	PeerID           string
+	NetworkID        string
+	BuildMetrics     *BuildMetrics
+	HostConfig       *dcontainer.HostConfig
+	Client           dcli.APIClient
+	AttachStdOut     bool
+	ChaincodePull    bool
+	NetworkMode      string
+	PlatformBuilder  PlatformBuilder
+	LoggingEnv       []string
+	MSPID            string
+	AuthConfigLoader func() (map[string]registry.AuthConfig, error)
 }
 
 // HealthCheck checks if the DockerVM is able to communicate with the Docker
@@ -114,11 +116,20 @@ func (vm *DockerVM) buildImage(ccid string, reader io.Reader) error {
 		return err
 	}
 
+	var authConfigs map[string]registry.AuthConfig
+	if vm.AuthConfigLoader != nil {
+		authConfigs, err = vm.AuthConfigLoader()
+		if err != nil {
+			return errors.Wrap(err, "failed to load Docker registry credentials")
+		}
+	}
+
 	startTime := time.Now()
 	res, err := vm.Client.ImageBuild(context.Background(), reader, dcli.ImageBuildOptions{
 		Tags:        []string{id},
 		PullParent:  vm.ChaincodePull,
 		NetworkMode: vm.NetworkMode,
+		AuthConfigs: authConfigs,
 	})
 
 	vm.BuildMetrics.ChaincodeImageBuildDuration.With(
