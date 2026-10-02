@@ -672,6 +672,25 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.Equal(t, 259, timeAfterCount.AfterCallCount())
 		require.Equal(t, int64(5000), maxDelay.Load())
 	})
+	t.Run("Membership check fails", func(t *testing.T) {
+		setup()
+		mockClusterConsenter.IsChannelMemberReturns(false, errors.New("bad config block"))
+		mockChainCreator.SwitchFollowerToChainReturns(true)
+
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
+		require.NoError(t, err)
+
+		require.NotPanics(t, chain.Start)
+		require.Eventually(t, func() bool { return !chain.IsRunning() }, 10*time.Second, time.Millisecond)
+		require.NotPanics(t, chain.Halt)
+
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
+		require.Equal(t, types.StatusActive, status)
+
+		require.Equal(t, 0, ledgerResources.AppendCallCount())
+		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
+	})
 }
 
 func TestFollowerPullPastJoin(t *testing.T) {
