@@ -698,7 +698,7 @@ func verifyNoPendingSnapshotRequest(n *nwo.Network, peer *nwo.Peer, channelID st
 }
 
 func submitSnapshotRequest(n *nwo.Network, channel string, blockNum int, peer *nwo.Peer, expectedError bool, expectedMsg string) {
-	sess, err := n.PeerAdminSession(peer, commands.SnapshotSubmitRequest{
+	sess, err := n.CliAdminSession(peer, commands.SnapshotSubmitRequest{
 		ChannelID:   channel,
 		BlockNumber: strconv.Itoa(blockNum),
 		ClientAuth:  n.ClientAuthRequired,
@@ -715,7 +715,7 @@ func submitSnapshotRequest(n *nwo.Network, channel string, blockNum int, peer *n
 }
 
 func cancelSnapshotRequest(n *nwo.Network, channel string, blockNum int, peer *nwo.Peer, peerAddress string, expectedError bool, expectedMsg string) {
-	sess, err := n.PeerAdminSession(peer, commands.SnapshotCancelRequest{
+	sess, err := n.CliAdminSession(peer, commands.SnapshotCancelRequest{
 		ChannelID:   channel,
 		BlockNumber: strconv.Itoa(blockNum),
 		ClientAuth:  n.ClientAuthRequired,
@@ -732,7 +732,7 @@ func cancelSnapshotRequest(n *nwo.Network, channel string, blockNum int, peer *n
 }
 
 func listPendingSnapshotRequests(n *nwo.Network, channel string, peer *nwo.Peer, peerAddress string, expectedError bool) []byte {
-	sess, err := n.PeerAdminSession(peer, commands.SnapshotListPending{
+	sess, err := n.CliAdminSession(peer, commands.SnapshotListPending{
 		ChannelID:   channel,
 		ClientAuth:  n.ClientAuthRequired,
 		PeerAddress: peerAddress,
@@ -802,7 +802,7 @@ func joinBySnapshot(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 	nwo.WaitUntilEqualLedgerHeight(n, channelID, channelHeight, peer)
 
 	By("verifying blockchain info on peer " + peer.ID())
-	sess, err := n.PeerUserSession(peer, "Admin", commands.ChannelInfo{
+	sess, err := n.CliUserSession(peer, "Admin", commands.ChannelInfo{
 		ChannelID: channelID,
 	})
 	Expect(err).NotTo(HaveOccurred())
@@ -861,7 +861,7 @@ func getTxFromLastBlock(n *nwo.Network, peer *nwo.Peer) (*cb.Envelope, string) {
 		Block:      "newest",
 		OutputFile: blockfile,
 	}
-	sess, err := n.PeerAdminSession(peer, fetchNewest)
+	sess, err := n.CliAdminSession(peer, fetchNewest)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Received block: "))
@@ -916,14 +916,14 @@ func invokeAndQueryKVExecutorChaincode(n *nwo.Network, orderer *nwo.Orderer, cha
 }
 
 func invokeChaincode(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke) {
-	sess, err := n.PeerUserSession(peer, "User1", command)
+	sess, err := n.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful."))
 }
 
 func queryChaincode(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeQuery, expectedMessage string, expectSuccess bool) {
-	sess, err := n.PeerUserSession(peer, "User1", command)
+	sess, err := n.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	if expectSuccess {
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -942,7 +942,7 @@ func callQSCC(n *nwo.Network, peer *nwo.Peer, scc, operation string, retCode int
 		Ctor:      toCLIChaincodeArgs(args...),
 	}
 
-	sess, err := n.PeerAdminSession(peer, chaincodeQuery)
+	sess, err := n.CliAdminSession(peer, chaincodeQuery)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(retCode))
 	if retCode != 0 {
@@ -972,7 +972,7 @@ func waitForMarblePvtdataReconciliation(n *nwo.Network, peer *nwo.Peer, channelI
 				Ctor:      query,
 			}
 			queryData := func() int {
-				sess, err := n.PeerUserSession(peer, "User1", command)
+				sess, err := n.CliUserSession(peer, "User1", command)
 				Expect(err).NotTo(HaveOccurred())
 				return sess.Wait(n.EventuallyTimeout).ExitCode()
 			}

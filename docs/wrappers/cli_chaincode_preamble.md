@@ -1,10 +1,10 @@
-# peer chaincode
+# cli chaincode
 
-The `peer chaincode` command allows users to invoke and query chaincode.
+The `cli chaincode` command allows users to invoke and query chaincode.
 
 ## Syntax
 
-The `peer chaincode` command has the following subcommands:
+The `cli chaincode` command has the following subcommands:
 
   * invoke
   * query
@@ -21,14 +21,14 @@ Args is an array of arguments of the function. For instance,
 `{"Args":["GetAllAssets"]}` is equivalent to
 `{"Function":"GetAllAssets", "Args":[]}`.
 
-Each peer chaincode subcommand is described together with its options in its own
+Each cli chaincode subcommand is described together with its options in its own
 section in this topic.
 
 ## Flags
 
-Each `peer chaincode` subcommand has both a set of flags specific to an
+Each `cli chaincode` subcommand has both a set of flags specific to an
 individual subcommand, as well as a set of global flags that relate to all
-`peer chaincode` subcommands. Not all subcommands would use these flags.
+`cli chaincode` subcommands. Not all subcommands would use these flags.
 For instance, the `query` subcommand does not need the `--orderer` flag.
 
 The individual flags are described with the relevant subcommand. The global

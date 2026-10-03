@@ -68,7 +68,7 @@ export PATH=${PWD}/../bin:$PATH
 export FABRIC_CFG_PATH=${PWD}/../config
 
 # invoke the function
-peer chaincode query -C mychannel -n basicts -c '{"Args":["org.hyperledger.fabric:GetMetadata"]}' | jq
+cli chaincode query -C mychannel -n basicts -c '{"Args":["org.hyperledger.fabric:GetMetadata"]}' | jq
 ```
 
 Note that `| jq` can be omitted if `jq` is not installed. However, the metadata shows details of the deployed contract in JSON, so `jq` provides legibility. To confirm that the smart contract is working, repeat the prior commands for `org2`.

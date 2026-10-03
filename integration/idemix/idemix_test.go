@@ -121,7 +121,7 @@ var _ = Describe("EndToEnd", func() {
 
 func Query(n *nwo.Network, peer *nwo.Peer, channel string, expectedOutput string) {
 	By("querying the chaincode")
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	sess, err := n.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: channel,
 		Name:      "mycc",
 		Ctor:      `{"Args":["query","a"]}`,
@@ -144,7 +144,7 @@ func QueryWithIdemix(n *nwo.Network, peer *nwo.Peer, idemixOrg *nwo.Organization
 }
 
 func Invoke(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+	sess, err := n.CliUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: channel,
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",
