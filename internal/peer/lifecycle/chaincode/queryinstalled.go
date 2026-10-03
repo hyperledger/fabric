@@ -40,7 +40,7 @@ type InstalledQueryInput struct {
 
 // QueryInstalledCmd returns the cobra command for listing
 // the installed chaincodes
-func QueryInstalledCmd(i *InstalledQuerier, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func QueryInstalledCmd(i *InstalledQuerier, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	chaincodeQueryInstalledCmd := &cobra.Command{
 		Use:   "queryinstalled",
 		Short: "Query the installed chaincodes on a peer.",
@@ -79,6 +79,11 @@ func QueryInstalledCmd(i *InstalledQuerier, cryptoProvider bccsp.BCCSP) *cobra.C
 			}
 			return i.Query()
 		},
+	}
+
+	if !isNew {
+		chaincodeQueryInstalledCmd.Short = "[DEPRECATED] Query the installed chaincodes on a peer (use the \"peercli lifecycle chaincode queryinstalled\")."
+		chaincodeQueryInstalledCmd.Long = "[DEPRECATED] Query the installed chaincodes on a peer. Instead of this command, use \"peercli lifecycle chaincode queryinstalled\"."
 	}
 
 	flagList := []string{

@@ -30,19 +30,24 @@ func addFlags(cmd *cobra.Command) {
 }
 
 // Cmd returns the cobra command for Chaincode
-func Cmd(cryptoProvider bccsp.BCCSP) *cobra.Command {
+func Cmd(cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	addFlags(chaincodeCmd)
 
-	chaincodeCmd.AddCommand(PackageCmd(nil))
-	chaincodeCmd.AddCommand(CalculatePackageIDCmd(nil))
-	chaincodeCmd.AddCommand(InstallCmd(nil, cryptoProvider))
-	chaincodeCmd.AddCommand(QueryInstalledCmd(nil, cryptoProvider))
-	chaincodeCmd.AddCommand(GetInstalledPackageCmd(nil, cryptoProvider))
-	chaincodeCmd.AddCommand(ApproveForMyOrgCmd(nil, cryptoProvider))
-	chaincodeCmd.AddCommand(QueryApprovedCmd(nil, cryptoProvider))
-	chaincodeCmd.AddCommand(CheckCommitReadinessCmd(nil, cryptoProvider))
-	chaincodeCmd.AddCommand(CommitCmd(nil, cryptoProvider))
-	chaincodeCmd.AddCommand(QueryCommittedCmd(nil, cryptoProvider))
+	chaincodeCmd.AddCommand(PackageCmd(nil, isNew))
+	chaincodeCmd.AddCommand(CalculatePackageIDCmd(nil, isNew))
+	chaincodeCmd.AddCommand(InstallCmd(nil, cryptoProvider, isNew))
+	chaincodeCmd.AddCommand(QueryInstalledCmd(nil, cryptoProvider, isNew))
+	chaincodeCmd.AddCommand(GetInstalledPackageCmd(nil, cryptoProvider, isNew))
+	chaincodeCmd.AddCommand(ApproveForMyOrgCmd(nil, cryptoProvider, isNew))
+	chaincodeCmd.AddCommand(QueryApprovedCmd(nil, cryptoProvider, isNew))
+	chaincodeCmd.AddCommand(CheckCommitReadinessCmd(nil, cryptoProvider, isNew))
+	chaincodeCmd.AddCommand(CommitCmd(nil, cryptoProvider, isNew))
+	chaincodeCmd.AddCommand(QueryCommittedCmd(nil, cryptoProvider, isNew))
+
+	if !isNew {
+		chaincodeCmd.Short = "[DEPRECATED] Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|calculatepackageid|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted (use the \"peercli lifecycle chaincode\")."
+		chaincodeCmd.Long = "[DEPRECATED] Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|calculatepackageid|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted. Instead of this command, use \"peercli lifecycle chaincode\"."
+	}
 
 	return chaincodeCmd
 }
@@ -76,8 +81,8 @@ var (
 
 var chaincodeCmd = &cobra.Command{
 	Use:   "chaincode",
-	Short: "Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|calculatepackageid|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted",
-	Long:  "Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|calculatepackageid|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted",
+	Short: "Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|calculatepackageid|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted.",
+	Long:  "Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|calculatepackageid|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted.",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		common.InitCmd(cmd, args)
 		common.SetOrdererEnv(cmd, args)

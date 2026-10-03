@@ -79,7 +79,7 @@ func (c *CommitInput) Validate() error {
 }
 
 // CommitCmd returns the cobra command for chaincode Commit
-func CommitCmd(c *Committer, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func CommitCmd(c *Committer, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	chaincodeCommitCmd := &cobra.Command{
 		Use:   "commit",
 		Short: "Commit the chaincode definition on the channel.",
@@ -126,6 +126,12 @@ func CommitCmd(c *Committer, cryptoProvider bccsp.BCCSP) *cobra.Command {
 			return c.Commit()
 		},
 	}
+
+	if !isNew {
+		chaincodeCommitCmd.Short = "[DEPRECATED] Commit the chaincode definition on the channel (use the \"peercli lifecycle chaincode commit\")."
+		chaincodeCommitCmd.Long = "[DEPRECATED] Commit the chaincode definition on the channel. Instead of this command, use \"peercli lifecycle chaincode commit\"."
+	}
+
 	flagList := []string{
 		"channelID",
 		"name",

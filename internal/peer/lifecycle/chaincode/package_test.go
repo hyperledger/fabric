@@ -171,7 +171,7 @@ var _ = Describe("Package", func() {
 		var packageCmd *cobra.Command
 
 		BeforeEach(func() {
-			packageCmd = chaincode.PackageCmd(nil)
+			packageCmd = chaincode.PackageCmd(nil, true)
 			packageCmd.SilenceErrors = true
 			packageCmd.SilenceUsage = true
 			packageCmd.SetArgs([]string{
