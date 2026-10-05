@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -33,6 +34,7 @@ const (
 type DB struct {
 	conf    *Conf
 	db      *leveldb.DB
+	dbName  string
 	dbState dbState
 	mutex   sync.RWMutex
 
@@ -40,6 +42,8 @@ type DB struct {
 	writeOptsNoSync *opt.WriteOptions
 	writeOptsSync   *opt.WriteOptions
 }
+
+var _ db.DB = (*DB)(nil)
 
 // CreateDB constructs a `DB`
 func CreateDB(conf *Conf) *DB {
@@ -156,17 +160,25 @@ func (dbInst *DB) Delete(key []byte, sync bool) error {
 	return nil
 }
 
-// GetIterator returns an iterator over key-value store. The iterator should be released after the use.
-// The resultset contains all the keys that are present in the db between the startKey (inclusive) and the endKey (exclusive).
-// A nil startKey represents the first available key and a nil endKey represent a logical key after the last available key
-func (dbInst *DB) GetIterator(startKey []byte, endKey []byte) iterator.Iterator {
+func (dbInst *DB) getRawIterator(startKey []byte, endKey []byte) iterator.Iterator {
 	dbInst.mutex.RLock()
 	defer dbInst.mutex.RUnlock()
 	return dbInst.db.NewIterator(&goleveldbutil.Range{Start: startKey, Limit: endKey}, dbInst.readOpts)
 }
 
-// WriteBatch writes a batch
-func (dbInst *DB) WriteBatch(batch *leveldb.Batch, sync bool) error {
+// GetIterator returns an iterator over key-value store. The iterator should be released after the use.
+// The resultset contains all the keys that are present in the db between the startKey (inclusive) and the endKey (exclusive).
+// A nil startKey represents the first available key and a nil endKey represent a logical key after the last available key
+func (dbInst *DB) GetIterator(startKey []byte, endKey []byte) (db.Iterator, error) {
+	itr := dbInst.getRawIterator(startKey, endKey)
+	if err := itr.Error(); err != nil {
+		itr.Release()
+		return nil, err
+	}
+	return &Iterator{Iterator: itr}, nil
+}
+
+func (dbInst *DB) writeLevelDBBatch(batch *leveldb.Batch, sync bool) error {
 	dbInst.mutex.RLock()
 	defer dbInst.mutex.RUnlock()
 	wo := dbInst.writeOptsNoSync
@@ -177,6 +189,23 @@ func (dbInst *DB) WriteBatch(batch *leveldb.Batch, sync bool) error {
 		return errors.Wrap(err, "error writing batch to leveldb")
 	}
 	return nil
+}
+
+// NewUpdateBatch creates a new batch for the DB.
+func (dbInst *DB) NewUpdateBatch() db.Batch {
+	return &UpdateBatch{
+		dbName:       dbInst.dbName,
+		leveldbBatch: &leveldb.Batch{},
+	}
+}
+
+// WriteBatch writes a batch
+func (dbInst *DB) WriteBatch(batch db.Batch, sync bool) error {
+	ub, ok := batch.(*UpdateBatch)
+	if !ok {
+		return errors.Errorf("expected *UpdateBatch, got %T", batch)
+	}
+	return dbInst.writeLevelDBBatch(ub.leveldbBatch, sync)
 }
 
 // FileLock encapsulate the DB that holds the file lock.

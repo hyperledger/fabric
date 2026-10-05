@@ -16,7 +16,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -36,7 +36,7 @@ var blkMgrInfoKey = []byte("blkMgrInfo")
 type blockfileMgr struct {
 	rootDir                   string
 	conf                      *Conf
-	db                        *leveldbhelper.DBHandle
+	db                        db.DBHandle
 	index                     *blockIndex
 	blockfilesInfo            *blockfilesInfo
 	bootstrappingSnapshotInfo *BootstrappingSnapshotInfo
@@ -92,7 +92,7 @@ At start up a new manager:
 			-- If index and file system are not in sync, syncs index from the FS
 	  *)  Updates blockchain info used by the APIs
 */
-func newBlockfileMgr(id string, conf *Conf, indexConfig *IndexConfig, indexStore *leveldbhelper.DBHandle) (*blockfileMgr, error) {
+func newBlockfileMgr(id string, conf *Conf, indexConfig *IndexConfig, indexStore db.DBHandle) (*blockfileMgr, error) {
 	logger.Debugf("newBlockfileMgr() initializing file-based block storage for ledger: %s ", id)
 	rootDir := conf.getLedgerBlockDir(id)
 	_, err := fileutil.CreateDirIfMissing(rootDir)
@@ -174,7 +174,7 @@ func bootstrapFromSnapshottedTxIDs(
 	snapshotDir string,
 	snapshotInfo *SnapshotInfo,
 	conf *Conf,
-	indexStore *leveldbhelper.DBHandle,
+	indexStore db.DBHandle,
 ) error {
 	rootDir := conf.getLedgerBlockDir(ledgerID)
 	isEmpty, err := fileutil.CreateDirIfMissing(rootDir)

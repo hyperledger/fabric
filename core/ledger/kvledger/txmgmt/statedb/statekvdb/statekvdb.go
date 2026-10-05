@@ -4,21 +4,21 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package stateleveldb
+package statekvdb
 
 import (
 	"bytes"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/common/ledger/util/dbfactory"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/pkg/errors"
-	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
-var logger = flogging.MustGetLogger("stateleveldb")
+var logger = flogging.MustGetLogger("statekvdb")
 
 var (
 	dataKeyPrefix          = []byte{'d'}
@@ -31,18 +31,13 @@ var (
 
 // VersionedDBProvider implements interface VersionedDBProvider
 type VersionedDBProvider struct {
-	dbProvider *leveldbhelper.Provider
+	dbProvider db.Provider
 }
 
 // NewVersionedDBProvider instantiates VersionedDBProvider
-func NewVersionedDBProvider(dbPath string) (*VersionedDBProvider, error) {
+func NewVersionedDBProvider(dbPath string, dbType string) (*VersionedDBProvider, error) {
 	logger.Debugf("constructing VersionedDBProvider dbPath=%s", dbPath)
-	dbProvider, err := leveldbhelper.NewProvider(
-		&leveldbhelper.Conf{
-			DBPath:         dbPath,
-			ExpectedFormat: dataformat.CurrentFormat,
-		},
-	)
+	dbProvider, err := dbfactory.NewProvider(dbType, dbPath, dataformat.CurrentFormat)
 	if err != nil {
 		return nil, err
 	}
@@ -82,12 +77,12 @@ func (provider *VersionedDBProvider) Drop(dbName string) error {
 
 // VersionedDB implements VersionedDB interface
 type versionedDB struct {
-	db     *leveldbhelper.DBHandle
+	db     db.DBHandle
 	dbName string
 }
 
 // newVersionedDB constructs an instance of VersionedDB
-func newVersionedDB(db *leveldbhelper.DBHandle, dbName string) *versionedDB {
+func newVersionedDB(db db.DBHandle, dbName string) *versionedDB {
 	return &versionedDB{db, dbName}
 }
 
@@ -234,7 +229,7 @@ func (vdb *versionedDB) GetLatestSavePoint() (*version.Height, error) {
 // FullScanIterator that can be used to iterate over entire data in the statedb for a channel.
 // `skipNamespace` parameter can be used to control if the consumer wants the FullScanIterator
 // to skip one or more namespaces from the returned results. The intended use of this iterator
-// is to generate the snapshot files for the stateleveldb
+// is to generate the snapshot files for the statekvdb
 func (vdb *versionedDB) GetFullScanIterator(skipNamespace func(string) bool) (statedb.FullScanIterator, error) {
 	return newFullDBScanner(vdb.db, skipNamespace)
 }
@@ -298,12 +293,12 @@ func dataKeyStarterForNextNamespace(ns string) []byte {
 
 type kvScanner struct {
 	namespace            string
-	dbItr                iterator.Iterator
+	dbItr                db.Iterator
 	requestedLimit       int32
 	totalRecordsReturned int32
 }
 
-func newKVScanner(namespace string, dbItr iterator.Iterator, requestedLimit int32) *kvScanner {
+func newKVScanner(namespace string, dbItr db.Iterator, requestedLimit int32) *kvScanner {
 	return &kvScanner{namespace, dbItr, requestedLimit, 0}
 }
 
@@ -351,12 +346,12 @@ func (scanner *kvScanner) GetBookmarkAndClose() string {
 }
 
 type fullDBScanner struct {
-	db     *leveldbhelper.DBHandle
-	dbItr  iterator.Iterator
+	db     db.DBHandle
+	dbItr  db.Iterator
 	toSkip func(namespace string) bool
 }
 
-func newFullDBScanner(db *leveldbhelper.DBHandle, skipNamespace func(namespace string) bool) (*fullDBScanner, error) {
+func newFullDBScanner(db db.DBHandle, skipNamespace func(namespace string) bool) (*fullDBScanner, error) {
 	dbItr, err := db.GetIterator(dataKeyPrefix, dataKeyStopper)
 	if err != nil {
 		return nil, err

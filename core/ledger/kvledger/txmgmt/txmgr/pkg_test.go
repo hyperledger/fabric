@@ -97,7 +97,7 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtda
 			map[[2]string]uint64{},
 		)
 	}
-	env.testBookkeepingEnv = bookkeeping.NewTestEnv(t)
+	env.testBookkeepingEnv = bookkeeping.NewTestEnv(t, ledger.GoLevelDB)
 
 	txmgrInitializer := &Initializer{
 		LedgerID:            testLedgerID,

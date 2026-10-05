@@ -283,7 +283,7 @@ func TestImportFromSnapshot(t *testing.T) {
 			// redirect index writes to some random place and add two blocks and then set the original index back
 			blkfileMgr := bootstrappedBlockStore.fileMgr
 			originalIndexDB := blkfileMgr.index.db
-			bootstrappedBlockStore.fileMgr.index.db = env.provider.leveldbProvider.GetDBHandle(filepath.Join(testDir, "someRandomPlace"))
+			bootstrappedBlockStore.fileMgr.index.db = env.provider.dbProvider.GetDBHandle(filepath.Join(testDir, "someRandomPlace"))
 			require.NoError(t, blkfileMgr.addBlock(block))
 			blkfileMgr.index.db = originalIndexDB
 

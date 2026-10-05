@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger/mock"
 	"github.com/hyperledger/fabric/orderer/common/filerepo"
 	"github.com/stretchr/testify/require"
@@ -91,21 +92,21 @@ func TestMultiReinitialization(t *testing.T) {
 
 	dir := t.TempDir()
 
-	f, err := New(dir, metricsProvider)
+	f, err := New(dir, db.GoLevelDB, metricsProvider)
 	require.NoError(t, err)
 	_, err = f.GetOrCreate("testchannelid")
 	require.NoError(t, err, "Error GetOrCreate channel")
 	require.Len(t, f.ChannelIDs(), 1, "Expected 1 channel")
 	f.Close()
 
-	f, err = New(dir, metricsProvider)
+	f, err = New(dir, db.GoLevelDB, metricsProvider)
 	require.NoError(t, err)
 	_, err = f.GetOrCreate("foo")
 	require.NoError(t, err, "Error creating channel")
 	require.Len(t, f.ChannelIDs(), 2, "Expected channel to be recovered")
 	f.Close()
 
-	f, err = New(dir, metricsProvider)
+	f, err = New(dir, db.GoLevelDB, metricsProvider)
 	require.NoError(t, err)
 	_, err = f.GetOrCreate("bar")
 	require.NoError(t, err, "Error creating channel")
@@ -122,7 +123,7 @@ func TestMultiReinitialization(t *testing.T) {
 	_, err = os.Create(filepath.Join(bar2ChainsDir, "blockfile_000000"))
 	require.NoError(t, err, "Error creating temp file: %s", err)
 
-	f, err = New(dir, metricsProvider)
+	f, err = New(dir, db.GoLevelDB, metricsProvider)
 	require.NoError(t, err)
 
 	err = f.Remove("bar")
@@ -162,7 +163,7 @@ func TestNewErrors(t *testing.T) {
 			require.NoError(t, os.Chmod(filepath.Join(dir, "pendingops", "remove"), 0o777))
 		})
 
-		_, err = New(dir, metricsProvider)
+		_, err = New(dir, db.GoLevelDB, metricsProvider)
 		require.EqualError(t, err, fmt.Sprintf("error checking if dir [%s] is empty: fstatat %s: permission denied", fileRepoDir, removeFile))
 	})
 
@@ -183,7 +184,7 @@ func TestNewErrors(t *testing.T) {
 			require.NoError(t, os.Chmod(filepath.Join(dir, "pendingops", "remove"), 0o777))
 		})
 
-		_, err = New(dir, metricsProvider)
+		_, err = New(dir, db.GoLevelDB, metricsProvider)
 		require.EqualError(t, err, fmt.Sprintf("unlinkat %s: permission denied", removeFile))
 	})
 }

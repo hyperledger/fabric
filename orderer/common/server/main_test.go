@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
@@ -396,7 +397,7 @@ func TestVerifyNoSystemChannel(t *testing.T) {
 
 	tmpdir := t.TempDir()
 
-	rlf, err := fileledger.New(tmpdir, &disabled.Provider{})
+	rlf, err := fileledger.New(tmpdir, ledger.GoLevelDB, &disabled.Provider{})
 	require.NoError(t, err)
 
 	// no ledgers

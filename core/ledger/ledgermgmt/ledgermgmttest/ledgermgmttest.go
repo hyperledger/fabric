@@ -35,8 +35,9 @@ func NewInitializer(testLedgerDir string) *ledgermgmt.Initializer {
 	return &ledgermgmt.Initializer{
 		Config: &ledger.Config{
 			RootFSPath: testLedgerDir,
-			// empty StateDBConfig means leveldb
-			StateDBConfig: &ledger.StateDBConfig{},
+			StateDBConfig: &ledger.StateDBConfig{
+				StateDatabase: ledger.GoLevelDB,
+			},
 			HistoryDBConfig: &ledger.HistoryDBConfig{
 				Enabled: false,
 			},

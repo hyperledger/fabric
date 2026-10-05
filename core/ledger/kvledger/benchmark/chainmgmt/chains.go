@@ -53,6 +53,7 @@ func newChainsMgr(mgrConf *ChainMgrConf, batchConf *BatchConf, initOp chainInitO
 		ledgermgmtInitializer.Config.StateDBConfig.CouchDB = &ledger.CouchDBConfig{
 			Address:            couchdbAddr,
 			RedoLogPath:        filepath.Join(dataDir, "couchdbRedologs"),
+			RedoLogDBType:      ledger.GoLevelDB,
 			UserCacheSizeMBs:   500,
 			MaxBatchUpdateSize: 500,
 		}

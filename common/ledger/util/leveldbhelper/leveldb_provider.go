@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"sync"
 
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -55,23 +56,20 @@ type Provider struct {
 	dbHandles map[string]*DBHandle
 }
 
-// DataFormatInfo contains the information about the version of the data format
-type DataFormatInfo struct {
-	FormatVerison string // version of the data format
-	IsDBEmpty     bool   // set to true if the db does not contain any data
-}
+var _ db.Provider = (*Provider)(nil)
 
-// RetrieveDataFormatInfo retrieves the DataFormatInfo for the db at the supplied `dbPath`
-func RetrieveDataFormatInfo(dbPath string) (*DataFormatInfo, error) {
+// RetrieveDataFormatInfo retrieves the FormatVerison and IsDBEmpty for the db at the supplied `dbPath`
+func RetrieveDataFormatInfo(dbPath string) (formatVerison string, isDBEmpty bool, err error) {
 	db := CreateDB(&Conf{DBPath: dbPath})
 	db.Open()
 	defer db.Close()
 
 	dbEmpty, err := db.IsEmpty()
 	if err != nil {
-		return nil, err
+		return "", false, err
 	}
 
+	db.dbName = internalDBName
 	internalDB := &DBHandle{
 		db:     db,
 		dbName: internalDBName,
@@ -79,13 +77,10 @@ func RetrieveDataFormatInfo(dbPath string) (*DataFormatInfo, error) {
 
 	formatVersion, err := internalDB.Get(formatVersionKey)
 	if err != nil {
-		return nil, err
+		return "", false, err
 	}
 
-	return &DataFormatInfo{
-		IsDBEmpty:     dbEmpty,
-		FormatVerison: string(formatVersion),
-	}, nil
+	return string(formatVersion), dbEmpty, nil
 }
 
 // NewProvider constructs a Provider
@@ -110,6 +105,7 @@ func openDBAndCheckFormat(conf *Conf) (d *DB, e error) {
 		}
 	}()
 
+	db.dbName = internalDBName
 	internalDB := &DBHandle{
 		db:     db,
 		dbName: internalDBName,
@@ -149,17 +145,16 @@ func openDBAndCheckFormat(conf *Conf) (d *DB, e error) {
 
 // GetDataFormat returns the format of the data
 func (p *Provider) GetDataFormat() (string, error) {
-	f, err := p.GetDBHandle(internalDBName).Get(formatVersionKey)
+	f, err := p.getDBHandle(internalDBName).Get(formatVersionKey)
 	return string(f), err
 }
 
 func (p *Provider) SetDataFormat(format string) error {
-	db := p.GetDBHandle(internalDBName)
+	db := p.getDBHandle(internalDBName)
 	return db.Put(formatVersionKey, []byte(format), true)
 }
 
-// GetDBHandle returns a handle to a named db
-func (p *Provider) GetDBHandle(dbName string) *DBHandle {
+func (p *Provider) getDBHandle(dbName string) *DBHandle {
 	p.mux.Lock()
 	defer p.mux.Unlock()
 	dbHandle := p.dbHandles[dbName]
@@ -175,6 +170,11 @@ func (p *Provider) GetDBHandle(dbName string) *DBHandle {
 	return dbHandle
 }
 
+// GetDBHandle returns a handle to a named db
+func (p *Provider) GetDBHandle(dbName string) db.DBHandle {
+	return p.getDBHandle(dbName)
+}
+
 // Close closes the underlying leveldb
 func (p *Provider) Close() {
 	p.db.Close()
@@ -182,7 +182,7 @@ func (p *Provider) Close() {
 
 // Drop drops all the data for the given dbName
 func (p *Provider) Drop(dbName string) error {
-	dbHandle := p.GetDBHandle(dbName)
+	dbHandle := p.getDBHandle(dbName)
 	defer dbHandle.Close()
 	return dbHandle.deleteAll()
 }
@@ -193,6 +193,8 @@ type DBHandle struct {
 	db        *DB
 	closeFunc closeFunc
 }
+
+var _ db.DBHandle = (*DBHandle)(nil)
 
 // Get returns the value for the given key
 func (h *DBHandle) Get(key []byte) ([]byte, error) {
@@ -211,14 +213,18 @@ func (h *DBHandle) Delete(key []byte, sync bool) error {
 
 // DeleteAll deletes all the keys that belong to the channel (dbName).
 func (h *DBHandle) deleteAll() error {
-	iter, err := h.GetIterator(nil, nil)
-	if err != nil {
-		return err
+	sKey := constructLevelKey(h.dbName, nil)
+	eKey := constructLevelKey(h.dbName, nil)
+	if h.dbName != "" {
+		// replace the last byte 'dbNameKeySep' by 'lastKeyIndicator'
+		eKey[len(eKey)-1] = lastKeyIndicator
 	}
-	defer iter.Release()
-
-	// use leveldb iterator directly to be more efficient
-	dbIter := iter.Iterator
+	dbIter := h.db.getRawIterator(sKey, eKey)
+	if err := dbIter.Error(); err != nil {
+		dbIter.Release()
+		return errors.Wrap(err, "internal leveldb error while obtaining db iterator")
+	}
+	defer dbIter.Release()
 
 	// This is common code shared by all the leveldb instances. Because each leveldb has its own key size pattern,
 	// each batch is limited by memory usage instead of number of keys. Once the batch memory usage reaches maxBatchSize,
@@ -235,7 +241,7 @@ func (h *DBHandle) deleteAll() error {
 		batchSize = batchSize + len(key)
 		batch.Delete(key)
 		if batchSize >= maxBatchSize {
-			if err := h.db.WriteBatch(batch, true); err != nil {
+			if err := h.db.writeLevelDBBatch(batch, true); err != nil {
 				return err
 			}
 			logger.Infof("Have removed %d entries for channel %s in leveldb %s", numKeys, h.dbName, h.db.conf.DBPath)
@@ -244,28 +250,31 @@ func (h *DBHandle) deleteAll() error {
 		}
 	}
 	if batch.Len() > 0 {
-		return h.db.WriteBatch(batch, true)
+		return h.db.writeLevelDBBatch(batch, true)
 	}
 	return nil
 }
 
 // IsEmpty returns true if no data exists for the DBHandle
 func (h *DBHandle) IsEmpty() (bool, error) {
-	itr, err := h.GetIterator(nil, nil)
-	if err != nil {
-		return false, err
+	sKey := constructLevelKey(h.dbName, nil)
+	eKey := constructLevelKey(h.dbName, nil)
+	if h.dbName != "" {
+		// replace the last byte 'dbNameKeySep' by 'lastKeyIndicator'
+		eKey[len(eKey)-1] = lastKeyIndicator
+	}
+	itr := h.db.getRawIterator(sKey, eKey)
+	if err := itr.Error(); err != nil {
+		itr.Release()
+		return false, errors.Wrap(err, "internal leveldb error while obtaining next entry from iterator")
 	}
 	defer itr.Release()
-
-	if err := itr.Error(); err != nil {
-		return false, errors.WithMessagef(itr.Error(), "internal leveldb error while obtaining next entry from iterator")
-	}
 
 	return !itr.Next(), nil
 }
 
 // NewUpdateBatch returns a new UpdateBatch that can be used to update the db
-func (h *DBHandle) NewUpdateBatch() *UpdateBatch {
+func (h *DBHandle) NewUpdateBatch() db.Batch {
 	return &UpdateBatch{
 		dbName:       h.dbName,
 		leveldbBatch: &leveldb.Batch{},
@@ -273,11 +282,12 @@ func (h *DBHandle) NewUpdateBatch() *UpdateBatch {
 }
 
 // WriteBatch writes a batch in an atomic way
-func (h *DBHandle) WriteBatch(batch *UpdateBatch, sync bool) error {
-	if batch == nil || batch.leveldbBatch.Len() == 0 {
+func (h *DBHandle) WriteBatch(batch db.Batch, sync bool) error {
+	ub, ok := batch.(*UpdateBatch)
+	if !ok || ub == nil || ub.leveldbBatch.Len() == 0 {
 		return nil
 	}
-	if err := h.db.WriteBatch(batch.leveldbBatch, sync); err != nil {
+	if err := h.db.writeLevelDBBatch(ub.leveldbBatch, sync); err != nil {
 		return err
 	}
 	return nil
@@ -286,15 +296,15 @@ func (h *DBHandle) WriteBatch(batch *UpdateBatch, sync bool) error {
 // GetIterator gets an handle to iterator. The iterator should be released after the use.
 // The resultset contains all the keys that are present in the db between the startKey (inclusive) and the endKey (exclusive).
 // A nil startKey represents the first available key and a nil endKey represent a logical key after the last available key
-func (h *DBHandle) GetIterator(startKey []byte, endKey []byte) (*Iterator, error) {
+func (h *DBHandle) GetIterator(startKey []byte, endKey []byte) (db.Iterator, error) {
 	sKey := constructLevelKey(h.dbName, startKey)
 	eKey := constructLevelKey(h.dbName, endKey)
-	if endKey == nil {
+	if endKey == nil && h.dbName != "" {
 		// replace the last byte 'dbNameKeySep' by 'lastKeyIndicator'
 		eKey[len(eKey)-1] = lastKeyIndicator
 	}
 	logger.Debugf("Getting iterator for range [%#v] - [%#v]", sKey, eKey)
-	itr := h.db.GetIterator(sKey, eKey)
+	itr := h.db.getRawIterator(sKey, eKey)
 	if err := itr.Error(); err != nil {
 		itr.Release()
 		return nil, errors.Wrapf(err, "internal leveldb error while obtaining db iterator")
@@ -315,6 +325,8 @@ type UpdateBatch struct {
 	dbName       string
 	size         int
 }
+
+var _ db.Batch = (*UpdateBatch)(nil)
 
 // Put adds a KV
 func (b *UpdateBatch) Put(key []byte, value []byte) {
@@ -355,8 +367,13 @@ type Iterator struct {
 	iterator.Iterator
 }
 
+var _ db.Iterator = (*Iterator)(nil)
+
 // Key wraps actual leveldb iterator method
 func (itr *Iterator) Key() []byte {
+	if itr.dbName == "" {
+		return itr.Iterator.Key()
+	}
 	return retrieveAppKey(itr.Iterator.Key())
 }
 
@@ -364,11 +381,24 @@ func (itr *Iterator) Key() []byte {
 // whose key is greater than or equal to the given key.
 // It returns whether such pair exist.
 func (itr *Iterator) Seek(key []byte) bool {
-	levelKey := constructLevelKey(itr.dbName, key)
+	var levelKey []byte
+	if itr.dbName == "" {
+		levelKey = key
+	} else {
+		levelKey = constructLevelKey(itr.dbName, key)
+	}
 	return itr.Iterator.Seek(levelKey)
 }
 
 func constructLevelKey(dbName string, key []byte) []byte {
+	if len(dbName) == 0 {
+		if key == nil {
+			return nil
+		}
+		k := make([]byte, len(key))
+		copy(k, key)
+		return k
+	}
 	return append(append([]byte(dbName), dbNameKeySep...), key...)
 }
 

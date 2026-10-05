@@ -10,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,13 +19,13 @@ const testDBPath = "/tmp/fabric/ledgertests/util/leveldbhelper"
 type testDBEnv struct {
 	t    *testing.T
 	path string
-	db   *DB
+	db   db.DB
 }
 
 type testDBProviderEnv struct {
 	t        *testing.T
 	path     string
-	provider *Provider
+	provider db.Provider
 }
 
 func newTestDBEnv(t *testing.T, path string) *testDBEnv {

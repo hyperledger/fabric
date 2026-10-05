@@ -8,7 +8,7 @@ package kvledger
 
 import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/common/ledger/util/dbfactory"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/pkg/errors"
@@ -21,7 +21,7 @@ import (
 func UpgradeDBs(config *ledger.Config) error {
 	rootFSPath := config.RootFSPath
 	fileLockPath := fileLockPath(rootFSPath)
-	fileLock := leveldbhelper.NewFileLock(fileLockPath)
+	fileLock := dbfactory.NewFileLock(config.StateDatabase, fileLockPath)
 	if err := fileLock.Lock(); err != nil {
 		return errors.Wrap(err, "as another peer node command is executing,"+
 			" wait for that command to complete its execution or terminate it before retrying")
@@ -31,7 +31,7 @@ func UpgradeDBs(config *ledger.Config) error {
 	logger.Infof("Ledger data folder from config = [%s]", rootFSPath)
 
 	dbPath := LedgerProviderPath(rootFSPath)
-	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
+	db := dbfactory.CreateDB(config.StateDatabase, dbPath, "")
 	db.Open()
 	defer db.Close()
 	idStore := &idStore{db, dbPath}

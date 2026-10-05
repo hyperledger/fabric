@@ -12,8 +12,9 @@ import (
 	"os"
 
 	"github.com/bits-and-blooms/bitset"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/util"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/common/ledger/util/dbfactory"
 	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/confighistory"
@@ -35,17 +36,18 @@ type SnapshotDataImporter struct {
 	eligibilityAndBTLCache *eligibilityAndBTLCache
 
 	rowsSorter *snapshotRowsSorter
-	db         *leveldbhelper.DBHandle
+	db         db.DBHandle
 }
 
 func newSnapshotDataImporter(
 	ledgerID string,
-	dbHandle *leveldbhelper.DBHandle,
+	dbHandle db.DBHandle,
 	membershipProvider ledger.MembershipInfoProvider,
 	configHistoryRetriever *confighistory.Retriever,
 	tempDirRoot string,
+	dbType string,
 ) (*SnapshotDataImporter, error) {
-	rowsSorter, err := newSnapshotRowsSorter(tempDirRoot)
+	rowsSorter, err := newSnapshotRowsSorter(tempDirRoot, dbType)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +347,7 @@ func (u *dbUpdates) numKVHashesEntries() int {
 	return len(u.bootKVHashes)
 }
 
-func (u *dbUpdates) commitToDB(db *leveldbhelper.DBHandle) error {
+func (u *dbUpdates) commitToDB(db db.DBHandle) error {
 	batch := db.NewUpdateBatch()
 	for k, v := range u.elgMissingDataEntries {
 		encKey := encodeElgPrioMissingDataKey(&k)
@@ -387,20 +389,19 @@ func (u *dbUpdates) commitToDB(db *leveldbhelper.DBHandle) error {
 
 type snapshotRowsSorter struct {
 	tempDir    string
-	dbProvider *leveldbhelper.Provider
-	db         *leveldbhelper.DBHandle
-	batch      *leveldbhelper.UpdateBatch
+	dbProvider db.Provider
+	db         db.DBHandle
+	batch      db.Batch
 	batchSize  int
 }
 
-func newSnapshotRowsSorter(tempDirRoot string) (*snapshotRowsSorter, error) {
+func newSnapshotRowsSorter(tempDirRoot, dbType string) (*snapshotRowsSorter, error) {
 	tempDir, err := os.MkdirTemp(tempDirRoot, "pvtdatastore-snapshotdatainporter-")
 	if err != nil {
 		return nil, errors.Wrap(err, "error while creating temp dir for sorting rows")
 	}
-	dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{
-		DBPath: tempDir,
-	})
+
+	dbProvider, err := dbfactory.NewProvider(dbType, tempDir, "")
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +452,7 @@ func (s *snapshotRowsSorter) cleanup() {
 }
 
 type sortedSnapshotRowsIterator struct {
-	dbIter *leveldbhelper.Iterator
+	dbIter db.Iterator
 }
 
 func (i *sortedSnapshotRowsIterator) next() (*snapshotRow, error) {

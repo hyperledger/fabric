@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/ledgerutil/jsonrw"
 	"github.com/stretchr/testify/require"
 )
@@ -156,7 +157,7 @@ func TestIdentifyTxs(t *testing.T) {
 				require.NoError(t, err)
 			}
 			// Check identifytxs returned values
-			firstBlock, lastBlock, err := IdentifyTxs(testCase.sampleDiffRecordsPath, fsDir, outputDir)
+			firstBlock, lastBlock, err := IdentifyTxs(testCase.sampleDiffRecordsPath, fsDir, ledger.GoLevelDB, outputDir)
 			require.Equal(t, testCase.expectedFirstBlock, firstBlock)
 			require.Equal(t, testCase.expectedLastBlock, lastBlock)
 			// Prepare results directory
@@ -168,7 +169,7 @@ func TestIdentifyTxs(t *testing.T) {
 				// Check identifytxs results directory
 				require.ErrorContains(t, readDirErr, "no such file or directory")
 			case "exists-error":
-				firstBlock, lastBlock, err = IdentifyTxs(testCase.sampleDiffRecordsPath, fsDir, outputDir)
+				firstBlock, lastBlock, err = IdentifyTxs(testCase.sampleDiffRecordsPath, fsDir, ledger.GoLevelDB, outputDir)
 				require.Equal(t, uint64(0), firstBlock)
 				require.Equal(t, uint64(0), lastBlock)
 				require.ErrorContains(t, err, fmt.Sprintf("%s already exists in %s. Choose a different location or remove the existing results. Aborting identifytxs", testCase.resultsDirname, outputDir))

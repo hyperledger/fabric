@@ -321,8 +321,10 @@ func constructDefaultInitializer(testDir string) (*Initializer, error) {
 	}
 	return &Initializer{
 		Config: &ledger.Config{
-			RootFSPath:    testDir,
-			StateDBConfig: &ledger.StateDBConfig{},
+			RootFSPath: testDir,
+			StateDBConfig: &ledger.StateDBConfig{
+				StateDatabase: ledger.GoLevelDB,
+			},
 			PrivateDataConfig: &ledger.PrivateDataConfig{
 				MaxBatchSize:    5000,
 				BatchesInterval: 1000,

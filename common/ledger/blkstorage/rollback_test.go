@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
@@ -67,22 +68,22 @@ func TestRollback(t *testing.T) {
 
 	// 7. Rollback to one before the lastBlockNumberInLastFile
 	indexConfig := &IndexConfig{AttrsToIndex: attrsToIndex}
-	err = Rollback(path, "testLedger", lastBlockNumberInLastFile-uint64(1), indexConfig)
+	err = Rollback(path, "testLedger", lastBlockNumberInLastFile-uint64(1), indexConfig, db.GoLevelDB)
 	require.NoError(t, err)
 	assertBlockStoreRollback(t, path, "testLedger", blocks, lastBlockNumberInLastFile-uint64(1), 4, indexConfig)
 
 	// 8. Rollback to middleBlockNumberInLastFile
-	err = Rollback(path, "testLedger", middleBlockNumberInLastFile, indexConfig)
+	err = Rollback(path, "testLedger", middleBlockNumberInLastFile, indexConfig, db.GoLevelDB)
 	require.NoError(t, err)
 	assertBlockStoreRollback(t, path, "testLedger", blocks, middleBlockNumberInLastFile, 4, indexConfig)
 
 	// 9. Rollback to firstBlockNumberInLastFile
-	err = Rollback(path, "testLedger", firstBlockNumberInLastFile, indexConfig)
+	err = Rollback(path, "testLedger", firstBlockNumberInLastFile, indexConfig, db.GoLevelDB)
 	require.NoError(t, err)
 	assertBlockStoreRollback(t, path, "testLedger", blocks, firstBlockNumberInLastFile, 4, indexConfig)
 
 	// 10. Rollback to one before the firstBlockNumberInLastFile
-	err = Rollback(path, "testLedger", firstBlockNumberInLastFile-1, indexConfig)
+	err = Rollback(path, "testLedger", firstBlockNumberInLastFile-1, indexConfig, db.GoLevelDB)
 	require.NoError(t, err)
 	assertBlockStoreRollback(t, path, "testLedger", blocks, firstBlockNumberInLastFile-1, 3, indexConfig)
 
@@ -90,17 +91,17 @@ func TestRollback(t *testing.T) {
 	middleBlockNumberInMiddleFile := uint64(25)
 
 	// 12. Rollback to middleBlockNumberInMiddleFile
-	err = Rollback(path, "testLedger", middleBlockNumberInMiddleFile, indexConfig)
+	err = Rollback(path, "testLedger", middleBlockNumberInMiddleFile, indexConfig, db.GoLevelDB)
 	require.NoError(t, err)
 	assertBlockStoreRollback(t, path, "testLedger", blocks, middleBlockNumberInMiddleFile, 2, indexConfig)
 
 	// 13. Rollback to block 5
-	err = Rollback(path, "testLedger", 5, indexConfig)
+	err = Rollback(path, "testLedger", 5, indexConfig, db.GoLevelDB)
 	require.NoError(t, err)
 	assertBlockStoreRollback(t, path, "testLedger", blocks, 5, 0, indexConfig)
 
 	// 14. Rollback to block 1
-	err = Rollback(path, "testLedger", 1, indexConfig)
+	err = Rollback(path, "testLedger", 1, indexConfig, db.GoLevelDB)
 	require.NoError(t, err)
 	assertBlockStoreRollback(t, path, "testLedger", blocks, 1, 0, indexConfig)
 }
@@ -154,7 +155,7 @@ func TestRollbackWithOnlyBlockIndexAttributes(t *testing.T) {
 	onlyBlockNumIndexCfg := &IndexConfig{
 		AttrsToIndex: onlyBlockNumIndex,
 	}
-	err = Rollback(path, "testLedger", 2, onlyBlockNumIndexCfg)
+	err = Rollback(path, "testLedger", 2, onlyBlockNumIndexCfg, db.GoLevelDB)
 	require.NoError(t, err)
 	assertBlockStoreRollback(t, path, "testLedger", blocks, 2, 0, onlyBlockNumIndexCfg)
 }
@@ -207,7 +208,7 @@ func TestRollbackWithNoIndexDir(t *testing.T) {
 
 	// 6. Rollback to block 2
 	indexConfig := &IndexConfig{AttrsToIndex: attrsToIndex}
-	err = Rollback(path, "testLedger", 2, indexConfig)
+	err = Rollback(path, "testLedger", 2, indexConfig, db.GoLevelDB)
 	require.NoError(t, err)
 	assertBlockStoreRollback(t, path, "testLedger", blocks, 2, 0, indexConfig)
 }
@@ -267,7 +268,7 @@ func TestDuplicateTxIDDuringRollback(t *testing.T) {
 
 	// 5. Rollback to block 2
 	indexConfig := &IndexConfig{AttrsToIndex: attrsToIndex}
-	err := Rollback(path, "testLedger", 2, indexConfig)
+	err := Rollback(path, "testLedger", 2, indexConfig, db.GoLevelDB)
 	require.NoError(t, err)
 
 	env = newTestEnv(t, NewConf(path, maxFileSize))

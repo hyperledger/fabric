@@ -39,7 +39,7 @@ type testEnv struct {
 func initialize(t *testing.T) (*testEnv, *FileLedger) {
 	name := t.TempDir()
 
-	p, err := New(name, &disabled.Provider{})
+	p, err := New(name, cl.GoLevelDB, &disabled.Provider{})
 	require.NoError(t, err)
 	flf := p.(*fileLedgerFactory)
 	fl, err := flf.GetOrCreate("testchannelid")
@@ -152,7 +152,7 @@ func TestReinitialization(t *testing.T) {
 	tev.shutDown()
 
 	// re-initialize the ledger provider (not the test ledger itself!)
-	provider2, err := New(tev.location, &disabled.Provider{})
+	provider2, err := New(tev.location, cl.GoLevelDB, &disabled.Provider{})
 	require.NoError(t, err)
 
 	// assert expected ledgers exist

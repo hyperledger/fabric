@@ -18,9 +18,9 @@ type Mgr struct {
 	MockCCInfoProvider *mock.DeployedChaincodeInfoProvider
 }
 
-func NewMgr(dbPath string) (*Mgr, error) {
+func NewMgr(dbPath, dbType string) (*Mgr, error) {
 	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	configHistory, err := confighistory.NewMgr(dbPath, mockCCInfoProvider)
+	configHistory, err := confighistory.NewMgr(dbPath, mockCCInfoProvider, dbType)
 	if err != nil {
 		return nil, err
 	}

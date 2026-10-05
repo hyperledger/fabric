@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/confighistory/confighistorytest"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
@@ -35,7 +36,7 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 		require.NoError(t, err)
 		t.Cleanup(func() { p.Close() })
 
-		configHistoryMgr, err := confighistorytest.NewMgr(path.Join(testDir, "config-history"))
+		configHistoryMgr, err := confighistorytest.NewMgr(path.Join(testDir, "config-history"), db.GoLevelDB)
 		require.NoError(t, err)
 
 		require.NoError(
@@ -327,7 +328,7 @@ func TestStoreCreationErrorPath(t *testing.T) {
 	require.NoError(t, err)
 	defer p.Close()
 
-	configHistoryMgr, err := confighistorytest.NewMgr(path.Join(testDir, "config-history"))
+	configHistoryMgr, err := confighistorytest.NewMgr(path.Join(testDir, "config-history"), db.GoLevelDB)
 	require.NoError(t, err)
 
 	t.Run("error-while-constructing-snapshot-data-importer", func(t *testing.T) {

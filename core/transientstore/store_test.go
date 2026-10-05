@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric-protos-go-apiv2/transientstore"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/policydsl"
 	commonutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -48,7 +49,7 @@ func initTestEnv(t *testing.T) *testEnv {
 	tempdir := t.TempDir()
 
 	storedir := filepath.Join(tempdir, "transientstore")
-	storeProvider, err := NewStoreProvider(storedir)
+	storeProvider, err := NewStoreProvider(storedir, db.GoLevelDB)
 	require.NoError(t, err)
 	require.NotNil(t, storeProvider)
 

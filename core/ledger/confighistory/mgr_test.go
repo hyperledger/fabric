@@ -17,6 +17,7 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	dbpkg "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
@@ -36,7 +37,7 @@ func TestMain(m *testing.M) {
 func TestWithNoCollectionConfig(t *testing.T) {
 	dbPath := t.TempDir()
 	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	mgr, err := NewMgr(dbPath, mockCCInfoProvider)
+	mgr, err := NewMgr(dbPath, mockCCInfoProvider, dbpkg.GoLevelDB)
 	require.NoError(t, err)
 	testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(mockCCInfoProvider, "chaincode1", nil)
 	err = mgr.HandleStateUpdates(
@@ -55,7 +56,7 @@ func TestWithNoCollectionConfig(t *testing.T) {
 func TestWithEmptyCollectionConfig(t *testing.T) {
 	dbPath := t.TempDir()
 	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	mgr, err := NewMgr(dbPath, mockCCInfoProvider)
+	mgr, err := NewMgr(dbPath, mockCCInfoProvider, dbpkg.GoLevelDB)
 	require.NoError(t, err)
 	testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(
 		mockCCInfoProvider,
@@ -78,7 +79,7 @@ func TestWithEmptyCollectionConfig(t *testing.T) {
 func TestMgrQueries(t *testing.T) {
 	dbPath := t.TempDir()
 	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	mgr, err := NewMgr(dbPath, mockCCInfoProvider)
+	mgr, err := NewMgr(dbPath, mockCCInfoProvider, dbpkg.GoLevelDB)
 	require.NoError(t, err)
 	chaincodeName := "chaincode1"
 	configCommittingBlockNums := []uint64{5, 10, 15, 100}
@@ -125,7 +126,7 @@ func TestMgrQueries(t *testing.T) {
 func TestDrop(t *testing.T) {
 	dbPath := t.TempDir()
 	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	mgr, err := NewMgr(dbPath, mockCCInfoProvider)
+	mgr, err := NewMgr(dbPath, mockCCInfoProvider, dbpkg.GoLevelDB)
 	require.NoError(t, err)
 	chaincodeName := "chaincode1"
 	configCommittingBlockNums := []uint64{5, 10, 15, 100}
@@ -185,7 +186,7 @@ func TestWithImplicitColls(t *testing.T) {
 		},
 		nil,
 	)
-	p, err := newDBProvider(dbPath)
+	p, err := newDBProvider(dbPath, dbpkg.GoLevelDB)
 	require.NoError(t, err)
 
 	mgr := &Mgr{
@@ -240,7 +241,7 @@ type testEnvForSnapshot struct {
 
 func newTestEnvForSnapshot(t *testing.T) *testEnvForSnapshot {
 	dbPath := t.TempDir()
-	mgr, err := NewMgr(dbPath, &mock.DeployedChaincodeInfoProvider{})
+	mgr, err := NewMgr(dbPath, &mock.DeployedChaincodeInfoProvider{}, dbpkg.GoLevelDB)
 	if err != nil {
 		t.Fatalf("Failed to create new config history manager: %s", err)
 	}
@@ -450,7 +451,7 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		require.NoError(t, err)
 		defer dataFileWriter.Close()
 		err = env.mgr.ImportFromSnapshot("ledger2", env.testSnapshotDir)
-		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.EqualError(t, err, "internal leveldb error while obtaining next entry from iterator: leveldb: closed")
 	})
 }
 

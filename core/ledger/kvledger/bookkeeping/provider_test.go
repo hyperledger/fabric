@@ -9,11 +9,12 @@ package bookkeeping
 import (
 	"testing"
 
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/stretchr/testify/require"
 )
 
 func TestProvider(t *testing.T) {
-	testEnv := NewTestEnv(t)
+	testEnv := NewTestEnv(t, db.GoLevelDB)
 	defer testEnv.Cleanup()
 	p := testEnv.TestProvider
 

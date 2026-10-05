@@ -156,7 +156,7 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 			verifyQSCC(setup.network, org2peer1, testchannelID, blockNum, txidBeforeSnapshot)
 
 			// test 3: bootstrap a peer in a new org from snapshot and verify
-			By("starting a peer Org3.peer1 in new org3 (stateleveldb)")
+			By("starting a peer Org3.peer1 in new org3 (statekvdb)")
 			org3peer1, _ := startPeer(setup, "Org3", "peer1", testchannelID, false)
 
 			By("installing legacy chaincode on new peer org3peer1")

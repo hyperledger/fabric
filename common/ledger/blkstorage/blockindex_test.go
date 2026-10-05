@@ -53,7 +53,7 @@ func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncB
 		blkfileMgrWrapper.addBlocks(blocks[:numBlocksToIndex])
 
 		// redirect index writes to some random place and add remaining blocks
-		blkfileMgr.index.db = env.provider.leveldbProvider.GetDBHandle("someRandomPlace")
+		blkfileMgr.index.db = env.provider.dbProvider.GetDBHandle("someRandomPlace")
 		blkfileMgrWrapper.addBlocks(blocks[numBlocksToIndex:])
 
 		// Plug-in back the original index store
@@ -387,7 +387,7 @@ func TestExportUniqueTxIDsErrorCases(t *testing.T) {
 
 	// error while reading from leveldb
 	require.NoError(t, os.MkdirAll(testSnapshotDir, 0o700))
-	env.provider.leveldbProvider.Close()
+	env.provider.dbProvider.Close()
 	_, err = index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
 	os.RemoveAll(testSnapshotDir)

@@ -85,10 +85,13 @@ func TestLevelDBHelper(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, IsEmpty)
 
-	batch := &leveldb.Batch{}
-	batch.Put([]byte("key1"), []byte("value1"))
-	batch.Put([]byte("key2"), []byte("value2"))
-	batch.Delete([]byte("key3"))
+	batch := &UpdateBatch{
+		dbName:       "",
+		leveldbBatch: &leveldb.Batch{},
+	}
+	batch.leveldbBatch.Put([]byte("key1"), []byte("value1"))
+	batch.leveldbBatch.Put([]byte("key2"), []byte("value2"))
+	batch.leveldbBatch.Delete([]byte("key3"))
 	require.NoError(t, db.WriteBatch(batch, true))
 
 	val1, err1 = db.Get([]byte("key1"))
@@ -103,11 +106,13 @@ func TestLevelDBHelper(t *testing.T) {
 	require.NoError(t, err3)
 	require.Empty(t, string(val3))
 
-	keys := []string{}
-	itr := db.GetIterator(nil, nil)
+	var keys []string
+	itr, err := db.GetIterator(nil, nil)
+	require.NoError(t, err)
 	for itr.Next() {
 		keys = append(keys, string(itr.Key()))
 	}
+	itr.Release()
 	require.Equal(t, []string{"key1", "key2"}, keys)
 }
 

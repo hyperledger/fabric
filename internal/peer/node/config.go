@@ -52,10 +52,23 @@ func ledgerConfig() *ledger.Config {
 	if snapshotsRootDir == "" {
 		snapshotsRootDir = filepath.Join(fsPath, "snapshots")
 	}
+	// The type of the internal KV stores is not configurable: leveldb is the
+	// only store available, so the type is decided here while the
+	// configuration is parsed, and not read from it.
+	commonDBType := ledger.GoLevelDB
+
+	// The state database is a separate choice, and it is resolved here so that
+	// an unset choice does not travel to the ledger as an empty type.
+	stateDBType := viper.GetString("ledger.state.stateDatabase")
+	if stateDBType == "" {
+		stateDBType = ledger.GoLevelDB
+	}
+
 	conf := &ledger.Config{
-		RootFSPath: ledgersDataRootDir,
+		RootFSPath:    ledgersDataRootDir,
+		StateDatabase: commonDBType,
 		StateDBConfig: &ledger.StateDBConfig{
-			StateDatabase: viper.GetString("ledger.state.stateDatabase"),
+			StateDatabase: stateDBType,
 			CouchDB:       &ledger.CouchDBConfig{},
 		},
 		PrivateDataConfig: &ledger.PrivateDataConfig{
@@ -85,6 +98,7 @@ func ledgerConfig() *ledger.Config {
 			MaxBatchUpdateSize:    maxBatchUpdateSize,
 			CreateGlobalChangesDB: viper.GetBool("ledger.state.couchDBConfig.createGlobalChangesDB"),
 			RedoLogPath:           filepath.Join(ledgersDataRootDir, "couchdbRedoLogs"),
+			RedoLogDBType:         commonDBType,
 			UserCacheSizeMBs:      viper.GetInt("ledger.state.couchDBConfig.cacheSize"),
 		}
 	}

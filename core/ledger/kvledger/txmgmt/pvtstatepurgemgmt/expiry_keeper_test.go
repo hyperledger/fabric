@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -30,7 +31,7 @@ func TestExpiryKVEncoding(t *testing.T) {
 }
 
 func TestExpiryKeeper(t *testing.T) {
-	testenv := bookkeeping.NewTestEnv(t)
+	testenv := bookkeeping.NewTestEnv(t, ledger.GoLevelDB)
 	defer testenv.Cleanup()
 	expiryKeeper := newExpiryKeeper("testledger", testenv.TestProvider)
 

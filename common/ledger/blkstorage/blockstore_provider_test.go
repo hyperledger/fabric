@@ -220,7 +220,7 @@ func TestDrop(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, exists)
 
-	empty, err := provider.leveldbProvider.GetDBHandle("ledger1").IsEmpty()
+	empty, err := provider.dbProvider.GetDBHandle("ledger1").IsEmpty()
 	require.NoError(t, err)
 	require.True(t, empty)
 

@@ -11,6 +11,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
@@ -20,7 +21,7 @@ import (
 )
 
 func TestPurgeMgrBuilder(t *testing.T) {
-	bookkeepingEnv := bookkeeping.NewTestEnv(t)
+	bookkeepingEnv := bookkeeping.NewTestEnv(t, ledger.GoLevelDB)
 	defer bookkeepingEnv.Cleanup()
 
 	ledgerID := "test-ledger"
@@ -184,7 +185,7 @@ func TestPurgeMgrBuilderErrorsPropagation(t *testing.T) {
 	var bookkeepingProvider *bookkeeping.Provider
 
 	init := func() {
-		bookkeepingEnv := bookkeeping.NewTestEnv(t)
+		bookkeepingEnv := bookkeeping.NewTestEnv(t, ledger.GoLevelDB)
 		bookkeepingProvider = bookkeepingEnv.TestProvider
 		btlPolicy = btltestutil.SampleBTLPolicy(
 			map[[2]string]uint64{

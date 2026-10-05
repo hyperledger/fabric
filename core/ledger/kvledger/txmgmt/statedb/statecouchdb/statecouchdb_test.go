@@ -56,6 +56,7 @@ func (env *testVDBEnv) init(t *testing.T, sysNamespaces []string) {
 		MaxRetriesOnStartup: 20,
 		RequestTimeout:      35 * time.Second,
 		RedoLogPath:         redoPath,
+		RedoLogDBType:       ledger.GoLevelDB,
 		UserCacheSizeMBs:    8,
 	}
 
@@ -1127,6 +1128,7 @@ func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedE
 		MaxRetriesOnStartup: 20,
 		RequestTimeout:      35 * time.Second,
 		RedoLogPath:         redoPath,
+		RedoLogDBType:       ledger.GoLevelDB,
 	}
 	dbProvider, err := NewVersionedDBProvider(config, &disabled.Provider{}, nil)
 	require.NoError(t, err)

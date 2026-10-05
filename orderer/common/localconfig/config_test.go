@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/stretchr/testify/require"
 )
@@ -203,6 +204,53 @@ Consensus:
 	require.NoError(t, err, "Failed to decode Consensus to struct")
 	require.Equal(t, "bar", foo.Foo)
 	require.Equal(t, 42, foo.Hello.World)
+}
+
+func TestFileLedgerStoreType(t *testing.T) {
+	t.Run("config without a store type", func(t *testing.T) {
+		name := t.TempDir()
+
+		content := `---
+FileLedger:
+  Location: /var/hyperledger/production/orderer
+`
+
+		f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+		require.NoErrorf(t, err, "Error creating file: %s", err)
+		f.WriteString(content)
+		require.NoError(t, f.Close(), "Error closing file")
+
+		t.Setenv("FABRIC_CFG_PATH", name)
+
+		cc := &configCache{}
+		cfg, err := cc.load()
+		require.NoError(t, err, "Load good config returned unexpected error")
+		require.Equal(t, db.GoLevelDB, cfg.FileLedger.StateDatabase)
+	})
+
+	t.Run("config that still names a store", func(t *testing.T) {
+		// The store type is not part of the configuration format. The
+		// configuration is decoded exactly, so a leftover key is rejected
+		// rather than selecting a store.
+		name := t.TempDir()
+
+		content := `---
+FileLedger:
+  Location: /var/hyperledger/production/orderer
+  stateDatabase: someKVStore
+`
+
+		f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+		require.NoErrorf(t, err, "Error creating file: %s", err)
+		f.WriteString(content)
+		require.NoError(t, f.Close(), "Error closing file")
+
+		t.Setenv("FABRIC_CFG_PATH", name)
+
+		cc := &configCache{}
+		_, err = cc.load()
+		require.ErrorContains(t, err, "has invalid keys: stateDatabase")
+	})
 }
 
 func TestConnectionTimeout(t *testing.T) {

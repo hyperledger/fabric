@@ -285,6 +285,7 @@ func TestSnapshotCouchDBIndexCreation(t *testing.T) {
 			RequestTimeout:      10 * time.Second,
 			InternalQueryLimit:  1000,
 			RedoLogPath:         filepath.Join(conf.RootFSPath, "couchdbRedoLogs"),
+			RedoLogDBType:       ledger.GoLevelDB,
 		}
 
 		destConf := testConfig(t)
@@ -590,7 +591,7 @@ func TestGenerateSnapshotErrors(t *testing.T) {
 		require.Error(t, err)
 		errStackTrace := fmt.Sprintf("%+v", err)
 		require.Contains(t, errStackTrace, "internal leveldb error while obtaining db iterator")
-		require.Contains(t, errStackTrace, "statedb/stateleveldb/stateleveldb.go")
+		require.Contains(t, errStackTrace, "statedb/statekvdb/statekvdb.go")
 	})
 
 	t.Run("renaming to the final snapshot dir returns error", func(t *testing.T) {

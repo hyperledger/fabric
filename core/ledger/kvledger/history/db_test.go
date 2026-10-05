@@ -486,7 +486,7 @@ func TestDrop(t *testing.T) {
 	require.NoError(t, err)
 	testutilVerifyResults(t, historydbQE, "ns1", "key1", []string{})
 	testutilVerifyResults(t, historydbQE, "ns2", "key2", []string{})
-	empty, err := historydb.levelDB.IsEmpty()
+	empty, err := historydb.dbHandle.IsEmpty()
 	require.NoError(t, err)
 	require.True(t, empty)
 

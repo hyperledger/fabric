@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
@@ -101,7 +102,7 @@ func mockCrypto() *mocks.SignerSerializer {
 }
 
 func newFactory(dir string) blockledger.Factory {
-	rlf, err := fileledger.New(dir, &disabled.Provider{})
+	rlf, err := fileledger.New(dir, ledger.GoLevelDB, &disabled.Provider{})
 	if err != nil {
 		panic(err)
 	}
@@ -186,7 +187,7 @@ func TestNewRegistrar(t *testing.T) {
 	t.Run("No chains", func(t *testing.T) {
 		tmpdir := t.TempDir()
 
-		lf, err := fileledger.New(tmpdir, &disabled.Provider{})
+		lf, err := fileledger.New(tmpdir, ledger.GoLevelDB, &disabled.Provider{})
 		require.NoError(t, err)
 
 		consenters := map[string]consensus.Consenter{"etcdraft": &mocks.Consenter{}}

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
@@ -19,7 +20,7 @@ import (
 func TestConfigHistory(t *testing.T) {
 	testDir := t.TempDir()
 
-	mgr, err := NewMgr(testDir)
+	mgr, err := NewMgr(testDir, db.GoLevelDB)
 	require.NoError(t, err)
 	defer mgr.Close()
 

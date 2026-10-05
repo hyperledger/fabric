@@ -19,6 +19,7 @@ import (
 	ordererProtos "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
@@ -40,6 +41,7 @@ func extractLedger(network *nwo.Network, orderer *nwo.Orderer, channelId string)
 			AttrsToIndex: []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNum},
 		},
 		&disabled.Provider{},
+		ledger.GoLevelDB,
 	)
 	Expect(err).NotTo(HaveOccurred())
 	blockStore, err := blockStoreProvider.Open(channelId)

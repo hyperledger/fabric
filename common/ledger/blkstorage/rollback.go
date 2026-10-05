@@ -9,7 +9,8 @@ package blkstorage
 import (
 	"os"
 
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	db "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/util/dbfactory"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -19,15 +20,16 @@ type rollbackMgr struct {
 	ledgerID       string
 	ledgerDir      string
 	indexDir       string
-	dbProvider     *leveldbhelper.Provider
+	dbProvider     db.Provider
 	indexStore     *blockIndex
 	targetBlockNum uint64
-	reusableBatch  *leveldbhelper.UpdateBatch
+	reusableBatch  db.Batch
 }
 
 // Rollback reverts changes made to the block store beyond a given block number.
-func Rollback(blockStorageDir, ledgerID string, targetBlockNum uint64, indexConfig *IndexConfig) error {
-	r, err := newRollbackMgr(blockStorageDir, ledgerID, indexConfig, targetBlockNum)
+// dbType selects the store, an empty or unknown value falls back to goleveldb.
+func Rollback(blockStorageDir, ledgerID string, targetBlockNum uint64, indexConfig *IndexConfig, dbType string) error {
+	r, err := newRollbackMgr(blockStorageDir, ledgerID, indexConfig, targetBlockNum, dbType)
 	if err != nil {
 		return err
 	}
@@ -50,7 +52,7 @@ func Rollback(blockStorageDir, ledgerID string, targetBlockNum uint64, indexConf
 	return nil
 }
 
-func newRollbackMgr(blockStorageDir, ledgerID string, indexConfig *IndexConfig, targetBlockNum uint64) (*rollbackMgr, error) {
+func newRollbackMgr(blockStorageDir, ledgerID string, indexConfig *IndexConfig, targetBlockNum uint64, dbType string) (*rollbackMgr, error) {
 	r := &rollbackMgr{}
 
 	r.ledgerID = ledgerID
@@ -60,12 +62,7 @@ func newRollbackMgr(blockStorageDir, ledgerID string, indexConfig *IndexConfig, 
 
 	r.indexDir = conf.getIndexDir()
 	var err error
-	r.dbProvider, err = leveldbhelper.NewProvider(
-		&leveldbhelper.Conf{
-			DBPath:         r.indexDir,
-			ExpectedFormat: dataFormatVersion(indexConfig),
-		},
-	)
+	r.dbProvider, err = dbfactory.NewProvider(dbType, r.indexDir, dataFormatVersion(indexConfig))
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +142,7 @@ func (r *rollbackMgr) deleteIndexEntriesRange(startBlkNum, endBlkNum uint64) err
 	return r.indexStore.db.WriteBatch(r.reusableBatch, true)
 }
 
-func addIndexEntriesToBeDeleted(batch *leveldbhelper.UpdateBatch, blockInfo *serializedBlockInfo, indexStore *blockIndex) error {
+func addIndexEntriesToBeDeleted(batch db.Batch, blockInfo *serializedBlockInfo, indexStore *blockIndex) error {
 	if indexStore.isAttributeIndexed(IndexableAttrBlockHash) {
 		batch.Delete(constructBlockHashKey(protoutil.BlockHeaderHash(blockInfo.blockHeader)))
 	}

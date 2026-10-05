@@ -11,23 +11,21 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
-// QueryExecutor is a query executor against the LevelDB history DB
+// QueryExecutor is a query executor against the history DB
 type QueryExecutor struct {
-	levelDB    *leveldbhelper.DBHandle
+	dbHandle   commonledger.DBHandle
 	blockStore *blkstorage.BlockStore
 }
 
 // GetHistoryForKey implements method in interface `ledger.HistoryQueryExecutor`
 func (q *QueryExecutor) GetHistoryForKey(namespace string, key string) (commonledger.ResultsIterator, error) {
 	rangeScan := constructRangeScan(namespace, key)
-	dbItr, err := q.levelDB.GetIterator(rangeScan.startKey, rangeScan.endKey)
+	dbItr, err := q.dbHandle.GetIterator(rangeScan.startKey, rangeScan.endKey)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +44,7 @@ type historyScanner struct {
 	rangeScan  *rangeScan
 	namespace  string
 	key        string
-	dbItr      iterator.Iterator
+	dbItr      commonledger.Iterator
 	blockStore *blkstorage.BlockStore
 }
 
