@@ -13,9 +13,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/bccsp/pkcs11"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
 

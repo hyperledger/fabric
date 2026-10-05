@@ -9,7 +9,7 @@ package util
 import (
 	"time"
 
-	"github.com/hyperledger-labs/SmartBFT/pkg/types"
+	"github.com/hyperledger/SmartBFT/pkg/types"
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/smartbft"
 	"github.com/pkg/errors"
 )
