@@ -31,16 +31,16 @@ func TestRollbackKVLedger(t *testing.T) {
 	env.closeLedgerMgmt()
 
 	// Rollback the testLedger (invalid rollback params)
-	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "noLedger", 0)
+	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "noLedger", 0, ledger.GoLevelDB)
 	require.Equal(t, "ledgerID [noLedger] does not exist", err.Error())
-	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "testLedger", bcInfo.GetHeight())
+	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "testLedger", bcInfo.GetHeight(), ledger.GoLevelDB)
 	expectedErr := fmt.Sprintf("target block number [%d] should be less than the biggest block number [%d]",
 		bcInfo.GetHeight(), bcInfo.GetHeight()-1)
 	require.Equal(t, expectedErr, err.Error())
 
 	// Rollback the testLedger (valid rollback params)
 	targetBlockNum := bcInfo.GetHeight() - 3
-	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "testLedger", targetBlockNum)
+	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "testLedger", targetBlockNum, ledger.GoLevelDB)
 	require.NoError(t, err)
 	rebuildable := rebuildableStatedb + rebuildableBookkeeper + rebuildableConfigHistory + rebuildableHistoryDB
 	env.verifyRebuilableDirEmpty(rebuildable)
@@ -114,7 +114,7 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 	env.closeLedgerMgmt()
 
 	// rebuild statedb and bookkeeper
-	err := kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "ledger1", 4)
+	err := kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "ledger1", 4, ledger.GoLevelDB)
 	require.NoError(t, err)
 	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB
 	env.verifyRebuilableDirEmpty(rebuildable)
@@ -166,6 +166,6 @@ func TestRollbackKVLedgerErrorCases(t *testing.T) {
 	env.initLedgerMgmt()
 	env.closeLedgerMgmt()
 
-	err := kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "non-existing-ledger", 4)
+	err := kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "non-existing-ledger", 4, ledger.GoLevelDB)
 	require.EqualError(t, err, "ledgerID [non-existing-ledger] does not exist")
 }

@@ -1069,7 +1069,7 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 
 	committer := &mocks.Committer{}
 	tempdir := t.TempDir()
-	storeProvider, err := transientstore.NewStoreProvider(tempdir)
+	storeProvider, err := transientstore.NewStoreProvider(tempdir, ledger.GoLevelDB)
 	if err != nil {
 		t.Fatalf("Failed to open store, got err %s", err)
 		return

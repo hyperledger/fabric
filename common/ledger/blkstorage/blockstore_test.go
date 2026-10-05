@@ -73,7 +73,7 @@ func TestTxIDIndexErrorPropagations(t *testing.T) {
 		require.Contains(t, err.Error(), expectedErrMsg)
 	}
 
-	env.provider.leveldbProvider.Close()
+	env.provider.dbProvider.Close()
 	expectedErrMsg = "error while trying to retrieve transaction info by TXID [junkTxID]:"
 	for _, f := range txIDBasedFunctions {
 		err := f()

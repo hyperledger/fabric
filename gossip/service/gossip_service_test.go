@@ -70,7 +70,7 @@ func newTransientStore(t *testing.T) *testTransientStore {
 	s := &testTransientStore{}
 	var err error
 	s.tempdir = t.TempDir()
-	s.storeProvider, err = transientstore.NewStoreProvider(s.tempdir)
+	s.storeProvider, err = transientstore.NewStoreProvider(s.tempdir, ledger.GoLevelDB)
 	if err != nil {
 		t.Fatalf("Failed to open store, got err %s", err)
 		return s

@@ -20,10 +20,11 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	dbpkg "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/common/ledger/util/dbfactory"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
@@ -145,10 +146,10 @@ func TestGetLedger(t *testing.T) {
 	// close provider to trigger db error
 	provider.Close()
 	_, err = provider.idStore.getActiveLedgerIDs()
-	require.EqualError(t, err, "error getting ledger ids from idStore: leveldb: closed")
+	require.EqualError(t, err, "leveldb: closed")
 
 	_, err = provider.idStore.getActiveAndInactiveLedgerIDs()
-	require.EqualError(t, err, "error getting ledger ids from idStore: leveldb: closed")
+	require.EqualError(t, err, "leveldb: closed")
 }
 
 func TestLedgerMetataDataUnmarshalError(t *testing.T) {
@@ -200,7 +201,7 @@ func TestUpgradeIDStoreFormatDBError(t *testing.T) {
 func TestCheckUpgradeEligibilityV1x(t *testing.T) {
 	conf := testConfig(t)
 	dbPath := LedgerProviderPath(conf.RootFSPath)
-	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
+	db := dbfactory.CreateDB(dbpkg.GoLevelDB, dbPath, "")
 	idStore := &idStore{db, dbPath}
 	db.Open()
 	defer db.Close()
@@ -217,7 +218,7 @@ func TestCheckUpgradeEligibilityV1x(t *testing.T) {
 func TestCheckUpgradeEligibilityCurrentVersion(t *testing.T) {
 	conf := testConfig(t)
 	dbPath := LedgerProviderPath(conf.RootFSPath)
-	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
+	db := dbfactory.CreateDB(dbpkg.GoLevelDB, dbPath, "")
 	idStore := &idStore{db, dbPath}
 	db.Open()
 	defer db.Close()
@@ -233,7 +234,7 @@ func TestCheckUpgradeEligibilityCurrentVersion(t *testing.T) {
 func TestCheckUpgradeEligibilityBadFormat(t *testing.T) {
 	conf := testConfig(t)
 	dbPath := LedgerProviderPath(conf.RootFSPath)
-	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
+	db := dbfactory.CreateDB(dbpkg.GoLevelDB, dbPath, "")
 	idStore := &idStore{db, dbPath}
 	db.Open()
 	defer db.Close()
@@ -254,7 +255,7 @@ func TestCheckUpgradeEligibilityBadFormat(t *testing.T) {
 func TestCheckUpgradeEligibilityEmptyDB(t *testing.T) {
 	conf := testConfig(t)
 	dbPath := LedgerProviderPath(conf.RootFSPath)
-	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
+	db := dbfactory.CreateDB(dbpkg.GoLevelDB, dbPath, "")
 	idStore := &idStore{db, dbPath}
 	db.Open()
 	defer db.Close()
@@ -429,8 +430,10 @@ func TestLedgerBackup(t *testing.T) {
 
 	// create and populate a ledger in the original environment
 	origConf := &ledger.Config{
-		RootFSPath:    originalPath,
-		StateDBConfig: &ledger.StateDBConfig{},
+		RootFSPath: originalPath,
+		StateDBConfig: &ledger.StateDBConfig{
+			StateDatabase: ledger.GoLevelDB,
+		},
 		PrivateDataConfig: &ledger.PrivateDataConfig{
 			MaxBatchSize:                        5000,
 			BatchesInterval:                     1000,
@@ -483,8 +486,10 @@ func TestLedgerBackup(t *testing.T) {
 
 	// Instantiate the ledger from restore environment and this should behave exactly as it would have in the original environment
 	restoreConf := &ledger.Config{
-		RootFSPath:    restorePath,
-		StateDBConfig: &ledger.StateDBConfig{},
+		RootFSPath: restorePath,
+		StateDBConfig: &ledger.StateDBConfig{
+			StateDatabase: ledger.GoLevelDB,
+		},
 		PrivateDataConfig: &ledger.PrivateDataConfig{
 			MaxBatchSize:                        5000,
 			BatchesInterval:                     1000,
@@ -586,8 +591,10 @@ func constructTestLedger(t *testing.T, provider *Provider, sequenceID int) strin
 func testConfig(t *testing.T) (conf *ledger.Config) {
 	path := t.TempDir()
 	conf = &ledger.Config{
-		RootFSPath:    path,
-		StateDBConfig: &ledger.StateDBConfig{},
+		RootFSPath: path,
+		StateDBConfig: &ledger.StateDBConfig{
+			StateDatabase: ledger.GoLevelDB,
+		},
 		PrivateDataConfig: &ledger.PrivateDataConfig{
 			MaxBatchSize:                        5000,
 			BatchesInterval:                     1000,

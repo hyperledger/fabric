@@ -9,14 +9,14 @@ package kvledger
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/common/ledger/util/dbfactory"
 	"github.com/stretchr/testify/require"
 )
 
 // UpgradeIDStoreFormat updates ledger idStore to current format
-func UpgradeIDStoreFormat(t *testing.T, rootFSPath string) {
+func UpgradeIDStoreFormat(t *testing.T, rootFSPath, dbType string) {
 	dbPath := LedgerProviderPath(rootFSPath)
-	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
+	db := dbfactory.CreateDB(dbType, dbPath, "")
 	db.Open()
 	defer db.Close()
 

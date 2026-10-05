@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -49,7 +50,7 @@ func newTestEnvWithMetricsProvider(t testing.TB, conf *Conf, metricsProvider met
 
 func newTestEnvSelectiveIndexing(t testing.TB, conf *Conf, attrsToIndex []IndexableAttr, metricsProvider metrics.Provider) *testEnv {
 	indexConfig := &IndexConfig{AttrsToIndex: attrsToIndex}
-	p, err := NewProvider(conf, indexConfig, metricsProvider)
+	p, err := NewProvider(conf, indexConfig, metricsProvider, db.GoLevelDB)
 	require.NoError(t, err)
 	return &testEnv{t, p}
 }

@@ -145,6 +145,9 @@ type Profile struct {
 	SmartBFT            *SmartBFT `yaml:"smart_bft,omitempty"`
 }
 
+// GoLevelDB is the value the core template writes to ledger.state.stateDatabase.
+const GoLevelDB = "goleveldb"
+
 // Network holds information about a fabric network.
 type Network struct {
 	RootDir                  string
@@ -165,6 +168,7 @@ type Network struct {
 	UseWriteBatch            bool
 	UseGetMultipleKeys       bool
 	CCEnvVersion             string
+	StateStateDatabase       string
 
 	PortsByOrdererID map[string]Ports
 	PortsByPeerID    map[string]Ports
@@ -201,15 +205,16 @@ func New(c *Config, rootDir string, dockerClient dcli.APIClient, startPort int, 
 		UseGetMultipleKeys:       true,
 		CCEnvVersion:             "$(PROJECT_VERSION)",
 
-		Organizations:  c.Organizations,
-		Consensus:      c.Consensus,
-		Orderers:       c.Orderers,
-		Peers:          c.Peers,
-		Channels:       c.Channels,
-		Profiles:       c.Profiles,
-		Templates:      c.Templates,
-		TLSEnabled:     true, // Set TLS enabled as true for default
-		GatewayEnabled: true, // Set Gateway enabled as true for default
+		Organizations:      c.Organizations,
+		Consensus:          c.Consensus,
+		Orderers:           c.Orderers,
+		Peers:              c.Peers,
+		Channels:           c.Channels,
+		Profiles:           c.Profiles,
+		Templates:          c.Templates,
+		TLSEnabled:         true, // Set TLS enabled as true for default
+		GatewayEnabled:     true, // Set Gateway enabled as true for default
+		StateStateDatabase: GoLevelDB,
 
 		mutex:        &sync.Mutex{},
 		lastExecuted: make(map[string]time.Time),

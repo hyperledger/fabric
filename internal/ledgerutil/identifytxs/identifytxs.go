@@ -36,7 +36,7 @@ const (
 // Tool was originally created to map list of divergent records from ledgerutil compare output to their respective transactions
 // to identify list of transactions that have potentially caused divergent state
 // Returns two block numbers that represent the starting and ending blocks of the transaction search range
-func IdentifyTxs(recPath string, fsPath string, outputDirLoc string) (uint64, uint64, error) {
+func IdentifyTxs(recPath string, fsPath string, dbType string, outputDirLoc string) (uint64, uint64, error) {
 	// Read diffRecord list from json
 	var records *models.DiffRecordList
 	records, err := jsonrw.LoadRecords(recPath)
@@ -66,7 +66,7 @@ func IdentifyTxs(recPath string, fsPath string, outputDirLoc string) (uint64, ui
 	}
 
 	// Set up block store and block iterator in preparation for traversal
-	blockStoreProvider, err := getBlockStoreProvider(fsPath)
+	blockStoreProvider, err := getBlockStoreProvider(fsPath, dbType)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -250,7 +250,7 @@ func generateRecordsMap(records []*models.DiffRecord, outputDirPath string) (ckm
 }
 
 // Get a default block store provider to access the peer's block store
-func getBlockStoreProvider(fsPath string) (*blkstorage.BlockStoreProvider, error) {
+func getBlockStoreProvider(fsPath string, dbType string) (*blkstorage.BlockStoreProvider, error) {
 	// Format path to block store
 	blockStorePath := kvledger.BlockStorePath(filepath.Join(fsPath, ledgersDataDirName))
 	isEmpty, err := fileutil.DirEmpty(blockStorePath)
@@ -272,7 +272,7 @@ func getBlockStoreProvider(fsPath string) (*blkstorage.BlockStoreProvider, error
 	}
 	metricsProvider := &disabled.Provider{}
 	// Create new block store provider
-	blockStoreProvider, err := blkstorage.NewProvider(conf, indexConfig, metricsProvider)
+	blockStoreProvider, err := blkstorage.NewProvider(conf, indexConfig, metricsProvider, dbType)
 	if err != nil {
 		return nil, err
 	}

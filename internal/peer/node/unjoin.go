@@ -49,11 +49,12 @@ func unjoinChannel(channelID string) error {
 	// By removing the transient storage prior to deleting the ledger, a crash may be recovered by re-running
 	// the peer unjoin.
 	transientStoragePath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "transientstore")
-	if err := transientstore.Drop(transientStoragePath, channelID); err != nil {
+
+	config := ledgerConfig()
+	if err := transientstore.Drop(transientStoragePath, channelID, config.StateDatabase); err != nil {
 		return err
 	}
 
-	config := ledgerConfig()
 	if err := kvledger.UnjoinChannel(config, channelID); err != nil {
 		return err
 	}

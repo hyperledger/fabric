@@ -12,6 +12,7 @@ import (
 
 	bccsp "github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/viperutil"
 	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
@@ -115,7 +116,11 @@ type Profile struct {
 // FileLedger contains configuration for the file-based ledger.
 type FileLedger struct {
 	Location string
-	Prefix   string // For compatibility only. This setting is no longer supported.
+	// StateDatabase is the type of the KV store backing the file ledger. It is
+	// not read from the configuration file: the store cannot be chosen, so the
+	// type is set while the configuration is initialized.
+	StateDatabase string `mapstructure:"-"`
+	Prefix        string // For compatibility only. This setting is no longer supported.
 }
 
 // Debug contains configuration for the orderer's debug parameters.
@@ -204,7 +209,8 @@ var Defaults = TopLevel{
 		},
 	},
 	FileLedger: FileLedger{
-		Location: "/var/hyperledger/production/orderer",
+		Location:      "/var/hyperledger/production/orderer",
+		StateDatabase: db.GoLevelDB,
 	},
 	Debug: Debug{
 		BroadcastTraceDir: "",
@@ -369,6 +375,8 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.Throttling.InactivityTimeout == 0:
 			logger.Infof("General.Throttling.InactivityTimeout is unset, setting to %v", Defaults.General.Throttling.InactivityTimeout)
 			c.General.Throttling.InactivityTimeout = Defaults.General.Throttling.InactivityTimeout
+		case c.FileLedger.StateDatabase == "":
+			c.FileLedger.StateDatabase = Defaults.FileLedger.StateDatabase
 		default:
 			return
 		}

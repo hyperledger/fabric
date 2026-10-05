@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
@@ -33,7 +34,7 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 	require.NoError(t, testutil.CopyDir("testdata/v11_v12/ledgersData/pvtdataStore", testWorkingDir, false))
 	storePath := filepath.Join(testWorkingDir, "pvtdataStore")
 
-	require.NoError(t, CheckAndConstructHashedIndex(storePath, []string{"ch1"}))
+	require.NoError(t, CheckAndConstructHashedIndex(storePath, []string{"ch1"}, db.GoLevelDB))
 
 	pvtdataConf := pvtDataConf()
 	pvtdataConf.StorePath = storePath
@@ -220,7 +221,7 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 	// keep this as last test as this closes the storeProvider
 	t.Run("hashed-indexs-construction-is-done-only-once", func(t *testing.T) {
 		storeProvider.Close()
-		err := constructHashedIndex(storePath, []string{"ch1"})
+		err := constructHashedIndex(db.GoLevelDB, storePath, []string{"ch1"})
 		require.ErrorContains(t, err, "data format = [2.5], expected format = []")
 	})
 }

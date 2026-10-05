@@ -8,14 +8,14 @@ package kvledger
 
 import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/common/ledger/util/dbfactory"
 	"github.com/pkg/errors"
 )
 
-// ResetAllKVLedgers resets all ledger to the genesis block.
-func ResetAllKVLedgers(rootFSPath string) error {
+// ResetAllKVLedgers resets all ledgers to the genesis block with the given DB type.
+func ResetAllKVLedgers(rootFSPath, stateDBType string) error {
 	fileLockPath := fileLockPath(rootFSPath)
-	fileLock := leveldbhelper.NewFileLock(fileLockPath)
+	fileLock := dbfactory.NewFileLock(stateDBType, fileLockPath)
 	if err := fileLock.Lock(); err != nil {
 		return errors.Wrap(err, "as another peer node command is executing,"+
 			" wait for that command to complete its execution or terminate it before retrying")

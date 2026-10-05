@@ -30,9 +30,9 @@ type TestEnv struct {
 }
 
 // NewTestEnv construct a TestEnv for testing
-func NewTestEnv(t testing.TB) *TestEnv {
+func NewTestEnv(t testing.TB, dbType string) *TestEnv {
 	dbPath := t.TempDir()
-	provider, err := NewProvider(dbPath)
+	provider, err := NewProvider(dbPath, dbType)
 	require.NoError(t, err)
 	return &TestEnv{t, provider, dbPath}
 }

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/stretchr/testify/require"
@@ -152,7 +153,7 @@ func TestCouchdbRedoLogger(t *testing.T) {
 
 func redologTestSetup(t *testing.T) (p *redoLoggerProvider, cleanup func()) {
 	dbPath := t.TempDir()
-	p, err := newRedoLoggerProvider(dbPath)
+	p, err := newRedoLoggerProvider(dbPath, ledger.GoLevelDB)
 	require.NoError(t, err)
 	cleanup = func() {
 		p.close()

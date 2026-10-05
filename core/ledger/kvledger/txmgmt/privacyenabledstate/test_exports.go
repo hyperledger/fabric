@@ -34,7 +34,7 @@ type TestEnv interface {
 // For example, to skip CouchDB tests, remove &CouchDBLockBasedEnv{}
 var testEnvs = []TestEnv{&LevelDBTestEnv{}, &CouchDBTestEnv{}}
 
-///////////// LevelDB Environment //////////////
+// /////////// LevelDB Environment //////////////
 
 // LevelDBTestEnv implements TestEnv interface for leveldb based storage
 type LevelDBTestEnv struct {
@@ -47,13 +47,15 @@ type LevelDBTestEnv struct {
 // Init implements corresponding function from interface TestEnv
 func (env *LevelDBTestEnv) Init(t testing.TB) {
 	dbPath := t.TempDir()
-	env.bookkeeperTestEnv = bookkeeping.NewTestEnv(t)
+	env.bookkeeperTestEnv = bookkeeping.NewTestEnv(t, ledger.GoLevelDB)
 	dbProvider, err := NewDBProvider(
 		env.bookkeeperTestEnv.TestProvider,
 		&disabled.Provider{},
 		&mock.HealthCheckRegistry{},
 		&StateDBConfig{
-			&ledger.StateDBConfig{},
+			&ledger.StateDBConfig{
+				StateDatabase: ledger.GoLevelDB,
+			},
 			dbPath,
 		},
 		[]string{"lscc", "_lifecycle"},
@@ -97,7 +99,7 @@ func (env *LevelDBTestEnv) Cleanup() {
 	env.bookkeeperTestEnv.Cleanup()
 }
 
-///////////// CouchDB Environment //////////////
+// /////////// CouchDB Environment //////////////
 
 // CouchDBTestEnv implements TestEnv interface for couchdb based storage
 type CouchDBTestEnv struct {
@@ -145,12 +147,13 @@ func (env *CouchDBTestEnv) Init(t testing.TB) {
 				InternalQueryLimit:  1000,
 				MaxBatchUpdateSize:  1000,
 				RedoLogPath:         redoPath,
+				RedoLogDBType:       ledger.GoLevelDB,
 			},
 		},
 		LevelDBPath: "",
 	}
 
-	env.bookkeeperTestEnv = bookkeeping.NewTestEnv(t)
+	env.bookkeeperTestEnv = bookkeeping.NewTestEnv(t, ledger.GoLevelDB)
 	dbProvider, err := NewDBProvider(
 		env.bookkeeperTestEnv.TestProvider,
 		&disabled.Provider{},

@@ -31,6 +31,6 @@ var pauseChannelCmd = &cobra.Command{
 		}
 
 		config := ledgerConfig()
-		return kvledger.PauseChannel(config.RootFSPath, channelID)
+		return kvledger.PauseChannel(config.RootFSPath, config.StateDatabase, channelID)
 	},
 }

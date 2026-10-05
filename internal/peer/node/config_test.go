@@ -15,6 +15,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// The choice of the state database is resolved while the configuration is
+// parsed, so an unset choice does not travel to the ledger as an empty type.
+func TestLedgerConfigUnsetStateDatabase(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	viper.Set("peer.fileSystemPath", "/peerfs")
+
+	conf := ledgerConfig()
+
+	require.Equal(t, ledger.GoLevelDB, conf.StateDatabase)
+	require.Equal(t, ledger.GoLevelDB, conf.StateDBConfig.StateDatabase)
+}
+
 func TestLedgerConfig(t *testing.T) {
 	defer viper.Reset()
 	tests := []struct {
@@ -23,15 +36,48 @@ func TestLedgerConfig(t *testing.T) {
 		expected *ledger.Config
 	}{
 		{
-			name: "goleveldb",
+			name: ledger.GoLevelDB,
 			config: map[string]any{
 				"peer.fileSystemPath":        "/peerfs",
-				"ledger.state.stateDatabase": "goleveldb",
+				"ledger.state.stateDatabase": ledger.GoLevelDB,
 			},
 			expected: &ledger.Config{
-				RootFSPath: "/peerfs/ledgersData",
+				RootFSPath:    "/peerfs/ledgersData",
+				StateDatabase: ledger.GoLevelDB,
 				StateDBConfig: &ledger.StateDBConfig{
-					StateDatabase: "goleveldb",
+					StateDatabase: ledger.GoLevelDB,
+					CouchDB:       &ledger.CouchDBConfig{},
+				},
+				PrivateDataConfig: &ledger.PrivateDataConfig{
+					MaxBatchSize:                        5000,
+					BatchesInterval:                     1000,
+					PurgeInterval:                       100,
+					DeprioritizedDataReconcilerInterval: 60 * time.Minute,
+					PurgedKeyAuditLogging:               true,
+				},
+				HistoryDBConfig: &ledger.HistoryDBConfig{
+					Enabled: false,
+				},
+				SnapshotsConfig: &ledger.SnapshotsConfig{
+					RootDir: "/peerfs/snapshots",
+				},
+			},
+		},
+		{
+			// The store type is no longer configurable, so a configuration
+			// written by an operator that still names a store must not change
+			// the type of the internal KV stores.
+			name: "store type is not configurable",
+			config: map[string]any{
+				"peer.fileSystemPath":        "/peerfs",
+				"ledger.stateDatabase":       "someKVStore",
+				"ledger.state.stateDatabase": ledger.GoLevelDB,
+			},
+			expected: &ledger.Config{
+				RootFSPath:    "/peerfs/ledgersData",
+				StateDatabase: ledger.GoLevelDB,
+				StateDBConfig: &ledger.StateDBConfig{
+					StateDatabase: ledger.GoLevelDB,
 					CouchDB:       &ledger.CouchDBConfig{},
 				},
 				PrivateDataConfig: &ledger.PrivateDataConfig{
@@ -64,7 +110,8 @@ func TestLedgerConfig(t *testing.T) {
 				"ledger.state.couchDBConfig.cacheSize":             64,
 			},
 			expected: &ledger.Config{
-				RootFSPath: "/peerfs/ledgersData",
+				RootFSPath:    "/peerfs/ledgersData",
+				StateDatabase: ledger.GoLevelDB,
 				StateDBConfig: &ledger.StateDBConfig{
 					StateDatabase: "CouchDB",
 					CouchDB: &ledger.CouchDBConfig{
@@ -78,6 +125,7 @@ func TestLedgerConfig(t *testing.T) {
 						MaxBatchUpdateSize:    500,
 						CreateGlobalChangesDB: true,
 						RedoLogPath:           "/peerfs/ledgersData/couchdbRedoLogs",
+						RedoLogDBType:         ledger.GoLevelDB,
 						UserCacheSizeMBs:      64,
 					},
 				},
@@ -120,7 +168,8 @@ func TestLedgerConfig(t *testing.T) {
 				"ledger.snapshots.rootDir":                                "/peerfs/customLocationForsnapshots",
 			},
 			expected: &ledger.Config{
-				RootFSPath: "/peerfs/ledgersData",
+				RootFSPath:    "/peerfs/ledgersData",
+				StateDatabase: ledger.GoLevelDB,
 				StateDBConfig: &ledger.StateDBConfig{
 					StateDatabase: "CouchDB",
 					CouchDB: &ledger.CouchDBConfig{
@@ -134,6 +183,7 @@ func TestLedgerConfig(t *testing.T) {
 						MaxBatchUpdateSize:    600,
 						CreateGlobalChangesDB: true,
 						RedoLogPath:           "/peerfs/ledgersData/couchdbRedoLogs",
+						RedoLogDBType:         ledger.GoLevelDB,
 						UserCacheSizeMBs:      64,
 					},
 				},

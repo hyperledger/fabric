@@ -215,6 +215,7 @@ func openBlockStorage(t *testing.T, channelName string, basePath string) (*blkst
 		blkstorage.NewConf(basePath, maxBlockFileSize),
 		&blkstorage.IndexConfig{AttrsToIndex: attrsToIndex},
 		&disabled.Provider{},
+		ledger.GoLevelDB,
 	)
 	require.NoError(t, err)
 	blkStore, err := blkStoreProvider.Open(channelName)

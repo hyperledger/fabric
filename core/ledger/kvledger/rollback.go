@@ -8,14 +8,14 @@ package kvledger
 
 import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/common/ledger/util/dbfactory"
 	"github.com/pkg/errors"
 )
 
 // RollbackKVLedger rollbacks a ledger to a specified block number
-func RollbackKVLedger(rootFSPath, ledgerID string, blockNum uint64) error {
+func RollbackKVLedger(rootFSPath, ledgerID string, blockNum uint64, dbType string) error {
 	fileLockPath := fileLockPath(rootFSPath)
-	fileLock := leveldbhelper.NewFileLock(fileLockPath)
+	fileLock := dbfactory.NewFileLock(dbType, fileLockPath)
 	if err := fileLock.Lock(); err != nil {
 		return errors.Wrap(err, "as another peer node command is executing,"+
 			" wait for that command to complete its execution or terminate it before retrying")
@@ -42,7 +42,7 @@ func RollbackKVLedger(rootFSPath, ledgerID string, blockNum uint64) error {
 
 	logger.Info("Rolling back ledger store")
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
-	if err := blkstorage.Rollback(blockstorePath, ledgerID, blockNum, indexConfig); err != nil {
+	if err = blkstorage.Rollback(blockstorePath, ledgerID, blockNum, indexConfig, dbType); err != nil {
 		return err
 	}
 	logger.Infof("The channel [%s] has been successfully rolled back to the block number [%d]", ledgerID, blockNum)

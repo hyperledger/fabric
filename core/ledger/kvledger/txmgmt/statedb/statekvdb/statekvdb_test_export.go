@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package stateleveldb
+package statekvdb
 
 import (
 	"testing"
@@ -20,10 +20,10 @@ type TestVDBEnv struct {
 }
 
 // NewTestVDBEnv instantiates and new level db backed TestVDB
-func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
+func NewTestVDBEnv(t testing.TB, dbType string) *TestVDBEnv {
 	t.Logf("Creating new TestVDBEnv")
 	dbPath := t.TempDir()
-	dbProvider, err := NewVersionedDBProvider(dbPath)
+	dbProvider, err := NewVersionedDBProvider(dbPath, dbType)
 	require.NoError(t, err)
 	return &TestVDBEnv{t, dbProvider, dbPath}
 }

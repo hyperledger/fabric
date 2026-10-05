@@ -291,8 +291,10 @@ func serve(args []string) error {
 		cs.SetClientCertificate(clientCert)
 	}
 
+	ledgerConf := ledgerConfig()
 	transientStoreProvider, err := transientstore.NewStoreProvider(
 		filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "transientstore"),
+		ledgerConf.StateDatabase,
 	)
 	if err != nil {
 		return errors.WithMessage(err, "failed to open transient store")
@@ -453,7 +455,7 @@ func serve(args []string) error {
 			MetricsProvider:                 metricsProvider,
 			HealthCheckRegistry:             opsSystem,
 			StateListeners:                  []ledger.StateListener{lifecycleCache},
-			Config:                          ledgerConfig(),
+			Config:                          ledgerConf,
 			HashProvider:                    factory.GetDefault(),
 			EbMetadataProvider:              ebMetadataProvider,
 		},
@@ -484,7 +486,7 @@ func serve(args []string) error {
 
 	peerInstance.GossipService = gossipService
 
-	if err := lifecycleCache.InitializeLocalChaincodes(); err != nil {
+	if err = lifecycleCache.InitializeLocalChaincodes(); err != nil {
 		return errors.WithMessage(err, "could not initialize local chaincodes")
 	}
 

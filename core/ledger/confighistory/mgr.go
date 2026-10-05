@@ -40,8 +40,8 @@ type Mgr struct {
 }
 
 // NewMgr constructs an instance that implements interface `Mgr`
-func NewMgr(dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider) (*Mgr, error) {
-	p, err := newDBProvider(dbPath)
+func NewMgr(dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider, dbType string) (*Mgr, error) {
+	p, err := newDBProvider(dbPath, dbType)
 	if err != nil {
 		return nil, err
 	}

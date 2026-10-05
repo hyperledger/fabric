@@ -100,6 +100,7 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 	require.NoError(t, err)
 	transientStoreProvider, err := transientstore.NewStoreProvider(
 		filepath.Join(tempdir, "transientstore"),
+		ledger.GoLevelDB,
 	)
 	require.NoError(t, err)
 	peerInstance := &Peer{

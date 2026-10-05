@@ -63,6 +63,18 @@ linters:
               desc: "use 'context' from stdlib instead"
             - pkg: "github.com/gogo/protobuf"
               desc: "use 'github.com/golang/protobuf' instead"
+        leveldb-only-in-helper:
+          files:
+            - "!**/common/ledger/util/leveldbhelper/*.go"
+          deny:
+            - pkg: "github.com/syndtr/goleveldb/leveldb"
+              desc: "leveldb packages may only be imported by the 'common/ledger/util/leveldbhelper' package"
+        leveldbhelper-only-in-dbfactory:
+          files:
+            - "!**/common/ledger/util/dbfactory/*.go"
+          deny:
+            - pkg: "github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+              desc: "the 'leveldbhelper' package may only be imported by the 'common/ledger/util/dbfactory' package"
     govet:
       settings:
         printf:

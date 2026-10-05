@@ -99,14 +99,16 @@ func (f *fileLedgerFactory) Close() {
 	f.blkstorageProvider.Close()
 }
 
-// New creates a new ledger factory
-func New(directory string, metricsProvider metrics.Provider) (blockledger.Factory, error) {
+// New creates a new ledger factory.
+// dbType selects the store, an empty or unknown value falls back to goleveldb.
+func New(directory string, dbType string, metricsProvider metrics.Provider) (blockledger.Factory, error) {
 	p, err := blkstorage.NewProvider(
 		blkstorage.NewConf(directory, -1),
 		&blkstorage.IndexConfig{
 			AttrsToIndex: []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNum},
 		},
 		metricsProvider,
+		dbType,
 	)
 	if err != nil {
 		return nil, err

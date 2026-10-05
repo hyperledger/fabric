@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package stateleveldb
+package statekvdb
 
 import (
 	"github.com/hyperledger/fabric/core/ledger/internal/version"

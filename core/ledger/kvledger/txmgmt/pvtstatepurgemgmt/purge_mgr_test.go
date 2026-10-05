@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
@@ -292,7 +293,7 @@ type testHelper struct {
 
 func (h *testHelper) init(t *testing.T, ledgerid string, btlPolicy pvtdatapolicy.BTLPolicy, dbEnv privacyenabledstate.TestEnv) {
 	h.t = t
-	h.bookkeepingEnv = bookkeeping.NewTestEnv(t)
+	h.bookkeepingEnv = bookkeeping.NewTestEnv(t, ledger.GoLevelDB)
 	dbEnv.Init(t)
 	h.dbEnv = dbEnv
 	h.db = h.dbEnv.GetDBHandle(ledgerid)

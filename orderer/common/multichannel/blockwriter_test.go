@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -76,7 +77,7 @@ func TestCreateBlock(t *testing.T) {
 func TestBlockSignature(t *testing.T) {
 	dir := t.TempDir()
 
-	rlf, err := fileledger.New(dir, &disabled.Provider{})
+	rlf, err := fileledger.New(dir, ledger.GoLevelDB, &disabled.Provider{})
 	require.NoError(t, err)
 
 	l, err := rlf.GetOrCreate("mychannel")

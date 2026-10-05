@@ -4,12 +4,13 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package stateleveldb
+package statekvdb
 
 import (
 	"errors"
 	"testing"
 
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
@@ -17,25 +18,25 @@ import (
 )
 
 func TestBasicRW(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 	commontests.TestBasicRW(t, env.DBProvider)
 }
 
 func TestMultiDBBasicRW(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 	commontests.TestMultiDBBasicRW(t, env.DBProvider)
 }
 
 func TestDeletes(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 	commontests.TestDeletes(t, env.DBProvider)
 }
 
 func TestIterator(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 	commontests.TestIterator(t, env.DBProvider)
 	t.Run("test-iter-error-path", func(t *testing.T) {
@@ -63,7 +64,7 @@ func testDataKeyEncoding(t *testing.T, dbName string, ns string, key string) {
 
 // TestQueryOnLevelDB tests queries on levelDB.
 func TestQueryOnLevelDB(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 	db, err := env.DBProvider.GetDBHandle("testquery", nil)
 	require.NoError(t, err)
@@ -85,19 +86,19 @@ func TestQueryOnLevelDB(t *testing.T) {
 }
 
 func TestGetStateMultipleKeys(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 	commontests.TestGetStateMultipleKeys(t, env.DBProvider)
 }
 
 func TestGetVersion(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 	commontests.TestGetVersion(t, env.DBProvider)
 }
 
 func TestUtilityFunctions(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testutilityfunctions", nil)
@@ -111,25 +112,25 @@ func TestUtilityFunctions(t *testing.T) {
 }
 
 func TestValueAndMetadataWrites(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 	commontests.TestValueAndMetadataWrites(t, env.DBProvider)
 }
 
 func TestPaginatedRangeQuery(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 	commontests.TestPaginatedRangeQuery(t, env.DBProvider)
 }
 
 func TestRangeQuerySpecialCharacters(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 	commontests.TestRangeQuerySpecialCharacters(t, env.DBProvider)
 }
 
 func TestApplyUpdatesWithNilHeight(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 	commontests.TestApplyUpdatesWithNilHeight(t, env.DBProvider)
 }
@@ -137,7 +138,7 @@ func TestApplyUpdatesWithNilHeight(t *testing.T) {
 func TestDataExportImport(t *testing.T) {
 	// smaller batch size for testing to cover the boundary case of writing the final batch
 	maxDataImportBatchSize = 10
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 	commontests.TestDataExportImport(
 		t,
@@ -152,7 +153,7 @@ func TestFullScanIteratorErrorPropagation(t *testing.T) {
 	var vdb *versionedDB
 
 	initEnv := func() {
-		env = NewTestVDBEnv(t)
+		env = NewTestVDBEnv(t, db.GoLevelDB)
 		vdbProvider = env.DBProvider
 		db, err := vdbProvider.GetDBHandle("TestFullScanIteratorErrorPropagation", nil)
 		require.NoError(t, err)
@@ -198,7 +199,7 @@ func TestImportStateErrorPropagation(t *testing.T) {
 	var vdbProvider *VersionedDBProvider
 
 	initEnv := func() {
-		env = NewTestVDBEnv(t)
+		env = NewTestVDBEnv(t, db.GoLevelDB)
 		vdbProvider = env.DBProvider
 		cleanup = func() {
 			env.Cleanup()
@@ -245,7 +246,7 @@ func TestImportStateErrorPropagation(t *testing.T) {
 }
 
 func TestDrop(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 
 	checkDBsAfterDropFunc := func(channelName string) {
@@ -258,7 +259,7 @@ func TestDrop(t *testing.T) {
 }
 
 func TestDropErrorPath(t *testing.T) {
-	env := NewTestVDBEnv(t)
+	env := NewTestVDBEnv(t, db.GoLevelDB)
 	defer env.Cleanup()
 
 	_, err := env.DBProvider.GetDBHandle("testdroperror", nil)

@@ -14,9 +14,9 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/common/ledger/util"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protowire"
@@ -52,10 +52,10 @@ type blockIdxInfo struct {
 
 type blockIndex struct {
 	indexItemsMap map[IndexableAttr]bool
-	db            *leveldbhelper.DBHandle
+	db            db.DBHandle
 }
 
-func newBlockIndex(indexConfig *IndexConfig, db *leveldbhelper.DBHandle) (*blockIndex, error) {
+func newBlockIndex(indexConfig *IndexConfig, db db.DBHandle) (*blockIndex, error) {
 	indexItems := indexConfig.AttrsToIndex
 	logger.Debugf("newBlockIndex() - indexItems:[%s]", indexItems)
 	indexItemsMap := make(map[IndexableAttr]bool)
@@ -361,7 +361,7 @@ func (index *blockIndex) exportUniqueTxIDs(dir string, newHashFunc snapshot.NewH
 func importTxIDsFromSnapshot(
 	snapshotDir string,
 	lastBlockNumInSnapshot uint64,
-	db *leveldbhelper.DBHandle,
+	db db.DBHandle,
 ) error {
 	txIDsMetadata, err := snapshot.OpenFile(filepath.Join(snapshotDir, snapshotMetadataFileName), snapshotFileFormat)
 	if err != nil {

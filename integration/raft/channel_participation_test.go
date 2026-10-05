@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
+	"github.com/hyperledger/fabric/core/ledger"
 	conftx "github.com/hyperledger/fabric/integration/configtx"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/ordererclient"
@@ -615,7 +616,7 @@ var _ = Describe("ChannelParticipation", func() {
 
 				// create the ledger and add the genesis block
 				ledgerDir := filepath.Join(network.OrdererDir(orderer3), "system")
-				lf, err := fileledger.New(ledgerDir, &disabled.Provider{})
+				lf, err := fileledger.New(ledgerDir, ledger.GoLevelDB, &disabled.Provider{})
 				Expect(err).NotTo(HaveOccurred())
 				ledger, err := lf.GetOrCreate("participation-trophy")
 				Expect(err).NotTo(HaveOccurred())

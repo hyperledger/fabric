@@ -87,7 +87,7 @@ func TestV11CommitHashes(t *testing.T) {
 			"testdata/v11/sample_ledgers/ledgersData.zip",
 			false,
 			func(h *testLedger, ledgerFSRoot string) {
-				require.NoError(t, kvledger.ResetAllKVLedgers(ledgerFSRoot))
+				require.NoError(t, kvledger.ResetAllKVLedgers(ledgerFSRoot, ledger.GoLevelDB))
 			},
 			true,
 		},
@@ -97,7 +97,7 @@ func TestV11CommitHashes(t *testing.T) {
 			"testdata/v11/sample_ledgers/ledgersData.zip",
 			false,
 			func(h *testLedger, ledgerFSRoot string) {
-				require.NoError(t, kvledger.RollbackKVLedger(ledgerFSRoot, h.lgrid, 0))
+				require.NoError(t, kvledger.RollbackKVLedger(ledgerFSRoot, h.lgrid, 0, ledger.GoLevelDB))
 			},
 			true,
 		},
@@ -107,7 +107,7 @@ func TestV11CommitHashes(t *testing.T) {
 			"testdata/v11/sample_ledgers/ledgersData.zip",
 			false,
 			func(h *testLedger, ledgerFSRoot string) {
-				require.NoError(t, kvledger.RollbackKVLedger(ledgerFSRoot, h.lgrid, h.currentHeight()/2+1))
+				require.NoError(t, kvledger.RollbackKVLedger(ledgerFSRoot, h.lgrid, h.currentHeight()/2+1, ledger.GoLevelDB))
 			},
 			false,
 		},
@@ -117,7 +117,7 @@ func TestV11CommitHashes(t *testing.T) {
 			"testdata/v11/sample_ledgers_with_commit_hashes/ledgersData.zip",
 			true,
 			func(h *testLedger, ledgerFSRoot string) {
-				require.NoError(t, kvledger.ResetAllKVLedgers(ledgerFSRoot))
+				require.NoError(t, kvledger.ResetAllKVLedgers(ledgerFSRoot, ledger.GoLevelDB))
 			},
 			true,
 		},
@@ -127,7 +127,7 @@ func TestV11CommitHashes(t *testing.T) {
 			"testdata/v11/sample_ledgers_with_commit_hashes/ledgersData.zip",
 			true,
 			func(h *testLedger, ledgerFSRoot string) {
-				require.NoError(t, kvledger.RollbackKVLedger(ledgerFSRoot, h.lgrid, 0))
+				require.NoError(t, kvledger.RollbackKVLedger(ledgerFSRoot, h.lgrid, 0, ledger.GoLevelDB))
 			},
 			true,
 		},
@@ -137,7 +137,7 @@ func TestV11CommitHashes(t *testing.T) {
 			"testdata/v11/sample_ledgers_with_commit_hashes/ledgersData.zip",
 			true,
 			func(h *testLedger, ledgerFSRoot string) {
-				require.NoError(t, kvledger.RollbackKVLedger(ledgerFSRoot, h.lgrid, h.currentHeight()/2+1))
+				require.NoError(t, kvledger.RollbackKVLedger(ledgerFSRoot, h.lgrid, h.currentHeight()/2+1, ledger.GoLevelDB))
 			},
 			true,
 		},
@@ -274,7 +274,7 @@ func TestV13WithStateCouchdb(t *testing.T) {
 }
 
 // TestInitLedgerPanicWithV11Data tests init ledger panic cases caused by ledger dbs in old formats.
-// It tests stateleveldb.
+// It tests statekvdb.
 func TestInitLedgerPanicWithV11Data(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
@@ -314,7 +314,7 @@ func testInitLedgerPanic(t *testing.T, env *env, ledgerFSRoot string, couchdbCon
 		func() { env.initLedgerMgmt() },
 		"A panic should occur because idstore is in format 1.x",
 	)
-	kvledger.UpgradeIDStoreFormat(t, ledgerFSRoot)
+	kvledger.UpgradeIDStoreFormat(t, ledgerFSRoot, ledger.GoLevelDB)
 
 	t.Logf("verifying that a panic occurs because blockstore index has old format and then drop the idstore to proceed")
 	blkIndexPath := path.Join(kvledger.BlockStorePath(ledgerFSRoot), "index")
@@ -339,7 +339,7 @@ func testInitLedgerPanic(t *testing.T, env *env, ledgerFSRoot string, couchdbCon
 	require.NoError(t, os.RemoveAll(historyDBPath))
 
 	if couchdbConfig == nil {
-		t.Logf("verifying that a panic occurs because stateleveldb has old format and then drop the statedb to proceed")
+		t.Logf("verifying that a panic occurs because statekvdb has old format and then drop the statedb to proceed")
 		stateLevelDBPath := kvledger.StateDBPath(ledgerFSRoot)
 		require.PanicsWithValue(
 			t,
@@ -390,6 +390,7 @@ func startCouchDBWithV13Data(t *testing.T, ledgerFSRoot string) (*ledger.CouchDB
 		MaxRetriesOnStartup: 3,
 		RequestTimeout:      10 * time.Second,
 		RedoLogPath:         filepath.Join(ledgerFSRoot, "couchdbRedoLogs"),
+		RedoLogDBType:       ledger.GoLevelDB,
 	}
 
 	return couchdbConfig, cleanup

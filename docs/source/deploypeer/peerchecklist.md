@@ -303,7 +303,6 @@ BCCSP:
 
 ```
 ledger:
-
   state:
     # stateDatabase - options are "goleveldb", "CouchDB"
     # goleveldb - default state database stored in goleveldb.

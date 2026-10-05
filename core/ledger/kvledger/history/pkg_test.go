@@ -11,7 +11,9 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
@@ -46,7 +48,7 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 	testDBEnv := &privacyenabledstate.LevelDBTestEnv{}
 	testDBEnv.Init(t)
 	testDB := testDBEnv.GetDBHandle(testLedgerID)
-	testBookkeepingEnv := bookkeeping.NewTestEnv(t)
+	testBookkeepingEnv := bookkeeping.NewTestEnv(t, db.GoLevelDB)
 
 	testHistoryDBPath := t.TempDir()
 
@@ -63,7 +65,7 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 	txMgr, err := txmgr.NewLockBasedTxMgr(txmgrInitializer)
 
 	require.NoError(t, err)
-	testHistoryDBProvider, err := NewDBProvider(testHistoryDBPath)
+	testHistoryDBProvider, err := NewDBProvider(testHistoryDBPath, db.GoLevelDB)
 	require.NoError(t, err)
 	testHistoryDB := testHistoryDBProvider.GetDBHandle("TestHistoryDB")
 
@@ -88,7 +90,7 @@ func (env *levelDBLockBasedHistoryEnv) cleanup() {
 	env.testHistoryDBProvider.Close()
 }
 
-/////// testBlockStoreEnv//////
+// ///// testBlockStoreEnv//////
 
 type testBlockStoreEnv struct {
 	t               testing.TB
@@ -108,7 +110,7 @@ func newBlockStorageTestEnv(t testing.TB) *testBlockStoreEnv {
 	}
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
 
-	p, err := blkstorage.NewProvider(conf, indexConfig, &disabled.Provider{})
+	p, err := blkstorage.NewProvider(conf, indexConfig, &disabled.Provider{}, ledger.GoLevelDB)
 	require.NoError(t, err)
 	return &testBlockStoreEnv{t, p, testPath}
 }

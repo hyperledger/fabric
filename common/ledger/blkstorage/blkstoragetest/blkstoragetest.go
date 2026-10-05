@@ -15,6 +15,7 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
@@ -46,7 +47,7 @@ func BootstrapBlockstoreFromSnapshot(t *testing.T, ledgerName string, blocks []*
 
 	conf := blkstorage.NewConf(testDir, 0)
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
-	provider, err := blkstorage.NewProvider(conf, indexConfig, &disabled.Provider{})
+	provider, err := blkstorage.NewProvider(conf, indexConfig, &disabled.Provider{}, db.GoLevelDB)
 	require.NoError(t, err)
 
 	// create an original store from the provided blocks so that we can create a snapshot

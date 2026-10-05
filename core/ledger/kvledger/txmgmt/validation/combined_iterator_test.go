@@ -9,14 +9,15 @@ package validation
 import (
 	"testing"
 
+	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statekvdb"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCombinedIterator(t *testing.T) {
-	testDBEnv := stateleveldb.NewTestVDBEnv(t)
+	testDBEnv := statekvdb.NewTestVDBEnv(t, db.GoLevelDB)
 	defer testDBEnv.Cleanup()
 
 	db, err := testDBEnv.DBProvider.GetDBHandle("TestDB", nil)

@@ -23,6 +23,6 @@ var nodeResetCmd = &cobra.Command{
 		" The command is not supported if the peer contains any channel that was bootstrapped from a snapshot.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ledgerConfig()
-		return kvledger.ResetAllKVLedgers(config.RootFSPath)
+		return kvledger.ResetAllKVLedgers(config.RootFSPath, config.StateDatabase)
 	},
 }

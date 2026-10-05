@@ -9,6 +9,7 @@ package privacyenabledstate
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/mock"
@@ -16,7 +17,7 @@ import (
 )
 
 func TestMetadataHintCorrectness(t *testing.T) {
-	bookkeepingTestEnv := bookkeeping.NewTestEnv(t)
+	bookkeepingTestEnv := bookkeeping.NewTestEnv(t, ledger.GoLevelDB)
 	defer bookkeepingTestEnv.Cleanup()
 	bookkeeper := bookkeepingTestEnv.TestProvider.GetDBHandle("ledger1", bookkeeping.MetadataPresenceIndicator)
 
@@ -62,7 +63,7 @@ func TestMetadataHintCorrectness(t *testing.T) {
 }
 
 func TestMetadataHintOptimizationSkippingGoingToDB(t *testing.T) {
-	bookkeepingTestEnv := bookkeeping.NewTestEnv(t)
+	bookkeepingTestEnv := bookkeeping.NewTestEnv(t, ledger.GoLevelDB)
 	defer bookkeepingTestEnv.Cleanup()
 	bookkeeper := bookkeepingTestEnv.TestProvider.GetDBHandle("ledger1", bookkeeping.MetadataPresenceIndicator)
 

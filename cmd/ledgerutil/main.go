@@ -27,10 +27,11 @@ const (
 		"from ledgerutil compare."
 	blockStorePathDesc = "Path to file system of target peer, used to access block store. Defaults to '/var/hyperledger/production'. " +
 		"IMPORTANT: If the configuration for target peer's file system path was changed, the new path MUST be provided."
-	blockStorePathDefault = "/var/hyperledger/production"
-	outputDirIdDesc       = "Location for identified transactions json results output directory. Default is the current directory."
-	verifyErrorMessage    = "Verify Ledger Error:"
-	outputDirVerifyDesc   = "Location for verification result output directory. Default is the current directory."
+	blockStorePathDefault   = "/var/hyperledger/production"
+	blockStoreDBTypeDefault = "goleveldb"
+	outputDirIdDesc         = "Location for identified transactions json results output directory. Default is the current directory."
+	verifyErrorMessage      = "Verify Ledger Error:"
+	outputDirVerifyDesc     = "Location for verification result output directory. Default is the current directory."
 )
 
 var (
@@ -101,7 +102,7 @@ func main() {
 			}
 		}
 
-		firstBlock, lastBlock, err := identifytxs.IdentifyTxs(*snapshotDiffsPath, *blockStorePath, *outputDirId)
+		firstBlock, lastBlock, err := identifytxs.IdentifyTxs(*snapshotDiffsPath, *blockStorePath, blockStoreDBTypeDefault, *outputDirId)
 		if err != nil {
 			fmt.Printf("%s%s\n", identifytxsErrorMessage, err)
 			os.Exit(1)
@@ -123,7 +124,7 @@ func main() {
 			}
 		}
 
-		valid, err := verify.VerifyLedger(*blockStorePathVerify, *outputDirVerify)
+		valid, err := verify.VerifyLedger(*blockStorePathVerify, blockStoreDBTypeDefault, *outputDirVerify)
 		if err != nil {
 			fmt.Printf("%s%s\n", verifyErrorMessage, err)
 			os.Exit(1)
