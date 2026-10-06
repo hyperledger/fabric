@@ -842,6 +842,22 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
 	})
 
+	t.Run("channel-name-path-traversal", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		outsideDir := filepath.Join(provider.initializer.Config.RootFSPath, "outside")
+		require.NoError(t, os.MkdirAll(outsideDir, 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(outsideDir, "file"), []byte("content"), 0o600))
+
+		metadata.ChannelName = "../../outside"
+		overwriteModifiedSignableMetadata()
+
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.EqualError(t, err, "invalid channel name in snapshot metadata: invalid ledger ID [../../outside]")
+		require.FileExists(t, filepath.Join(outsideDir, "file"))
+	})
+
 	t.Run("error-while-deleting-partially-created-ledger", func(t *testing.T) {
 		init(t)
 		defer cleanup()
