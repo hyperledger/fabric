@@ -205,7 +205,7 @@ func TestBftOrdererTypeWithoutV3CapabilitiesShouldRaiseAnError(t *testing.T) {
 	config.Capabilities["V3_0"] = false
 
 	// ### Act & Assert
-	require.EqualError(t, doOutputBlock(config, "testChannelId", blockDest), "could not create bootstrapper: could not create channel group: could not create orderer group: orderer type BFT must be used with V3_0 channel capability: map[V3_0:false]")
+	require.EqualError(t, doOutputBlock(config, "testchannelid", blockDest), "could not create bootstrapper: could not create channel group: could not create orderer group: orderer type BFT must be used with V3_0 channel capability: map[V3_0:false]")
 }
 
 func TestBftOrdererTypeWithV3CapabilitiesShouldNotRaiseAnError(t *testing.T) {
@@ -215,5 +215,17 @@ func TestBftOrdererTypeWithV3CapabilitiesShouldNotRaiseAnError(t *testing.T) {
 	config.Capabilities["V3_0"] = true
 
 	// ### Act & Assert
-	require.NoError(t, doOutputBlock(config, "testChannelId", blockDest))
+	require.NoError(t, doOutputBlock(config, "testchannelid", blockDest))
+}
+
+func TestRejectsIllegalChannelID(t *testing.T) {
+	blockDest := filepath.Join(tmpDir, "block")
+	config := genesisconfig.Load(genesisconfig.SampleAppChannelInsecureSoloProfile, configtest.GetDevConfigDir())
+
+	err := doOutputBlock(config, "Foo", blockDest)
+	require.ErrorContains(t, err, "invalid channel ID")
+
+	configTxDest := filepath.Join(tmpDir, "configtx")
+	err = doOutputChannelCreateTx(config, nil, "1abc", configTxDest)
+	require.ErrorContains(t, err, "invalid channel ID")
 }
