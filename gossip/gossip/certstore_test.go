@@ -216,7 +216,7 @@ func TestCertExpiration(t *testing.T) {
 
 	// Backup original usageThreshold value
 	idUsageThreshold := identity.GetIdentityUsageThreshold()
-	identity.SetIdentityUsageThreshold(time.Second)
+	identity.SetIdentityUsageThreshold(time.Second * 2)
 	// Restore original usageThreshold value
 	defer identity.SetIdentityUsageThreshold(idUsageThreshold)
 
