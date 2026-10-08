@@ -9,6 +9,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -216,4 +218,41 @@ func TestBftOrdererTypeWithV3CapabilitiesShouldNotRaiseAnError(t *testing.T) {
 
 	// ### Act & Assert
 	require.NoError(t, doOutputBlock(config, "testChannelId", blockDest))
+}
+
+func TestBlockStdinAndStdout(t *testing.T) {
+	config := genesisconfig.Load(genesisconfig.SampleAppChannelInsecureSoloProfile, configtest.GetDevConfigDir())
+
+	outR, outW, err := os.Pipe()
+	require.NoError(t, err)
+	origOut := os.Stdout
+	os.Stdout = outW
+	t.Cleanup(func() { os.Stdout = origOut })
+
+	require.NoError(t, doOutputBlock(config, "foo", "-"))
+	require.NoError(t, outW.Close())
+	block, err := io.ReadAll(outR)
+	require.NoError(t, err)
+	_, err = protoutil.UnmarshalBlock(block)
+	require.NoError(t, err)
+	os.Stdout = origOut
+
+	inR, inW, err := os.Pipe()
+	require.NoError(t, err)
+	origIn := os.Stdin
+	os.Stdin = inR
+	t.Cleanup(func() { os.Stdin = origIn })
+	go func() {
+		_, _ = inW.Write(block)
+		_ = inW.Close()
+	}()
+
+	jsonR, jsonW, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = jsonW
+	require.NoError(t, doInspectBlock("-"))
+	require.NoError(t, jsonW.Close())
+	js, err := io.ReadAll(jsonR)
+	require.NoError(t, err)
+	require.Contains(t, string(js), "foo")
 }
