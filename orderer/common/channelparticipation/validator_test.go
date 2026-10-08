@@ -204,6 +204,16 @@ func TestValidateFetchBlockID(t *testing.T) {
 			blockID:     "1n0",
 			expectedErr: errors.New("'1n0' not equal <newest|oldest|config|(number)>"),
 		},
+		{
+			testName:    "block ID is -1",
+			blockID:     "-1",
+			expectedErr: errors.New("'-1' not equal <newest|oldest|config|(number)>"),
+		},
+		{
+			testName:    "block ID is +1",
+			blockID:     "+1",
+			expectedErr: errors.New("'+1' not equal <newest|oldest|config|(number)>"),
+		},
 	}
 
 	for _, test := range tests {
