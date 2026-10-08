@@ -1824,11 +1824,6 @@ func TestOnDemandGossip(t *testing.T) {
 		require.Fail(t, "Didn't gossip within a timely manner")
 	}
 	gc.UpdateLedgerHeight(2)
-	adapter.On("Gossip", mock.Anything).Run(func(mock.Arguments) {
-		gossipedEvents <- struct{}{}
-	})
-	adapter.On("Forward", mock.Anything)
-	gc.(*gossipChannel).Adapter = adapter
 	select {
 	case <-gossipedEvents:
 	case <-time.After(time.Second):

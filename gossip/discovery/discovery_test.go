@@ -446,6 +446,13 @@ func createDiscoveryInstanceWithAnchorPeerTracker(port int, id string, bootstrap
 		})
 	}
 
+	if actualPort := ll.Addr().(*net.TCPAddr).Port; actualPort != port {
+		endpoint = fmt.Sprintf("localhost:%d", actualPort)
+		self.Endpoint = endpoint
+		self.InternalEndpoint = endpoint
+		self.PKIid = []byte(endpoint)
+	}
+
 	gossInst := &gossipInstance{comm: comm, gRGCserv: s, Discovery: discSvc, lsnr: ll, shouldGossip: shouldGossip, port: port, msgInterceptor: f}
 
 	proto.RegisterGossipServer(s, gossInst)
@@ -526,7 +533,8 @@ func TestNetworkMemberString(t *testing.T) {
 }
 
 func TestBadInput(t *testing.T) {
-	inst := createDiscoveryInstance(2048, fmt.Sprintf("d%d", 0), []string{})
+	inst := createDiscoveryInstance(0, fmt.Sprintf("d%d", 0), []string{})
+	defer inst.Stop()
 	inst.Discovery.(*gossipDiscoveryImpl).handleMsgFromComm(nil)
 	s, _ := protoext.NoopSign(&proto.GossipMessage{
 		Content: &proto.GossipMessage_DataMsg{
