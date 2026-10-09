@@ -129,6 +129,7 @@ type FileReader struct {
 	file              *os.File
 	bufReader         *bufio.Reader
 	reusableByteSlice []byte
+	fileSize          int64
 }
 
 // OpenFile constructs a FileReader. This function returns an error if the format of the file, stored in the
@@ -137,6 +138,11 @@ func OpenFile(filePath string, expectDataformat byte) (*FileReader, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error while opening the snapshot file: %s", filePath)
+	}
+	fileInfo, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return nil, errors.Wrapf(err, "error while reading stat of the snapshot file: %s", filePath)
 	}
 	bufReader := bufio.NewReader(file)
 	dataFormat, err := bufReader.ReadByte()
@@ -151,6 +157,7 @@ func OpenFile(filePath string, expectDataformat byte) (*FileReader, error) {
 	return &FileReader{
 		file:      file,
 		bufReader: bufReader,
+		fileSize:  fileInfo.Size(),
 	}, nil
 }
 
@@ -201,6 +208,14 @@ func (r *FileReader) decodeBytes() ([]byte, error) {
 	sizeUint, err := r.DecodeUVarInt()
 	if err != nil {
 		return nil, err
+	}
+	// The encoded length can never legitimately exceed the size of the file, as the
+	// payload it refers to was written to the same file. Reject anything larger before
+	// narrowing to int (a value above math.MaxInt64 would become negative) and before
+	// allocating, so a crafted snapshot cannot drive a negative slice bound or an
+	// over-sized allocation.
+	if sizeUint > uint64(r.fileSize) {
+		return nil, errors.Errorf("decoded size %d is larger than the snapshot file %s size %d", sizeUint, r.file.Name(), r.fileSize)
 	}
 	size := int(sizeUint)
 	if size == 0 {
