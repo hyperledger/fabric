@@ -40,7 +40,7 @@ func TestJoinBySnapshotStatus(t *testing.T) {
 
 	// successful joinbysnapshotstatuscmd test
 	resetFlags()
-	cmd := joinBySnapshotStatusCmd(mockCF)
+	cmd := joinBySnapshotStatusCmd(mockCF, true)
 	AddFlags(cmd)
 	require.NoError(t, cmd.Execute())
 
@@ -59,7 +59,7 @@ func TestJoinBySnapshotStatus(t *testing.T) {
 	// negative test due to EndoserClient returning bad response
 	mockResponse.Response = &pb.Response{Status: 500, Message: "mock_bad_response"}
 	resetFlags()
-	cmd = joinBySnapshotStatusCmd(mockCF)
+	cmd = joinBySnapshotStatusCmd(mockCF, true)
 	AddFlags(cmd)
 	err = cmd.Execute()
 	require.EqualError(t, err, "received bad response, status 500: mock_bad_response")
@@ -67,7 +67,7 @@ func TestJoinBySnapshotStatus(t *testing.T) {
 	// negative test due to connection failure to endorser client
 	viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 	resetFlags()
-	cmd = joinBySnapshotStatusCmd(nil)
+	cmd = joinBySnapshotStatusCmd(nil, true)
 	AddFlags(cmd)
 	err = cmd.Execute()
 	require.Error(t, err)

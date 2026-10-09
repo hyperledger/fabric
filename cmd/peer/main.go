@@ -42,11 +42,14 @@ func main() {
 
 	mainCmd.AddCommand(version.Cmd())
 	mainCmd.AddCommand(node.Cmd())
-	mainCmd.AddCommand(chaincode.Cmd(nil, cryptoProvider))
-	mainCmd.AddCommand(channel.Cmd(nil))
-	mainCmd.AddCommand(lifecycle.Cmd(cryptoProvider))
-	mainCmd.AddCommand(snapshot.Cmd(cryptoProvider))
-
+	// Deprecated: use peercli
+	mainCmd.AddCommand(chaincode.Cmd(nil, cryptoProvider, false))
+	// Deprecated: use peercli or osnadmin
+	mainCmd.AddCommand(channel.Cmd(nil, false))
+	// Deprecated: use peercli
+	mainCmd.AddCommand(lifecycle.Cmd(cryptoProvider, false))
+	// Deprecated: use peercli
+	mainCmd.AddCommand(snapshot.Cmd(cryptoProvider, false))
 	// On failure Cobra prints the usage message and error string, so we only
 	// need to exit with a non-0 status
 	if mainCmd.Execute() != nil {

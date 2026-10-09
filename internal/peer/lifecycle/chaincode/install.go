@@ -53,7 +53,7 @@ func (i *InstallInput) Validate() error {
 }
 
 // InstallCmd returns the cobra command for chaincode install.
-func InstallCmd(i *Installer, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func InstallCmd(i *Installer, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	chaincodeInstallCmd := &cobra.Command{
 		Use:       "install [packageFile]",
 		Short:     "Install a chaincode.",
@@ -87,6 +87,12 @@ func InstallCmd(i *Installer, cryptoProvider bccsp.BCCSP) *cobra.Command {
 			return i.InstallChaincode(args)
 		},
 	}
+
+	if !isNew {
+		chaincodeInstallCmd.Short = "[DEPRECATED] Install a chaincode (use the \"peercli lifecycle chaincode install\")."
+		chaincodeInstallCmd.Long = "[DEPRECATED] Install a chaincode on a peer. Instead of this command, use \"peercli lifecycle chaincode install\"."
+	}
+
 	flagList := []string{
 		"peerAddresses",
 		"tlsRootCertFiles",

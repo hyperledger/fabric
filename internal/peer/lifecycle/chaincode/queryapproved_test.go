@@ -402,7 +402,7 @@ var _ = Describe("QueryApproved", func() {
 		BeforeEach(func() {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).To(BeNil())
-			queryApprovedCmd = chaincode.QueryApprovedCmd(nil, cryptoProvider)
+			queryApprovedCmd = chaincode.QueryApprovedCmd(nil, cryptoProvider, true)
 			queryApprovedCmd.SilenceErrors = true
 			queryApprovedCmd.SilenceUsage = true
 			queryApprovedCmd.SetArgs([]string{

@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func signconfigtxCmd(cf *ChannelCmdFactory) *cobra.Command {
+func signconfigtxCmd(cf *ChannelCmdFactory, isNew bool) *cobra.Command {
 	signconfigtxCmd := &cobra.Command{
 		Use:   "signconfigtx",
 		Short: "Signs a configtx update.",
@@ -21,6 +21,10 @@ func signconfigtxCmd(cf *ChannelCmdFactory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return sign(cmd, args, cf)
 		},
+	}
+	if !isNew {
+		signconfigtxCmd.Short = "[DEPRECATED] Signs a configtx update (use the \"peercli channel signconfigtx\")."
+		signconfigtxCmd.Long = "[DEPRECATED] Signs the supplied configtx update file in place on the filesystem. Requires '-f'. Instead of this command, use \"peercli channel signconfigtx\"."
 	}
 	flagList := []string{
 		"file",
