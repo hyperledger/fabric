@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/configtxgen/metadata"
@@ -29,6 +30,9 @@ import (
 var logger = flogging.MustGetLogger("common.tools.configtxgen")
 
 func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock string) error {
+	if err := configtx.ValidateChannelID(channelID); err != nil {
+		return errors.WithMessage(err, "invalid channel ID")
+	}
 	pgen, err := encoder.NewBootstrapper(config)
 	if err != nil {
 		return errors.WithMessage(err, "could not create bootstrapper")
@@ -55,6 +59,9 @@ func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock 
 }
 
 func doOutputChannelCreateTx(conf, baseProfile *genesisconfig.Profile, channelID string, outputChannelCreateTx string) error {
+	if err := configtx.ValidateChannelID(channelID); err != nil {
+		return errors.WithMessage(err, "invalid channel ID")
+	}
 	logger.Info("Generating new channel configtx")
 
 	var configtx *cb.Envelope
