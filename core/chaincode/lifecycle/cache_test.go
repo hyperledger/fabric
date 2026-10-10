@@ -354,6 +354,17 @@ var _ = Describe("Cache", func() {
 			Expect(fakeParser.ParseCallCount()).To(Equal(0))
 		})
 
+		It("does not enqueue build requests with the custodian during initialization", func() {
+			err := c.InitializeLocalChaincodes()
+			Expect(err).NotTo(HaveOccurred())
+
+			fakeBuilder := &mock.ChaincodeBuilder{}
+			fakeLauncher := &mock.ChaincodeLauncher{}
+			buildRegistry := &container.BuildRegistry{}
+			go chaincodeCustodian.Work(buildRegistry, fakeBuilder, fakeLauncher)
+			Consistently(fakeBuilder.BuildCallCount).Should(Equal(0))
+		})
+
 		It("uses the label from ListInstalledChaincodes", func() {
 			fakeCCStore.ListInstalledChaincodesReturns([]chaincode.InstalledChaincode{
 				{
