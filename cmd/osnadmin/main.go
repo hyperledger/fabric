@@ -150,7 +150,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 		resp, err = osnadmin.Update(osnURL, marshaledConfigEnvelope, caCertPool, tlsClientCert, *tlsHandshakeTimeShift)
 	case fetch.FullCommand():
 		if *fetchBlockID != "newest" && *fetchBlockID != "oldest" && *fetchBlockID != "config" {
-			_, err = strconv.Atoi(*fetchBlockID)
+			_, err = strconv.ParseUint(*fetchBlockID, 10, 64)
 			if err != nil {
 				return "", 1, fmt.Errorf("'%s' not equal <newest|oldest|config|(number)>", *fetchBlockID)
 			}

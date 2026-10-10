@@ -117,8 +117,9 @@ func ValidateFetchBlockID(blockID string) error {
 		return nil
 	}
 
-	_, err := strconv.Atoi(blockID)
-	if err == nil {
+	// ParseUint rejects "-1" and "+1". Atoi accepts both, and uint64(-1) is
+	// the sentinel blockfile storage uses for the newest block.
+	if _, err := strconv.ParseUint(blockID, 10, 64); err == nil {
 		return nil
 	}
 

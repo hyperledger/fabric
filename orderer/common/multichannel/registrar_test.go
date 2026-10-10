@@ -1510,11 +1510,15 @@ func TestRegistrar_FetchBlock(t *testing.T) {
 		registrar.chains["some-app-channel"] = cs
 
 		block, err := registrar.FetchBlock("some-app-channel", "blabla")
-		require.EqualError(t, err, "strconv.Atoi: parsing \"blabla\": invalid syntax")
+		require.EqualError(t, err, "strconv.ParseUint: parsing \"blabla\": invalid syntax")
 		require.Nil(t, block)
 
 		block, err = registrar.FetchBlock("some-app-channel", "1q1")
-		require.EqualError(t, err, "strconv.Atoi: parsing \"1q1\": invalid syntax")
+		require.EqualError(t, err, "strconv.ParseUint: parsing \"1q1\": invalid syntax")
+		require.Nil(t, block)
+
+		block, err = registrar.FetchBlock("some-app-channel", "-1")
+		require.EqualError(t, err, "strconv.ParseUint: parsing \"-1\": invalid syntax")
 		require.Nil(t, block)
 	})
 

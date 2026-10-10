@@ -660,12 +660,12 @@ func (r *Registrar) FetchBlock(channelID string, blockID string) (*cb.Block, err
 	default:
 	}
 
-	nb, err := strconv.Atoi(blockID)
+	nb, err := strconv.ParseUint(blockID, 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	return cs.RetrieveBlockByNumber(uint64(nb))
+	return cs.RetrieveBlockByNumber(nb)
 }
 
 // JoinChannel instructs the orderer to create a channel and join it with the provided config block.
