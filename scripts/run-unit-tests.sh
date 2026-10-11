@@ -13,11 +13,6 @@ excluded_packages=(
     "/integration(/|$)"
 )
 
-# packages that must be run serially
-serial_packages=(
-    "github.com/hyperledger/fabric/gossip/..."
-)
-
 no_coverage_packages=(
     "github.com/hyperledger/fabric/core/handlers/library"
 )
@@ -25,11 +20,6 @@ no_coverage_packages=(
 # packages which need to be tested with build tag pkcs11
 pkcs11_packages=(
     "github.com/hyperledger/fabric/internal/peer/common"
-)
-
-# packages that are only tested when they (or their deps) change
-conditional_packages=(
-    "github.com/hyperledger/fabric/gossip/..."
 )
 
 # join array elements by the specified string
@@ -80,57 +70,12 @@ changed_packages() {
 
 # "go list" packages and filter out excluded packages
 list_and_filter() {
-    local excluded conditional filter
-
-    excluded=("${excluded_packages[@]}")
-    conditional=$(package_filter "${conditional_packages[@]}")
-    if [ -n "$conditional" ]; then
-        excluded+=("$conditional")
-    fi
-
-    filter=$(join_by '|' "${excluded[@]}")
+    local filter
+    filter=$(join_by '|' "${excluded_packages[@]}")
     if [ -n "$filter" ]; then
         go list "$@" 2>/dev/null | grep -Ev "${filter}" || true
     else
         go list "$@" 2>/dev/null
-    fi
-}
-
-# list conditional packages that have been changed
-list_changed_conditional() {
-    [ "${#conditional_packages[@]}" -eq 0 ] && return 0
-
-    local changed
-    changed=$(changed_packages)
-
-    local -a additional_packages
-    for pkg in $(go list "${conditional_packages[@]}"); do
-        local dep_regexp
-        dep_regexp=$(go list -f '{{ join .Deps "$|" }}' "$pkg")
-        echo "${changed}" | grep -qE "$dep_regexp" && additional_packages+=("$pkg")
-        echo "${changed}" | grep -qE "$pkg\$" && additional_packages+=("$pkg")
-    done
-
-    join_by $'\n' "${additional_packages[@]}"
-}
-
-# remove packages that must be tested serially
-parallel_test_packages() {
-    local filter
-    filter=$(package_filter "${serial_packages[@]}")
-    if [ -n "$filter" ]; then
-        join_by $'\n' "$@" | grep -Ev "$filter" || true
-    else
-        join_by $'\n' "$@"
-    fi
-}
-
-# get packages that must be tested serially
-serial_test_packages() {
-    local filter
-    filter=$(package_filter "${serial_packages[@]}")
-    if [ -n "$filter" ]; then
-        join_by $'\n' "$@" | grep -E "$filter" || true
     fi
 }
 
@@ -142,8 +87,7 @@ no_coverage_test_packages() {
     fi
 }
 
-# "go test" the provided packages. Packages that are not present in the serial package list
-# will be tested in parallel
+# "go test" the provided packages in parallel
 run_tests() {
     local -a flags
     if [ -n "${VERBOSE}" ]; then
@@ -160,16 +104,8 @@ run_tests() {
     [ -n "$GO_TAGS" ] && echo "Testing with $GO_TAGS..."
 
     time {
-        local -a serial
-        while IFS= read -r pkg; do serial+=("$pkg"); done < <(serial_test_packages "$@")
-        if [ "${#serial[@]}" -ne 0 ]; then
-            go test -cover "${flags[@]}" -failfast -tags "$GO_TAGS" "${serial[@]}" -short -p 1 -timeout=20m
-        fi
-
-        local -a parallel
-        while IFS= read -r pkg; do parallel+=("$pkg"); done < <(parallel_test_packages "$@")
-        if [ "${#parallel[@]}" -ne 0 ]; then
-            go test -cover "${flags[@]}" "${race_flags[@]}" -tags "$GO_TAGS" "${parallel[@]}" -short -timeout=20m -skip=NoCover
+        if [ "${#@}" -ne 0 ]; then
+            go test -cover "${flags[@]}" "${race_flags[@]}" -tags "$GO_TAGS" "$@" -short -timeout=20m -skip=NoCover
         fi
 
         # The -cover flag changes the import table of the test and the plugin
@@ -203,16 +139,9 @@ main() {
         while IFS= read -r pkg; do package_spec+=("$pkg"); done < <(changed_packages)
     fi
 
-    # run everything when profiling
-    if [ "${JOB_TYPE}" = "PROFILE" ]; then
-        conditional_packages=()
-    fi
-
     # expand the package specs into arrays of packages
-    local -a candidates packages packages_with_pkcs11
-    while IFS= read -r pkg; do candidates+=("$pkg"); done < <(go list "${package_spec[@]}")
+    local -a packages packages_with_pkcs11
     while IFS= read -r pkg; do packages+=("$pkg"); done < <(list_and_filter "${package_spec[@]}")
-    while IFS= read -r pkg; do contains_element "$pkg" "${candidates[@]}" && packages+=("$pkg"); done < <(list_changed_conditional)
     while IFS= read -r pkg; do contains_element "$pkg" "${packages[@]}" && packages_with_pkcs11+=("$pkg"); done < <(list_and_filter "${pkcs11_packages[@]}")
 
     local all_packages=( "${packages[@]}" "${packages_with_pkcs11[@]}" "${packages_with_pkcs11[@]}" )

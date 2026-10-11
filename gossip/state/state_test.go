@@ -726,14 +726,21 @@ func TestOverPopulation(t *testing.T) {
 		}, nonBlocking))
 	}
 
-	// Ensure only blocks 1-4 were passed to the ledger
-	close(blocksPassedToLedger)
-	i := 1
-	for seq := range blocksPassedToLedger {
-		require.Equal(t, uint64(i), seq)
-		i++
+	// Ensure only blocks 1-4 were passed to the ledger.
+	// Wait for the 4 expected blocks before closing, otherwise a slow
+	// commit goroutine would be cut off mid-flight.
+	for seq := uint64(1); seq <= 4; seq++ {
+		select {
+		case got := <-blocksPassedToLedger:
+			require.Equal(t, seq, got)
+		case <-time.After(time.Minute):
+			require.Failf(t, "timed out waiting for block", "block %d was not passed to the ledger", seq)
+		}
 	}
-	require.Equal(t, 5, i)
+	close(blocksPassedToLedger)
+	for seq := range blocksPassedToLedger {
+		require.Fail(t, "unexpected block passed to the ledger", seq)
+	}
 
 	// Ensure we don't store too many blocks in memory
 	sp := p.s
