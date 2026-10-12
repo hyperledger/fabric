@@ -9,8 +9,10 @@ package snapshot
 import (
 	"bufio"
 	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"hash"
+	"math"
 	"os"
 	"path"
 	"testing"
@@ -210,6 +212,36 @@ func TestFileReaderErrorPropagation(t *testing.T) {
 	require.Contains(t, err.Error(), "error while reading from snapshot file: "+closedFile)
 	err = closedFileReader.Close()
 	require.Contains(t, err.Error(), "error while closing the snapshot file: "+closedFile)
+}
+
+func TestFileReaderRejectsOversizedLength(t *testing.T) {
+	testDir := t.TempDir()
+
+	// Each file holds a single length-prefix (no payload) whose decoded value is
+	// larger than the file itself. math.MaxUint64 additionally exercises the
+	// int() narrowing that used to produce a negative slice bound.
+	for name, encodedLen := range map[string]uint64{
+		"max-uint64":       math.MaxUint64,
+		"larger-than-file": 1 << 40,
+	} {
+		t.Run(name, func(t *testing.T) {
+			filePath := path.Join(testDir, name)
+			buf := []byte{byte(5)}
+			varintBuf := make([]byte, binary.MaxVarintLen64)
+			n := binary.PutUvarint(varintBuf, encodedLen)
+			buf = append(buf, varintBuf[:n]...)
+			require.NoError(t, os.WriteFile(filePath, buf, 0o600))
+
+			reader, err := OpenFile(filePath, byte(5))
+			require.NoError(t, err)
+			defer reader.Close()
+
+			require.NotPanics(t, func() {
+				_, err = reader.DecodeBytes()
+			})
+			require.ErrorContains(t, err, "is larger than the snapshot file")
+		})
+	}
 }
 
 func computeSha256(t *testing.T, file string) []byte {
