@@ -31,6 +31,7 @@ type chaincodeMetadata struct {
 // chaincode package.
 type connection struct {
 	Address     string `json:"address"`
+	Domain      string `json:"domain,omitempty"`
 	DialTimeout string `json:"dial_timeout"`
 	TLS         bool   `json:"tls_required"`
 	ClientAuth  bool   `json:"client_auth_required"`
@@ -145,6 +146,10 @@ func run() error {
 		updatedConnection.TLS = true
 		updatedConnection.ClientAuth = connectionData.ClientAuth
 
+		updatedConnection.Domain, err = execTempl(cfg, connectionData.Domain)
+		if err != nil {
+			return fmt.Errorf("Failed to parse the Domain field template: %s", err)
+		}
 		updatedConnection.RootCert, err = execTempl(cfg, connectionData.RootCert)
 		if err != nil {
 			return fmt.Errorf("Failed to parse the RootCert field template: %s", err)
