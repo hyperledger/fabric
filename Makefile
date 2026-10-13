@@ -182,6 +182,7 @@ profile: unit-test
 linter: gotool.golangci-lint
 	@echo "LINT: Running code checks.."
 	$(GOTOOLS_BINDIR)/golangci-lint run ./...
+	cd ccaas_builder && $(GOTOOLS_BINDIR)/golangci-lint run ./...
 
 .PHONY: check-metrics-docs
 check-metrics-doc:
