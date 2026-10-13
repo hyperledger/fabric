@@ -1155,8 +1155,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ConsensusRelation: "follower",
 				Height:            2,
 			}
-			Eventually(func() nwo.ChannelInfo {
-				return nwo.ListOne(network, orderers[firstEvictedNode], "testchannel")
+			Eventually(func() (nwo.ChannelInfo, error) {
+				return nwo.ListOneE(network, orderers[firstEvictedNode], "testchannel")
 			}).WithTimeout(network.EventuallyTimeout).WithPolling(100 * time.Millisecond).Should(Equal(expectedInfo))
 
 			By("Removing the leader from 2-node channel")
@@ -1179,8 +1179,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ConsensusRelation: "follower",
 				Height:            3,
 			}
-			Eventually(func() nwo.ChannelInfo {
-				return nwo.ListOne(network, orderers[secondEvictedNode], "testchannel")
+			Eventually(func() (nwo.ChannelInfo, error) {
+				return nwo.ListOneE(network, orderers[secondEvictedNode], "testchannel")
 			}).WithTimeout(network.EventuallyTimeout).WithPolling(100 * time.Millisecond).Should(Equal(expectedInfo))
 
 			By("Re-adding first evicted orderer")
@@ -1284,10 +1284,13 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				}()
 				Eventually(ready, network.EventuallyTimeout).Should(BeClosed())
 
-				Eventually(func() int { // Removal is async
-					channelList := nwo.List(network, o1)
-					return len(channelList.Channels)
-				}).Should(BeZero())
+				Eventually(func() (int, error) { // Removal is async
+					channelList, err := nwo.ListE(network, o1)
+					if err != nil {
+						return -1, err
+					}
+					return len(channelList.Channels), nil
+				}, network.EventuallyTimeout).Should(BeZero())
 
 				// TODO It is recommended to remove the etcdraft folder for the WAL to be re-created correctly
 				// See: https://github.com/hyperledger/fabric/issues/3992
@@ -1322,8 +1325,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					Height:            6,
 				}
 
-				Eventually(func() nwo.ChannelInfo {
-					return nwo.ListOne(network, o1, "testchannel")
+				Eventually(func() (nwo.ChannelInfo, error) {
+					return nwo.ListOneE(network, o1, "testchannel")
 				}).WithTimeout(network.EventuallyTimeout).WithPolling(100 * time.Millisecond).Should(Equal(expectedInfo))
 
 				assertBlockReception(map[string]int{"testchannel": 5}, []*nwo.Orderer{o1, o2, o3}, network)
@@ -1352,10 +1355,13 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					}()
 					Eventually(ready, network.EventuallyTimeout).Should(BeClosed())
 
-					Eventually(func() int { // Removal is async
-						channelList := nwo.List(network, o)
-						return len(channelList.Channels)
-					}).WithTimeout(network.EventuallyTimeout).Should(BeZero())
+					Eventually(func() (int, error) { // Removal is async
+						channelList, err := nwo.ListE(network, o)
+						if err != nil {
+							return -1, err
+						}
+						return len(channelList.Channels), nil
+					}, network.EventuallyTimeout).Should(BeZero())
 				}
 
 				// TODO It is recommended to remove the etcdraft folder for the WAL to be re-created correctly
@@ -1396,8 +1402,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 				By("Waiting for the channel to stabilize")
 				expectedInfo.Height++
-				Eventually(func() nwo.ChannelInfo {
-					return nwo.ListOne(network, o1, "testchannel")
+				Eventually(func() (nwo.ChannelInfo, error) {
+					return nwo.ListOneE(network, o1, "testchannel")
 				}).WithTimeout(network.EventuallyTimeout).WithPolling(100 * time.Millisecond).Should(Equal(expectedInfo))
 
 				assertBlockReception(map[string]int{"testchannel": 1}, []*nwo.Orderer{o1, o2, o3}, network)
@@ -1465,8 +1471,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ConsensusRelation: "follower",
 				Height:            2,
 			}
-			Eventually(func() nwo.ChannelInfo {
-				return nwo.ListOne(network, o1, "testchannel")
+			Eventually(func() (nwo.ChannelInfo, error) {
+				return nwo.ListOneE(network, o1, "testchannel")
 			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfo))
 
 			By("Adding the evicted orderer back to the application channel")

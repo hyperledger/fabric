@@ -163,6 +163,18 @@ type ChannelInfoShort struct {
 }
 
 func List(n *Network, o *Orderer) ChannelList {
+	list, err := ListE(n, o)
+	Expect(err).NotTo(HaveOccurred())
+
+	return list
+}
+
+// ListE is a non-failing variant of List. Unlike List it does not call
+// Expect, so it is safe to call from a Gomega polling function: transient
+// failures (connection refused, non-200 status, malformed body) are returned
+// to the caller and cause the assertion to be retried instead of aborting the
+// whole spec.
+func ListE(n *Network, o *Orderer) (ChannelList, error) {
 	authClient, _ := OrdererOperationalClients(n, o)
 
 	protocol := "http"
@@ -171,32 +183,56 @@ func List(n *Network, o *Orderer) ChannelList {
 	}
 	listChannelsURL := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels", protocol, n.OrdererPort(o, AdminPort))
 
-	body := getBody(authClient, listChannelsURL)()
-	list := &ChannelList{}
-	err := json.Unmarshal([]byte(body), list)
-	Expect(err).NotTo(HaveOccurred())
-
-	return *list
-}
-
-func getBody(client *http.Client, url string) func() string {
-	return func() string {
-		resp, err := client.Get(url)
-		Expect(err).NotTo(HaveOccurred())
-		bodyBytes, err := io.ReadAll(resp.Body)
-		Expect(err).NotTo(HaveOccurred())
-		resp.Body.Close()
-		return string(bodyBytes)
+	body, err := getBodyE(authClient, listChannelsURL)
+	if err != nil {
+		return ChannelList{}, err
 	}
+
+	list := &ChannelList{}
+	if err := json.Unmarshal(body, list); err != nil {
+		return ChannelList{}, err
+	}
+
+	return *list, nil
 }
 
+// getBodyE performs a GET and returns the response body, treating any non-200
+// status code as an error so that callers polling for a state change do not
+// silently parse an error payload.
+func getBodyE(client *http.Client, url string) ([]byte, error) {
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status %d from %s: %s", resp.StatusCode, url, string(bodyBytes))
+	}
+
+	return bodyBytes, nil
+}
+
+// getBodyBinary performs a GET and returns the raw response body. Transport
+// errors are returned rather than asserted on, so that callers polling for a
+// state change (for example right after an orderer is restarted) retry instead
+// of aborting the spec.
 func getBodyBinary(client *http.Client, url string) func() ([]byte, error) {
 	return func() ([]byte, error) {
 		resp, err := client.Get(url)
-		Expect(err).NotTo(HaveOccurred())
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
 		bodyBytes, err := io.ReadAll(resp.Body)
-		Expect(err).NotTo(HaveOccurred())
-		resp.Body.Close()
+		if err != nil {
+			return nil, err
+		}
 		if resp.StatusCode != http.StatusOK {
 			return nil, errors.New(string(bodyBytes))
 		}
@@ -213,6 +249,15 @@ type ChannelInfo struct {
 }
 
 func ListOne(n *Network, o *Orderer, channel string) ChannelInfo {
+	info, err := ListOneE(n, o, channel)
+	Expect(err).NotTo(HaveOccurred())
+
+	return info
+}
+
+// ListOneE is a non-failing variant of ListOne, safe to call from a Gomega
+// polling function. See ListE.
+func ListOneE(n *Network, o *Orderer, channel string) (ChannelInfo, error) {
 	authClient, _ := OrdererOperationalClients(n, o)
 
 	protocol := "http"
@@ -221,11 +266,17 @@ func ListOne(n *Network, o *Orderer, channel string) ChannelInfo {
 	}
 	listChannelURL := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels/%s", protocol, n.OrdererPort(o, AdminPort), channel)
 
-	body := getBody(authClient, listChannelURL)()
+	body, err := getBodyE(authClient, listChannelURL)
+	if err != nil {
+		return ChannelInfo{}, err
+	}
+
 	c := &ChannelInfo{}
-	err := json.Unmarshal([]byte(body), c)
-	Expect(err).NotTo(HaveOccurred())
-	return *c
+	if err := json.Unmarshal(body, c); err != nil {
+		return ChannelInfo{}, err
+	}
+
+	return *c, nil
 }
 
 func Fetch(n *Network, o *Orderer, channel string, blockID string) (*common.Block, error) {

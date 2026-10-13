@@ -53,7 +53,7 @@ func FetchConfigBlock(n *Network, orderer *Orderer, channel string) *common.Bloc
 
 		return 0
 	}
-	Eventually(fetch, n.EventuallyTimeout).Should(Equal(0))
+	Eventually(fetch, n.EventuallyTimeout, time.Second).Should(Equal(0))
 
 	return b
 }
@@ -196,7 +196,10 @@ func CurrentConfigBlockNumberFromPeer(n *Network, peer *Peer, channel, output st
 		ClientAuth: n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	// Poll at a coarse interval: this function is called repeatedly from within
+	// Eventually loops and spawning a `peer channel fetch` process every 10ms
+	// starves the machine on loaded CI agents.
+	Eventually(sess, n.EventuallyTimeout, 500*time.Millisecond).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Received block: "))
 
 	configBlock := UnmarshalBlockFromFile(output)
