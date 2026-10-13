@@ -103,12 +103,12 @@ func (c *ChaincodeServerUserData) ChaincodeServerInfo(cryptoDir string) (*ccintf
 	}
 
 	connInfo.ClientConfig.SecOpts.UseTLS = true
+	connInfo.ClientConfig.SecOpts.ServerNameOverride = c.Domain
 
 	if c.ClientAuthRequired {
 		connInfo.ClientConfig.SecOpts.RequireClientCert = true
 		connInfo.ClientConfig.SecOpts.Certificate = []byte(c.ClientCert)
 		connInfo.ClientConfig.SecOpts.Key = []byte(c.ClientKey)
-		connInfo.ClientConfig.SecOpts.ServerNameOverride = c.Domain
 	}
 
 	connInfo.ClientConfig.SecOpts.ServerRootCAs = [][]byte{[]byte(c.RootCert)}

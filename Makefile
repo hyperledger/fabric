@@ -187,6 +187,7 @@ profile: unit-test # Runs unit tests for all packages in coverprofile mode (slow
 linter: gotool.golangci-lint ## Runs all code checks
 	@echo "LINT: Running code checks.."
 	$(GOTOOLS_BINDIR)/golangci-lint run ./...
+	cd ccaas_builder && $(GOTOOLS_BINDIR)/golangci-lint run ./...
 
 .PHONY: check-metrics-docs
 check-metrics-doc: gotool.gendoc ## Check for outdated reference documentation

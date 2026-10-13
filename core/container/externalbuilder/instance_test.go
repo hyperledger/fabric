@@ -167,8 +167,9 @@ var _ = Describe("Instance", func() {
 						Address: "ccaddress:12345",
 						ClientConfig: comm.ClientConfig{
 							SecOpts: comm.SecureOptions{
-								UseTLS:        true,
-								ServerRootCAs: [][]byte{[]byte("fake-root-cert")},
+								UseTLS:             true,
+								ServerRootCAs:      [][]byte{[]byte("fake-root-cert")},
+								ServerNameOverride: "ccaddress",
 							},
 							KaOpts:      comm.DefaultKeepaliveOptions,
 							DialTimeout: 10 * time.Second,

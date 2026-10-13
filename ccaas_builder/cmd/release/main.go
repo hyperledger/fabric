@@ -60,20 +60,20 @@ func run() error {
 	metadataDir := filepath.Join(builderOutputDir, "META-INF/statedb")
 	metadataDestDir := filepath.Join(releaseDir, "statedb")
 	if _, err := os.Stat(metadataDir); !os.IsNotExist(err) {
-		if err := copy.Copy(metadataDir, metadataDestDir); err != nil {
-			return fmt.Errorf("failed to copy metadataDir directory folder: %s", err)
+		if err = copy.Copy(metadataDir, metadataDestDir); err != nil {
+			return fmt.Errorf("failed to copy metadataDir directory folder: %w", err)
 		}
 	}
 
 	// Process and update the connections file
 	_, err := os.Stat(connectionSrcFile)
 	if err != nil {
-		return fmt.Errorf("connection.json not found in source folder: %s", err)
+		return fmt.Errorf("connection.json not found in source folder: %w", err)
 	}
 
 	err = os.MkdirAll(connectionDir, 0o750)
 	if err != nil {
-		return fmt.Errorf("failed to create target folder for connection.json: %s", err)
+		return fmt.Errorf("failed to create target folder for connection.json: %w", err)
 	}
 
 	if err = Copy(connectionSrcFile, connectionDestFile); err != nil {
