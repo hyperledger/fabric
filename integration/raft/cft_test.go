@@ -938,7 +938,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 				ordererRunner := network.OrdererRunner(orderers[i])
 				ordererRunners[i] = ordererRunner
 				ordererProcesses[i] = ifrit.Invoke(ordererRunner)
-				Eventually(ordererProcesses[0].Ready(), network.EventuallyTimeout).Should(BeClosed())
+				Eventually(ordererProcesses[i].Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
 			o1Proc = ordererProcesses[0]
