@@ -87,12 +87,12 @@ func run() error {
 	}
 
 	if err := copy.Copy(metadataDir, outputDir); err != nil {
-		return fmt.Errorf("failed to copy build metadata folder: %s", err)
+		return fmt.Errorf("failed to copy build metadata folder: %w", err)
 	}
 
 	if _, err := os.Stat(metainfoSrcDir); !os.IsNotExist(err) {
-		if err := copy.Copy(metainfoSrcDir, metainfoDestDir); err != nil {
-			return fmt.Errorf("failed to copy build META-INF folder: %s", err)
+		if err = copy.Copy(metainfoSrcDir, metainfoDestDir); err != nil {
+			return fmt.Errorf("failed to copy build META-INF folder: %w", err)
 		}
 	}
 
@@ -119,23 +119,23 @@ func run() error {
 	// is used as the 'context' to parse the string
 
 	updatedConnection := connection{}
-	var cfg map[string]interface{}
+	var cfg map[string]any
 
 	cfgString := os.Getenv("CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG")
 	if cfgString != "" {
-		if err := json.Unmarshal([]byte(cfgString), &cfg); err != nil {
-			return fmt.Errorf("Failed to unmarshal %s", err)
+		if err = json.Unmarshal([]byte(cfgString), &cfg); err != nil {
+			return fmt.Errorf("Failed to unmarshal %w", err)
 		}
 	}
 
 	updatedConnection.Address, err = execTempl(cfg, connectionData.Address)
 	if err != nil {
-		return fmt.Errorf("Failed to parse the Address field template: %s", err)
+		return fmt.Errorf("Failed to parse the Address field template: %w", err)
 	}
 
 	updatedConnection.DialTimeout, err = execTempl(cfg, connectionData.DialTimeout)
 	if err != nil {
-		return fmt.Errorf("Failed to parse the DialTimeout field template: %s", err)
+		return fmt.Errorf("Failed to parse the DialTimeout field template: %w", err)
 	}
 
 	// if connection is TLS Enabled, updated with the correct information
@@ -147,21 +147,21 @@ func run() error {
 
 		updatedConnection.RootCert, err = execTempl(cfg, connectionData.RootCert)
 		if err != nil {
-			return fmt.Errorf("Failed to parse the RootCert field template: %s", err)
+			return fmt.Errorf("Failed to parse the RootCert field template: %w", err)
 		}
 		updatedConnection.ClientKey, err = execTempl(cfg, connectionData.ClientKey)
 		if err != nil {
-			return fmt.Errorf("Failed to parse the ClientKey field template: %s", err)
+			return fmt.Errorf("Failed to parse the ClientKey field template: %w", err)
 		}
 		updatedConnection.ClientCert, err = execTempl(cfg, connectionData.ClientCert)
 		if err != nil {
-			return fmt.Errorf("Failed to parse the ClientCert field template: %s", err)
+			return fmt.Errorf("Failed to parse the ClientCert field template: %w", err)
 		}
 	}
 
 	updatedConnectionBytes, err := json.Marshal(updatedConnection)
 	if err != nil {
-		return fmt.Errorf("failed to marshal updated connection.json file: %s", err)
+		return fmt.Errorf("failed to marshal updated connection.json file: %w", err)
 	}
 
 	err = os.WriteFile(connectionDestFile, updatedConnectionBytes, fileInfo.Mode())
@@ -173,7 +173,7 @@ func run() error {
 }
 
 // execTempl is a helper function to process a template against a string, and return a string
-func execTempl(cfg map[string]interface{}, inputStr string) (string, error) {
+func execTempl(cfg map[string]any, inputStr string) (string, error) {
 	t, err := template.New("").Option("missingkey=error").Parse(inputStr)
 	if err != nil {
 		fmt.Printf("Failed to parse the template: %s", err)
