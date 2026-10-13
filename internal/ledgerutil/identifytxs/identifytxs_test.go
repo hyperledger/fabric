@@ -7,14 +7,24 @@ SPDX-License-Identifier: Apache-2.0
 package identifytxs
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"hash"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/internal/ledgerutil/jsonrw"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -203,6 +213,115 @@ func TestIdentifyTxs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIdentifyTxsDuplicateTxID(t *testing.T) {
+	rwsetBuilder := rwsetutil.NewRWSetBuilder()
+	rwsetBuilder.AddToWriteSet("marbles", "marble1", []byte("value1"))
+	simulationResults, err := rwsetBuilder.GetTxSimulationResults()
+	require.NoError(t, err)
+	pubSimulationBytes, err := simulationResults.GetPubSimulationBytes()
+	require.NoError(t, err)
+
+	// Block 2 holds a resubmission of the transaction in block 1
+	blockGenerator, genesisBlock := testutil.NewBlockGenerator(t, "mychannel", false)
+	block1 := blockGenerator.NextBlockWithTxid([][]byte{pubSimulationBytes}, []string{"txid1"})
+	block2 := blockGenerator.NextBlockWithTxid([][]byte{pubSimulationBytes}, []string{"txid1"})
+	block2.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(1, peer.TxValidationCode_DUPLICATE_TXID)
+
+	// The divergent record was written by the duplicate transaction on the other peer
+	recordsPath := filepath.Join(t.TempDir(), "records.json")
+	records := `{
+		"ledgerid": "mychannel",
+		"diffRecords": [
+			{
+				"namespace": "marbles",
+				"key": "marble1",
+				"snapshotrecord1": {"value": "value1", "blockNum": 1, "txNum": 0},
+				"snapshotrecord2": {"value": "value1", "blockNum": 2, "txNum": 0}
+			}
+		]
+	}`
+	require.NoError(t, os.WriteFile(recordsPath, []byte(records), 0o600))
+
+	newBlockStoreProvider := func(fsDir string) *blkstorage.BlockStoreProvider {
+		conf := blkstorage.NewConf(kvledger.BlockStorePath(filepath.Join(fsDir, ledgersDataDirName)), 0)
+		indexConfig := &blkstorage.IndexConfig{
+			AttrsToIndex: []blkstorage.IndexableAttr{
+				blkstorage.IndexableAttrBlockNum,
+				blkstorage.IndexableAttrBlockHash,
+				blkstorage.IndexableAttrTxID,
+				blkstorage.IndexableAttrBlockNumTranNum,
+			},
+		}
+		provider, err := blkstorage.NewProvider(conf, indexConfig, &disabled.Provider{}, ledger.GoLevelDB)
+		require.NoError(t, err)
+		return provider
+	}
+
+	requireTxs := func(outputDir string, expectedTxs string) {
+		txList, err := jsonrw.OutputFileToString("txlist1.json", filepath.Join(outputDir, "mychannel_identified_transactions"))
+		require.NoError(t, err)
+		expectedTxList := `{
+			"namespace": "marbles",
+			"key": "marble1",
+			"txs": [` + expectedTxs + `],
+			"blockStoreHeightSufficient": true
+		}`
+		require.JSONEq(t, expectedTxList, txList)
+	}
+
+	originalTx := `{"txid": "txid1", "blockNum": 1, "txNum": 0, "txValidationStatus": "VALID", "keyWrite": "value1"}`
+	duplicateTx := `{"txid": "txid1", "blockNum": 2, "txNum": 0, "txValidationStatus": "DUPLICATE_TXID", "keyWrite": "value1"}`
+
+	t.Run("duplicate-in-block-store", func(t *testing.T) {
+		fsDir := t.TempDir()
+		provider := newBlockStoreProvider(fsDir)
+		blockStore, err := provider.Open("mychannel")
+		require.NoError(t, err)
+		for _, block := range []*common.Block{genesisBlock, block1, block2} {
+			require.NoError(t, blockStore.AddBlock(block))
+		}
+		provider.Close()
+
+		outputDir := t.TempDir()
+		firstBlock, lastBlock, err := IdentifyTxs(recordsPath, fsDir, ledger.GoLevelDB, outputDir)
+		require.NoError(t, err)
+		require.Equal(t, uint64(1), firstBlock)
+		require.Equal(t, uint64(2), lastBlock)
+		requireTxs(outputDir, originalTx+","+duplicateTx)
+	})
+
+	t.Run("duplicate-of-tx-before-snapshot", func(t *testing.T) {
+		fsDir := t.TempDir()
+		provider := newBlockStoreProvider(fsDir)
+		originalStore, err := provider.Open("original")
+		require.NoError(t, err)
+		for _, block := range []*common.Block{genesisBlock, block1} {
+			require.NoError(t, originalStore.AddBlock(block))
+		}
+		snapshotDir := t.TempDir()
+		_, err = originalStore.ExportTxIds(snapshotDir, func() (hash.Hash, error) { return sha256.New(), nil })
+		require.NoError(t, err)
+
+		err = provider.ImportFromSnapshot("mychannel", snapshotDir, &blkstorage.SnapshotInfo{
+			LastBlockNum:      block1.GetHeader().GetNumber(),
+			LastBlockHash:     protoutil.BlockHeaderHash(block1.GetHeader()),
+			PreviousBlockHash: block1.GetHeader().GetPreviousHash(),
+		})
+		require.NoError(t, err)
+		blockStore, err := provider.Open("mychannel")
+		require.NoError(t, err)
+		require.NoError(t, blockStore.AddBlock(block2))
+		provider.Close()
+
+		outputDir := t.TempDir()
+		firstBlock, lastBlock, err := IdentifyTxs(recordsPath, fsDir, ledger.GoLevelDB, outputDir)
+		require.NoError(t, err)
+		require.Equal(t, uint64(2), firstBlock)
+		require.Equal(t, uint64(2), lastBlock)
+		requireTxs(outputDir, duplicateTx)
+	})
 }
 
 func TestDecodeHashedNs(t *testing.T) {

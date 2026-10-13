@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -75,6 +76,34 @@ func TestGetRandomIntNoEntropy(t *testing.T) {
 	rand.Reader = r
 	// Make sure randomness still works even when we have no entropy
 	testHappyPath(t)
+}
+
+func TestRandomUInt64Concurrent(t *testing.T) {
+	const goroutines = 8
+	const perGoroutine = 10000
+
+	results := make([][]uint64, goroutines)
+	var wg sync.WaitGroup
+	for i := range goroutines {
+		wg.Go(func() {
+			for range perGoroutine {
+				results[i] = append(results[i], RandomUInt64())
+			}
+		})
+	}
+	wg.Wait()
+
+	seen := make(map[uint64]struct{}, goroutines*perGoroutine)
+	duplicates := 0
+	for _, res := range results {
+		for _, n := range res {
+			if _, exists := seen[n]; exists {
+				duplicates++
+			}
+			seen[n] = struct{}{}
+		}
+	}
+	require.Zero(t, duplicates, "RandomUInt64 returned the same value more than once")
 }
 
 func TestRandomIndices(t *testing.T) {
