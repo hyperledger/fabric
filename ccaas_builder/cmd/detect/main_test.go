@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
-	"os"
 	"os/exec"
 	"testing"
 	"time"
@@ -59,9 +58,7 @@ func TestArugments(t *testing.T) {
 func TestMissingFile(t *testing.T) {
 	gt := NewWithT(t)
 
-	testPath, err := os.MkdirTemp("", "empty-test-dir")
-	gt.Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(testPath)
+	testPath := t.TempDir()
 
 	detectCmd, err := gexec.Build("github.com/hyperledger/fabric/ccaas_builder/cmd/detect")
 	gt.Expect(err).NotTo(HaveOccurred())

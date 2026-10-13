@@ -60,9 +60,7 @@ func TestGoodPath(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
-	testPath, err := os.MkdirTemp("", "test-ccaas-build-")
-	gt.Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(testPath)
+	testPath := t.TempDir()
 
 	// create a basic structure of a chaincode
 	os.MkdirAll(path.Join(testPath, "in-builder-dir", "META-INF"), 0o755)
@@ -120,9 +118,7 @@ func TestTemplating(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
-	testPath, err := os.MkdirTemp("", "test-ccaas-build-")
-	gt.Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(testPath)
+	testPath := t.TempDir()
 
 	// create a basic structure of the chaincode to use
 	os.MkdirAll(path.Join(testPath, "in-builder-dir", "META-INF"), 0o755)
@@ -194,9 +190,7 @@ func TestTemplatingFailure(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
-	testPath, err := os.MkdirTemp("", "test-ccaas-build-")
-	gt.Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(testPath)
+	testPath := t.TempDir()
 
 	// create a basic structure of the chaincode to use
 	os.MkdirAll(path.Join(testPath, "in-builder-dir", "META-INF"), 0o755)
@@ -248,9 +242,7 @@ func TestMissingConnection(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
-	testPath, err := os.MkdirTemp("", "test-ccaas-build-")
-	gt.Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(testPath)
+	testPath := t.TempDir()
 
 	// create a basic structure of a chaincode
 	os.MkdirAll(path.Join(testPath, "in-builder-dir", "META-INF"), 0o755)
@@ -291,9 +283,7 @@ func TestMissingMetadata(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
-	testPath, err := os.MkdirTemp("", "test-ccaas-build-")
-	gt.Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(testPath)
+	testPath := t.TempDir()
 
 	// create a basic structure of a chaincode
 	os.MkdirAll(path.Join(testPath, "in-builder-dir", "META-INF"), 0o755)

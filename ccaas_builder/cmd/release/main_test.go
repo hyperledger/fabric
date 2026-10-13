@@ -56,9 +56,7 @@ func TestGoodPath(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
-	testPath, err := os.MkdirTemp("", "test-ccaas-release-")
-	gt.Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(testPath)
+	testPath := t.TempDir()
 
 	os.MkdirAll(path.Join(testPath, "in-builder-dir"), 0o755)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -94,9 +92,7 @@ func TestMissingConnection(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
-	testPath, err := os.MkdirTemp("", "test-ccaas-release-")
-	gt.Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(testPath)
+	testPath := t.TempDir()
 
 	os.MkdirAll(path.Join(testPath, "in-builder-dir"), 0o755)
 	gt.Expect(err).NotTo(HaveOccurred())
