@@ -135,6 +135,7 @@ func TestTemplating(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	file.WriteString(`{
 		"address": "{{.address}}:9999",
+		"domain": "{{.domain}}",
 		"dial_timeout": "10s",
 		"tls_required": true,
 		"root_cert":"{{.root_cert}}",
@@ -154,7 +155,7 @@ func TestTemplating(t *testing.T) {
 	args := []string{path.Join(testPath, "in-builder-dir"), path.Join(testPath, "in-metadata-dir"), path.Join(testPath, "out-release-dir")}
 	cmd := exec.Command(releaseCmd, args...)
 	env := os.Environ()
-	env = append(env, `CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"address":"URLAddress","root_cert":"a root cert","client_key":"a client key","client_cert":"a client cert"}`)
+	env = append(env, `CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"address":"URLAddress","domain":"cc.example.com","root_cert":"a root cert","client_key":"a client key","client_cert":"a client cert"}`)
 	cmd.Env = env
 
 	session, err := gexec.Start(cmd, nil, nil)
@@ -172,6 +173,7 @@ func TestTemplating(t *testing.T) {
 
 	expectedJson := `{
 		"address": "URLAddress:9999",
+		"domain": "cc.example.com",
 		"dial_timeout": "10s",
 		"tls_required": true,
 		"root_cert":"a root cert",
