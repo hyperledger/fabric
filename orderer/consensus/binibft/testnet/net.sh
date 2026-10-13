@@ -84,7 +84,7 @@ case "${1:-}" in
     echo "all orderers stopped"
     ;;
   clean)
-    "$0" down || true
+    bash "$0" down || true
     rm -rf "$NET/data" "$NET/logs"
     ;;
   *) echo "usage: $0 gen|up|start N|stop N|down|clean"; exit 1 ;;
