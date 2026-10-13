@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/hyperledger/fabric/internal/ledgerutil/jsonrw"
 	"github.com/hyperledger/fabric/internal/ledgerutil/models"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -331,6 +332,7 @@ func findAndWriteTxs(blockStore *blkstorage.BlockStore, inputKeyMapWrapper *comp
 		}
 		block := nextBlock.(*common.Block)
 		blockData := block.GetData().GetData()
+		txFilter := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 		// Iterate through block transactions
 		for txIndexInt, envBytes := range blockData {
@@ -374,17 +376,12 @@ func findAndWriteTxs(blockStore *blkstorage.BlockStore, inputKeyMapWrapper *comp
 						ck := compKey{namespace: namespace, key: key}
 						_, exists := inputKeyMap[ck]
 						if exists {
-							// Get txValidationCode
-							txvCode, _, err := blockStore.RetrieveTxValidationCodeByTxID(txID)
-							if err != nil {
-								return 0, 0, err
-							}
 							// Create new transaction entry
 							entry := txEntry{
 								TxID:      txID,
 								BlockNum:  blockIndex,
 								TxNum:     txIndex,
-								TxVStatus: txvCode.String(),
+								TxVStatus: txFilter.Flag(txIndexInt).String(),
 								KeyWrite:  string(write.GetValue()),
 							}
 							// Capture new transaction entry
@@ -409,17 +406,12 @@ func findAndWriteTxs(blockStore *blkstorage.BlockStore, inputKeyMapWrapper *comp
 							ck := compKey{namespace: namespace, collection: collection.CollectionName, key: hex.EncodeToString(keyHash)}
 							_, exists := inputKeyMap[ck]
 							if exists {
-								// Get txValidationCode
-								txvCode, _, err := blockStore.RetrieveTxValidationCodeByTxID(txID)
-								if err != nil {
-									return 0, 0, err
-								}
 								// Create new transaction entry
 								entry := txEntry{
 									TxID:      txID,
 									BlockNum:  blockIndex,
 									TxNum:     txIndex,
-									TxVStatus: txvCode.String(),
+									TxVStatus: txFilter.Flag(txIndexInt).String(),
 									KeyWrite:  hex.EncodeToString(hashedWrite.GetValueHash()),
 								}
 								// Capture new transaction entry
