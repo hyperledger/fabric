@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	db "github.com/hyperledger/fabric/common/ledger"
@@ -280,6 +281,9 @@ func (p *Provider) CreateFromGenesisBlock(genesisBlock *common.Block) (ledger.Pe
 	if err != nil {
 		return nil, err
 	}
+	if err = validateLedgerID(ledgerID); err != nil {
+		return nil, err
+	}
 	if err = p.idStore.createLedgerID(
 		ledgerID,
 		&msgs.LedgerMetadata{
@@ -319,6 +323,15 @@ func (p *Provider) deleteUnderConstructionLedger(ledger ledger.PeerLedger, ledge
 		return creationErr
 	}
 	return errors.WithMessage(cleanupErr, creationErr.Error())
+}
+
+// validateLedgerID rejects ledger IDs that cannot be used as a single directory
+// name, since the ledger ID is joined into the paths of the per-ledger stores
+func validateLedgerID(ledgerID string) error {
+	if ledgerID == "" || ledgerID == "." || ledgerID == ".." || strings.ContainsAny(ledgerID, `/\`) {
+		return errors.Errorf("invalid ledger ID [%s]", ledgerID)
+	}
+	return nil
 }
 
 // Open implements the corresponding method from interface ledger.PeerLedgerProvider
