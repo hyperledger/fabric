@@ -483,8 +483,20 @@ func readMetadata(metadataFile *snapshot.FileReader) ([]*metadataRow, error) {
 	if err != nil {
 		return nil, errors.WithMessage(err, "error while reading num-rows in metadata")
 	}
-	metadata := make([]*metadataRow, numMetadata)
-	for i := range numMetadata {
+	// numMetadata is decoded from an untrusted snapshot metadata file during
+	// "peer channel joinbysnapshot". A valid snapshot never has zero rows,
+	// because the SnapshotWriter is only created on the first exported record,
+	// and the cursor indexes metadata[0] unconditionally, so reject the empty
+	// case here rather than panicking later in Next.
+	if numMetadata == 0 {
+		return nil, errors.New("metadata file contains no rows")
+	}
+	// The count must not be used to pre-size the slice either: a crafted value
+	// makes the allocation panic or exhaust memory before a single row is
+	// read. Append as rows are decoded instead, so the allocation is
+	// proportional to the real file content (DecodeString errors at EOF).
+	var metadata []*metadataRow
+	for range numMetadata {
 		ns, err := metadataFile.DecodeString()
 		if err != nil {
 			return nil, errors.WithMessage(err, "error while reading namespace name")
@@ -493,10 +505,10 @@ func readMetadata(metadataFile *snapshot.FileReader) ([]*metadataRow, error) {
 		if err != nil {
 			return nil, errors.WithMessagef(err, "error while reading num entries for the namespace [%s]", ns)
 		}
-		metadata[i] = &metadataRow{
+		metadata = append(metadata, &metadataRow{
 			namespace: ns,
 			kvCounts:  numKVs,
-		}
+		})
 	}
 	return metadata, nil
 }
