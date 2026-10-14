@@ -203,7 +203,7 @@ exit 1
 
 ## Writing chaincode to run as an external service
 
-Currently, the chaincode as an external service model is supported by Go chaincode shim and Node.js chaincode shim.
+Currently, the chaincode as an external service model is supported by Go chaincode shim, Node.js chaincode shim, and Java chaincode shim.
 
 ### Go
 
@@ -305,6 +305,16 @@ If TLS is enabled, the following additional options are required:
 * **CORE_CHAINCODE_TLS_KEY_FILE (--chaincode-tls-key-file)**: path to a private key
 
 When mutual TLS is enabled, **CORE_CHAINCODE_TLS_CLIENT_CACERT_FILE (--chaincode-tls-client-cacert-file)** option should be set to specify the path to the CA certificate for acceptable client certificates.
+
+### Java
+
+The Java chaincode shim, provided by the `fabric-chaincode-shim` library (Maven artifact `org.hyperledger.fabric-chaincode-java:fabric-chaincode-shim`), can run chaincode as an external service. Since fabric-chaincode-java v2.4.1, no custom bootstrap code is needed for this. The shim runs in external service mode when the `CHAINCODE_SERVER_ADDRESS` environment variable is set.
+
+The following environment variables should be set:
+* **CHAINCODE_SERVER_ADDRESS**: See **Address** in the Go chaincode above.
+* **CORE_CHAINCODE_ID_NAME**: See **CCID** in the Go chaincode above.
+
+For a complete walkthrough, see the Java section of the [Chaincode-as-a-service tutorial](https://github.com/hyperledger/fabric-samples/blob/main/test-network/CHAINCODE_AS_A_SERVICE_TUTORIAL.md) in fabric-samples. A sample Java chaincode that can be built into an image and run this way is [asset-transfer-basic/chaincode-java](https://github.com/hyperledger/fabric-samples/tree/main/asset-transfer-basic/chaincode-java).
 
 ## Deploying the chaincode
 
