@@ -386,6 +386,13 @@ func verifySnapshot(snapshotDir string, snapshotMetadata *SnapshotMetadata, hash
 }
 
 func verifyFileHash(dir, file string, expectedHashInHex string, hashProvider ledger.HashProvider) error {
+	// file is taken from the snapshot metadata and must name a plain file
+	// inside dir. Reject anything that would resolve outside the snapshot
+	// directory, such as an absolute path or one containing '..'.
+	if !filepath.IsLocal(file) {
+		return errors.Errorf("invalid file name [%s] in snapshot metadata", file)
+	}
+
 	hashImpl, err := hashProvider.GetHash(snapshotHashOpts)
 	if err != nil {
 		return err
