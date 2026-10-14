@@ -1766,6 +1766,24 @@ func TestChannelGetPeers(t *testing.T) {
 	require.Empty(t, gc.GetPeers())
 }
 
+// expectGossip waits for the next dissemination, and then for the publish cycle
+// that produced it to clear the dirty flag. The flag is cleared after Gossip
+// returns, so without that second wait the next UpdateLedgerHeight can be
+// overwritten by the still-running cycle and would never be published.
+func expectGossip(t *testing.T, gc *gossipChannel, gossipedEvents <-chan struct{}, failMsg string) {
+	t.Helper()
+
+	select {
+	case <-gossipedEvents:
+	case <-time.After(time.Second):
+		require.FailNow(t, failMsg)
+	}
+
+	require.Eventually(t, func() bool {
+		return atomic.LoadInt32(&gc.shouldGossipStateInfo) == int32(0)
+	}, time.Second, 5*time.Millisecond, "Publish cycle did not finish")
+}
+
 func TestOnDemandGossip(t *testing.T) {
 	// Scenario: update the metadata and ensure only 1 dissemination
 	// takes place when membership is not empty
@@ -1805,7 +1823,7 @@ func TestOnDemandGossip(t *testing.T) {
 	adapter.On("Forward", mock.Anything)
 
 	gc := NewGossipChannel(pkiIDInOrg1, orgInChannelA, cs, channelA, adapter, api.JoinChannelMessage(&joinChanMsg{}),
-		disabledMetrics, nil)
+		disabledMetrics, nil).(*gossipChannel)
 	defer gc.Stop()
 	select {
 	case <-gossipedEvents:
@@ -1818,28 +1836,16 @@ func TestOnDemandGossip(t *testing.T) {
 	membershipKnown = true
 	lock.Unlock()
 
-	select {
-	case <-gossipedEvents:
-	case <-time.After(time.Second):
-		require.Fail(t, "Didn't gossip within a timely manner")
-	}
+	expectGossip(t, gc, gossipedEvents, "Didn't gossip within a timely manner")
 	gc.UpdateLedgerHeight(2)
-	select {
-	case <-gossipedEvents:
-	case <-time.After(time.Second):
-		require.Fail(t, "Should have gossiped a third time")
-	}
+	expectGossip(t, gc, gossipedEvents, "Should have gossiped a third time")
 	select {
 	case <-gossipedEvents:
 		require.Fail(t, "Should not have gossiped a fourth time, because dirty flag should have been turned off")
 	case <-time.After(time.Millisecond * 500):
 	}
 	gc.UpdateLedgerHeight(3)
-	select {
-	case <-gossipedEvents:
-	case <-time.After(time.Second):
-		require.Fail(t, "Should have gossiped a block now, because got a new StateInfo message")
-	}
+	expectGossip(t, gc, gossipedEvents, "Should have gossiped a block now, because got a new StateInfo message")
 }
 
 func TestChannelPullWithDigestsFilter(t *testing.T) {
