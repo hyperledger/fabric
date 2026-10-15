@@ -711,6 +711,8 @@ func TestVerifyCertificateCallback(t *testing.T) {
 			VerifyCertificate: verifyFunc,
 		},
 	})
+	require.NoError(t, err, "failed to create gRPC server")
+
 	go gRPCServer.Start()
 	t.Cleanup(func() {
 		gRPCServer.Stop()
@@ -718,14 +720,12 @@ func TestVerifyCertificateCallback(t *testing.T) {
 
 	t.Run("Success path", func(t *testing.T) {
 		t.Parallel()
-		err = probeTLS(gRPCServer.Address(), authorizedClientKeyPair)
-		require.NoError(t, err)
+		require.NoError(t, probeTLS(gRPCServer.Address(), authorizedClientKeyPair))
 	})
 
 	t.Run("Failure path", func(t *testing.T) {
 		t.Parallel()
-		err = probeTLS(gRPCServer.Address(), notAuthorizedClientKeyPair)
-		require.EqualError(t, err, "remote error: tls: bad certificate")
+		require.EqualError(t, probeTLS(gRPCServer.Address(), notAuthorizedClientKeyPair), "remote error: tls: bad certificate")
 	})
 }
 
