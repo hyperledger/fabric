@@ -17,7 +17,7 @@ import (
 var chaincodeQueryCmd *cobra.Command
 
 // queryCmd returns the cobra command for Chaincode Query
-func queryCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func queryCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	chaincodeQueryCmd = &cobra.Command{
 		Use:       "query",
 		Short:     fmt.Sprintf("Query using the specified %s.", chainFuncName),
@@ -26,6 +26,10 @@ func queryCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Comman
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return chaincodeQuery(cmd, cf, cryptoProvider)
 		},
+	}
+	if !isNew {
+		chaincodeQueryCmd.Short = "[DEPRECATED] Query using the specified chaincode (use the \"peercli chaincode query\")."
+		chaincodeQueryCmd.Long = "[DEPRECATED] Get endorsed result of chaincode function call and print it. It won't generate transaction. Instead of this command, use \"peercli chaincode query\"."
 	}
 	flagList := []string{
 		"ctor",
