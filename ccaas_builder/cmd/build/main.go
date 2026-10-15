@@ -148,7 +148,7 @@ func run() error {
 
 		updatedConnection.Domain, err = execTempl(cfg, connectionData.Domain)
 		if err != nil {
-			return fmt.Errorf("Failed to parse the Domain field template: %s", err)
+			return fmt.Errorf("Failed to parse the Domain field template: %w", err)
 		}
 		updatedConnection.RootCert, err = execTempl(cfg, connectionData.RootCert)
 		if err != nil {
