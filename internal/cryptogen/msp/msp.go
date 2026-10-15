@@ -51,6 +51,7 @@ func GenerateLocalMSP(
 	nodeType int,
 	nodeOUs bool,
 	keyAlg string,
+	attrs map[string]string,
 ) error {
 	// create folder structure
 	mspDir := filepath.Join(baseDir, "msp")
@@ -88,6 +89,7 @@ func GenerateLocalMSP(
 		name,
 		ous,
 		nil,
+		attrs,
 		getPublicKey(priv),
 		x509.KeyUsageDigitalSignature,
 		[]x509.ExtKeyUsage{},
@@ -150,6 +152,7 @@ func GenerateLocalMSP(
 		name,
 		nil,
 		sans,
+		nil,
 		getPublicKey(tlsPrivKey),
 		x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
 		[]x509.ExtKeyUsage{
@@ -240,6 +243,7 @@ func GenerateVerifyingMSP(
 	_, err = signCA.SignCertificate(
 		filepath.Join(baseDir, "admincerts"),
 		signCA.Name,
+		nil,
 		nil,
 		nil,
 		getPublicKey(priv),
