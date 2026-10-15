@@ -26,13 +26,13 @@ Usage of configtxgen:
   -configPath string
     	The path containing the configuration to use (if set)
   -inspectBlock string
-    	Prints the configuration contained in the block at the specified path
+    	Prints the configuration contained in the block at the specified path. '-' reads from stdin
   -inspectChannelCreateTx string
-    	[DEPRECATED] Prints the configuration contained in the transaction at the specified path
+    	[DEPRECATED] Prints the configuration contained in the transaction at the specified path. '-' reads from stdin
   -outputBlock string
-    	The path to write the genesis block to (if set)
+    	The path to write the genesis block to (if set). '-' writes to stdout
   -outputCreateChannelTx string
-    	[DEPRECATED] The path to write a channel creation configtx to (if set)
+    	[DEPRECATED] The path to write a channel creation configtx to (if set). '-' writes to stdout
   -printOrg string
     	Prints the definition of an organization as JSON. (useful for adding an org to a channel manually)
   -profile string
