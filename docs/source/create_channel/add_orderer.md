@@ -94,7 +94,7 @@ export ORDERER_CA=${PWD}/organizations/ordererOrganizations/example.com/orderers
 ```
 In order to get the last config block we will make:
 ```shell
-peer channel fetch config config_block.pb -o orderer.example.com:7050 --ordererTLSHostnameOverride orderer.example.com -c mychannel --tls --cafile "$ORDERER_CA"
+cli channel fetch config config_block.pb -o orderer.example.com:7050 --ordererTLSHostnameOverride orderer.example.com -c mychannel --tls --cafile "$ORDERER_CA"
 ```
 ### Adding the new orderer to the channel
 Now one needs to update the environment variables to the new orderer and run the following command using the freshly fetched block:
@@ -261,7 +261,7 @@ if it was created on your local machine, please copy it to the CLI container.
 From the CLI we need to sign the TX using one of the peers' organizations and the orderers' organization.
 Since we are in the context of the peer organization `Org1`, we can simply:
 ```shell
-peer channel signconfigtx -f envelope.pb
+cli channel signconfigtx -f envelope.pb
 ```
 Now we switch to the orderer organization `Orderer`:
 ```shell
@@ -273,7 +273,7 @@ export CORE_PEER_ADDRESS=localhost:7050
 ```
 And we update the orderer:
 ```shell
-peer channel update -o orderer.example.com:7050 --ordererTLSHostnameOverride orderer.example.com -c mychannel -f envelope.pb --tls --cafile "$ORDERER_CA"
+cli channel update -o orderer.example.com:7050 --ordererTLSHostnameOverride orderer.example.com -c mychannel -f envelope.pb --tls --cafile "$ORDERER_CA"
 ```
 
 The output of this command looks similar to:
@@ -327,7 +327,7 @@ export CORE_PEER_ADDRESS=localhost:7051
 
 Fetch the last block using:
 ```shell
-peer channel fetch config config_block.pb -o orderer.example.com:7050 --ordererTLSHostnameOverride orderer.example.com -c mychannel --tls --cafile "$ORDERER_CA"
+cli channel fetch config config_block.pb -o orderer.example.com:7050 --ordererTLSHostnameOverride orderer.example.com -c mychannel --tls --cafile "$ORDERER_CA"
 ```
 
 Convert it to a JSON:
@@ -347,7 +347,7 @@ configtxlator proto_encode --input config_update_in_envelope.json --type common.
 
 Sign it using the peer organization:
 ```shell
-peer channel signconfigtx -f envelope.pb
+cli channel signconfigtx -f envelope.pb
 ```
 
 Now switch to the orderer organization and post it:
@@ -357,7 +357,7 @@ export CORE_PEER_LOCALMSPID=OrdererMSP
 export CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/orderer/tls/ca.crt
 export CORE_PEER_MSPCONFIGPATH=/var/hyperledger/orderer/msp
 export CORE_PEER_ADDRESS=localhost:7050
-peer channel update -o orderer.example.com:7050 --ordererTLSHostnameOverride orderer.example.com -c mychannel -f envelope.pb --tls --cafile "$ORDERER_CA"
+cli channel update -o orderer.example.com:7050 --ordererTLSHostnameOverride orderer.example.com -c mychannel -f envelope.pb --tls --cafile "$ORDERER_CA"
 ```
 
 The result should be:
