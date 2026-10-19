@@ -327,6 +327,27 @@ func (msp *bccspmsp) setupNodeOUsV142(config *m.FabricMSPConfig) error {
 
 	msp.ouEnforcement = config.GetFabricNodeOus().GetEnable()
 
+	identifiers := []struct {
+		name       string
+		identifier *m.FabricOUIdentifier
+	}{
+		{"ClientOU", config.GetFabricNodeOus().GetClientOuIdentifier()},
+		{"PeerOU", config.GetFabricNodeOus().GetPeerOuIdentifier()},
+		{"AdminOU", config.GetFabricNodeOus().GetAdminOuIdentifier()},
+		{"OrdererOU", config.GetFabricNodeOus().GetOrdererOuIdentifier()},
+	}
+	seen := make(map[string]string, len(identifiers))
+	for _, entry := range identifiers {
+		if entry.identifier == nil {
+			continue
+		}
+		value := entry.identifier.GetOrganizationalUnitIdentifier()
+		if previous, ok := seen[value]; ok {
+			return errors.Errorf("NodeOU identifiers must be unique: %s and %s both use [%s]", previous, entry.name, value)
+		}
+		seen[value] = entry.name
+	}
+
 	counter := 0
 	// ClientOU
 	if config.GetFabricNodeOus().GetClientOuIdentifier() != nil {
