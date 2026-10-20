@@ -431,6 +431,14 @@ func createDiscoveryInstanceWithAnchorPeerTracker(port int, id string, bootstrap
 		errMsg := fmt.Sprintf("Failed creating listener on address %v for gossip instance: %v", listenAddress, err)
 		panic(errMsg)
 	}
+
+	if actualPort := ll.Addr().(*net.TCPAddr).Port; actualPort != port {
+		endpoint = fmt.Sprintf("localhost:%d", actualPort)
+		self.Endpoint = endpoint
+		self.InternalEndpoint = endpoint
+		self.PKIid = []byte(endpoint)
+	}
+
 	s := grpc.NewServer()
 
 	config.BootstrapPeers = bootstrapPeers
@@ -444,13 +452,6 @@ func createDiscoveryInstanceWithAnchorPeerTracker(port int, id string, bootstrap
 		discSvc.Connect(NetworkMember{Endpoint: bp, InternalEndpoint: bootPeer}, func() (*PeerIdentification, error) {
 			return &PeerIdentification{SelfOrg: true, ID: common.PKIidType(bp)}, nil
 		})
-	}
-
-	if actualPort := ll.Addr().(*net.TCPAddr).Port; actualPort != port {
-		endpoint = fmt.Sprintf("localhost:%d", actualPort)
-		self.Endpoint = endpoint
-		self.InternalEndpoint = endpoint
-		self.PKIid = []byte(endpoint)
 	}
 
 	gossInst := &gossipInstance{comm: comm, gRGCserv: s, Discovery: discSvc, lsnr: ll, shouldGossip: shouldGossip, port: port, msgInterceptor: f}
@@ -1165,10 +1166,11 @@ func discPolForPeer(selfPort int) DisclosurePolicy {
 }
 
 func TestCertificateChange(t *testing.T) {
-	bootPeers := []string{bootPeer(42611), bootPeer(42612), bootPeer(42613)}
-	p1 := createDiscoveryInstance(42611, "d1", bootPeers)
-	p2 := createDiscoveryInstance(42612, "d2", bootPeers)
-	p3 := createDiscoveryInstance(42613, "d3", bootPeers)
+	p1 := createDiscoveryInstance(0, "d1", nil)
+	p1Endpoint := p1.discoveryImpl().self.InternalEndpoint
+	p2 := createDiscoveryInstance(0, "d2", []string{p1Endpoint})
+	p2Endpoint := p2.discoveryImpl().self.InternalEndpoint
+	p3 := createDiscoveryInstance(0, "d3", []string{p1Endpoint, p2Endpoint})
 
 	// Wait for membership establishment
 	assertMembership(t, []*gossipInstance{p1, p2, p3}, 2)
@@ -1213,7 +1215,7 @@ func TestCertificateChange(t *testing.T) {
 
 	// Tell the first peer that the second peer's PKI-ID has changed
 	// So that it will purge it from the membership entirely
-	p1.comm.identitySwitch <- common.PKIidType("localhost:42612")
+	p1.comm.identitySwitch <- common.PKIidType(p2Endpoint)
 
 	c1 = pingCount1()
 	c3 = pingCount3()
@@ -1938,7 +1940,7 @@ func portOfEndpoint(endpoint string) int {
 }
 
 func TestHandleAliveMessage_RelearnsMemberAfterConcurrentPurge(t *testing.T) {
-	inst := createDiscoveryInstanceWithNoGossip(33700, "d0", []string{})
+	inst := createDiscoveryInstanceWithNoGossip(0, "d0", []string{})
 	defer inst.Stop()
 
 	impl := inst.discoveryImpl()
