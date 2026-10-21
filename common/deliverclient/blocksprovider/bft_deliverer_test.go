@@ -8,9 +8,11 @@ package blocksprovider_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -65,6 +67,25 @@ type bftDelivererTestSetup struct {
 	monDoneC      chan struct{}              // signal the monitor to stop
 	monEndC       chan struct{}              // when the monitor stops, it closes this channel
 	logger        *flogging.FabricLogger
+
+	recvCallCount      atomic.Int32
+	closeSendCallCount atomic.Int32
+}
+
+// deliverClient binds Recv and CloseSend to a single connection, so that
+// closing a connection does not wake up a Recv belonging to another connection.
+type deliverClient struct {
+	*fake.DeliverClient
+	recv      func() (*orderer.DeliverResponse, error)
+	closeSend func() error
+}
+
+func (d *deliverClient) Recv() (*orderer.DeliverResponse, error) {
+	return d.recv()
+}
+
+func (d *deliverClient) CloseSend() error {
+	return d.closeSend()
 }
 
 func newBFTDelivererTestSetup(t *testing.T) *bftDelivererTestSetup {
@@ -158,7 +179,38 @@ func (s *bftDelivererTestSetup) initialize(t *testing.T) {
 		return nil
 	}
 
-	s.fakeDeliverStreamer.DeliverReturns(s.fakeDeliverClient, nil)
+	s.fakeDeliverStreamer.DeliverCalls(func(ctx context.Context, _ *grpc.ClientConn) (orderer.AtomicBroadcast_DeliverClient, error) {
+		var closeOnce sync.Once
+		closedC := make(chan struct{})
+
+		return &deliverClient{
+			DeliverClient: s.fakeDeliverClient,
+			recv: func() (*orderer.DeliverResponse, error) {
+				s.recvCallCount.Add(1)
+
+				select {
+				case r := <-s.recvStepC:
+					if r == nil {
+						return nil, errors.New("fake-recv-step-error")
+					}
+					return r, nil
+				case <-closedC:
+					return nil, errors.New("fake-deliver-client-closed")
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				case <-s.deliverClientDoneC:
+					return nil, nil
+				}
+			},
+			closeSend: func() error {
+				s.closeSendCallCount.Add(1)
+				closeOnce.Do(func() {
+					close(closedC)
+				})
+				return nil
+			},
+		}, nil
+	})
 
 	// Censorship monitor creation.
 	// The monitor can be created multiple times during a test.
@@ -259,6 +311,14 @@ func (s *bftDelivererTestSetup) stop() {
 	}
 
 	<-s.endC
+}
+
+func (s *bftDelivererTestSetup) recvCalls() int {
+	return int(s.recvCallCount.Load())
+}
+
+func (s *bftDelivererTestSetup) closeSendCalls() int {
+	return int(s.closeSendCallCount.Load())
 }
 
 func (s *bftDelivererTestSetup) assertEventuallyMonitorCallCount(n int) {
@@ -695,7 +755,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		setup.logger.Info("receives the block and loops, not sleeping")
-		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(2))
+		setup.gWithT.Eventually(setup.recvCalls, eventuallyTO).Should(Equal(2))
 		require.Equal(t, 0, setup.fakeSleeper.SleepCallCount())
 
 		setup.logger.Info("checks the validity of the block")
@@ -744,7 +804,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		setup.logger.Info("disconnects, sleeps, and tries again")
 		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount, eventuallyTO).Should(Equal(1))
 		setup.gWithT.Eventually(setup.fakeSleeper.SleepCallCount, eventuallyTO).Should(Equal(1))
-		require.Equal(t, 1, setup.fakeDeliverClient.CloseSendCallCount())
+		require.Equal(t, 1, setup.closeSendCalls())
 		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(2))
 		addr1, _ := setup.fakeDialer.DialArgsForCall(0)
 		addr2, _ := setup.fakeDialer.DialArgsForCall(1)
@@ -790,7 +850,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		setup.logger.Info("disconnects, sleeps, and tries again")
 		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount, eventuallyTO).Should(Equal(1))
 		setup.gWithT.Eventually(setup.fakeSleeper.SleepCallCount, eventuallyTO).Should(Equal(1))
-		require.Equal(t, 1, setup.fakeDeliverClient.CloseSendCallCount())
+		require.Equal(t, 1, setup.closeSendCalls())
 		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(2))
 
 		addr1, _ := setup.fakeDialer.DialArgsForCall(0)
@@ -846,7 +906,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		setup.logger.Info("receives the block and loops, not sleeping")
-		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(2))
+		setup.gWithT.Eventually(setup.recvCalls, eventuallyTO).Should(Equal(2))
 		require.Equal(t, 24, setup.fakeSleeper.SleepCallCount())
 
 		setup.logger.Info("checks the validity of the block")
@@ -869,7 +929,6 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		setup.gWithT.Expect(setup.fakeDialer.DialCallCount()).Should(Equal(25))
 
 		setup.logger.Info("a Recv() error occurs")
-		setup.fakeDeliverClient.CloseSendStub = nil
 		setup.recvStepC <- nil
 
 		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(26))
@@ -923,11 +982,10 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		setup.logger.Info("receives the block and loops, not sleeping")
-		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(2))
+		setup.gWithT.Eventually(setup.recvCalls, eventuallyTO).Should(Equal(2))
 		require.Equal(t, 80, setup.fakeSleeper.SleepCallCount())
 
 		setup.logger.Info("a Recv() error occurs, more dial attempts")
-		setup.fakeDeliverClient.CloseSendStub = nil
 		setup.recvStepC <- nil
 		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(161))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(160))
@@ -940,11 +998,10 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		setup.logger.Info("receives the block and loops, not sleeping")
-		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(4))
+		setup.gWithT.Eventually(setup.recvCalls, eventuallyTO).Should(Equal(4))
 		require.Equal(t, 160, setup.fakeSleeper.SleepCallCount())
 
 		setup.logger.Info("a Recv() error occurs, more dial attempts")
-		setup.fakeDeliverClient.CloseSendStub = nil
 		setup.recvStepC <- nil
 		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(241))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(240))
@@ -1004,7 +1061,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		setup.logger.Info("receives the block and loops, not sleeping")
-		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(2))
+		setup.gWithT.Eventually(setup.recvCalls, eventuallyTO).Should(Equal(2))
 		require.Equal(t, 0, setup.fakeSleeper.SleepCallCount())
 
 		setup.logger.Info("checks the validity of the block")

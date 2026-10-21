@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package gateway
 
 import (
+	"math"
+	"slices"
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
@@ -22,6 +24,95 @@ import (
 )
 
 const channelName = "mychannel"
+
+func TestSorter(t *testing.T) {
+	newState := func(address string, height uint64) *endorserState {
+		return &endorserState{
+			endorser: &endorser{endpointConfig: &endpointConfig{address: address}},
+			height:   height,
+		}
+	}
+
+	for _, test := range []struct {
+		name     string
+		host     string
+		a, b     *endorserState
+		expected int
+	}{
+		{
+			name: "higher remote peer precedes lower host peer", host: "host",
+			a: newState("remote", 5), b: newState("host", 4), expected: -1,
+		},
+		{
+			name: "higher host peer precedes lower remote peer", host: "host",
+			a: newState("host", 5), b: newState("remote", 4), expected: -1,
+		},
+		{
+			name: "host peer wins at equal height", host: "host",
+			a: newState("host", 4), b: newState("remote", 4), expected: -1,
+		},
+		{
+			name: "remote peers at equal height compare equal", host: "host",
+			a: newState("remote1", 4), b: newState("remote2", 4), expected: 0,
+		},
+		{
+			name: "host peers at equal height compare equal", host: "host",
+			a: newState("host", 4), b: newState("host", 4), expected: 0,
+		},
+		{
+			name: "empty host orders by height",
+			a:    newState("remote1", 5), b: newState("remote2", 4), expected: -1,
+		},
+		{
+			name: "empty host leaves equal height remote peers equal",
+			a:    newState("remote1", 4), b: newState("remote2", 4), expected: 0,
+		},
+		{
+			name: "full uint64 height range", host: "host",
+			a: newState("remote", math.MaxUint64), b: newState("host", 0), expected: -1,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			compare := sorter(test.host)
+			require.Equal(t, test.expected, compare(test.a, test.b))
+			require.Equal(t, -test.expected, compare(test.b, test.a))
+			require.Zero(t, compare(test.a, test.a))
+			require.Zero(t, compare(test.b, test.b))
+		})
+	}
+}
+
+func TestSorterPeerOrdering(t *testing.T) {
+	host := &endorser{endpointConfig: &endpointConfig{address: "host"}}
+	remote := &endorser{endpointConfig: &endpointConfig{address: "remote"}}
+	higher := &endorserState{endorser: remote, height: 5}
+	local := &endorserState{endorser: host, height: 4}
+	equal := &endorserState{endorser: remote, height: 4}
+	lower := &endorserState{endorser: remote, height: 3}
+	want := []*endorserState{higher, local, equal, lower}
+
+	// Check every input ordering so host preference cannot depend on its position.
+	for a := range want {
+		for b := range want {
+			if b == a {
+				continue
+			}
+			for c := range want {
+				if c == a || c == b {
+					continue
+				}
+				for d := range want {
+					if d == a || d == b || d == c {
+						continue
+					}
+					peers := []*endorserState{want[a], want[b], want[c], want[d]}
+					slices.SortFunc(peers, sorter(host.address))
+					require.Equal(t, want, peers, "input order: %v", []int{a, b, c, d})
+				}
+			}
+		}
+	}
+}
 
 func TestOrdererCache(t *testing.T) {
 	def := &testDef{
