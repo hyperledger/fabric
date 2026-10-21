@@ -9,6 +9,7 @@ package cluster_test
 import (
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"net"
@@ -36,6 +37,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -1474,11 +1477,22 @@ func TestCertExpirationWarningEgress(t *testing.T) {
 
 	node2.handler.On("OnSubmit", testChannel, node1.nodeInfo.ID, mock.Anything).Return(nil)
 
+	// Use a mock stream so that sending multiple messages does not depend on the
+	// lifecycle of the server-side stream, which serves a single request.
+	streamContext := peer.NewContext(context.Background(), &peer.Peer{
+		AuthInfo: credentials.TLSInfo{
+			State: tls.ConnectionState{
+				PeerCertificates: []*x509.Certificate{cert},
+			},
+		},
+	})
 	mockgRPC := &mocks.StepClient{}
 	mockgRPC.On("Send", mock.Anything).Return(nil)
-	mockgRPC.On("Context").Return(context.Background())
-	mockClient := &mocks.ClusterClient{}
-	mockClient.On("Step", mock.Anything).Return(mockgRPC, nil)
+	mockgRPC.On("Context").Return(streamContext)
+
+	stub.GetStreamFunc = func(context.Context) (cluster.StepClientStream, error) {
+		return &cluster.CommClientStream{StepClient: mockgRPC}, nil
+	}
 
 	stream := assertEventualEstablishStream(t, stub)
 

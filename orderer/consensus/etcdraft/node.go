@@ -266,7 +266,7 @@ func (n *node) abdicateLeadership() error {
 	notifyC, unsubscribe := n.subscribeToLeaderChange()
 	defer unsubscribe()
 
-	var transferee uint64
+	var transferee, inactiveTransferee uint64
 	for id, pr := range status.Progress {
 		if id == status.ID {
 			continue // skip self
@@ -277,7 +277,20 @@ func (n *node) abdicateLeadership() error {
 			break
 		}
 
+		if !pr.IsPaused() && inactiveTransferee == raft.None {
+			// RecentActive is reset on every election timeout, so a live
+			// follower can appear inactive just after a leader check.
+			// Remember it as a fallback instead of aborting the transfer,
+			// which might leave the removed leader in place indefinitely.
+			inactiveTransferee = id
+			continue
+		}
+
 		n.logger.Debugf("Node %d is not qualified as transferee because it's either paused or not active", id)
+	}
+
+	if transferee == raft.None {
+		transferee = inactiveTransferee
 	}
 
 	if transferee == raft.None {
