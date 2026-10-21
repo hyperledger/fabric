@@ -9,7 +9,8 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"math"
@@ -1064,7 +1065,7 @@ var _ = Describe("osnadmin", func() {
 func checkStatusOutput(output string, exit int, err error, expectedStatus int, expectedOutput any) {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(exit).To(Equal(0))
-	json, err := json.MarshalIndent(expectedOutput, "", "\t")
+	json, err := marshalIndent(expectedOutput)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(output).To(Equal(fmt.Sprintf("Status: %d\n%s\n", expectedStatus, string(json))))
 }
@@ -1072,9 +1073,20 @@ func checkStatusOutput(output string, exit int, err error, expectedStatus int, e
 func checkOutput(output string, exit int, err error, expectedOutput any) {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(exit).To(Equal(0))
-	json, err := json.MarshalIndent(expectedOutput, "", "\t")
+	json, err := marshalIndent(expectedOutput)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(output).To(Equal(string(json) + "\n"))
+}
+
+func marshalIndent(v any) ([]byte, error) {
+	return json.Marshal(
+		v,
+		json.Deterministic(true),
+		jsontext.EscapeForHTML(true),
+		json.FormatNilSliceAsNull(true),
+		json.FormatNilMapAsNull(true),
+		jsontext.WithIndent("\t"),
+	)
 }
 
 func checkFlagError(output string, exit int, err error, expectedError string) {

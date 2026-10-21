@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"strconv"
 	"time"
@@ -26,8 +26,7 @@ import (
 // keys - requires no arguments, returns all keys
 
 // SimpleChaincode example simple Chaincode implementation
-type SimpleChaincode struct {
-}
+type SimpleChaincode struct{}
 
 type PageResponse struct {
 	Bookmark string   `json:"bookmark"`
@@ -111,6 +110,7 @@ func (t *SimpleChaincode) putPrivate(stub shim.ChaincodeStubInterface, args []st
 
 	return shim.Success(nil)
 }
+
 func (t *SimpleChaincode) removePrivate(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 2 {
 		return shim.Error("remove operation on private data must include two arguments: [collection, key]")
@@ -124,6 +124,7 @@ func (t *SimpleChaincode) removePrivate(stub shim.ChaincodeStubInterface, args [
 	}
 	return shim.Success(nil)
 }
+
 func (t *SimpleChaincode) getPrivate(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 2 {
 		return shim.Error("get operation on private data must include two arguments: [collection, key]")
@@ -136,8 +137,8 @@ func (t *SimpleChaincode) getPrivate(stub shim.ChaincodeStubInterface, args []st
 	}
 	jsonVal, err := json.Marshal(string(value))
 	return shim.Success(jsonVal)
-
 }
+
 func (t *SimpleChaincode) keysPrivate(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 3 {
 		return shim.Error("range query operation on private data must include three arguments, a collection, key and value")
@@ -209,6 +210,7 @@ func (t *SimpleChaincode) queryPrivate(stub shim.ChaincodeStubInterface, args []
 
 	return shim.Success(jsonKeys)
 }
+
 func (t *SimpleChaincode) put(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 2 {
 		return shim.Error("put operation must include two arguments: [key, value]")
@@ -235,6 +237,7 @@ func (t *SimpleChaincode) put(stub shim.ChaincodeStubInterface, args []string) *
 
 	return shim.Success(nil)
 }
+
 func (t *SimpleChaincode) remove(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 1 {
 		return shim.Error("remove operation must include one argument: [key]")
@@ -247,6 +250,7 @@ func (t *SimpleChaincode) remove(stub shim.ChaincodeStubInterface, args []string
 	}
 	return shim.Success(nil)
 }
+
 func (t *SimpleChaincode) get(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 1 {
 		return shim.Error("get operation must include one argument, a key")
@@ -259,6 +263,7 @@ func (t *SimpleChaincode) get(stub shim.ChaincodeStubInterface, args []string) *
 	jsonVal, err := json.Marshal(string(value))
 	return shim.Success(jsonVal)
 }
+
 func (t *SimpleChaincode) keys(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 2 {
 		return shim.Error("keys operation must include two arguments, a key and value")
@@ -358,6 +363,7 @@ func (t *SimpleChaincode) keysByPage(stub shim.ChaincodeStubInterface, args []st
 
 	return shim.Success(queryResp)
 }
+
 func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	query := args[0]
 	keysIter, err := stub.GetQueryResult(query)
@@ -382,6 +388,7 @@ func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string)
 
 	return shim.Success(jsonKeys)
 }
+
 func (t *SimpleChaincode) queryByPage(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	query := args[0]
 	pageSize, parserr := strconv.ParseInt(args[1], 10, 32)
@@ -421,6 +428,7 @@ func (t *SimpleChaincode) queryByPage(stub shim.ChaincodeStubInterface, args []s
 
 	return shim.Success(queryResp)
 }
+
 func (t *SimpleChaincode) history(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	key := args[0]
 	keysIter, err := stub.GetHistoryForKey(key)
@@ -449,14 +457,17 @@ func (t *SimpleChaincode) history(stub shim.ChaincodeStubInterface, args []strin
 
 	return shim.Success(jsonKeys)
 }
+
 func (t *SimpleChaincode) getPut(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	_ = t.get(stub, args)
 	return t.put(stub, args)
 }
+
 func (t *SimpleChaincode) getPutPrivate(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	_ = t.getPrivate(stub, args)
 	return t.putPrivate(stub, args)
 }
+
 func main() {
 	err := shim.Start(new(SimpleChaincode))
 	if err != nil {

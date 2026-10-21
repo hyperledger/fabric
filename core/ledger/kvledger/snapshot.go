@@ -9,7 +9,8 @@ package kvledger
 import (
 	"bufio"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"hash"
 	"io"
@@ -50,7 +51,7 @@ type SnapshotSignableMetadata struct {
 }
 
 func (m *SnapshotSignableMetadata) ToJSON() ([]byte, error) {
-	return json.MarshalIndent(m, "", jsonFileIndent)
+	return marshalIndentJSON(m)
 }
 
 type snapshotAdditionalMetadata struct {
@@ -59,7 +60,7 @@ type snapshotAdditionalMetadata struct {
 }
 
 func (m *snapshotAdditionalMetadata) ToJSON() ([]byte, error) {
-	return json.MarshalIndent(m, "", jsonFileIndent)
+	return marshalIndentJSON(m)
 }
 
 type SnapshotMetadata struct {
@@ -434,4 +435,15 @@ func (c *mostRecentCollectionConfigFetcher) CollectionInfo(chaincodeName, collec
 		}
 	}
 	return nil, nil
+}
+
+func marshalIndentJSON(v any) ([]byte, error) {
+	return json.Marshal(
+		v,
+		json.Deterministic(true),
+		jsontext.EscapeForHTML(true),
+		json.FormatNilSliceAsNull(true),
+		json.FormatNilMapAsNull(true),
+		jsontext.WithIndent(jsonFileIndent),
+	)
 }

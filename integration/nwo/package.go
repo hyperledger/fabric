@@ -9,7 +9,7 @@ package nwo
 import (
 	"archive/tar"
 	"compress/gzip"
-	"encoding/json"
+	"encoding/json/v2"
 	"io"
 	"os"
 

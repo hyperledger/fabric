@@ -195,7 +195,7 @@ var _ = Describe("externalbuilder", func() {
 
 				It("returns an error", func() {
 					_, err := detector.Build("fake-package-id", md, codePackage)
-					Expect(err).To(MatchError(ContainSubstring("invalid character 'c' looking for beginning of object key string")))
+					Expect(err).To(MatchError(ContainSubstring("invalid character 'c'")))
 				})
 			})
 
