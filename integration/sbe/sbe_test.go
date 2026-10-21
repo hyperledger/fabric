@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package sbe
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strings"

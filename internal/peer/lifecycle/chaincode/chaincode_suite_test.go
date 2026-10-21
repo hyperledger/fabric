@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode_test
 
 import (
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"testing"
@@ -76,4 +78,15 @@ func TestMain(m *testing.M) {
 		panic(fmt.Sprintf("Fatal error when reading MSP config: %s", err))
 	}
 	os.Exit(m.Run())
+}
+
+func marshalIndentJSON(v any) ([]byte, error) {
+	return json.Marshal(
+		v,
+		json.Deterministic(true),
+		jsontext.EscapeForHTML(true),
+		json.FormatNilSliceAsNull(true),
+		json.FormatNilMapAsNull(true),
+		jsontext.WithIndent("\t"),
+	)
 }

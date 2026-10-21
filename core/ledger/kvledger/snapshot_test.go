@@ -8,7 +8,7 @@ package kvledger
 
 import (
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"math"
@@ -38,6 +38,52 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
+
+// ToJSON marshals with json.Deterministic, jsontext.EscapeForHTML and
+// FormatNilSliceAsNull/FormatNilMapAsNull: map keys are sorted, HTML
+// characters are escaped as \uXXXX (v2 does not escape by default), and
+// a nil FilesAndHashes map serializes as null.
+func TestSnapshotSignableMetadataToJSON(t *testing.T) {
+	t.Run("golden bytes with sorted map keys and HTML escaping", func(t *testing.T) {
+		m := &SnapshotSignableMetadata{
+			ChannelName:            "mychannel<b>",
+			LastBlockNumber:        5,
+			LastBlockHashInHex:     "aabb",
+			PreviousBlockHashInHex: "ccdd",
+			FilesAndHashes: map[string]string{
+				"zzz": "111",
+				"aaa": "222",
+			},
+			StateDBType: "CouchDB",
+		}
+
+		b, err := m.ToJSON()
+		require.NoError(t, err)
+		expected := `{
+    "channel_name": "mychannel\u003cb\u003e",
+    "last_block_number": 5,
+    "last_block_hash": "aabb",
+    "previous_block_hash": "ccdd",
+    "snapshot_files_raw_hashes": {
+        "aaa": "222",
+        "zzz": "111"
+    },
+    "state_db_type": "CouchDB"
+}`
+		require.Equal(t, expected, string(b))
+	})
+
+	t.Run("nil map serializes as null", func(t *testing.T) {
+		m := &SnapshotSignableMetadata{
+			ChannelName: "c",
+			StateDBType: "LevelDB",
+		}
+
+		b, err := m.ToJSON()
+		require.NoError(t, err)
+		require.Contains(t, string(b), `"snapshot_files_raw_hashes": null`)
+	})
+}
 
 func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 	conf := testConfig(t)
@@ -716,7 +762,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		require.EqualError(
 			t,
 			err,
-			"error while unmarshalling metadata: error while unmarshalling signable metadata: unexpected end of JSON input",
+			"error while unmarshalling metadata: error while unmarshalling signable metadata: jsontext: unexpected EOF",
 		)
 		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
 	})
@@ -730,7 +776,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		require.EqualError(
 			t,
 			err,
-			"error while unmarshalling metadata: error while unmarshalling additional metadata: unexpected end of JSON input",
+			"error while unmarshalling metadata: error while unmarshalling additional metadata: jsontext: unexpected EOF",
 		)
 		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
 	})
