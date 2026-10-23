@@ -9,12 +9,14 @@ package privdata
 import (
 	protosgossip "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 //go:generate mockery -dir . -name RWSetScanner -case underscore -output mocks/
@@ -179,6 +181,12 @@ func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, fil
 	}
 	defer it.Close()
 
+	type pvtRWSetEntry struct {
+		config *peer.CollectionConfig
+		rwSets []util.PrivateRWSet
+	}
+	var entries []pvtRWSetEntry
+
 	maxEndorsedAt := uint64(0)
 	for {
 		res, err := it.Next()
@@ -187,6 +195,14 @@ func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, fil
 				", collection name <%s>, txID <%s>, due to <%s>", dig.GetNamespace(), dig.GetCollection(), dig.GetTxId(), err)
 		}
 		if res == nil {
+			// The requester's eligibility is evaluated against the selected collection config only,
+			// so only return the write sets that were stored under that same config. Entries pushed
+			// by other peers carry their own collection config and must not be released under it.
+			for _, entry := range entries {
+				if proto.Equal(entry.config, results.CollectionConfig) {
+					results.RWSet = append(results.RWSet, entry.rwSets...)
+				}
+			}
 			return results, nil
 		}
 		rws := res.PvtSimulationResultsWithConfig
@@ -219,7 +235,7 @@ func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, fil
 			maxEndorsedAt = rws.GetEndorsedAt()
 			results.CollectionConfig = configs
 		}
-		results.RWSet = append(results.RWSet, pvtRWSet...)
+		entries = append(entries, pvtRWSetEntry{config: configs, rwSets: pvtRWSet})
 	}
 }
 
