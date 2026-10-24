@@ -59,6 +59,6 @@ func joinBySnapshot(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) er
 		return err
 	}
 
-	logger.Info(`The joinbysnapshot operation is in progress. Use "peer channel joinbysnapshotstatus" to check the status.`)
+	logger.Info(`The joinbysnapshot operation is in progress. Use "cli channel joinbysnapshotstatus" to check the status.`)
 	return nil
 }

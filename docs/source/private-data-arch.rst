@@ -17,7 +17,7 @@ collection definition is part of the chaincode definition. The chaincode includi
 collection definition must be approved by the required channel members, and
 then becomes effective when the chaincode definition is committed to the channel.
 The collection definition that is approved must be identical for each of the required
-channel members. When using the peer CLI to approve and commit the
+channel members. When using the CLI to approve and commit the
 chaincode definition, use the ``--collections-config`` flag to specify the path
 to the collection definition file.
 
