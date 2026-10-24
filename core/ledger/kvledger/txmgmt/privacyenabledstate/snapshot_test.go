@@ -406,6 +406,30 @@ func TestLoadMetadata(t *testing.T) {
 	require.Equal(t, metadata, loadedMetadata)
 }
 
+func TestLoadMetadataRejectsOversizedNumRows(t *testing.T) {
+	testdir := t.TempDir()
+
+	// Craft a metadata file whose leading num-rows count is larger than any
+	// slice that could be allocated. The count is decoded from an untrusted
+	// snapshot during "peer channel joinbysnapshot", so readMetadata must not
+	// use it to pre-size an allocation. Before the fix this panicked the import
+	// goroutine (which has no recover) and crashed the peer.
+	metadataFilePath := filepath.Join(testdir, PubStateMetadataFileName)
+	metadataFileWriter, err := snapshot.CreateFile(metadataFilePath, snapshotFileFormat, testNewHashFunc)
+	require.NoError(t, err)
+	require.NoError(t, metadataFileWriter.EncodeUVarint(^uint64(0)))
+	_, err = metadataFileWriter.Done()
+	require.NoError(t, err)
+	defer metadataFileWriter.Close()
+
+	metadataFileReader, err := snapshot.OpenFile(metadataFilePath, snapshotFileFormat)
+	require.NoError(t, err)
+	defer metadataFileReader.Close()
+
+	_, err = readMetadata(metadataFileReader)
+	require.Error(t, err)
+}
+
 func TestSnapshotExportErrorPropagation(t *testing.T) {
 	var dbEnv *LevelDBTestEnv
 	var snapshotDir string
