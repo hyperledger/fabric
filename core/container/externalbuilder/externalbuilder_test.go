@@ -155,6 +155,27 @@ var _ = Describe("externalbuilder", func() {
 					Expect(err).To(MatchError("could not create dir 'path/to/nowhere/fake-package-id' to persist build output: mkdir path/to/nowhere/fake-package-id: no such file or directory"))
 				})
 			})
+
+			Context("when the build output cannot be copied to the durable path", func() {
+				BeforeEach(func() {
+					detector.Builders = externalbuilder.CreateBuilders([]peer.ExternalBuilder{
+						{Path: "testdata/symlinkbuilder", Name: "symlinkbuilder"},
+					}, "mspid")
+				})
+
+				It("removes the partial build output", func() {
+					_, err := detector.Build("fake-package-id", md, codePackage)
+					Expect(err).To(MatchError(ContainSubstring("could not move or copy build context bld to persistent location")))
+					Expect(filepath.Join(durablePath, "fake-package-id")).NotTo(BeAnExistingFile())
+
+					Expect(codePackage.Close()).To(Succeed())
+					codePackage, err = os.Open("testdata/normal_archive.tar.gz")
+					Expect(err).NotTo(HaveOccurred())
+					instance, err := detector.Build("fake-package-id", md, codePackage)
+					Expect(err).To(MatchError(ContainSubstring("could not move or copy build context bld to persistent location")))
+					Expect(instance).To(BeNil())
+				})
+			})
 		})
 
 		Describe("CachedBuild", func() {
