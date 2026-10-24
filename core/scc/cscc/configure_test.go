@@ -348,6 +348,41 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	}
 }
 
+func TestConfigerInvokeJoinChainMissingBlockMetadata(t *testing.T) {
+	testDir := t.TempDir()
+
+	ledgerInitializer := ledgermgmttest.NewInitializer(testDir)
+	ledgerInitializer.CustomTxProcessors = map[cb.HeaderType]ledger.CustomTxProcessor{
+		cb.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
+	}
+	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgerInitializer)
+	defer ledgerMgr.Close()
+
+	listener, err := net.Listen("tcp", "127.0.0.1:")
+	require.NoError(t, err)
+	grpcServer := grpc.NewServer()
+
+	cscc := newPeerConfiger(t, ledgerMgr, grpcServer, listener.Addr().String())
+
+	go grpcServer.Serve(listener)
+	defer grpcServer.Stop()
+
+	blockBytes := mockConfigBlock()
+	require.NotNil(t, blockBytes)
+	block, err := protoutil.UnmarshalBlock(blockBytes)
+	require.NoError(t, err)
+	block.Metadata = nil
+
+	sProp := validSignedProposal()
+	sProp.Signature = sProp.GetProposalBytes()
+	mockStub := &mocks.ChaincodeStub{}
+	mockStub.GetArgsReturns([][]byte{[]byte("JoinChain"), protoutil.MarshalOrPanic(block)})
+	mockStub.GetSignedProposalReturns(sProp, nil)
+
+	res := cscc.Invoke(mockStub)
+	require.Equal(t, int32(shim.OK), res.GetStatus(), "invoke JoinChain failed with: %v", res.GetMessage())
+}
+
 func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 	testDir := t.TempDir()
 
