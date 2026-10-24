@@ -300,7 +300,7 @@ var _ = Describe("Commit", func() {
 		BeforeEach(func() {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).To(BeNil())
-			commitCmd = chaincode.CommitCmd(nil, cryptoProvider)
+			commitCmd = chaincode.CommitCmd(nil, cryptoProvider, true)
 			commitCmd.SilenceErrors = true
 			commitCmd.SilenceUsage = true
 			commitCmd.SetArgs([]string{

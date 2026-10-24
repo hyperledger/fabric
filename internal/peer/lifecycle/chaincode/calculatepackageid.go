@@ -49,7 +49,7 @@ func (i *CalculatePackageIDInput) Validate() error {
 
 // CalculatePackageIDCmd returns the cobra command for calculating
 // the package ID for a packaged chaincode
-func CalculatePackageIDCmd(p *PackageIDCalculator) *cobra.Command {
+func CalculatePackageIDCmd(p *PackageIDCalculator, isNew bool) *cobra.Command {
 	calculatePackageIDCmd := &cobra.Command{
 		Use:       "calculatepackageid [packageFile]",
 		Short:     "Calculate the package ID for a chaincode.",
@@ -67,6 +67,12 @@ func CalculatePackageIDCmd(p *PackageIDCalculator) *cobra.Command {
 			return p.CalculatePackageID(args)
 		},
 	}
+
+	if !isNew {
+		calculatePackageIDCmd.Short = "[DEPRECATED] Calculate the package ID for a chaincode (use the \"peercli lifecycle chaincode calculatepackageid\")."
+		calculatePackageIDCmd.Long = "[DEPRECATED] Calculate the package ID for a packaged chaincode. Instead of this command, use \"peercli lifecycle chaincode calculatepackageid\"."
+	}
+
 	flagList := []string{
 		"peerAddresses",
 		"tlsRootCertFiles",
