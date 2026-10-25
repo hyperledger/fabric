@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package nwo
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"path/filepath"
 
 	"github.com/hyperledger/fabric/integration/nwo/commands"

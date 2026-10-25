@@ -10,7 +10,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
+	"encoding/json/v2"
 	"io"
 	"os"
 	"path/filepath"
@@ -123,7 +123,7 @@ func (cps *ChaincodePackageStreamer) Metadata() (*ChaincodePackageMetadata, erro
 	defer tarFileStream.Close()
 
 	metadata := &ChaincodePackageMetadata{}
-	err = json.NewDecoder(tarFileStream).Decode(metadata)
+	err = json.UnmarshalRead(tarFileStream, metadata)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not parse metadata file")
 	}

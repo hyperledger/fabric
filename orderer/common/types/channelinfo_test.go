@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package types_test
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"testing"
 
 	"github.com/hyperledger/fabric/orderer/common/types"
@@ -58,7 +58,7 @@ func TestChannelList(t *testing.T) {
 
 	buff, err := json.Marshal(list)
 	require.NoError(t, err)
-	require.Equal(t, `{"systemChannel":null,"channels":null}`, string(buff))
+	require.JSONEq(t, `{"systemChannel":null,"channels":[]}`, string(buff))
 
 	list.SystemChannel = &types.ChannelInfoShort{Name: "s", URL: "/api/channels/s"}
 	list.Channels = []types.ChannelInfoShort{

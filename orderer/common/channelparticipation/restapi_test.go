@@ -8,7 +8,7 @@ package channelparticipation_test
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -749,6 +749,9 @@ func TestHTTPHandler_ServeHTTP_Fetch(t *testing.T) {
 		checkErrorResponse(t, http.StatusNotFound, "channel pending removal", resp)
 	})
 
+	// writeJSON uses plain json.Marshal with no options; v2 does not escape
+	// HTML by default (v1 did). The error message contains <newest|oldest|...>
+	// angle brackets and must remain unescaped in the JSON error body.
 	t.Run("Error: block ID is bad", func(t *testing.T) {
 		fakeManager, h := setup(config, t)
 		fakeManager.FetchBlockReturns(nil, types.ErrChannelPendingRemoval)
@@ -756,6 +759,7 @@ func TestHTTPHandler_ServeHTTP_Fetch(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/app-channel/blocks/blabla", nil)
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusBadRequest, "invalid block ID: 'blabla' not equal <newest|oldest|config|(number)>", resp)
+		require.Contains(t, resp.Body.String(), `\u003cnewest`)
 	})
 }
 
