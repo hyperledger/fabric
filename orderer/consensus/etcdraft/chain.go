@@ -858,7 +858,7 @@ func (c *Chain) run() {
 
 			if err := c.catchUp(sn); err != nil {
 				c.logger.Panicf("Failed to recover from snapshot taken at Term %d and Index %d: %s",
-					sn.GetMetadata().Term, sn.GetMetadata().GetIndex(), err)
+					sn.GetMetadata().GetTerm(), sn.GetMetadata().GetIndex(), err)
 			}
 
 		case <-c.doneC:
@@ -1116,7 +1116,7 @@ func (c *Chain) apply(ents []*raftpb.Entry) {
 	}
 
 	if ents[0].GetIndex() > c.appliedIndex+1 {
-		c.logger.Panicf("first index of committed entry[%d] should <= appliedIndex[%d]+1", ents[0].Index, c.appliedIndex)
+		c.logger.Panicf("first index of committed entry[%d] should <= appliedIndex[%d]+1", ents[0].GetIndex(), c.appliedIndex)
 	}
 
 	var position int
@@ -1133,7 +1133,7 @@ func (c *Chain) apply(ents []*raftpb.Entry) {
 			// We need to strictly avoid re-applying normal entries,
 			// otherwise we are writing the same block twice.
 			if ents[i].GetIndex() <= c.appliedIndex {
-				c.logger.Debugf("Received block with raft index (%d) <= applied index (%d), skip", ents[i].Index, c.appliedIndex)
+				c.logger.Debugf("Received block with raft index (%d) <= applied index (%d), skip", ents[i].GetIndex(), c.appliedIndex)
 				break
 			}
 
