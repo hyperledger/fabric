@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -99,7 +98,7 @@ var _ = Describe("CalculatePackageID", func() {
 				expectedOutput := &chaincode.CalculatePackageIDOutput{
 					PackageID: "Real-Label:fb3edf9621c5e3d864079d8c9764205f4db09d7021cfa4124aa79f4edcc2f64a",
 				}
-				json, err := json.MarshalIndent(expectedOutput, "", "\t")
+				json, err := marshalIndentJSON(expectedOutput)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(packageIDCalculator.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
 			})

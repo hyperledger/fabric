@@ -10,7 +10,8 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"path/filepath"
 	"strings"
 
@@ -226,7 +227,7 @@ func toJSON(path, ccType, label string) ([]byte, error) {
 		Label: label,
 	}
 
-	metadataBytes, err := json.Marshal(metadata)
+	metadataBytes, err := json.Marshal(metadata, jsontext.EscapeForHTML(true))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal chaincode package metadata into JSON")
 	}

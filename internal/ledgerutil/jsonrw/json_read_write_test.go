@@ -147,6 +147,53 @@ func createTestJSONInput(t *testing.T, input string) (string, error) {
 	return fp, nil
 }
 
+// JSONFileWriter uses plain json.MarshalWrite with no options: unlike the
+// previous encoding/json v1 default, values are not HTML-escaped and strings
+// with invalid UTF-8 cause an error instead of being replaced with U+FFFD.
+func TestJSONFileWriterV2Behavior(t *testing.T) {
+	t.Run("HTML characters are not escaped", func(t *testing.T) {
+		outputDir := t.TempDir()
+		fp := filepath.Join(outputDir, "testOutput.json")
+		jsonFileWriter, err := NewJSONFileWriter(fp)
+		require.NoError(t, err)
+		require.NoError(t, jsonFileWriter.OpenObject())
+		require.NoError(t, jsonFileWriter.AddField("field", "a<b>&c"))
+		require.NoError(t, jsonFileWriter.CloseObject())
+		require.NoError(t, jsonFileWriter.Close())
+
+		output, err := os.ReadFile(fp)
+		require.NoError(t, err)
+		require.Equal(t, "{\n\"field\":\"a<b>&c\"}\n", string(output)) //nolint:testifylint
+	})
+
+	t.Run("invalid UTF-8 in string value returns an error", func(t *testing.T) {
+		outputDir := t.TempDir()
+		fp := filepath.Join(outputDir, "testOutput.json")
+		jsonFileWriter, err := NewJSONFileWriter(fp)
+		require.NoError(t, err)
+		require.NoError(t, jsonFileWriter.OpenObject())
+		err = jsonFileWriter.AddField("field", string([]byte{0xff}))
+		require.Error(t, err)
+	})
+}
+
+func TestLoadRecordsV2Behavior(t *testing.T) {
+	t.Run("duplicate object member names are rejected", func(t *testing.T) {
+		fp, err := createTestJSONInput(t, `{"ledgerid":"ch","ledgerid":"ch2","diffRecords":[]}`)
+		require.NoError(t, err)
+		_, err = LoadRecords(fp)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "duplicate object member name")
+	})
+
+	t.Run("invalid UTF-8 in string value returns an error", func(t *testing.T) {
+		fp, err := createTestJSONInput(t, "{\"ledgerid\":\"ch\xff\",\"diffRecords\":[]}")
+		require.NoError(t, err)
+		_, err = LoadRecords(fp)
+		require.Error(t, err)
+	})
+}
+
 func TestJSONFileWriter(t *testing.T) {
 	// Temp directory and file for output json
 	outputDir := t.TempDir()

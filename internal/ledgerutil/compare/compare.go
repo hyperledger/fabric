@@ -11,7 +11,8 @@ import (
 	"bytes"
 	"container/heap"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -117,7 +118,7 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firs
 			return 0, "", err
 		}
 		for _, r := range firstRecords.getAllRecords() {
-			firstDiffsOutputFileWriter.addRecord(*r)
+			firstDiffsOutputFileWriter.addRecord(r)
 		}
 		err = firstDiffsOutputFileWriter.close()
 		if err != nil {
@@ -166,7 +167,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 					return nil, err
 				}
 				// Add difference to output JSON file
-				err = outputFileWriter.addRecord(*diffRecord)
+				err = outputFileWriter.addRecord(diffRecord)
 				if err != nil {
 					return nil, err
 				}
@@ -191,7 +192,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 				return nil, err
 			}
 			// Add missing record to output JSON file
-			err = outputFileWriter.addRecord(*diffRecord)
+			err = outputFileWriter.addRecord(diffRecord)
 			if err != nil {
 				return nil, err
 			}
@@ -211,7 +212,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 				return nil, err
 			}
 			// Add missing record to output JSON file
-			err = outputFileWriter.addRecord(*diffRecord)
+			err = outputFileWriter.addRecord(diffRecord)
 			if err != nil {
 				return nil, err
 			}
@@ -238,7 +239,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 			if err != nil {
 				return nil, err
 			}
-			err = outputFileWriter.addRecord(*diffRecord)
+			err = outputFileWriter.addRecord(diffRecord)
 			if err != nil {
 				return nil, err
 			}
@@ -258,7 +259,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 			if err != nil {
 				return nil, err
 			}
-			err = outputFileWriter.addRecord(*diffRecord)
+			err = outputFileWriter.addRecord(diffRecord)
 			if err != nil {
 				return nil, err
 			}
@@ -562,7 +563,6 @@ func hashesEqual(fpath1 string, fpath2 string) (equalPub bool, equalPvt bool, ch
 type jsonArrayFileWriter struct {
 	file               *os.File
 	buffer             *bufio.Writer
-	encoder            *json.Encoder
 	firstRecordWritten bool
 	count              int
 }
@@ -582,13 +582,12 @@ func newJSONFileWriter(filePath string, ledgerid string) (*jsonArrayFileWriter, 
 	}
 
 	return &jsonArrayFileWriter{
-		file:    f,
-		buffer:  b,
-		encoder: json.NewEncoder(b),
+		file:   f,
+		buffer: b,
 	}, nil
 }
 
-func (w *jsonArrayFileWriter) addRecord(r any) error {
+func (w *jsonArrayFileWriter) addRecord(r *diffRecord) error {
 	// Add commas for records after the first in the list
 	if w.firstRecordWritten {
 		_, err := w.buffer.Write([]byte(",\n"))
@@ -599,8 +598,15 @@ func (w *jsonArrayFileWriter) addRecord(r any) error {
 		w.firstRecordWritten = true
 	}
 
-	err := w.encoder.Encode(r)
-	if err != nil {
+	if err := json.MarshalWrite(
+		w.buffer,
+		r,
+		json.Deterministic(true),
+		jsontext.EscapeForHTML(true),
+	); err != nil {
+		return errors.Wrapf(err, "error marshalling diff record for namespace %q and key %q", r.Namespace, r.Key)
+	}
+	if err := w.buffer.WriteByte('\n'); err != nil {
 		return err
 	}
 	w.count++

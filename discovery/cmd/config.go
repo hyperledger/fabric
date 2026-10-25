@@ -7,7 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package discovery
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 
@@ -73,7 +74,18 @@ func (parser *ConfigResponseParser) ParseResponse(channel string, res ServiceRes
 	if err != nil {
 		return err
 	}
-	jsonBytes, _ := json.MarshalIndent(chanConf, "", "\t")
+	jsonBytes, _ := marshalIndent(chanConf)
 	fmt.Fprintln(parser.Writer, string(jsonBytes))
 	return nil
+}
+
+func marshalIndent(v any) ([]byte, error) {
+	return json.Marshal(
+		v,
+		json.Deterministic(true),
+		jsontext.EscapeForHTML(true),
+		json.FormatNilSliceAsNull(true),
+		json.FormatNilMapAsNull(true),
+		jsontext.WithIndent("\t"),
+	)
 }

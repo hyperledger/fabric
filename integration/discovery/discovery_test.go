@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package discovery
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strconv"

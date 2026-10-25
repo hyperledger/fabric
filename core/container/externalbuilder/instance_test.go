@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilder_test
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -106,6 +106,33 @@ var _ = Describe("Instance", func() {
 			It("returns a malformed chaincode error", func() {
 				_, err := instance.ChaincodeServerInfo()
 				Expect(err).To(MatchError(ContainSubstring("malformed chaincode info")))
+			})
+		})
+
+		When("connection.json contains duplicate keys", func() {
+			BeforeEach(func() {
+				ccdata := `{"address": "ccaddress:12345", "address": "ccaddress:54321"}`
+				err := os.WriteFile(filepath.Join(instance.ChaincodeServerReleaseDir(), "connection.json"), []byte(ccdata), 0o600)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("returns a malformed chaincode error", func() {
+				_, err := instance.ChaincodeServerInfo()
+				Expect(err).To(MatchError(ContainSubstring("malformed chaincode info")))
+				Expect(err).To(MatchError(ContainSubstring("duplicate object member name")))
+			})
+		})
+
+		When("connection.json uses non-canonical field casing", func() {
+			BeforeEach(func() {
+				ccdata := `{"Address": "ccaddress:12345"}`
+				err := os.WriteFile(filepath.Join(instance.ChaincodeServerReleaseDir(), "connection.json"), []byte(ccdata), 0o600)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("ignores the field and reports a missing address", func() {
+				_, err := instance.ChaincodeServerInfo()
+				Expect(err).To(MatchError("chaincode address not provided"))
 			})
 		})
 	})
@@ -274,7 +301,7 @@ var _ = Describe("Instance", func() {
 			},
 			Entry("Number", `100`, externalbuilder.Duration(100), BeNil()),
 			Entry("Duration", `"1s"`, externalbuilder.Duration(time.Second), BeNil()),
-			Entry("List", `[1, 2, 3]`, externalbuilder.Duration(time.Second), MatchError("invalid duration")),
+			Entry("List", `[1, 2, 3]`, externalbuilder.Duration(time.Second), MatchError(ContainSubstring("invalid duration"))),
 			Entry("Nonsense", `"nonsense"`, externalbuilder.Duration(time.Second), MatchError(MatchRegexp(`time: invalid duration "?nonsense"?`))),
 		)
 

@@ -9,7 +9,8 @@ package chaincode
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"math"
 	"os"
@@ -64,16 +65,45 @@ type chaincodeInput struct {
 }
 
 // UnmarshalJSON converts the string-based REST/JSON input to
-// the []byte-based current ChaincodeInput structure.
+// the []byte-based current ChaincodeInput structure. Member names are matched
+// case-insensitively to preserve the behavior of encoding/json v1.
 func (c *chaincodeInput) UnmarshalJSON(b []byte) error {
+	members := map[string]jsontext.Value{}
+	if err := json.Unmarshal(b, &members); err != nil {
+		return err
+	}
+
+	var functionName, argsName string
+	for name := range members {
+		switch {
+		case strings.EqualFold(name, "Function"):
+			if functionName != "" {
+				return fmt.Errorf("duplicate object member name %q", name)
+			}
+			functionName = name
+		case strings.EqualFold(name, "Args"):
+			if argsName != "" {
+				return fmt.Errorf("duplicate object member name %q", name)
+			}
+			argsName = name
+		}
+	}
+
 	sa := struct {
 		Function string
 		Args     []string
 	}{}
-	err := json.Unmarshal(b, &sa)
-	if err != nil {
-		return err
+	if functionName != "" {
+		if err := json.Unmarshal(members[functionName], &sa.Function); err != nil {
+			return err
+		}
 	}
+	if argsName != "" {
+		if err := json.Unmarshal(members[argsName], &sa.Args); err != nil {
+			return err
+		}
+	}
+
 	allArgs := sa.Args
 	if sa.Function != "" {
 		allArgs = append([]string{sa.Function}, sa.Args...)

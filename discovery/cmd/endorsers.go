@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package discovery
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
@@ -136,7 +135,7 @@ func (parser *EndorserResponseParser) ParseResponse(channel string, res ServiceR
 		return errors.Errorf("server returned response of unexpected type: %v", reflect.TypeFor[*discovery.QueryResult]())
 	}
 
-	jsonBytes, _ := json.MarshalIndent(parseEndorsementDescriptors(ccQueryRes.GetContent()), "", "\t")
+	jsonBytes, _ := marshalIndent(parseEndorsementDescriptors(ccQueryRes.GetContent()))
 	fmt.Fprintln(parser.Writer, string(jsonBytes))
 	return nil
 }

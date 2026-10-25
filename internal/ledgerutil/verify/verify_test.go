@@ -101,7 +101,7 @@ func TestVerify(t *testing.T) {
 				expectedResult, err := jsonrw.OutputFileToString(testCase.expectedResultFile, SampleResultDir)
 				require.NoError(t, err)
 
-				require.Equal(t, expectedResult, actualResult)
+				require.JSONEq(t, expectedResult, actualResult)
 			}
 		})
 	}

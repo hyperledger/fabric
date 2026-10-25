@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package e2e
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"os/exec"

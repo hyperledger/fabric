@@ -834,8 +834,8 @@ func TestJSONArrayFileWriter(t *testing.T) {
 	jsonResultFile, err := newJSONFileWriter(filepath.Join(resultDir, "result.json"), "testchannel")
 	require.NoError(t, err)
 	// Write each sample diffRecord to the output file and close
-	for _, diffRecord := range sampleDiffRecords {
-		err = jsonResultFile.addRecord(diffRecord)
+	for i := range sampleDiffRecords {
+		err = jsonResultFile.addRecord(&sampleDiffRecords[i])
 		require.NoError(t, err)
 	}
 	err = jsonResultFile.close()
@@ -848,6 +848,45 @@ func TestJSONArrayFileWriter(t *testing.T) {
 	require.NoError(t, err)
 
 	require.JSONEq(t, expectedResult, string(res))
+}
+
+// addRecord marshals records with jsontext.EscapeForHTML(true) and
+// json.Deterministic(true). Unlike encoding/json v1 defaults this means:
+// - HTML characters in values are escaped as \uXXXX
+// - strings with invalid UTF-8 cause an error instead of U+FFFD replacement
+func TestJSONArrayFileWriterV2Behavior(t *testing.T) {
+	t.Run("HTML characters in values are escaped", func(t *testing.T) {
+		resultDir := t.TempDir()
+		fp := filepath.Join(resultDir, "result.json")
+		jsonResultFile, err := newJSONFileWriter(fp, "testchannel")
+		require.NoError(t, err)
+		err = jsonResultFile.addRecord(&diffRecord{
+			Namespace: "abc",
+			Key:       "key-1",
+			Record1:   &snapshotRecord{Value: "a<b>&c", BlockNum: 1, TxNum: 1},
+		})
+		require.NoError(t, err)
+		require.NoError(t, jsonResultFile.close())
+
+		res, err := os.ReadFile(fp)
+		require.NoError(t, err)
+		require.Contains(t, string(res), `"value":"a\u003cb\u003e\u0026c"`)
+	})
+
+	t.Run("invalid UTF-8 in a record value returns an error", func(t *testing.T) {
+		resultDir := t.TempDir()
+		fp := filepath.Join(resultDir, "result.json")
+		jsonResultFile, err := newJSONFileWriter(fp, "testchannel")
+		require.NoError(t, err)
+		err = jsonResultFile.addRecord(&diffRecord{
+			Namespace: "abc",
+			Key:       "key-1",
+			Record1:   &snapshotRecord{Value: string([]byte{0xff}), BlockNum: 1, TxNum: 1},
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), `namespace "abc"`)
+		require.Contains(t, err.Error(), `key "key-1"`)
+	})
 }
 
 func TestNSKeyCompare(t *testing.T) {

@@ -2996,12 +2996,13 @@ var _ = Describe("Chain", func() {
 					err := c1.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 
-					// all three nodes should take snapshots
+					// node 1 should take a snapshot
 					network.exec(
 						func(c *chain) {
 							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
 						},
 					)
+					Eventually(func() int { return countSnapShotsForChain(c1) }, LongEventualTimeout).Should(Equal(1))
 
 					// order data on all nodes except node 3, empty the raft message directed to node 3
 					// node 1 should take a snapshot but node 3 should not
@@ -3025,6 +3026,7 @@ var _ = Describe("Chain", func() {
 
 					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 					Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					Eventually(func() int { return countSnapShotsForChain(c1) }, LongEventualTimeout).Should(Equal(2))
 
 					// order data on all nodes except node 3, send raft raftpb.EntryConfChange message to node 3
 					// node 1 should take a snapshot but node 3 should not

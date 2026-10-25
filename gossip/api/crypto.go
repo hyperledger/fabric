@@ -9,7 +9,8 @@ package api
 import (
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"encoding/pem"
 	"fmt"
 	"time"
@@ -149,7 +150,7 @@ func (pit PeerIdentityType) String() string {
 	m["Issuer-OU"] = i.OrganizationalUnit
 	m["Issuer-L-ST-C"] = fmt.Sprintf("%s-%s-%s", i.Locality, i.StreetAddress, i.Country)
 
-	rawJSON, err := json.Marshal(m)
+	rawJSON, err := json.Marshal(m, json.Deterministic(true), jsontext.EscapeForHTML(true))
 	if err != nil {
 		return base64Representation
 	}

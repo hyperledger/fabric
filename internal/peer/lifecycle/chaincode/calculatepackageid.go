@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -116,7 +115,7 @@ func (p *PackageIDCalculator) PackageID() error {
 		output := CalculatePackageIDOutput{
 			PackageID: packageID,
 		}
-		outputJson, err := json.MarshalIndent(&output, "", "\t")
+		outputJson, err := marshalIndentJSON(&output)
 		if err != nil {
 			return errors.WithMessage(err, "failed to marshal output")
 		}

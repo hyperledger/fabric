@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilder
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	errors2 "errors"
 	"os"
 	"os/exec"

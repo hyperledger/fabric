@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package statecouchdb
 
 import (
-	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -33,6 +33,17 @@ type keyValue struct {
 }
 
 type jsonValue map[string]any
+
+var jsonMarshalOptions = []json.Options{
+	json.Deterministic(true),
+	jsontext.EscapeForHTML(true),
+	json.FormatNilSliceAsNull(true),
+	json.FormatNilMapAsNull(true),
+}
+
+func marshalJSON(v any) ([]byte, error) {
+	return json.Marshal(v, jsonMarshalOptions...)
+}
 
 func tryCastingToJSON(b []byte) (isJSON bool, val jsonValue) {
 	var jsonVal map[string]any
@@ -61,7 +72,7 @@ func (v jsonValue) removeRevField() {
 }
 
 func (v jsonValue) toBytes() ([]byte, error) {
-	jsonBytes, err := json.Marshal(v)
+	jsonBytes, err := marshalJSON(v)
 	err = errors.Wrap(err, "error marshalling json data")
 	return jsonBytes, err
 }
@@ -93,22 +104,31 @@ type couchDocFields struct {
 }
 
 func validateAndRetrieveFields(doc *couchDoc) (*couchDocFields, error) {
-	jsonDoc := make(jsonValue)
-	decoder := json.NewDecoder(bytes.NewBuffer(doc.jsonValue))
-	decoder.UseNumber()
-	if err := decoder.Decode(&jsonDoc); err != nil {
+	jsonDoc := make(map[string]jsontext.Value)
+	if err := json.Unmarshal(doc.jsonValue, &jsonDoc); err != nil {
 		return nil, err
 	}
 
 	docFields := &couchDocFields{}
-	docFields.id = jsonDoc[idField].(string)
-	if jsonDoc[revField] != nil {
-		docFields.revision = jsonDoc[revField].(string)
+	id, ok := jsonDoc[idField]
+	if !ok {
+		return nil, fmt.Errorf("id field %s was not found", idField)
 	}
-	if jsonDoc[versionField] == nil {
+	if err := json.Unmarshal(id, &docFields.id); err != nil {
+		return nil, err
+	}
+	if rev, ok := jsonDoc[revField]; ok {
+		if err := json.Unmarshal(rev, &docFields.revision); err != nil {
+			return nil, err
+		}
+	}
+	version, ok := jsonDoc[versionField]
+	if !ok {
 		return nil, fmt.Errorf("version field %s was not found", versionField)
 	}
-	docFields.versionAndMetadata = jsonDoc[versionField].(string)
+	if err := json.Unmarshal(version, &docFields.versionAndMetadata); err != nil {
+		return nil, err
+	}
 
 	delete(jsonDoc, idField)
 	delete(jsonDoc, revField)
@@ -116,7 +136,7 @@ func validateAndRetrieveFields(doc *couchDoc) (*couchDocFields, error) {
 
 	var err error
 	if doc.attachments == nil {
-		docFields.value, err = json.Marshal(jsonDoc)
+		docFields.value, err = marshalJSON(jsonDoc)
 		return docFields, err
 	}
 	for _, attachment := range doc.attachments {
@@ -208,7 +228,7 @@ func encodeSavepoint(height *version.Height) (*couchDoc, error) {
 	// construct savepoint document
 	savepointDoc.BlockNum = height.BlockNum
 	savepointDoc.TxNum = height.TxNum
-	savepointDocJSON, err := json.Marshal(savepointDoc)
+	savepointDocJSON, err := marshalJSON(savepointDoc)
 	if err != nil {
 		err = errors.Wrap(err, "failed to marshal savepoint data")
 		logger.Errorf("%+v", err)
@@ -228,7 +248,7 @@ func decodeSavepoint(couchDoc *couchDoc) (*version.Height, error) {
 }
 
 func encodeChannelMetadata(metadataDoc *channelMetadata) (*couchDoc, error) {
-	metadataJSON, err := json.Marshal(metadataDoc)
+	metadataJSON, err := marshalJSON(metadataDoc)
 	if err != nil {
 		err = errors.Wrap(err, "failed to marshal channel metadata")
 		logger.Errorf("%+v", err)
@@ -256,7 +276,7 @@ func encodeDataformatInfo(dataFormatVersion string) (*couchDoc, error) {
 	dataformatInfo := &dataformatInfo{
 		Version: dataFormatVersion,
 	}
-	dataformatInfoJSON, err := json.Marshal(dataformatInfo)
+	dataformatInfoJSON, err := marshalJSON(dataformatInfo)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to marshal dataformatInfo [%#v]", dataformatInfo)
 		logger.Errorf("%+v", err)

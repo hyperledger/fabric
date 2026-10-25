@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"io"
@@ -186,9 +186,12 @@ func responseOutput(showStatus bool, statusCode int, responseBody []byte, output
 				return "", err
 			}
 		} else {
-			if err := json.Indent(&buffer, responseBody, "", "\t"); err != nil {
+			value := jsontext.Value(responseBody).Clone()
+			if err := value.Indent(jsontext.WithIndent("\t")); err != nil {
 				return "", err
 			}
+			buffer.Write(value)
+			buffer.WriteByte('\n')
 		}
 	}
 	return buffer.String(), nil

@@ -8,7 +8,7 @@ package jsonrw
 
 import (
 	"bufio"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"reflect"
@@ -29,8 +29,7 @@ func LoadRecords(filePath string) (*models.DiffRecordList, error) {
 
 	var records *models.DiffRecordList
 
-	d := json.NewDecoder(bufio.NewReader(f))
-	err = d.Decode(&records)
+	err = json.UnmarshalRead(bufio.NewReader(f), &records)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +48,6 @@ func LoadRecords(filePath string) (*models.DiffRecordList, error) {
 type JSONFileWriter struct {
 	file              *os.File
 	buffer            *bufio.Writer
-	encoder           *json.Encoder
 	objectOpened      bool
 	firstFieldWritten bool
 	listOpened        bool
@@ -66,9 +64,8 @@ func NewJSONFileWriter(filePath string) (*JSONFileWriter, error) {
 	b := bufio.NewWriter(f)
 
 	return &JSONFileWriter{
-		file:    f,
-		buffer:  b,
-		encoder: json.NewEncoder(b),
+		file:   f,
+		buffer: b,
 	}, nil
 }
 
@@ -132,7 +129,7 @@ func (w *JSONFileWriter) AddField(k string, v any) error {
 			return err
 		}
 	} else {
-		err = w.encoder.Encode(v)
+		err = json.MarshalWrite(w.buffer, v)
 		if err != nil {
 			return err
 		}
@@ -188,7 +185,7 @@ func (w *JSONFileWriter) AddEntry(r any) error {
 		w.firstEntryWritten = true
 	}
 
-	err := w.encoder.Encode(r)
+	err := json.MarshalWrite(w.buffer, r)
 	if err != nil {
 		return err
 	}

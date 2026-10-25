@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package discovery
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 
@@ -91,7 +90,7 @@ func (parser *PeerResponseParser) ParseResponse(channel string, res ServiceRespo
 	}
 
 	channelState := channel != ""
-	b, _ := json.MarshalIndent(assemblePeers(peers, channelState), "", "\t")
+	b, _ := marshalIndent(assemblePeers(peers, channelState))
 	fmt.Fprintln(parser.Writer, string(b))
 	return nil
 }

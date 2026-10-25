@@ -4,7 +4,7 @@
 package localconfig
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -19,6 +19,22 @@ import (
 )
 
 var logger = flogging.MustGetLogger("localconfig")
+
+var jsonOptions = []json.Options{
+	json.FormatNilSliceAsNull(true),
+	json.FormatNilMapAsNull(true),
+	json.WithMarshalers(json.MarshalFunc(func(d time.Duration) ([]byte, error) {
+		return json.Marshal(int64(d))
+	})),
+	json.WithUnmarshalers(json.UnmarshalFunc(func(b []byte, d *time.Duration) error {
+		var v int64
+		if err := json.Unmarshal(b, &v); err != nil {
+			return err
+		}
+		*d = time.Duration(v)
+		return nil
+	})),
+}
 
 // TopLevel directly corresponds to the orderer config YAML.
 type TopLevel struct {
@@ -267,7 +283,7 @@ func (c *configCache) load() (*TopLevel, error) {
 			return nil, fmt.Errorf("Error unmarshalling config into struct: %w", err)
 		}
 
-		serializedConf, err = json.Marshal(uconf)
+		serializedConf, err = json.Marshal(uconf, jsonOptions...)
 		if err != nil {
 			return nil, err
 		}
@@ -278,7 +294,7 @@ func (c *configCache) load() (*TopLevel, error) {
 		c.cache[config.ConfigFileUsed()] = serializedConf
 	}
 
-	err := json.Unmarshal(serializedConf, &uconf)
+	err := json.Unmarshal(serializedConf, &uconf, jsonOptions...)
 	if err != nil {
 		return nil, err
 	}

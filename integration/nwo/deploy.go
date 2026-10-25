@@ -8,7 +8,7 @@ package nwo
 
 import (
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"os/exec"

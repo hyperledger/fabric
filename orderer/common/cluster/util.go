@@ -16,7 +16,8 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"encoding/pem"
 	"fmt"
 	"math/rand/v2"
@@ -303,7 +304,13 @@ func (ep EndpointCriteria) String() string {
 	formattedEndpointCriteria["Endpoint"] = ep.Endpoint
 	formattedEndpointCriteria["CAs"] = formattedCAs
 
-	rawJSON, err := json.Marshal(formattedEndpointCriteria)
+	rawJSON, err := json.Marshal(
+		formattedEndpointCriteria,
+		json.Deterministic(true),
+		jsontext.EscapeForHTML(true),
+		json.FormatNilSliceAsNull(true),
+		json.FormatNilMapAsNull(true),
+	)
 	if err != nil {
 		return fmt.Sprintf("{\"Endpoint\": \"%s\"}", ep.Endpoint)
 	}

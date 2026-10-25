@@ -4,6 +4,7 @@
 package localconfig
 
 import (
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -114,6 +115,47 @@ func TestEnvInnerVar(t *testing.T) {
 
 	v2, _ := time.ParseDuration(envVal2)
 	require.Equal(t, config.General.Keepalive.ServerTimeout, v2, "Environmental override of inner config test 2 did not work")
+}
+
+// jsonOptions keeps FormatNilSliceAsNull/FormatNilMapAsNull, so the config
+// cache round-trip in load() preserves nil slices instead of turning them into
+// empty non-nil slices (the encoding/json v2 default). The Admin CA list is
+// empty non-nil because the sample orderer.yaml sets it to [].
+func TestLoadNilSliceRoundTrip(t *testing.T) {
+	configtest.SetDevFabricConfigPath(t)
+	cfg, err := Load()
+	require.NoError(t, err)
+
+	require.Nil(t, cfg.General.TLS.ClientRootCAs)
+	require.NotNil(t, cfg.Admin.TLS.ClientRootCAs)
+	require.Empty(t, cfg.Admin.TLS.ClientRootCAs)
+
+	b, err := json.Marshal([]string(nil), jsonOptions...)
+	require.NoError(t, err)
+	require.Equal(t, "null", string(b))
+
+	b, err = json.Marshal([]string{}, jsonOptions...)
+	require.NoError(t, err)
+	require.Equal(t, "[]", string(b))
+}
+
+// Duration values are marshaled as int64 nanoseconds through the custom
+// marshalers in jsonOptions; without them v2 rejects time.Duration.
+func TestJSONOptionsDurationRoundTrip(t *testing.T) {
+	configtest.SetDevFabricConfigPath(t)
+	cfg, err := Load()
+	require.NoError(t, err)
+
+	require.Equal(t, 60*time.Second, cfg.General.Keepalive.ServerMinInterval)
+
+	b, err := json.Marshal(cfg.General.Keepalive.ServerTimeout, jsonOptions...)
+	require.NoError(t, err)
+	require.Equal(t, "20000000000", string(b))
+
+	var d time.Duration
+	err = json.Unmarshal(b, &d, jsonOptions...)
+	require.NoError(t, err)
+	require.Equal(t, 20*time.Second, d)
 }
 
 func TestAdminTLSConfig(t *testing.T) {

@@ -7,7 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package channelparticipation
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	errors2 "errors"
 	"io"
 	"mime"
@@ -663,19 +664,17 @@ func negotiateContentType(req *http.Request) (string, error) {
 }
 
 func (h *HTTPHandler) sendResponseJsonError(resp http.ResponseWriter, code int, err error) {
-	encoder := json.NewEncoder(resp)
 	resp.Header().Set("Content-Type", "application/json")
 	resp.WriteHeader(code)
-	if err := encoder.Encode(&types.ErrorResponse{Error: err.Error()}); err != nil {
+	if err := writeJSON(resp, &types.ErrorResponse{Error: err.Error()}); err != nil {
 		h.logger.Errorf("failed to encode error, err: %s", err)
 	}
 }
 
 func (h *HTTPHandler) sendResponseOK(resp http.ResponseWriter, content any) {
-	encoder := json.NewEncoder(resp)
 	resp.Header().Set("Content-Type", "application/json")
 	resp.WriteHeader(http.StatusOK)
-	if err := encoder.Encode(content); err != nil {
+	if err := writeJSON(resp, content); err != nil {
 		h.logger.Errorf("failed to encode content, err: %s", err)
 	}
 }
@@ -690,22 +689,34 @@ func (h *HTTPHandler) sendResponseBlock(resp http.ResponseWriter, block []byte) 
 }
 
 func (h *HTTPHandler) sendResponseCreated(resp http.ResponseWriter, location string, content any) {
-	encoder := json.NewEncoder(resp)
 	resp.Header().Set("Location", location)
 	resp.Header().Set("Content-Type", "application/json")
 	resp.WriteHeader(http.StatusCreated)
-	if err := encoder.Encode(content); err != nil {
+	if err := writeJSON(resp, content); err != nil {
 		h.logger.Errorf("failed to encode content, err: %s", err)
 	}
 }
 
 func (h *HTTPHandler) sendResponseNotAllowed(resp http.ResponseWriter, err error, allow ...string) {
-	encoder := json.NewEncoder(resp)
 	allowVal := strings.Join(allow, ", ")
 	resp.Header().Set("Allow", allowVal)
 	resp.Header().Set("Content-Type", "application/json")
 	resp.WriteHeader(http.StatusMethodNotAllowed)
-	if err := encoder.Encode(&types.ErrorResponse{Error: err.Error()}); err != nil {
+	if err := writeJSON(resp, &types.ErrorResponse{Error: err.Error()}); err != nil {
 		h.logger.Errorf("failed to encode error, err: %s", err)
 	}
+}
+
+func writeJSON(w io.Writer, v any) error {
+	if err := json.MarshalWrite(
+		w,
+		v,
+		jsontext.EscapeForHTML(true),
+		json.FormatNilSliceAsNull(true),
+		json.FormatNilMapAsNull(true),
+	); err != nil {
+		return err
+	}
+	_, err := io.WriteString(w, "\n")
+	return err
 }

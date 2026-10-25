@@ -8,7 +8,8 @@ package golang
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	errors2 "errors"
 	"fmt"
 	"io"
@@ -63,7 +64,7 @@ func gopathDependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error
 	if err != nil {
 		return nil, wrapExitErr(err, "'go list -deps' failed")
 	}
-	decoder := json.NewDecoder(stdout)
+	decoder := jsontext.NewDecoder(stdout)
 
 	if err := cmd.Start(); err != nil {
 		return nil, err
@@ -72,7 +73,7 @@ func gopathDependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error
 	var list []PackageInfo
 	for {
 		var packageInfo PackageInfo
-		if err := decoder.Decode(&packageInfo); errors.Is(err, io.EOF) {
+		if err := json.UnmarshalDecode(decoder, &packageInfo); errors.Is(err, io.EOF) {
 			break
 		} else if err != nil {
 			return nil, err

@@ -11,11 +11,11 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"log"
-	"maps"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -78,15 +78,15 @@ type rangeQueryResponse struct {
 		Value struct {
 			Rev string `json:"rev"`
 		} `json:"value"`
-		Doc json.RawMessage `json:"doc"`
+		Doc jsontext.Value `json:"doc"`
 	} `json:"rows"`
 }
 
 // queryResponse is used for processing REST query responses from CouchDB
 type queryResponse struct {
-	Warning  string            `json:"warning"`
-	Docs     []json.RawMessage `json:"docs"`
-	Bookmark string            `json:"bookmark"`
+	Warning  string           `json:"warning"`
+	Docs     []jsontext.Value `json:"docs"`
+	Bookmark string           `json:"bookmark"`
 }
 
 // docMetadata is used for capturing CouchDB document header info,
@@ -324,7 +324,7 @@ func (dbclient *couchDatabase) getDatabaseInfo() (*dbInfo, *dbReturn, error) {
 	defer closeResponseBody(resp)
 
 	dbResponse := &dbInfo{}
-	decodeErr := json.NewDecoder(resp.Body).Decode(&dbResponse)
+	decodeErr := json.UnmarshalRead(resp.Body, dbResponse)
 	if decodeErr != nil {
 		return nil, nil, errors.Wrap(decodeErr, "error decoding response body")
 	}
@@ -358,7 +358,7 @@ func (couchInstance *couchInstance) verifyCouchConfig() (*connectionInfo, *dbRet
 	defer closeResponseBody(resp)
 
 	dbResponse := &connectionInfo{}
-	decodeErr := json.NewDecoder(resp.Body).Decode(&dbResponse)
+	decodeErr := json.UnmarshalRead(resp.Body, dbResponse)
 	if decodeErr != nil {
 		return nil, nil, errors.Wrap(decodeErr, "error decoding response body")
 	}
@@ -426,7 +426,7 @@ func (couchInstance *couchInstance) retrieveApplicationDBNames() ([]string, erro
 
 	var dbNames []string
 	defer closeResponseBody(resp)
-	if err := json.NewDecoder(resp.Body).Decode(&dbNames); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &dbNames); err != nil {
 		return nil, errors.Wrap(err, "error decoding response body")
 	}
 	couchdbLogger.Debugf("dbNames = %s", dbNames)
@@ -620,21 +620,21 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 	// Add any data uploaded with the files
 	if couchDoc.jsonValue != nil {
 		// create a generic map
-		genericMap := make(map[string]any)
+		genericMap := make(map[string]jsontext.Value)
 
 		// unmarshal the data into the generic map
-		decoder := json.NewDecoder(bytes.NewBuffer(couchDoc.jsonValue))
-		decoder.UseNumber()
-		decodeErr := decoder.Decode(&genericMap)
+		decodeErr := json.Unmarshal(couchDoc.jsonValue, &genericMap)
 		if decodeErr != nil {
 			return *writeBuffer, "", errors.Wrap(decodeErr, "error decoding json data")
 		}
 
 		// add all key/values to the attachmentJSONMap
-		maps.Copy(attachmentJSONMap, genericMap)
+		for k, v := range genericMap {
+			attachmentJSONMap[k] = v
+		}
 	}
 
-	filesForUpload, err := json.Marshal(attachmentJSONMap)
+	filesForUpload, err := marshalJSON(attachmentJSONMap)
 	if err != nil {
 		return *writeBuffer, "", errors.Wrap(err, "error marshalling json data")
 	}
@@ -1057,10 +1057,10 @@ func (dbclient *couchDatabase) queryDocuments(query string) ([]*queryResult, str
 func (dbclient *couchDatabase) listIndex() ([]*indexResult, error) {
 	// IndexDefinition contains the definition for a couchdb index
 	type indexDefinition struct {
-		DesignDocument string          `json:"ddoc"`
-		Name           string          `json:"name"`
-		Type           string          `json:"type"`
-		Definition     json.RawMessage `json:"def"`
+		DesignDocument string         `json:"ddoc"`
+		Name           string         `json:"name"`
+		Type           string         `json:"type"`
+		Definition     jsontext.Value `json:"def"`
 	}
 
 	// ListIndexResponse contains the definition for listing couchdb indexes
@@ -1270,7 +1270,7 @@ func (dbclient *couchDatabase) applyDatabaseSecurity(databaseSecurity *databaseS
 	// get the number of retries
 	maxRetries := dbclient.couchInstance.conf.MaxRetries
 
-	databaseSecurityJSON, err := json.Marshal(databaseSecurity)
+	databaseSecurityJSON, err := marshalJSON(databaseSecurity)
 	if err != nil {
 		return errors.Wrap(err, "error unmarshalling json data")
 	}
@@ -1313,7 +1313,7 @@ func (dbclient *couchDatabase) batchRetrieveDocumentMetadata(keys []string) ([]*
 
 	keymap["keys"] = keys
 
-	jsonKeys, err := json.Marshal(keymap)
+	jsonKeys, err := marshalJSON(keymap)
 	if err != nil {
 		return nil, errors.Wrap(err, "error marshalling json data")
 	}
@@ -1433,7 +1433,7 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 	// Add the documents to the "docs" item
 	documentMap["docs"] = jsonDocumentMap
 
-	bulkDocsJSON, err := json.Marshal(documentMap)
+	bulkDocsJSON, err := marshalJSON(documentMap)
 	if err != nil {
 		return nil, errors.Wrap(err, "error marshalling json data")
 	}
@@ -1746,14 +1746,12 @@ func encodePathElement(str string) string {
 }
 
 func encodeForJSON(str string) (string, error) {
-	buf := &bytes.Buffer{}
-	encoder := json.NewEncoder(buf)
-	if err := encoder.Encode(str); err != nil {
+	encoded, err := marshalJSON(str)
+	if err != nil {
 		return "", errors.Wrap(err, "error encoding json data")
 	}
-	// Encode adds double quotes to string and terminates with \n - stripping them as bytes as they are all ascii(0-127)
-	buffer := buf.Bytes()
-	return string(buffer[1 : len(buffer)-2]), nil
+	// Marshal adds double quotes to string - stripping them as bytes as they are all ascii(0-127)
+	return string(encoded[1 : len(encoded)-1]), nil
 }
 
 // printDocumentIds is a convenience method to print readable log entries for arrays of pointers

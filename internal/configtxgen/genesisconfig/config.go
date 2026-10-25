@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package genesisconfig
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -82,6 +82,22 @@ type TopLevel struct {
 	Application   *Application               `yaml:"Application"`
 	Orderer       *Orderer                   `yaml:"Orderer"`
 	Capabilities  map[string]map[string]bool `yaml:"Capabilities"`
+}
+
+var jsonOptions = []json.Options{
+	json.FormatNilSliceAsNull(true),
+	json.FormatNilMapAsNull(true),
+	json.WithMarshalers(json.MarshalFunc(func(d time.Duration) ([]byte, error) {
+		return json.Marshal(int64(d))
+	})),
+	json.WithUnmarshalers(json.UnmarshalFunc(func(b []byte, d *time.Duration) error {
+		var v int64
+		if err := json.Unmarshal(b, &v); err != nil {
+			return err
+		}
+		*d = time.Duration(v)
+		return nil
+	})),
 }
 
 // Profile encodes orderer/application configuration combinations for the
@@ -489,14 +505,14 @@ func (c *configCache) load(config *viperutil.ConfigParser, configPath string) (*
 			return nil, fmt.Errorf("Error unmarshalling config into struct: %w", err)
 		}
 
-		serializedConf, err = json.Marshal(conf)
+		serializedConf, err = json.Marshal(conf, jsonOptions...)
 		if err != nil {
 			return nil, err
 		}
 		c.cache[configPath] = serializedConf
 	}
 
-	err := json.Unmarshal(serializedConf, conf)
+	err := json.Unmarshal(serializedConf, conf, jsonOptions...)
 	if err != nil {
 		return nil, err
 	}

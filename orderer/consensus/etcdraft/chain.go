@@ -587,7 +587,14 @@ func (c *Chain) forwardToLeader(lead uint64, req *orderer.SubmitRequest) error {
 		close(sentChan)
 	}
 
-	c.rpc.SendSubmit(lead, req, report)
+	// A failed send is either reported via the callback or returned directly,
+	// never both. A request that is not queued - for example, because the
+	// stream was canceled - is not reported via the callback, so return the
+	// error immediately instead of waiting for the RPC timeout in vain.
+	if err := c.rpc.SendSubmit(lead, req, report); err != nil {
+		c.Metrics.ProposalFailures.Add(1)
+		return err
+	}
 
 	select {
 	case <-sentChan:

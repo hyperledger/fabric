@@ -8,7 +8,7 @@ package ledger
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"syscall"

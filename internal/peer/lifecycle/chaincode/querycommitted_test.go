@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode_test
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
@@ -115,7 +114,7 @@ var _ = Describe("QueryCommitted", func() {
 						},
 					},
 				}
-				json, err := json.MarshalIndent(expectedOutput, "", "\t")
+				json, err := marshalIndentJSON(expectedOutput)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(committedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
 			})
@@ -189,7 +188,7 @@ var _ = Describe("QueryCommitted", func() {
 							"nowaydoiapprove":     false,
 						},
 					}
-					json, err := json.MarshalIndent(expectedOutput, "", "\t")
+					json, err := marshalIndentJSON(expectedOutput)
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(committedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
 				})

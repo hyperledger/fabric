@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package pkcs11
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"testing"
 

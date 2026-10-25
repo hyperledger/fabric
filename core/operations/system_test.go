@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package operations_test
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"

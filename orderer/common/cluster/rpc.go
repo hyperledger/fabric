@@ -148,8 +148,17 @@ func (s *RPC) consensusSent(start time.Time, to uint64, msg *orderer.ConsensusRe
 func (s *RPC) getOrCreateStream(destination uint64, operationType OperationType) (*Stream, error) {
 	stream := s.getStream(destination, operationType)
 	if stream != nil {
-		return stream, nil
+		if !stream.Canceled() {
+			return stream, nil
+		}
+
+		// The cached stream was aborted, for example because the TLS certificate
+		// of the remote node changed or the connection to it was lost.
+		// Discard it, so that a new stream is established below.
+		s.Logger.Infof("Discarding %s stream %d to %d on channel %s because it is canceled", operationType, stream.ID, destination, s.Channel)
+		s.unMapStream(destination, operationType, stream.ID)
 	}
+
 	stub, err := s.Comm.Remote(s.Channel, destination)
 	if err != nil {
 		return nil, errors.WithStack(err)
