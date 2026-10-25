@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"time"
 
@@ -112,7 +112,7 @@ func (ar AggregatedSendResult) String() string {
 	if ackCount < len(ar) {
 		output["failures"] = errMap
 	}
-	b, _ := json.Marshal(output)
+	b, _ := json.Marshal(output, json.Deterministic(true))
 	return string(b)
 }
 

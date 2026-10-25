@@ -10,7 +10,7 @@ package chaincode
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -112,6 +112,36 @@ func TestCheckValidJSON(t *testing.T) {
 		t.Logf("Chaincode argument error: %s", err)
 		return
 	}
+}
+
+func TestChaincodeInputUnmarshalJSONCaseInsensitivity(t *testing.T) {
+	t.Run("lowercase keys are accepted", func(t *testing.T) {
+		input := &chaincodeInput{}
+		err := json.Unmarshal([]byte(`{"function":"f","args":["a","b"]}`), input)
+		require.NoError(t, err)
+		require.Equal(t, [][]byte{[]byte("f"), []byte("a"), []byte("b")}, input.Args)
+	})
+
+	t.Run("canonical case is accepted", func(t *testing.T) {
+		input := &chaincodeInput{}
+		err := json.Unmarshal([]byte(`{"Function":"f","Args":["a","b"]}`), input)
+		require.NoError(t, err)
+		require.Equal(t, [][]byte{[]byte("f"), []byte("a"), []byte("b")}, input.Args)
+	})
+
+	t.Run("case-variant duplicates are rejected", func(t *testing.T) {
+		input := &chaincodeInput{}
+		err := json.Unmarshal([]byte(`{"Args":["a"],"args":["b"]}`), input)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "duplicate object member name")
+	})
+
+	t.Run("duplicate object member names are rejected", func(t *testing.T) {
+		input := &chaincodeInput{}
+		err := json.Unmarshal([]byte(`{"Args":["a"],"Args":["b"]}`), input)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "duplicate object member name")
+	})
 }
 
 func TestCheckInvalidJSON(t *testing.T) {
@@ -299,7 +329,7 @@ func TestCollectionParsing(t *testing.T) {
 		{
 			name:             "Invalid collection config",
 			collectionConfig: "barf",
-			expectedErr:      "could not parse the collection configuration: invalid character 'b' looking for beginning of value",
+			expectedErr:      "could not parse the collection configuration: jsontext: invalid character 'b' at start of value",
 		},
 		{
 			name:             "Invalid signature policy",

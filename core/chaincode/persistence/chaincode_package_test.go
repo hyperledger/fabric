@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package persistence_test
 
 import (
+	"encoding/json/v2"
 	"io"
 	"os"
 
@@ -181,7 +182,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
-				Expect(err).To(MatchError("could not unmarshal metadata.json as json: invalid character '\\n' in string"))
+				Expect(err).To(MatchError(ContainSubstring("could not unmarshal metadata.json as json: jsontext: invalid character '\\n' in string")))
 			})
 		})
 
@@ -314,7 +315,7 @@ var _ = Describe("ChaincodePackageStreamer", func() {
 
 			It("wraps and returns the error", func() {
 				_, err := streamer.Metadata()
-				Expect(err).To(MatchError("could not parse metadata file: invalid character '\\n' in string"))
+				Expect(err).To(MatchError(ContainSubstring("could not parse metadata file: jsontext: invalid character '\\n' in string")))
 			})
 		})
 	})
@@ -394,5 +395,23 @@ var _ = Describe("ChaincodePackageStreamer", func() {
 				Expect(err).To(MatchError("error reading as gzip stream: unexpected EOF"))
 			})
 		})
+	})
+})
+
+// metadata.json is unmarshaled with encoding/json/v2. Struct field matching is
+// case-sensitive (v1 was case-insensitive) and duplicate member names are
+// rejected, unlike v1 last-wins behavior.
+var _ = Describe("ChaincodePackageMetadata JSON", func() {
+	It("matches field names case-sensitively", func() {
+		md := &persistence.ChaincodePackageMetadata{}
+		err := json.Unmarshal([]byte(`{"Type":"Fake-Type","Path":"Fake-Path","Label":"Real-Label"}`), md)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(md).To(Equal(&persistence.ChaincodePackageMetadata{}))
+	})
+
+	It("rejects duplicate member names", func() {
+		md := &persistence.ChaincodePackageMetadata{}
+		err := json.Unmarshal([]byte(`{"label":"a","label":"b"}`), md)
+		Expect(err).To(MatchError(ContainSubstring("duplicate object member name")))
 	})
 })
