@@ -7,7 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package genesisconfig
 
 import (
+	"encoding/json/v2"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/viperutil"
@@ -254,6 +256,28 @@ func TestConsensusSpecificInit(t *testing.T) {
 			})
 		})
 	})
+}
+
+// jsonOptions must keep FormatNilSliceAsNull/FormatNilMapAsNull and the
+// Duration marshalers: v2 would otherwise serialize nil slices as [] (breaking
+// the cache round-trip equality) and reject time.Duration values entirely.
+func TestJSONOptionsDurationAndNilSlice(t *testing.T) {
+	type probe struct {
+		Timeout time.Duration `json:"timeout"`
+		Names   []string      `json:"names"`
+		Attrs   map[string]string
+	}
+
+	b, err := json.Marshal(&probe{Timeout: 7 * time.Second}, jsonOptions...)
+	require.NoError(t, err)
+	require.Equal(t, `{"timeout":7000000000,"names":null,"Attrs":null}`, string(b))
+
+	var out probe
+	err = json.Unmarshal(b, &out, jsonOptions...)
+	require.NoError(t, err)
+	require.Equal(t, 7*time.Second, out.Timeout)
+	require.Nil(t, out.Names)
+	require.Nil(t, out.Attrs)
 }
 
 func TestLoadConfigCache(t *testing.T) {

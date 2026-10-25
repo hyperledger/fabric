@@ -8,7 +8,8 @@ package chaincode
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 
@@ -125,7 +126,7 @@ func printResponseAsJSON(proposalResponse *pb.ProposalResponse, msg proto.Messag
 		return errors.Wrapf(err, "failed to unmarshal proposal response's response payload as type %T", msg)
 	}
 
-	bytes, err := json.MarshalIndent(msg, "", "\t")
+	bytes, err := marshalIndentJSON(msg)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal output")
 	}
@@ -133,4 +134,15 @@ func printResponseAsJSON(proposalResponse *pb.ProposalResponse, msg proto.Messag
 	fmt.Fprintf(out, "%s\n", string(bytes))
 
 	return nil
+}
+
+func marshalIndentJSON(v any) ([]byte, error) {
+	return json.Marshal(
+		v,
+		json.Deterministic(true),
+		jsontext.EscapeForHTML(true),
+		json.FormatNilSliceAsNull(true),
+		json.FormatNilMapAsNull(true),
+		jsontext.WithIndent("\t"),
+	)
 }
