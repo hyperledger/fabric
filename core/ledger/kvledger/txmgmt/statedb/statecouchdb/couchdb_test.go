@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json/v2"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
@@ -190,6 +191,28 @@ func TestBadCouchDBInstance(t *testing.T) {
 	// Test deleteIndex with bad connection
 	err = badDB.deleteIndex("", "")
 	require.Error(t, err, "Error should have been thrown with deleteIndex and invalid connection")
+}
+
+func TestReadDocInvalidContentType(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	config := testConfig()
+	config.Address = server.Listener.Addr().String()
+	db := couchDatabase{
+		couchInstance: &couchInstance{
+			conf:   config,
+			client: server.Client(),
+			stats:  newStats(&disabled.Provider{}),
+		},
+		dbName: "testreaddocinvalidcontenttype",
+	}
+
+	_, _, err := db.readDoc("1")
+	require.ErrorContains(t, err, "error parsing response Content-Type")
 }
 
 func TestDBCreateSaveWithoutRevision(t *testing.T) {
