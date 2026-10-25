@@ -1,0 +1,23 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Configuration for the OSV scanner run by .github/workflows/vulnerability-scan.yml.
+# See https://google.github.io/osv-scanner/configuration/
+
+# GO-2026-5932 advises against golang.org/x/crypto/openpgp, which is unmaintained
+# and unsafe by design. It applies to every version of golang.org/x/crypto and has
+# no fixed version, so it cannot be resolved by upgrading.
+#
+# Fabric does not use the openpgp packages. golang.org/x/crypto is pulled in
+# transitively.
+#
+# The scan runs against go.mod and tools/go.mod as a lockfile, which reports every module in the
+# dependency graph without reachability analysis, so the unused openpgp packages
+# get flagged anyway.
+
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+# Hyperledger Fabric does not use the vulnerable code anywhere, so this
+# vulnerability does not affect us.
+reason = "golang.org/x/crypto/openpgp is unmaintained and has no fix."
