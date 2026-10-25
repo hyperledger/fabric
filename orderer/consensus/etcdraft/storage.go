@@ -84,7 +84,7 @@ func CreateStorage(
 	} else {
 		// snapshot found
 		lg.Debugf("Loaded snapshot at Term %d and Index %d, Nodes: %+v",
-			snapshot.GetMetadata().Term, snapshot.GetMetadata().GetIndex(), snapshot.GetMetadata().GetConfState().GetVoters())
+			snapshot.GetMetadata().GetTerm(), snapshot.GetMetadata().GetIndex(), snapshot.GetMetadata().GetConfState().GetVoters())
 	}
 
 	w, st, ents, err := createOrReadWAL(lg, walDir, snapshot)
@@ -197,7 +197,7 @@ func createOrReadWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.
 		walsnap.Index, walsnap.Term = snapshot.GetMetadata().Index, snapshot.GetMetadata().Term
 	}
 
-	lg.Debugf("Loading WAL at Term %d and Index %d", walsnap.Term, walsnap.Index)
+	lg.Debugf("Loading WAL at Term %d and Index %d", walsnap.GetTerm(), walsnap.GetIndex())
 
 	var repaired bool
 	for {
@@ -268,7 +268,7 @@ func (rs *RaftStorage) Store(entries []*raftpb.Entry, hardstate *raftpb.HardStat
 }
 
 func (rs *RaftStorage) saveSnap(snap *raftpb.Snapshot) error {
-	rs.lg.Infof("Persisting snapshot (term: %d, index: %d) to WAL and disk", snap.GetMetadata().Term, snap.GetMetadata().GetIndex())
+	rs.lg.Infof("Persisting snapshot (term: %d, index: %d) to WAL and disk", snap.GetMetadata().GetTerm(), snap.GetMetadata().GetIndex())
 
 	// must save the snapshot index to the WAL before saving the
 	// snapshot to maintain the invariant that we only Open the

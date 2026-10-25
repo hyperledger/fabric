@@ -117,8 +117,8 @@ func TestIterators(t *testing.T) {
 		for txIndex, transaction := range transactions {
 			require.Equal(t, block, transaction.Block(), "transaction[%d].Block()", txIndex)
 			require.Equal(t, transactionId, transaction.ID(), "transaction[%d].ID()", txIndex)
-			require.Equal(t, now.Unix(), transaction.Timestamp().Seconds, "transaction[%d].Timestamp.Seconds", txIndex)
-			require.Equal(t, now.Nanosecond(), int(transaction.Timestamp().Nanos), "transaction[%d].Tomestamp.Nanos", txIndex)
+			require.Equal(t, now.Unix(), transaction.Timestamp().GetSeconds(), "transaction[%d].Timestamp.Seconds", txIndex)
+			require.Equal(t, now.Nanosecond(), int(transaction.Timestamp().GetNanos()), "transaction[%d].Tomestamp.Nanos", txIndex)
 
 			events, err := transaction.ChaincodeEvents()
 			require.NoError(t, err, "ChaincodeEvents()")
