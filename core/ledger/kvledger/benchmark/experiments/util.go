@@ -9,7 +9,7 @@ package experiments
 import (
 	"bytes"
 	crand "crypto/rand"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"math/rand/v2"
 	"strconv"
