@@ -8,7 +8,7 @@ package marbles_private
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 
 	"github.com/hyperledger/fabric-chaincode-go/v2/pkg/statebased"

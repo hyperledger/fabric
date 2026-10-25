@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package grpclogging_test
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpclogging/testpb"

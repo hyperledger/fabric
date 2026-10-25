@@ -1103,3 +1103,16 @@ func TestConcurrentCloseSend(t *testing.T) {
 	stopping.Store(int32(1))
 	<-done
 }
+
+// String marshals with json.Deterministic(true), so the output is stable:
+// outer and inner map keys are sorted.
+func TestAggregatedSendResultString(t *testing.T) {
+	results := AggregatedSendResult{
+		{Endpoint: "p1"},
+		{error: errors.New("boom"), Endpoint: "p2"},
+		{error: errors.New("boom"), Endpoint: "p3"},
+		{error: errors.New("bang"), Endpoint: "p4"},
+	}
+
+	require.Equal(t, `{"failures":{"bang":1,"boom":2},"successes":1}`, results.String()) //nolint:testifylint
+}

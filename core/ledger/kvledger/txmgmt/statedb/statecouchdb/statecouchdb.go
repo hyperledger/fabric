@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package statecouchdb
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"net/http"
 	"sort"
 	"sync"
@@ -959,33 +959,46 @@ func applyAdditionalQueryOptions(queryString string, queryLimit int32, queryBook
 	const jsonQueryLimit = "limit"
 	const jsonQueryBookmark = "bookmark"
 	// create a generic map for the query json
-	jsonQueryMap := make(map[string]any)
+	jsonQueryMap := make(map[string]jsontext.Value)
 	// unmarshal the selector json into the generic map
-	decoder := json.NewDecoder(bytes.NewBuffer([]byte(queryString)))
-	decoder.UseNumber()
-	err := decoder.Decode(&jsonQueryMap)
-	if err != nil {
+	if err := json.Unmarshal([]byte(queryString), &jsonQueryMap); err != nil {
 		return "", err
 	}
-	if fieldsJSONArray, ok := jsonQueryMap[jsonQueryFields]; ok {
-		switch fieldsJSONArray := fieldsJSONArray.(type) {
-		case []any:
-			// Add the "_id", and "version" fields,  these are needed by default
-			jsonQueryMap[jsonQueryFields] = append(fieldsJSONArray, idField, versionField)
-		default:
+	if fieldsRaw, ok := jsonQueryMap[jsonQueryFields]; ok {
+		var fieldsJSONArray any
+		if err := json.Unmarshal(fieldsRaw, &fieldsJSONArray); err != nil {
 			return "", errors.New("fields definition must be an array")
 		}
+		fields, ok := fieldsJSONArray.([]any)
+		if !ok {
+			return "", errors.New("fields definition must be an array")
+		}
+		// Add the "_id", and "version" fields,  these are needed by default
+		fields = append(fields, idField, versionField)
+		encodedFields, err := marshalJSON(fields)
+		if err != nil {
+			return "", err
+		}
+		jsonQueryMap[jsonQueryFields] = encodedFields
 	}
 	// Add limit
 	// This will override any limit passed in the query.
 	// Explicit paging not yet supported.
-	jsonQueryMap[jsonQueryLimit] = queryLimit
+	encodedLimit, err := marshalJSON(queryLimit)
+	if err != nil {
+		return "", err
+	}
+	jsonQueryMap[jsonQueryLimit] = encodedLimit
 	// Add the bookmark if provided
 	if queryBookmark != "" {
-		jsonQueryMap[jsonQueryBookmark] = queryBookmark
+		encodedBookmark, err := marshalJSON(queryBookmark)
+		if err != nil {
+			return "", err
+		}
+		jsonQueryMap[jsonQueryBookmark] = encodedBookmark
 	}
 	// Marshal the updated json query
-	editedQuery, err := json.Marshal(jsonQueryMap)
+	editedQuery, err := marshalJSON(jsonQueryMap)
 	if err != nil {
 		return "", err
 	}

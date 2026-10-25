@@ -9,7 +9,7 @@ package discovery
 import (
 	"context"
 	crand "crypto/rand"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"math/rand/v2"
 
@@ -620,7 +620,7 @@ type InvocationChain []*peer.ChaincodeCall
 
 // String returns a string representation of this invocation chain
 func (ic InvocationChain) String() string {
-	s, _ := json.Marshal(ic)
+	s, _ := json.Marshal(ic, json.OmitZeroStructFields(true))
 	return string(s)
 }
 
