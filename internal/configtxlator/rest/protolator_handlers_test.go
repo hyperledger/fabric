@@ -55,6 +55,7 @@ func TestProtolatorDecode(t *testing.T) {
 	r.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "application/json", rec.Result().Header.Get("Content-Type"))
 
 	// Remove all the whitespace
 	compactJSON := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(rec.Body.String(), "\n", ""), "\t", ""), " ", "")
@@ -71,6 +72,7 @@ func TestProtolatorEncode(t *testing.T) {
 	r.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "application/octet-stream", rec.Result().Header.Get("Content-Type"))
 
 	outputMsg := &cb.Block{}
 
