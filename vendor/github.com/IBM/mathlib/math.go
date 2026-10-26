@@ -748,7 +748,9 @@ func (c *Curve) Rand() (io.Reader, error) {
 }
 
 // NewRandomZr generates a random scalar using the provided random number generator.
-// The scalar is uniformly distributed in the range [0, group order).
+// The scalar is uniformly distributed in the range [0, group order). rng is the exclusive
+// source of entropy: passing a deterministic reader (e.g. seeded from a fixed value) always
+// yields the same scalar, and implementations must not fall back to any other source.
 func (c *Curve) NewRandomZr(rng io.Reader) *Zr {
 	return &Zr{zr: c.c.NewRandomZr(rng), curveID: c.curveID}
 }
