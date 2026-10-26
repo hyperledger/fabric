@@ -1,6 +1,9 @@
-![Ginkgo](https://onsi.github.io/ginkgo/images/ginkgo.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/ginkgo-dark.png">
+  <img alt="Ginkgo" src="docs/images/ginkgo.png">
+</picture>
 
-[![test](https://github.com/onsi/ginkgo/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/onsi/ginkgo/actions?query=workflow%3Atest+branch%3Amaster) | [Ginkgo Docs](https://onsi.github.io/ginkgo/)
+[![test](https://github.com/onsi/ginkgo/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/onsi/ginkgo/actions/workflows/test.yml?query=branch%3Amaster) [![Ginkgo Docs](docs/images/docs-badge.svg)](https://onsi.github.io/ginkgo/) [![Sponsor onsi](docs/images/sponsor-badge.svg)](https://github.com/sponsors/onsi)
 
 ---
 
@@ -132,7 +135,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md)
 Sponsors commit to a [sponsorship](https://github.com/sponsors/onsi) for a year.  If you're an organization that makes use of Ginkgo please consider becoming a sponsor!
 
 <p style="font-size:21px; color:black;">Browser testing via 
-    <a href="https://www.testmu.ai/" target="_blank">
-        <img src="https://assets.testmu.ai/resources/images/logos/white-logo.png" style="vertical-align: middle;" width="250" />
+    <a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=ginkgo" target="_blank">
+        <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="docs/images/testmu-ai-dark.svg">
+            <img alt="TestMu AI" src="docs/images/testmu-ai.svg" style="vertical-align: middle;" width="250" />
+        </picture>
     </a>
 </p>

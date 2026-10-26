@@ -102,6 +102,12 @@ func (vector *Vector) AsyncReadFrom(r io.Reader) (int64, error, chan error) { //
 		return int64(read), err, chErr
 	}
 	headerSliceLen := uint64(binary.BigEndian.Uint32(buf[:4]))
+	if lr, ok := r.(interface{ Len() int }); ok {
+		if remaining := lr.Len(); remaining < 0 || headerSliceLen > uint64(remaining/Bytes) {
+			close(chErr)
+			return 4, io.ErrUnexpectedEOF, chErr
+		}
+	}
 
 	// to avoid allocating too large slice when the header is tampered, we limit
 	// the maximum allocation. We set the target to 4GB. This incurs a performance
@@ -200,6 +206,11 @@ func (vector *Vector) ReadFrom(r io.Reader) (int64, error) {
 		return int64(read), err
 	}
 	headerSliceLen := uint64(binary.BigEndian.Uint32(buf[:4]))
+	if lr, ok := r.(interface{ Len() int }); ok {
+		if remaining := lr.Len(); remaining < 0 || headerSliceLen > uint64(remaining/Bytes) {
+			return 4, io.ErrUnexpectedEOF
+		}
+	}
 
 	// to avoid allocating too large slice when the header is tampered, we limit
 	// the maximum allocation. We set the target to 4GB. This incurs a performance

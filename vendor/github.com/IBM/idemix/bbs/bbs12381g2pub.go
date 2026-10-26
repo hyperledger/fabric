@@ -355,14 +355,40 @@ func (cb *commitmentBuilder) Build() *ml.G1 {
 	return sumOfG1Products(cb.bases, cb.scalars)
 }
 
+// sumOfG1Products computes the sum via pairwise Mul2 (joint scalar multiplication), which is
+// not faster in wall-clock time than two independent Mul calls on the gnark-backed curves (it
+// forgoes the GLV endomorphism speedup — see mathlib's Mul2 doc comment), but it allocates far
+// less, so it is preferred over a naive Mul+Add loop for the same wall-clock cost.
+//
+// It deliberately does not dispatch to curve.MultiScalarMul for larger inputs. This package's
+// hot paths (per-attribute nym/signature proofs) sum only a handful of bases, and gnark's
+// bucket-method MultiExp buys its wall-clock win there by fanning out over runtime.NumCPU()
+// goroutines and allocating buckets — cheap for one caller in isolation, but a net loss once
+// the whole process is already saturated with concurrent verifications. Callers that sum many
+// bases and want MultiExp can call curve.MultiScalarMul themselves.
 func sumOfG1Products(bases []*ml.G1, scalars []*ml.Zr) *ml.G1 {
-	if len(bases) == 0 {
-		return nil
+	var res *ml.G1
+
+	i := 0
+	for ; i+1 < len(bases); i += 2 {
+		g := bases[i].Mul2(scalars[i], bases[i+1], scalars[i+1])
+		if res == nil {
+			res = g
+		} else {
+			res.Add(g)
+		}
 	}
 
-	curve := ml.Curves[bases[0].CurveID()]
+	if i < len(bases) {
+		g := bases[i].Mul(scalars[i])
+		if res == nil {
+			res = g
+		} else {
+			res.Add(g)
+		}
+	}
 
-	return curve.MultiScalarMul(bases, scalars)
+	return res
 }
 
 func compareTwoPairings(p1 *ml.G1, q1 *ml.G2,

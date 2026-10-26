@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"strconv"
 	"sync"
 
 	ml "github.com/IBM/mathlib"
@@ -26,9 +27,19 @@ var (
 	generateKeySalt = "BBS-SIG-KEYGEN-SALT-"
 )
 
-type publicKeyGeneratorCache struct {
-	generators sync.Map
-}
+// generatorCache holds hash-to-G1 generator points derived from a public key, keyed by
+// curve ID plus the same data blob passed to hashToG1 (which already embeds the issuer's G2
+// public key bytes and the message count, so it is collision-safe across issuers). It is
+// shared package-wide (see publicKeyGeneratorCache below) rather than owned by a single
+// *BBSLib, because every bccsp/schemes/aries call site constructs a fresh *BBSLib per
+// operation (NewBBSLib is cheap struct-field setup, not a resource meant to be pooled), which
+// previously meant the ~69us hash-to-G1 work for h0 and every message generator was redone on
+// every single sign/verify/proof call instead of once per (public key, message count) pair.
+//
+//nolint:gochecknoglobals
+var generatorCache sync.Map
+
+type publicKeyGeneratorCache struct{}
 
 func newPublicKeyGeneratorCache() *publicKeyGeneratorCache {
 	return &publicKeyGeneratorCache{}
@@ -39,13 +50,13 @@ func (c *publicKeyGeneratorCache) get(data []byte, curve *ml.Curve) *ml.G1 {
 		return hashToG1(data, curve)
 	}
 
-	key := string(data)
-	if cached, ok := c.generators.Load(key); ok {
+	key := strconv.Itoa(int(curve.GenG1.CurveID())) + string(data)
+	if cached, ok := generatorCache.Load(key); ok {
 		return cached.(*ml.G1)
 	}
 
 	generator := hashToG1(data, curve)
-	cached, _ := c.generators.LoadOrStore(key, generator)
+	cached, _ := generatorCache.LoadOrStore(key, generator)
 
 	return cached.(*ml.G1)
 }
