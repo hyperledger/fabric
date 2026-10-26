@@ -238,7 +238,9 @@ func (c *Cache) handleChaincodeInstalledWhileLocked(initializing bool, md *persi
 			References: map[string]map[string]*CachedChaincodeDefinition{},
 		}
 		c.localChaincodes[hashOfCCHash] = localChaincode
-		c.chaincodeCustodian.NotifyInstalled(packageID)
+		if !initializing {
+			c.chaincodeCustodian.NotifyInstalled(packageID)
+		}
 	}
 	localChaincode.Info = &ChaincodeInstallInfo{
 		PackageID: packageID,
