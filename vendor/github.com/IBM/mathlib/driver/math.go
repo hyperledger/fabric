@@ -151,7 +151,10 @@ type Curve interface {
 	// HashToG2WithDomain hashes data to G2 with domain separation.
 	HashToG2WithDomain(data, domain []byte) G2
 
-	// NewRandomZr generates a random scalar using the provided RNG.
+	// NewRandomZr generates a random scalar using the provided RNG. rng must be the
+	// exclusive source of entropy: the same reader (e.g. a deterministically seeded one)
+	// must always produce the same scalar, so implementations must not draw from any other
+	// randomness source (such as crypto/rand directly) as a shortcut.
 	NewRandomZr(rng io.Reader) Zr
 
 	// Rand returns a cryptographically secure random number generator.

@@ -152,6 +152,9 @@ func (dec *Decoder) Decode(v any) (err error) {
 		for i := range *t {
 			read64, err = (*fr.Vector)(&(*t)[i]).ReadFrom(dec.r)
 			dec.n += read64
+			if err != nil {
+				return
+			}
 		}
 		return
 	case *[][][]fr.Element:
@@ -171,6 +174,9 @@ func (dec *Decoder) Decode(v any) (err error) {
 			for j := range (*t)[i] {
 				read64, err = (*fr.Vector)(&(*t)[i][j]).ReadFrom(dec.r)
 				dec.n += read64
+				if err != nil {
+					return
+				}
 			}
 		}
 		return
