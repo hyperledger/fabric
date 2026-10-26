@@ -217,6 +217,21 @@ func TestCompare(t *testing.T) {
 		StateDBType: "testdatabase",
 	}
 
+	// Snapshot without private data hashes, so it has no private state hashes files
+	sampleSignableMetadata6 := &kvledger.SnapshotSignableMetadata{
+		ChannelName:            "testchannel",
+		LastBlockNumber:        sampleRecords1[len(sampleRecords1)-1].blockNum,
+		LastBlockHashInHex:     "last_block_hash",
+		PreviousBlockHashInHex: "previous_block_hash",
+		FilesAndHashes: map[string]string{
+			"public_state.data":     "public_state_hash1",
+			"public_state.metadata": "public_state_hash1",
+			"txids.data":            "txids_hash2",
+			"txids.metadata":        "txids_hash2",
+		},
+		StateDBType: "testdatabase",
+	}
+
 	// Expected outputs
 	expectedDifferenceResult := `{
 			"ledgerid" : "testchannel",
@@ -445,6 +460,38 @@ func TestCompare(t *testing.T) {
 				}
 			]
 		}`
+	expectedPvtMissingResult1 := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+				{
+					"namespace" : "_lifecycle$$h_implicit_org_Org1MSP",
+					"key" : "736b31",
+					"hashed" : true,
+					"snapshotrecord1" : {
+						"value" : "2321",
+						"blockNum" : 1,
+						"txNum" : 1
+					},
+					"snapshotrecord2" : null
+				}
+			]
+		}`
+	expectedPvtMissingResult2 := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+				{
+					"namespace" : "_lifecycle$$h_implicit_org_Org1MSP",
+					"key" : "736b31",
+					"hashed" : true,
+					"snapshotrecord1" : null,
+					"snapshotrecord2" : {
+						"value" : "2321",
+						"blockNum" : 1,
+						"txNum" : 1
+					}
+				}
+			]
+		}`
 	expectedEmpty := "null"
 
 	testCases := map[string]struct {
@@ -591,6 +638,32 @@ func TestCompare(t *testing.T) {
 			expectedFirOutput:      expectedEmpty,
 			expectedDiffCount:      1,
 		},
+		// Second snapshot has no private data hashes
+		"second-missing-pvt-data": {
+			inputTestRecords1:      sampleRecords1,
+			inputTestPvtRecords1:   samplePvtRecords1,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords1,
+			inputSignableMetadata2: sampleSignableMetadata6,
+			expectedOutputType:     "json",
+			expectedPubOutput:      expectedEmpty,
+			expectedPvtOutput:      expectedPvtMissingResult1,
+			expectedFirOutput:      expectedEmpty,
+			expectedDiffCount:      1,
+		},
+		// First snapshot has no private data hashes
+		"first-missing-pvt-data": {
+			inputTestRecords1:      sampleRecords1,
+			inputSignableMetadata1: sampleSignableMetadata6,
+			inputTestRecords2:      sampleRecords1,
+			inputTestPvtRecords2:   samplePvtRecords1,
+			inputSignableMetadata2: sampleSignableMetadata1,
+			expectedOutputType:     "json",
+			expectedPubOutput:      expectedEmpty,
+			expectedPvtOutput:      expectedPvtMissingResult2,
+			expectedFirOutput:      expectedEmpty,
+			expectedDiffCount:      1,
+		},
 	}
 
 	// Run test cases individually
@@ -668,34 +741,36 @@ func createSnapshot(dir string, pubStateRecords []*testRecord, pvtStateRecords [
 		return err
 	}
 
-	// Generate private state of sample snapshot
-	pvtStateWriter, err := privacyenabledstate.NewSnapshotWriter(
-		dir,
-		privacyenabledstate.PvtStateHashesFileName,
-		privacyenabledstate.PvtStateHashesMetadataFileName,
-		testNewHashFunc,
-	)
-	if err != nil {
-		return err
-	}
-	defer pvtStateWriter.Close()
-
-	// Add sample records to sample snapshot
-	for _, sample := range pvtStateRecords {
-		err = pvtStateWriter.AddData(sample.namespace, &privacyenabledstate.SnapshotRecord{
-			Key:      []byte(sample.key),
-			Value:    []byte(sample.value),
-			Metadata: []byte(sample.metadata),
-			Version:  toBytes(sample.blockNum, sample.txNum),
-		})
+	// Like a real snapshot, only generate private state files when there are private records
+	if len(pvtStateRecords) > 0 {
+		pvtStateWriter, err := privacyenabledstate.NewSnapshotWriter(
+			dir,
+			privacyenabledstate.PvtStateHashesFileName,
+			privacyenabledstate.PvtStateHashesMetadataFileName,
+			testNewHashFunc,
+		)
 		if err != nil {
 			return err
 		}
-	}
+		defer pvtStateWriter.Close()
 
-	_, _, err = pvtStateWriter.Done()
-	if err != nil {
-		return err
+		// Add sample records to sample snapshot
+		for _, sample := range pvtStateRecords {
+			err = pvtStateWriter.AddData(sample.namespace, &privacyenabledstate.SnapshotRecord{
+				Key:      []byte(sample.key),
+				Value:    []byte(sample.value),
+				Metadata: []byte(sample.metadata),
+				Version:  toBytes(sample.blockNum, sample.txNum),
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		_, _, err = pvtStateWriter.Done()
+		if err != nil {
+			return err
+		}
 	}
 
 	// Generate the signable metadata files for sample snapshot
