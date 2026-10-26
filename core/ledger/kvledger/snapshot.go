@@ -237,6 +237,9 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 	}
 
 	ledgerID := metadata.ChannelName
+	if err := validateLedgerID(ledgerID); err != nil {
+		return nil, "", errors.WithMessage(err, "invalid channel name in snapshot metadata")
+	}
 	lastBlockNum := metadata.LastBlockNumber
 	logger.Debugw("Verified hashes", "snapshotDir", snapshotDir, "ledgerID", ledgerID)
 
