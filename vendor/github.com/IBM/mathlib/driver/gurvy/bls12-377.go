@@ -226,7 +226,20 @@ type Bls12_377 struct {
 	common.CurveBase
 }
 
+// MultiScalarMul computes the sum of the scalar multiplications of the given bases by the
+// given scalars via gnark's bucket-method MultiExp. MultiExp carries a fixed cost (window
+// and chunk setup, goroutine fan-out) that a pairwise Mul2+Add loop does not, so for very
+// small n a caller that knows its sizes may be better served by Mul/Mul2 directly; callers
+// that care make that choice themselves, and this method does not second-guess them beyond
+// the trivial n==0 and n==1 cases.
 func (c *Bls12_377) MultiScalarMul(a []driver.G1, b []driver.Zr) driver.G1 {
+	switch n := len(a); n {
+	case 0:
+		return &bls12377G1{}
+	case 1:
+		return a[0].(*bls12377G1).Mul(b[0])
+	}
+
 	var result bls12377.G1Affine
 	affinePoints := make([]bls12377.G1Affine, len(a))
 	scalars := make([]fr.Element, len(b))
