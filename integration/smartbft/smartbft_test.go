@@ -129,7 +129,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			deployChaincode(network, channel, testDir)
 
 			By("querying the chaincode")
-			sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+			sess, err := network.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 				ChannelID: channel,
 				Name:      "mycc",
 				Ctor:      `{"Args":["query","a"]}`,
@@ -1026,7 +1026,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				network.OrdererAddress(network.Orderers[2], nwo.ListenPort),
 				network.OrdererAddress(network.Orderers[3], nwo.ListenPort))
 
-			sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+			sess, err := network.CliUserSession(peer, "User1", commands.ChaincodeInvoke{
 				ChannelID: channel,
 				Orderer:   endpoints,
 				Name:      "mycc",
@@ -1814,7 +1814,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			deployChaincode(network, channel, testDir)
 
 			By("querying the chaincode")
-			sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+			sess, err := network.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 				ChannelID: channel,
 				Name:      "mycc",
 				Ctor:      `{"Args":["query","a"]}`,
@@ -1919,7 +1919,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			// used to ensure we only approve once per org
 			// the transaction must fail
-			sess, err := network.PeerAdminSession(peers[0], commands.ChaincodeApproveForMyOrg{
+			sess, err := network.CliAdminSession(peers[0], commands.ChaincodeApproveForMyOrg{
 				ChannelID:           channel,
 				Orderer:             network.OrdererAddress(network.Orderers[0], "Listen"),
 				Name:                chaincode.Name,
@@ -1966,7 +1966,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			}
 
 			// let's continue deploying chaincode
-			sess, err = network.PeerAdminSession(peers[1], commands.ChaincodeApproveForMyOrg{
+			sess, err = network.CliAdminSession(peers[1], commands.ChaincodeApproveForMyOrg{
 				ChannelID:           channel,
 				Orderer:             network.OrdererAddress(network.Orderers[0], "Listen"),
 				Name:                chaincode.Name,
@@ -1996,7 +1996,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			}
 
 			By("querying the chaincode")
-			sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+			sess, err = network.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 				ChannelID: channel,
 				Name:      "mycc",
 				Ctor:      `{"Args":["query","a"]}`,
@@ -2053,7 +2053,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			deployChaincode(network, channel, testDir)
 
 			By("querying the chaincode")
-			sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+			sess, err := network.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 				ChannelID: channel,
 				Name:      "mycc",
 				Ctor:      `{"Args":["query","a"]}`,
@@ -2399,7 +2399,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 })
 
 func invokeQuery(network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, expectedBalance int) {
-	sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+	sess, err := network.CliUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: channel,
 		Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",
@@ -2419,7 +2419,7 @@ func invokeQuery(network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, cha
 
 func queryExpect(network *nwo.Network, peer *nwo.Peer, channel string, key string, expectedBalance int) {
 	Eventually(func() string {
-		sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+		sess, err := network.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 			ChannelID: channel,
 			Name:      "mycc",
 			Ctor:      fmt.Sprintf(`{"Args":["query","%s"]}`, key),
