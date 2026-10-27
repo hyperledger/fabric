@@ -79,7 +79,7 @@ func (a *ApproveForMyOrgInput) Validate() error {
 }
 
 // ApproveForMyOrgCmd returns the cobra command for chaincode ApproveForMyOrg
-func ApproveForMyOrgCmd(a *ApproverForMyOrg, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func ApproveForMyOrgCmd(a *ApproverForMyOrg, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	chaincodeApproveForMyOrgCmd := &cobra.Command{
 		Use:   "approveformyorg",
 		Short: "Approve the chaincode definition for my org.",
@@ -126,6 +126,12 @@ func ApproveForMyOrgCmd(a *ApproverForMyOrg, cryptoProvider bccsp.BCCSP) *cobra.
 			return a.Approve()
 		},
 	}
+
+	if !isNew {
+		chaincodeApproveForMyOrgCmd.Short = "[DEPRECATED] Approve the chaincode definition for my org (use the \"peercli lifecycle chaincode approveformyorg\")."
+		chaincodeApproveForMyOrgCmd.Long = "[DEPRECATED] Approve the chaincode definition for my organization. Instead of this command, use \"peercli lifecycle chaincode approveformyorg\"."
+	}
+
 	flagList := []string{
 		"channelID",
 		"name",
