@@ -1986,3 +1986,52 @@ func TestHandleAliveMessage_RelearnsMemberAfterConcurrentPurge(t *testing.T) {
 	require.True(t, inID2Member, "member should be present in id2Member after re-learning")
 	require.True(t, inAliveLastTS, "member should be present in aliveLastTS after re-learning")
 }
+
+func TestLearnExistingMembers_SkipsMemberPurgedConcurrently(t *testing.T) {
+	inst := createDiscoveryInstanceWithNoGossip(0, "d0", []string{})
+	defer inst.Stop()
+
+	impl := inst.discoveryImpl()
+
+	memberPKIid := []byte("purged-member")
+	memberEndpoint := "localhost:9999"
+
+	// handleAliveMessage decides the member is alive under the read lock, then
+	// a concurrent purge removes it from id2Member before learnExistingMembers
+	// takes the write lock: the member is in aliveLastTS but not in id2Member.
+	impl.lock.Lock()
+	impl.aliveLastTS[string(memberPKIid)] = &timestamp{
+		incTime:  time.Now(),
+		seqNum:   1,
+		lastSeen: time.Now(),
+	}
+	impl.lock.Unlock()
+
+	aliveMsg := &proto.GossipMessage{
+		Tag: proto.GossipMessage_EMPTY,
+		Content: &proto.GossipMessage_AliveMsg{
+			AliveMsg: &proto.AliveMessage{
+				Membership: &proto.Member{
+					Endpoint: memberEndpoint,
+					PkiId:    memberPKIid,
+				},
+				Timestamp: &proto.PeerTime{
+					IncNum: uint64(time.Now().UnixNano()),
+					SeqNum: 2,
+				},
+			},
+		},
+	}
+
+	signedMsg, err := protoext.NoopSign(aliveMsg)
+	require.NoError(t, err)
+
+	require.NotPanics(t, func() {
+		impl.learnExistingMembers([]*protoext.SignedGossipMessage{signedMsg})
+	})
+
+	impl.lock.RLock()
+	_, inID2Member := impl.id2Member[string(memberPKIid)]
+	impl.lock.RUnlock()
+	require.False(t, inID2Member, "a purged member must not be re-added by learnExistingMembers")
+}
