@@ -843,6 +843,12 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*protoext.SignedGo
 
 		// update member's data
 		member := d.id2Member[string(am.GetMembership().GetPkiId())]
+		if member == nil {
+			// A concurrent purge removed the member after handleAliveMessage
+			// found it alive and before we took the write lock.
+			d.logger.Debugf("Member %x was purged while its alive message was processed, skipping update", am.GetMembership().GetPkiId())
+			continue
+		}
 		member.Endpoint = am.GetMembership().GetEndpoint()
 		member.Metadata = am.GetMembership().GetMetadata()
 		member.InternalEndpoint = internalEndpoint
