@@ -24,6 +24,14 @@ FROM ubuntu:${UBUNTU_VER} AS base
 RUN apt update && apt install -y \
     tzdata
 
+RUN apt-get -y update && \
+    apt-get install -y build-essential git cmake libssl-dev golang
+
+# Install liboqs
+RUN cmake -S liboqs -B liboqs/build -DBUILD_SHARED_LIBS=ON && \
+    cmake --build liboqs/build --parallel 4 && \
+    cmake --build liboqs/build --target install
+
 RUN     groupadd --gid 500 chaincode
 RUN     useradd -c "" -u 500 -g 500 -d /home/chaincode -m chaincode
 
