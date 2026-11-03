@@ -127,7 +127,7 @@ type ppResponse struct {
 // Returns boolean true if the endorsement was successful.
 func (gs *Server) processProposal(ctx context.Context, plan *plan, endorser *endorser, signedProposal *peer.SignedProposal, logger *flogging.FabricLogger) bool {
 	var response *peer.ProposalResponse
-	done := make(chan *ppResponse)
+	done := make(chan *ppResponse, 1) // buffered so the goroutine can exit if the caller has already returned on timeout
 	go func() {
 		defer close(done)
 		logger.Debugw("Sending to endorser:", "MSPID", endorser.mspid, "endpoint", endorser.address)

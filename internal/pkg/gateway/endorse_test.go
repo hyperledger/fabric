@@ -8,6 +8,7 @@ package gateway
 
 import (
 	"context"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/mock"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -615,4 +617,41 @@ func checkTransaction(t *testing.T, expectedEndorsers []string, transaction *cp.
 	}
 
 	require.ElementsMatch(t, expectedEndorsers, actualEndorsers)
+}
+
+// goroutinesInFunction counts the goroutines whose stack contains the given function name.
+func goroutinesInFunction(fn string) int {
+	buf := make([]byte, 1<<22)
+	buf = buf[:runtime.Stack(buf, true)]
+	count := 0
+	for g := range strings.SplitSeq(string(buf), "\n\n") {
+		if strings.Contains(g, fn) {
+			count++
+		}
+	}
+	return count
+}
+
+// A remote endorser call that is still in flight when the overall Endorse context expires
+// must not leave a goroutine blocked forever.
+func TestProcessProposalDoesNotLeakGoroutineOnTimeout(t *testing.T) {
+	const fn = "gateway.(*Server).processProposal.func"
+	before := goroutinesInFunction(fn)
+
+	client := &mocks.EndorserClient{}
+	client.ProcessProposalStub = func(ctx context.Context, _ *peer.SignedProposal, _ ...grpc.CallOption) (*peer.ProposalResponse, error) {
+		<-ctx.Done() // behaves like a gRPC call cut short by the caller's context
+		time.Sleep(20 * time.Millisecond)
+		return nil, ctx.Err()
+	}
+	e := &endorser{client: client, endpointConfig: &endpointConfig{address: "peer1:7051", mspid: "msp1", pkiid: []byte("p1")}}
+	gs := &Server{options: config.Options{EndorsementTimeout: time.Minute}}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	ok := gs.processProposal(ctx, newPlan(nil, nil), e, &peer.SignedProposal{}, flogging.MustGetLogger("test"))
+	require.False(t, ok)
+
+	require.Eventually(t, func() bool { return goroutinesInFunction(fn) == before }, 2*time.Second, 20*time.Millisecond,
+		"processProposal goroutine is still blocked after the call returned")
 }
