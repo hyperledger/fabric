@@ -305,6 +305,12 @@ var _ = Describe("Instance", func() {
 			Entry("Nonsense", `"nonsense"`, externalbuilder.Duration(time.Second), MatchError(MatchRegexp(`time: invalid duration "?nonsense"?`))),
 		)
 
+		It("marshals as a duration string", func() {
+			marshalled, err := json.Marshal(externalbuilder.Duration(10 * time.Second))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(marshalled)).To(Equal(`"10s"`))
+		})
+
 		DescribeTable(
 			"Round Trip",
 			func(d time.Duration) {
