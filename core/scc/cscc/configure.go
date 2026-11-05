@@ -161,7 +161,9 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) *pb.Re
 		}
 
 		// Initialize txsFilter if it does not yet exist. We can do this safely since
-		// it's the genesis block anyway
+		// it's the genesis block anyway. The block comes straight from the
+		// caller, so make sure its metadata has all indexes before reading it.
+		protoutil.InitBlockMetadata(block)
 		txsFilter := txflags.ValidationFlags(block.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 		if len(txsFilter) == 0 {
 			// add array of validation code hardcoded to valid
