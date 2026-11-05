@@ -64,44 +64,16 @@ type chaincodeInput struct {
 	pb.ChaincodeInput
 }
 
-// UnmarshalJSON converts the string-based REST/JSON input to
+// UnmarshalJSONFrom converts the string-based REST/JSON input to
 // the []byte-based current ChaincodeInput structure. Member names are matched
 // case-insensitively to preserve the behavior of encoding/json v1.
-func (c *chaincodeInput) UnmarshalJSON(b []byte) error {
-	members := map[string]jsontext.Value{}
-	if err := json.Unmarshal(b, &members); err != nil {
-		return err
-	}
-
-	var functionName, argsName string
-	for name := range members {
-		switch {
-		case strings.EqualFold(name, "Function"):
-			if functionName != "" {
-				return fmt.Errorf("duplicate object member name %q", name)
-			}
-			functionName = name
-		case strings.EqualFold(name, "Args"):
-			if argsName != "" {
-				return fmt.Errorf("duplicate object member name %q", name)
-			}
-			argsName = name
-		}
-	}
-
+func (c *chaincodeInput) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	sa := struct {
 		Function string
 		Args     []string
 	}{}
-	if functionName != "" {
-		if err := json.Unmarshal(members[functionName], &sa.Function); err != nil {
-			return err
-		}
-	}
-	if argsName != "" {
-		if err := json.Unmarshal(members[argsName], &sa.Args); err != nil {
-			return err
-		}
+	if err := json.UnmarshalDecode(dec, &sa, json.MatchCaseInsensitiveNames(true)); err != nil {
+		return err
 	}
 
 	allArgs := sa.Args
