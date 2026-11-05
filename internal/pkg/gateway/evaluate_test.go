@@ -383,3 +383,30 @@ func TestEvaluate(t *testing.T) {
 		})
 	}
 }
+
+// When the evaluate deadline expires while the last candidate endorser is being called, the worker
+// goroutine must not block forever trying to report its failure.
+func TestEvaluateDoesNotLeakGoroutineOnTimeout(t *testing.T) {
+	const fn = "gateway.(*Server).Evaluate.func"
+	before := goroutinesInFunction(fn)
+
+	tt := &testDef{
+		members:           []networkMember{{"id1", "localhost:7051", "msp1", 3}},
+		localLedgerHeight: 3,
+	}
+	test := prepareTest(t, tt)
+	test.server.options.EndorsementTimeout = time.Minute
+	ctx, cancel := context.WithTimeout(test.ctx, 50*time.Millisecond)
+	defer cancel()
+	test.localEndorser.ProcessProposalStub = func(ctx context.Context, _ *peer.SignedProposal, _ ...grpc.CallOption) (*peer.ProposalResponse, error) {
+		<-ctx.Done()
+		time.Sleep(20 * time.Millisecond) // the gRPC error surfaces just after the caller has given up
+		return nil, ctx.Err()
+	}
+
+	_, err := test.server.Evaluate(ctx, &pb.EvaluateRequest{ProposedTransaction: test.signedProposal})
+	require.Equal(t, codes.DeadlineExceeded, toRpcStatus(err).Code())
+
+	require.Eventually(t, func() bool { return goroutinesInFunction(fn) == before }, 2*time.Second, 20*time.Millisecond,
+		"Evaluate worker goroutine is still blocked after the call returned")
+}
