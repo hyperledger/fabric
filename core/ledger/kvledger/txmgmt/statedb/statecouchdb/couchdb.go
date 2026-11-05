@@ -15,7 +15,6 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"io"
-	"log"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -727,7 +726,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 	// Get the media type from the Content-Type header
 	mediaType, params, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 	if err != nil {
-		log.Fatal(err)
+		return nil, "", errors.Wrap(err, "error parsing response Content-Type")
 	}
 
 	// Get the revision from header
@@ -869,10 +868,7 @@ func (dbclient *couchDatabase) readDocRange(startKey, endKey string, limit int32
 	defer closeResponseBody(resp)
 
 	if couchdbLogger.IsEnabledFor(zapcore.DebugLevel) {
-		dump, err2 := httputil.DumpResponse(resp, false)
-		if err2 != nil {
-			log.Fatal(err2)
-		}
+		dump, _ := httputil.DumpResponse(resp, false)
 		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
 		couchdbLogger.Debugf("[%s] HTTP Response: %s", dbclient.dbName, bytes.ReplaceAll(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}))
 	}
@@ -997,10 +993,7 @@ func (dbclient *couchDatabase) queryDocuments(query string) ([]*queryResult, str
 	defer closeResponseBody(resp)
 
 	if couchdbLogger.IsEnabledFor(zapcore.DebugLevel) {
-		dump, err2 := httputil.DumpResponse(resp, false)
-		if err2 != nil {
-			log.Fatal(err2)
-		}
+		dump, _ := httputil.DumpResponse(resp, false)
 		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
 		couchdbLogger.Debugf("[%s] HTTP Response: %s", dbclient.dbName, bytes.ReplaceAll(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}))
 	}
