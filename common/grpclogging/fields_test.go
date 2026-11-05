@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package grpclogging_test
 
 import (
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 
 	"github.com/hyperledger/fabric/common/grpclogging"
@@ -33,15 +34,14 @@ var _ = Describe("Fields", func() {
 		It("creates a reflect field for zap", func() {
 			field := grpclogging.ProtoMessage("field-key", message)
 			Expect(field.Key).To(Equal("field-key"))
-			_, ok := field.Interface.(json.Marshaler)
+			_, ok := field.Interface.(json.MarshalerTo)
 			Expect(ok).To(BeTrue())
 		})
 
 		It("marshals messages compatible with protojson", func() {
 			field := grpclogging.ProtoMessage("field-key", message)
-			marshaler := field.Interface.(json.Marshaler)
 
-			marshaled, err := marshaler.MarshalJSON()
+			marshaled, err := json.Marshal(field.Interface)
 			Expect(err).NotTo(HaveOccurred())
 
 			protoJson, err := protojson.Marshal(message)
@@ -65,10 +65,9 @@ var _ = Describe("Fields", func() {
 		Context("when marshaling the message fails", func() {
 			It("it returns the error from marshaling", func() {
 				field := grpclogging.ProtoMessage("field-key", badProto{err: errors.New("Boom!")})
-				marshaler := field.Interface.(json.Marshaler)
 
-				_, err := marshaler.MarshalJSON()
-				Expect(err).To(MatchError("Boom!"))
+				_, err := json.Marshal(field.Interface)
+				Expect(err).To(MatchError(ContainSubstring("Boom!")))
 			})
 		})
 
@@ -117,6 +116,6 @@ type badProto struct{ err error }
 func (b badProto) Reset()         {}
 func (b badProto) String() string { return "" }
 func (b badProto) ProtoMessage()  {}
-func (b badProto) MarshalJSON() ([]byte, error) {
-	return nil, b.err
+func (b badProto) MarshalJSONTo(*jsontext.Encoder) error {
+	return b.err
 }
