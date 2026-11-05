@@ -8,13 +8,16 @@ package node
 
 import (
 	"bytes"
+	"net"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/core/handlers/library"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/testutil"
 	"github.com/hyperledger/fabric/internal/peer/node/mock"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -142,6 +145,25 @@ func TestComputeChaincodeEndpoint(t *testing.T) {
 			chaincodeListenAddress: "ignored",
 			expectedEndpoint:       "127.0.0.2:9052",
 		},
+		{
+			peerAddress:      "2001:db8::1",
+			expectedEndpoint: "[2001:db8::1]:7052",
+		},
+		{
+			peerAddress:            "::",
+			chaincodeListenAddress: "[::]:8052",
+			expectedError:          "invalid endpoint for chaincode to connect",
+		},
+		{
+			peerAddress:            "2001:db8::1",
+			chaincodeListenAddress: "[::]:8052",
+			expectedEndpoint:       "[2001:db8::1]:8052",
+		},
+		{
+			peerAddress:            "2001:db8::1",
+			chaincodeListenAddress: "[2001:db8::2]:8052",
+			expectedEndpoint:       "[2001:db8::2]:8052",
+		},
 	}
 
 	for i, tt := range tests {
@@ -155,6 +177,25 @@ func TestComputeChaincodeEndpoint(t *testing.T) {
 			require.Equalf(t, tt.expectedEndpoint, ccEndpoint, "peerAddress: %q, ccListenAddr: %q, ccAddr: %q", tt.peerAddress, tt.chaincodeListenAddress, tt.chaincodeAddress)
 		})
 	}
+}
+
+func TestCreateChaincodeServerIPv6PeerAddress(t *testing.T) {
+	lis, err := net.Listen("tcp", "[::1]:0")
+	if err != nil {
+		t.Skipf("IPv6 loopback is not available: %s", err)
+	}
+	lis.Close()
+
+	ca, err := tlsgen.NewCA()
+	require.NoError(t, err)
+	coreConfig := &peer.Config{}
+
+	srv, ccEndpoint, err := createChaincodeServer(coreConfig, ca, "::1")
+	require.NoError(t, err)
+	defer srv.Stop()
+
+	require.Equal(t, "[::1]:7052", ccEndpoint)
+	require.Equal(t, "[::1]:7052", coreConfig.ChaincodeListenAddress)
 }
 
 func TestGetDockerHostConfig(t *testing.T) {
