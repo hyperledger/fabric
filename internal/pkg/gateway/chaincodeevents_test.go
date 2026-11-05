@@ -124,6 +124,23 @@ func TestChaincodeEvents(t *testing.T) {
 	addTransaction(differentChaincodePartReadBlock, newTransactionEnvelope(lastTransactionWrongChaincodeEvent), peer.TxValidationCode_VALID)
 	addTransaction(differentChaincodePartReadBlock, newTransactionEnvelope(matchEvent), peer.TxValidationCode_VALID)
 
+	noEventsTransactionEnvelope := &cp.Envelope{
+		Payload: protoutil.MarshalOrPanic(&cp.Payload{
+			Header: newTransactionHeader(lastTransactionID),
+			Data:   protoutil.MarshalOrPanic(&peer.Transaction{}),
+		}),
+	}
+
+	noEventsPartReadBlock := newBlock(400)
+	addTransaction(noEventsPartReadBlock, newTransactionEnvelope(oldTransactionEvent), peer.TxValidationCode_VALID)
+	addTransaction(noEventsPartReadBlock, noEventsTransactionEnvelope, peer.TxValidationCode_VALID)
+	addTransaction(noEventsPartReadBlock, newTransactionEnvelope(matchEvent), peer.TxValidationCode_VALID)
+
+	invalidTransactionPartReadBlock := newBlock(500)
+	addTransaction(invalidTransactionPartReadBlock, newTransactionEnvelope(oldTransactionEvent), peer.TxValidationCode_VALID)
+	addTransaction(invalidTransactionPartReadBlock, newTransactionEnvelope(lastTransactionEvent), peer.TxValidationCode_MVCC_READ_CONFLICT)
+	addTransaction(invalidTransactionPartReadBlock, newTransactionEnvelope(matchEvent), peer.TxValidationCode_VALID)
+
 	tests := []testDef{
 		{
 			name:      "error reading events",
@@ -199,6 +216,46 @@ func TestChaincodeEvents(t *testing.T) {
 			expectedResponses: []proto.Message{
 				&pb.ChaincodeEventsResponse{
 					BlockNumber: differentChaincodePartReadBlock.GetHeader().GetNumber(),
+					Events: []*peer.ChaincodeEvent{
+						{
+							ChaincodeId: testChaincode,
+							TxId:        matchEvent.GetTxId(),
+							EventName:   matchEvent.GetEventName(),
+							Payload:     matchEvent.GetPayload(),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "identifies specified transaction if it has no chaincode events",
+			blocks: []*cp.Block{
+				noEventsPartReadBlock,
+			},
+			afterTxID: lastTransactionID,
+			expectedResponses: []proto.Message{
+				&pb.ChaincodeEventsResponse{
+					BlockNumber: noEventsPartReadBlock.GetHeader().GetNumber(),
+					Events: []*peer.ChaincodeEvent{
+						{
+							ChaincodeId: testChaincode,
+							TxId:        matchEvent.GetTxId(),
+							EventName:   matchEvent.GetEventName(),
+							Payload:     matchEvent.GetPayload(),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "identifies specified transaction if it is invalid",
+			blocks: []*cp.Block{
+				invalidTransactionPartReadBlock,
+			},
+			afterTxID: lastTransactionID,
+			expectedResponses: []proto.Message{
+				&pb.ChaincodeEventsResponse{
+					BlockNumber: invalidTransactionPartReadBlock.GetHeader().GetNumber(),
 					Events: []*peer.ChaincodeEvent{
 						{
 							ChaincodeId: testChaincode,

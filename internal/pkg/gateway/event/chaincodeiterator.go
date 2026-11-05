@@ -12,12 +12,14 @@ import (
 )
 
 type ChaincodeEventsIterator struct {
-	blockIter *BlockIterator
+	blockIter          *BlockIterator
+	afterTransactionID string
 }
 
-func NewChaincodeEventsIterator(iterator ledger.ResultsIterator) *ChaincodeEventsIterator {
+func NewChaincodeEventsIterator(iterator ledger.ResultsIterator, afterTransactionID string) *ChaincodeEventsIterator {
 	return &ChaincodeEventsIterator{
-		blockIter: NewBlockIterator(iterator),
+		blockIter:          NewBlockIterator(iterator),
+		afterTransactionID: afterTransactionID,
 	}
 }
 
@@ -40,7 +42,7 @@ func (iter *ChaincodeEventsIterator) nextBlock() (*gateway.ChaincodeEventsRespon
 		return nil, err
 	}
 
-	events, err := chaincodeEventsFromBlock(block)
+	events, err := iter.chaincodeEventsFromBlock(block)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +54,7 @@ func (iter *ChaincodeEventsIterator) nextBlock() (*gateway.ChaincodeEventsRespon
 	return result, nil
 }
 
-func chaincodeEventsFromBlock(block *Block) ([]*peer.ChaincodeEvent, error) {
+func (iter *ChaincodeEventsIterator) chaincodeEventsFromBlock(block *Block) ([]*peer.ChaincodeEvent, error) {
 	transactions, err := block.Transactions()
 	if err != nil {
 		return nil, err
@@ -61,6 +63,13 @@ func chaincodeEventsFromBlock(block *Block) ([]*peer.ChaincodeEvent, error) {
 	var results []*peer.ChaincodeEvent
 
 	for _, transaction := range transactions {
+		if len(iter.afterTransactionID) > 0 {
+			if transaction.ID() == iter.afterTransactionID {
+				iter.afterTransactionID = ""
+			}
+			continue
+		}
+
 		if !transaction.Valid() {
 			continue
 		}
