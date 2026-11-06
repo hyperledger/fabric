@@ -6,7 +6,7 @@ This approach limited chaincode implementations to a handful of languages, requi
 
 Starting with Fabric 2.0, External Builders and Launchers address these limitations by enabling operators to extend the peer with programs that can build, launch, and discover chaincode. To leverage this capability you will need to create your own buildpack and then modify the peer core.yaml to include a new `externalBuilder` configuration element which lets the peer know an external builder is available. The following sections describe the details of this process.
 
-Note that if no configured external builder claims a chaincode package, the peer will attempt to process the package as if it were created with the standard Fabric packaging tools such as the peer CLI.
+Note that if no configured external builder claims a chaincode package, the peer will attempt to process the package as if it were created with the standard Fabric packaging tools such as the CLI.
 
 **Note:** This is an advanced feature which will likely require custom packaging of the peer image with everything your builders and launchers depend on unless your builders and launchers are simple enough, such as those used in the [basic asset transfer external chaincode Fabric sample](https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-basic/chaincode-external). For example, the following samples use `go` and `bash`, which are not included in the current official `fabric-peer` image.
 
@@ -202,11 +202,11 @@ If you do not need to fallback to the legacy Docker build process for your chain
 
 ## Chaincode packages
 
-A chaincode package contains chaincode and associated metadata in a compressed gzip file that can be installed to a peer. The peer command `peer lifecycle chaincode package` can be used to create a chaincode package. You can also create a chaincode package using third party tools.
+A chaincode package contains chaincode and associated metadata in a compressed gzip file that can be installed to a peer. The peer command `cli lifecycle chaincode package` can be used to create a chaincode package. You can also create a chaincode package using third party tools.
 
 ### Lifecycle chaincode package contents
 
-A lifecycle chaincode package contains two files. The first file, `code.tar.gz` is a gzip compressed POSIX tape archive. This file includes the source artifacts for the chaincode. Packages created by the peer CLI will place the chaincode implementation source under the `src` directory and chaincode metadata (like CouchDB indexes) under the `META-INF` directory.
+A lifecycle chaincode package contains two files. The first file, `code.tar.gz` is a gzip compressed POSIX tape archive. This file includes the source artifacts for the chaincode. Packages created by the CLI will place the chaincode implementation source under the `src` directory and chaincode metadata (like CouchDB indexes) under the `META-INF` directory.
 
 The second file, `metadata.json` is a JSON document with three keys:
 - `type`: the chaincode type (e.g. GOLANG, JAVA, NODE)

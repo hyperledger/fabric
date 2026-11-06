@@ -2,7 +2,7 @@
 
 **Audience:** Smart contract developers that want to iteratively develop and test their chaincode packages without the overhead of the smart contract lifecycle process for every update.
 
-During smart contract development, a developer needs a way to quickly and iteratively test a chaincode package without having to run the chaincode lifecycle commands for every modification. This tutorial uses the Fabric binaries and starts the peer in development mode ("DevMode") and then connects the chaincode to the peer. It allows you to start a chaincode without ever installing the chaincode on the peer and after the chaincode is initially committed to a channel, you can bypass the peer lifecycle chaincode commands.  This allows for rapid deployment, debugging, and update without the overhead of reissuing the peer lifecycle chaincode commands every time you make an update.
+During smart contract development, a developer needs a way to quickly and iteratively test a chaincode package without having to run the chaincode lifecycle commands for every modification. This tutorial uses the Fabric binaries and starts the peer in development mode ("DevMode") and then connects the chaincode to the peer. It allows you to start a chaincode without ever installing the chaincode on the peer and after the chaincode is initially committed to a channel, you can bypass the cli lifecycle chaincode commands.  This allows for rapid deployment, debugging, and update without the overhead of reissuing the cli lifecycle chaincode commands every time you make an update.
 
 **Note:** In order to use the DevMode flag on a peer, TLS communications must be disabled on all the nodes in the network. And because TLS communications are strongly recommended for production networks, you should never run a production peer in DevMode. The network used in this tutorial should not be used as a template for any form of a production network. See [Deploying a production network](deployment_guide_overview.html) for instructions on how to deploy a production network. You can also refer to the [Fabric test network](test_network.html) to learn more about how to deploy and update a smart contract package on a channel using the Fabric chaincode lifecycle process.
 
@@ -99,7 +99,7 @@ Open another terminal window and run the following commands to generate the chan
 export PATH=$(pwd)/build/bin:$PATH
 export FABRIC_CFG_PATH=$(pwd)/sampleconfig
 configtxgen -channelID ch1 -outputCreateChannelTx ch1.tx -profile SampleSingleMSPChannel -configPath $FABRIC_CFG_PATH
-peer channel create -o 127.0.0.1:7050 -c ch1 -f ch1.tx
+cli channel create -o 127.0.0.1:7050 -c ch1 -f ch1.tx
 ```
 
 When it is successful you should see results similar to:
@@ -110,7 +110,7 @@ When it is successful you should see results similar to:
 Now join the peer to the channel by running the following command:
 
 ```
-peer channel join -b ch1.block
+cli channel join -b ch1.block
 ```
 When it is successful, you should see results similar to:
 ```
@@ -144,9 +144,9 @@ Because we set debug logging on the peer when we started it, you can confirm tha
 Now you need to run the following Fabric chaincode lifecycle commands to approve and commit the chaincode definition to the channel:
 
 ```
-peer lifecycle chaincode approveformyorg  -o 127.0.0.1:7050 --channelID ch1 --name mycc --version 1.0 --sequence 1 --init-required --signature-policy "OR ('SampleOrg.member')" --package-id mycc:1.0
-peer lifecycle chaincode checkcommitreadiness -o 127.0.0.1:7050 --channelID ch1 --name mycc --version 1.0 --sequence 1 --init-required --signature-policy "OR ('SampleOrg.member')"
-peer lifecycle chaincode commit -o 127.0.0.1:7050 --channelID ch1 --name mycc --version 1.0 --sequence 1 --init-required --signature-policy "OR ('SampleOrg.member')" --peerAddresses 127.0.0.1:7051
+cli lifecycle chaincode approveformyorg  -o 127.0.0.1:7050 --channelID ch1 --name mycc --version 1.0 --sequence 1 --init-required --signature-policy "OR ('SampleOrg.member')" --package-id mycc:1.0
+cli lifecycle chaincode checkcommitreadiness -o 127.0.0.1:7050 --channelID ch1 --name mycc --version 1.0 --sequence 1 --init-required --signature-policy "OR ('SampleOrg.member')"
+cli lifecycle chaincode commit -o 127.0.0.1:7050 --channelID ch1 --name mycc --version 1.0 --sequence 1 --init-required --signature-policy "OR ('SampleOrg.member')" --peerAddresses 127.0.0.1:7051
 ```
 
 You should see results similar to:
@@ -162,9 +162,9 @@ SampleOrg: true
 You can issue CLI commands to invoke and query the chaincode as needed to verify your smart contract logic. For this example, we issue three commands. The first one initializes the smart contract, the second command moves `10` from asset `a` to asset `b`. And the final command queries the value of `a` to verify it was successfully changed from `100` to `90`.
 
 ```
-CORE_PEER_ADDRESS=127.0.0.1:7051 peer chaincode invoke -o 127.0.0.1:7050 -C ch1 -n mycc -c '{"Args":["init","a","100","b","200"]}' --isInit
-CORE_PEER_ADDRESS=127.0.0.1:7051 peer chaincode invoke -o 127.0.0.1:7050 -C ch1 -n mycc -c '{"Args":["invoke","a","b","10"]}'
-CORE_PEER_ADDRESS=127.0.0.1:7051 peer chaincode invoke -o 127.0.0.1:7050 -C ch1 -n mycc -c '{"Args":["query","a"]}'
+CORE_PEER_ADDRESS=127.0.0.1:7051 cli chaincode invoke -o 127.0.0.1:7050 -C ch1 -n mycc -c '{"Args":["init","a","100","b","200"]}' --isInit
+CORE_PEER_ADDRESS=127.0.0.1:7051 cli chaincode invoke -o 127.0.0.1:7050 -C ch1 -n mycc -c '{"Args":["invoke","a","b","10"]}'
+CORE_PEER_ADDRESS=127.0.0.1:7051 cli chaincode invoke -o 127.0.0.1:7050 -C ch1 -n mycc -c '{"Args":["query","a"]}'
 ```
 
 You should see results similar to:
@@ -174,4 +174,4 @@ You should see results similar to:
 2020-09-14 18:17:42.101 EDT [chaincodeCmd] chaincodeInvokeOrQuery -> INFO 001 Chaincode invoke successful. result: status:200 payload:"90"
 ```
 
-The benefit of running the peer in DevMode is that you can now iteratively make updates to your smart contract, save your changes, [build](#build-the-chaincode) the chaincode, and then [start](#start-the-chaincode) it again using the steps above. You do not need to run the peer lifecycle commands to update the chaincode every time you make a change.
+The benefit of running the peer in DevMode is that you can now iteratively make updates to your smart contract, save your changes, [build](#build-the-chaincode) the chaincode, and then [start](#start-the-chaincode) it again using the steps above. You do not need to run the cli lifecycle commands to update the chaincode every time you make a change.

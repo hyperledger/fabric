@@ -111,7 +111,7 @@ var _ = Describe("chaincode install", func() {
 			nwo.PackageChaincode(network, chaincode, org1Peer)
 
 			By("installing the chaincode using _lifecycle")
-			sess, err := network.PeerAdminSession(org1Peer, commands.ChaincodeInstall{
+			sess, err := network.CliAdminSession(org1Peer, commands.ChaincodeInstall{
 				PackageFile: chaincode.PackageFile,
 				ClientAuth:  network.ClientAuthRequired,
 			})
