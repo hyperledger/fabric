@@ -44,7 +44,7 @@ func TestOrdererFlags(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
-	runCmd := Cmd(nil, cryptoProvider)
+	runCmd := Cmd(nil, cryptoProvider, true)
 
 	runCmd.AddCommand(testCmd)
 

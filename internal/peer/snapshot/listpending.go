@@ -17,7 +17,7 @@ import (
 )
 
 // listPendingCmd returns the cobra command for snapshot listpending command
-func listPendingCmd(cl *client, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func listPendingCmd(cl *client, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	snapshotGenerateRequestCmd := &cobra.Command{
 		Use:   "listpending",
 		Short: "List pending requests for snapshots.",
@@ -26,6 +26,12 @@ func listPendingCmd(cl *client, cryptoProvider bccsp.BCCSP) *cobra.Command {
 			return listPending(cmd, cl, cryptoProvider)
 		},
 	}
+
+	if !isNew {
+		snapshotGenerateRequestCmd.Short = "[DEPRECATED] List pending requests for snapshots. (use the \"peercli snapshot listpending\")"
+		snapshotGenerateRequestCmd.Long = "[DEPRECATED] List pending requests for snapshots. Instead of this command, use \"peercli snapshot listpending\"."
+	}
+
 	flagList := []string{
 		"channelID",
 		"peerAddress",

@@ -66,7 +66,7 @@ func StartPort() int {
 }
 
 func QueryChaincode(n *nwo.Network, chaincodeName string, peer *nwo.Peer, initialQueryResult int) {
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	sess, err := n.PeerCliUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      chaincodeName,
 		Ctor:      `{"Args":["query","a"]}`,
@@ -90,7 +90,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, chaincodeName str
 	QueryChaincode(n, chaincodeName, peers[0], initialQueryResult)
 
 	By("invoking the chaincode")
-	sess, err := n.PeerUserSession(peers[0], "User1", commands.ChaincodeInvoke{
+	sess, err := n.PeerCliUserSession(peers[0], "User1", commands.ChaincodeInvoke{
 		ChannelID:     "testchannel",
 		Orderer:       n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:          chaincodeName,
@@ -117,7 +117,7 @@ func RunInvokeAndExpectFailure(n *nwo.Network, orderer *nwo.Orderer, chaincodeNa
 	}
 
 	By("invoking the chaincode")
-	sess, err := n.PeerUserSession(peers[1], "User1", commands.ChaincodeInvoke{
+	sess, err := n.PeerCliUserSession(peers[1], "User1", commands.ChaincodeInvoke{
 		ChannelID:     "testchannel",
 		Orderer:       n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:          chaincodeName,

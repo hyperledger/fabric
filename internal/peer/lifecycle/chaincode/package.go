@@ -68,7 +68,7 @@ func (p *PackageInput) Validate() error {
 }
 
 // PackageCmd returns the cobra command for packaging chaincode
-func PackageCmd(p *Packager) *cobra.Command {
+func PackageCmd(p *Packager, isNew bool) *cobra.Command {
 	chaincodePackageCmd := &cobra.Command{
 		Use:       "package [outputfile]",
 		Short:     "Package a chaincode",
@@ -88,6 +88,12 @@ func PackageCmd(p *Packager) *cobra.Command {
 			return p.PackageChaincode(args)
 		},
 	}
+
+	if !isNew {
+		chaincodePackageCmd.Short = "[DEPRECATED] Package a chaincode (use the \"peercli lifecycle chaincode package\")."
+		chaincodePackageCmd.Long = "[DEPRECATED] Package a chaincode and write the package to a file. Instead of this command, use \"peercli lifecycle chaincode package\"."
+	}
+
 	flagList := []string{
 		"label",
 		"lang",
