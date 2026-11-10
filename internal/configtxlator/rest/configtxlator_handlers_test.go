@@ -56,6 +56,7 @@ func TestProtolatorComputeConfigUpdate(t *testing.T) {
 	r.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	require.Equal(t, "application/octet-stream", rec.Result().Header.Get("Content-Type"))
 }
 
 func TestProtolatorMissingOriginal(t *testing.T) {
