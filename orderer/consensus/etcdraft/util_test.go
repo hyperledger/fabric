@@ -271,7 +271,20 @@ func TestVerifyConfigMetadata(t *testing.T) {
 				},
 			},
 			verifyOpts: goodVerifyingOpts,
-			errRegex:   "TickInterval cannot be zero",
+			errRegex:   "TickInterval \\(0s\\) must be positive",
+		},
+		{
+			description: "TickInterval is negative",
+			metadata: &etcdraftproto.ConfigMetadata{
+				Options: &etcdraftproto.Options{
+					HeartbeatTick:     validOptions.GetHeartbeatTick(),
+					ElectionTick:      validOptions.GetElectionTick(),
+					MaxInflightBlocks: validOptions.GetMaxInflightBlocks(),
+					TickInterval:      "-500ms",
+				},
+			},
+			verifyOpts: goodVerifyingOpts,
+			errRegex:   "TickInterval \\(-500ms\\) must be positive",
 		},
 		{
 			description: "consenter set is empty",
