@@ -64,11 +64,18 @@ type Consensus struct {
 	consensusLock sync.RWMutex
 
 	reconfigChan chan types.Reconfig
-	running      uint64
+	running      atomic.Uint64
 }
 
 func (c *Consensus) Complain(viewNum uint64, stopView bool) {
-	c.consensusLock.RLock()
+	// A reconfiguration holds the write lock while it replaces the view changer
+	// and waits for the views it stopped. Waiting for the read lock here would
+	// block the view that complains, and the reconfiguration would wait for
+	// that view forever. The complaint is irrelevant during a reconfiguration,
+	// because the view changer is replaced anyway.
+	if !c.consensusLock.TryRLock() {
+		return
+	}
 	defer c.consensusLock.RUnlock()
 	c.viewChanger.StartViewChange(viewNum, stopView)
 }
@@ -99,7 +106,7 @@ func (c *Consensus) Sync() types.SyncResponse {
 
 // GetLeaderID returns the current leader ID or zero if Consensus is not running
 func (c *Consensus) GetLeaderID() uint64 {
-	if atomic.LoadUint64(&c.running) == 0 {
+	if c.running.Load() == 0 {
 		return 0
 	}
 	return c.controller.GetLeaderID()
@@ -150,16 +157,16 @@ func (c *Consensus) Start() error {
 	c.Pool = algorithm.NewPool(c.Logger, c.RequestInspector, c.controller, opts, c.submittedChan)
 	c.continueCreateComponents()
 
-	c.Logger.Debugf("Application started with view %d, seq %d, and decisions %d", c.Metadata.ViewId, c.Metadata.LatestSequence, c.Metadata.DecisionsInView)
-	view, seq, dec := c.setViewAndSeq(c.Metadata.ViewId, c.Metadata.LatestSequence, c.Metadata.DecisionsInView)
+	c.Logger.Debugf("Application started with view %d, seq %d, and decisions %d", c.Metadata.GetViewId(), c.Metadata.GetLatestSequence(), c.Metadata.GetDecisionsInView())
+	view, seq, dec := c.setViewAndSeq(c.Metadata.GetViewId(), c.Metadata.GetLatestSequence(), c.Metadata.GetDecisionsInView())
 
 	c.waitForEachOther()
 
 	go c.run()
 
-	c.startComponents(view, seq, dec, true)
+	c.startComponents(view, seq, dec, c.Verifier.VerificationSequence(), true)
 
-	atomic.StoreUint64(&c.running, 1)
+	c.running.Store(1)
 
 	return nil
 }
@@ -167,7 +174,7 @@ func (c *Consensus) Start() error {
 func (c *Consensus) run() {
 	defer func() {
 		c.Logger.Infof("Exiting consensus run; ID: %d", c.Config.SelfID)
-		atomic.StoreUint64(&c.running, 0)
+		c.running.Store(0)
 		c.Stop()
 	}()
 
@@ -229,18 +236,32 @@ func (c *Consensus) reconfig(reconfig types.Reconfig) {
 	c.Pool.ChangeOptions(c.controller, opts) // TODO handle reconfiguration of queue size in the pool
 	c.continueCreateComponents()
 
+	// Prune requests that are invalid under the new configuration now, while all components are stopped.
+	// The application may install the new configuration asynchronously, so read the verification sequence
+	// before pruning and start the controller with it; if the sequence changes during or after the prune,
+	// the controller then sees the change and prunes again.
+	verificationSeq := c.Verifier.VerificationSequence()
+	c.Logger.Infof("Pruning the request pool after reconfig with verification sequence %d", verificationSeq)
+	c.Pool.Prune(func(req []byte) error {
+		if uint64(len(req)) > c.Config.RequestMaxBytes {
+			return fmt.Errorf("request (%d) is bigger than request max bytes (%d)", len(req), c.Config.RequestMaxBytes)
+		}
+		_, err := c.Verifier.VerifyRequest(req)
+		return err
+	})
+
 	proposal, _ := c.checkpoint.Get()
 	md := &protos.ViewMetadata{}
-	if err := proto.Unmarshal(proposal.Metadata, md); err != nil {
+	if err := proto.Unmarshal(proposal.GetMetadata(), md); err != nil {
 		c.Logger.Panicf("Couldn't unmarshal the checkpoint metadata, error: %v", err)
 	}
-	c.Logger.Debugf("Checkpoint with view %d and seq %d", md.ViewId, md.LatestSequence)
+	c.Logger.Debugf("Checkpoint with view %d and seq %d", md.GetViewId(), md.GetLatestSequence())
 
-	view, seq, dec := c.setViewAndSeq(md.ViewId, md.LatestSequence, md.DecisionsInView)
+	view, seq, dec := c.setViewAndSeq(md.GetViewId(), md.GetLatestSequence(), md.GetDecisionsInView())
 
 	c.waitForEachOther()
 
-	c.startComponents(view, seq, dec, false)
+	c.startComponents(view, seq, dec, verificationSeq, false)
 
 	c.Pool.RestartTimers()
 
@@ -474,10 +495,10 @@ func (c *Consensus) setViewAndSeq(view, seq, dec uint64) (newView, newSeq, newDe
 	}
 	if viewChange == nil {
 		c.Logger.Debugf("No view change to restore")
-	} else if viewChange.NextView >= view {
+	} else if viewChange.GetNextView() >= view {
 		// Check if the view change has a newer view
-		c.Logger.Debugf("Restoring from view change with view %d", viewChange.NextView)
-		newView = viewChange.NextView
+		c.Logger.Debugf("Restoring from view change with view %d", viewChange.GetNextView())
+		newView = viewChange.GetNextView()
 		restoreChan := make(chan struct{}, 1)
 		restoreChan <- struct{}{}
 		c.viewChanger.Restore = restoreChan
@@ -489,6 +510,19 @@ func (c *Consensus) setViewAndSeq(view, seq, dec uint64) (newView, newSeq, newDe
 	}
 	if viewSeq == nil {
 		c.Logger.Debugf("No new view to restore")
+
+		// The built-in WAL truncates a NewView record when the next pre-prepare
+		// is saved. In that case the trailing proposal still defines the view
+		// and the decision count the node was in before the restart.
+		lastProposal, err := c.state.LoadLastProposalView()
+		if err != nil {
+			c.Logger.Panicf("Failed loading the last proposal view, error: %v", err)
+		}
+		if lastProposal != nil && lastProposal.GetViewId() > newView {
+			c.Logger.Debugf("Restoring start view %d from the last proposal record", lastProposal.GetViewId())
+			newView = lastProposal.GetViewId()
+			newDec = lastProposal.GetDecisionsInView()
+		}
 	} else if viewSeq.Seq >= seq {
 		// Check if metadata should be taken from the restored new view
 		c.Logger.Debugf("Restoring from new view with view %d and seq %d", viewSeq.View, viewSeq.Seq)
@@ -505,14 +539,14 @@ func (c *Consensus) waitForEachOther() {
 	c.controller.StartedWG = &c.viewChanger.ControllerStartedWG
 }
 
-func (c *Consensus) startComponents(view, seq, dec uint64, configSync bool) {
+func (c *Consensus) startComponents(view, seq, dec, verificationSeq uint64, configSync bool) {
 	// If we delivered to the application proposal with sequence i,
 	// then we are expecting to be proposed a proposal with sequence i+1.
 	c.collector.Start()
 	c.viewChanger.Start(view)
 	if configSync {
-		c.controller.Start(view, seq+1, dec, c.Config.SyncOnStart)
+		c.controller.Start(view, seq+1, dec, verificationSeq, c.Config.SyncOnStart)
 	} else {
-		c.controller.Start(view, seq+1, dec, false)
+		c.controller.Start(view, seq+1, dec, verificationSeq, false)
 	}
 }
