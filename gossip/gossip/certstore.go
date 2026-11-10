@@ -50,15 +50,6 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 		certStore.logger.Panicf("Failed creating self identity message: %+v", errors.WithStack(err))
 	}
 	puller.Add(selfIDMsg)
-	puller.RegisterMsgHook(pull.RequestMsgType, func(_ []string, msgs []*protoext.SignedGossipMessage, _ protoext.ReceivedMessage) {
-		for _, msg := range msgs {
-			pkiID := common.PKIidType(msg.GetPeerIdentity().GetPkiId())
-			cert := api.PeerIdentityType(msg.GetPeerIdentity().GetCert())
-			if err := certStore.idMapper.Put(pkiID, cert); err != nil {
-				certStore.logger.Warningf("Failed adding identity %v, reason %+v", cert, errors.WithStack(err))
-			}
-		}
-	})
 	return certStore
 }
 
