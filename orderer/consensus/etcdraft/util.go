@@ -235,8 +235,8 @@ func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts x509.Ver
 
 	if d, err := time.ParseDuration(metadata.GetOptions().GetTickInterval()); err != nil {
 		return errors.Errorf("failed to parse TickInterval (%s) to time duration: %s", metadata.GetOptions().GetTickInterval(), err)
-	} else if d == 0 {
-		return errors.Errorf("TickInterval cannot be zero")
+	} else if d <= 0 {
+		return errors.Errorf("TickInterval (%s) must be positive", metadata.GetOptions().GetTickInterval())
 	}
 
 	if len(metadata.GetConsenters()) == 0 {
