@@ -78,7 +78,7 @@ The most important piece of information supplied within the chaincode definition
 
 Note that while some chaincodes include the ability to create [private data transactions](../private_data_tutorial.html) between members on a channel, private data is outside the scope of this topic.
 
-While it's now technically possible to drive transactions using the peer CLI, the best practice is to create an application and use it to invoke transactions on your chaincode.
+While it's now technically possible to drive transactions using the CLI, the best practice is to create an application and use it to invoke transactions on your chaincode.
 
 ## Using an application on the channel
 

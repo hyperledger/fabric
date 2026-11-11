@@ -218,7 +218,7 @@ We can now issue the command to fetch the latest config block:
 
 .. code:: bash
 
-  peer channel fetch config channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+  cli channel fetch config channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 
 
 This command saves the binary protobuf channel configuration block to
@@ -226,7 +226,7 @@ This command saves the binary protobuf channel configuration block to
 However, following a convention which identifies both the type of object being
 represented and its encoding (protobuf or JSON) is recommended.
 
-When you issued the ``peer channel fetch`` command, the following output is
+When you issued the ``cli channel fetch`` command, the following output is
 displayed in your logs:
 
 .. code::
@@ -234,7 +234,7 @@ displayed in your logs:
   2021-01-07 18:46:33.687 UTC [cli.common] readBlock -> INFO 004 Received block: 2
 
 This is telling us that the most recent configuration block for ``channel1`` is
-actually block 2, **NOT** the genesis block. By default, the ``peer channel fetch config``
+actually block 2, **NOT** the genesis block. By default, the ``cli channel fetch config``
 command returns the most **recent** configuration block for the targeted channel, which
 in this case is the third block. This is because the test network script, ``network.sh``, defined anchor
 peers for our two organizations -- ``Org1`` and ``Org2`` -- in two separate channel update
@@ -360,11 +360,11 @@ directory:
   cd ..
 
 Remember that we exported the necessary environment variables to operate as the Org1 admin.
-As a result, the following ``peer channel signconfigtx`` command will sign the update as Org1.
+As a result, the following ``cli channel signconfigtx`` command will sign the update as Org1.
 
 .. code:: bash
 
-  peer channel signconfigtx -f channel-artifacts/org3_update_in_envelope.pb
+  cli channel signconfigtx -f channel-artifacts/org3_update_in_envelope.pb
 
 The final step is to switch the container's identity to reflect the Org2 Admin
 user. We do this by exporting four environment variables specific to the Org2 MSP.
@@ -387,7 +387,7 @@ Export the Org2 environment variables:
   export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
   export CORE_PEER_ADDRESS=localhost:9051
 
-Lastly, we will issue the ``peer channel update`` command. The Org2 Admin signature
+Lastly, we will issue the ``cli channel update`` command. The Org2 Admin signature
 will be attached to this call so there is no need to manually sign the protobuf a
 second time:
 
@@ -400,7 +400,7 @@ Send the update call:
 
 .. code:: bash
 
-  peer channel update -f channel-artifacts/org3_update_in_envelope.pb -c channel1 -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+  cli channel update -f channel-artifacts/org3_update_in_envelope.pb -c channel1 -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 
 You should see a message similar to the following if your update has been submitted successfully:
 
@@ -450,36 +450,36 @@ reject this request.
 .. note:: Again, you may find it useful to stream the ordering node's logs
           to reveal the sign/verify logic and policy checks.
 
-Use the ``peer channel fetch`` command to retrieve this block:
+Use the ``cli channel fetch`` command to retrieve this block:
 
 .. code:: bash
 
-  peer channel fetch 0 channel-artifacts/channel1.block -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+  cli channel fetch 0 channel-artifacts/channel1.block -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 
 Notice, that we are passing a ``0`` to indicate that we want the first block on
 the channel's ledger; the genesis block. If we simply passed the
-``peer channel fetch config`` command, then we would have received block 3 -- the
+``cli channel fetch config`` command, then we would have received block 3 -- the
 updated config with Org3 defined. However, we can't begin our ledger with a
 downstream block -- we must start with block 0.
 
 If successful, the command returned the genesis block to a file named ``channel1.block``.
 We can now use this block to join the peer to the channel. Issue the
-``peer channel join`` command and pass in the genesis block to join the Org3
+``cli channel join`` command and pass in the genesis block to join the Org3
 peer to the channel:
 
 .. code:: bash
 
-  peer channel join -b channel-artifacts/channel1.block
+  cli channel join -b channel-artifacts/channel1.block
 
 To join by a snapshot, follow the instruction in `Taking a snapshot <peer_ledger_snapshot.html#taking-a-snapshot>`__
 to take a snapshot on an existing peer. The snapshot should be taken after Org3 has been added to ``channel1``
 to ensure that the snapshot contains the updated channel configuration including Org3.
 Locate the snapshot directory, copy it to the filesystem of the new Org3 peer, and issue the
-``peer channel joinbysnapshot`` command using the path to the snapshot on your file system.
+``cli channel joinbysnapshot`` command using the path to the snapshot on your file system.
 
 .. code:: bash
 
-  peer channel joinbysnapshot --snapshotpath <path to snapshot>
+  cli channel joinbysnapshot --snapshotpath <path to snapshot>
 
 Configuring Leader Election
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -572,7 +572,7 @@ The first step is to package the Basic chaincode:
 
 .. code:: bash
 
-    peer lifecycle chaincode package basic.tar.gz --path ../asset-transfer-basic/chaincode-go/ --lang golang --label basic_1.0
+    cli lifecycle chaincode package basic.tar.gz --path ../asset-transfer-basic/chaincode-go/ --lang golang --label basic_1.0
 
 This command will create a chaincode package named ``basic.tar.gz``, which we can
 install on the Org3 peer. Modify the command accordingly if the channel is running a
@@ -581,7 +581,7 @@ chaincode package ``peer0.org3.example.com``:
 
 .. code:: bash
 
-    peer lifecycle chaincode install basic.tar.gz
+    cli lifecycle chaincode install basic.tar.gz
 
 
 The next step is to approve the chaincode definition of Basic as Org3. Org3
@@ -592,7 +592,7 @@ identifier by querying your peer:
 
 .. code:: bash
 
-    peer lifecycle chaincode queryinstalled
+    cli lifecycle chaincode queryinstalled
 
 You should see output similar to the following:
 
@@ -603,7 +603,7 @@ You should see output similar to the following:
 
 We are going to need the package ID in a future command, so lets go ahead and
 save it as an environment variable. Paste the package ID returned by the
-``peer lifecycle chaincode queryinstalled`` command into the command below. The
+``cli lifecycle chaincode queryinstalled`` command into the command below. The
 package ID may not be the same for all users, so you need to complete this step
 using the package ID returned from your console.
 
@@ -618,17 +618,17 @@ for Org3:
 
     # use the --package-id flag to provide the package identifier
     # use the --init-required flag to require the execution of an initialization function before other chaincode functions can be called.
-    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" --channelID channel1 --name basic --version 1.0 --package-id $CC_PACKAGE_ID --sequence 1
+    cli lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" --channelID channel1 --name basic --version 1.0 --package-id $CC_PACKAGE_ID --sequence 1
 
 
-You can use the ``peer lifecycle chaincode querycommitted`` command to check if
+You can use the ``cli lifecycle chaincode querycommitted`` command to check if
 the chaincode definition you have approved has already been committed to the
 channel.
 
 .. code:: bash
 
     # use the --name flag to select the chaincode whose definition you want to query
-    peer lifecycle chaincode querycommitted --channelID channel1 --name basic
+    cli lifecycle chaincode querycommitted --channelID channel1 --name basic
 
 A successful command will return information about the committed definition:
 
@@ -650,13 +650,13 @@ and the new Org3 peer so that the endorsement policy is satisfied.
 
 .. code:: bash
 
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C channel1 -n basic --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" --peerAddresses localhost:11051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt" -c '{"function":"InitLedger","Args":[]}'
+    cli chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C channel1 -n basic --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" --peerAddresses localhost:11051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt" -c '{"function":"InitLedger","Args":[]}'
 
 You can query the chaincode to ensure that the Org3 peer committed the data.
 
 .. code:: bash
 
-    peer chaincode query -C channel1 -n basic -c '{"Args":["GetAllAssets"]}'
+    cli chaincode query -C channel1 -n basic -c '{"Args":["GetAllAssets"]}'
 
 You should see the initial list of assets that were added to the ledger as a
 response.
@@ -671,7 +671,7 @@ represented in protobuf binary format and then acquire the requisite number of a
 signatures such that the channel configuration update transaction fulfills the channel's
 modification policy.
 
-The ``configtxlator`` and ``jq`` tools, along with the ``peer channel``
+The ``configtxlator`` and ``jq`` tools, along with the ``cli channel``
 commands, provide us with the functionality to accomplish this task.
 
 Updating the Channel Config to include an Org3 Anchor Peer (Optional)
@@ -686,11 +686,11 @@ configuration update to define an Org3 anchor peer. The process will be similar
 to the previous configuration update, therefore we'll go faster this time.
 
 As before, we will fetch the latest channel configuration to get started.
-Fetch the most recent config block for the channel, using the ``peer channel fetch`` command.
+Fetch the most recent config block for the channel, using the ``cli channel fetch`` command.
 
 .. code:: bash
 
-  peer channel fetch config channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+  cli channel fetch config channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 
 After fetching the config block we will want to convert it into JSON format. To do
 this we will use the configtxlator tool, as done previously when adding Org3 to the
@@ -787,12 +787,12 @@ commands to make sure that we are operating as the Org3 admin:
   export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp
   export CORE_PEER_ADDRESS=localhost:11051
 
-We can now just use the ``peer channel update`` command to sign the update as the
+We can now just use the ``cli channel update`` command to sign the update as the
 Org3 admin before submitting it to the orderer.
 
 .. code:: bash
 
-    peer channel update -f channel-artifacts/anchor_update_in_envelope.pb -c channel1 -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+    cli channel update -f channel-artifacts/anchor_update_in_envelope.pb -c channel1 -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 
 The orderer receives the config update request and cuts a block with the updated configuration.
 As peers receive the block, they will process the configuration updates.

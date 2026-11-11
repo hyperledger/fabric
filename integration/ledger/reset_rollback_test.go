@@ -434,7 +434,7 @@ func (nh *networkHelper) waitUntilPeerEqualLedgerHeight(peer *nwo.Peer, height i
 }
 
 func (nh *networkHelper) getLedgerHeight(peer *nwo.Peer) int {
-	sess, err := nh.PeerUserSession(peer, "User1", commands.ChannelInfo{
+	sess, err := nh.CliUserSession(peer, "User1", commands.ChannelInfo{
 		ChannelID: nh.channelID,
 	})
 	Expect(err).NotTo(HaveOccurred())
@@ -448,7 +448,7 @@ func (nh *networkHelper) getLedgerHeight(peer *nwo.Peer) int {
 }
 
 func (nh *networkHelper) queryChaincode(peer *nwo.Peer, command commands.ChaincodeQuery, expectedMessage string, expectSuccess bool) {
-	sess, err := nh.PeerUserSession(peer, "User1", command)
+	sess, err := nh.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	if expectSuccess {
 		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
@@ -460,7 +460,7 @@ func (nh *networkHelper) queryChaincode(peer *nwo.Peer, command commands.Chainco
 }
 
 func (nh *networkHelper) invokeChaincode(peer *nwo.Peer, command commands.ChaincodeInvoke) {
-	sess, err := nh.PeerUserSession(peer, "User1", command)
+	sess, err := nh.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful."))
@@ -528,7 +528,7 @@ func (nh *networkHelper) unjoin(peer *nwo.Peer, expectedErrMessage string, expec
 
 func (nh *networkHelper) waitUntilEndorserEnabled(peer *nwo.Peer) {
 	Eventually(func() *gbytes.Buffer {
-		sess, err := nh.PeerUserSession(peer, "User1", commands.ChannelInfo{
+		sess, err := nh.CliUserSession(peer, "User1", commands.ChannelInfo{
 			ChannelID: nh.channelID,
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -611,7 +611,7 @@ func (th *testHelper) assertDisabledEndorser(chaincodeName string, peer *nwo.Pee
 }
 
 func (th *testHelper) assertPausedChannel(peer *nwo.Peer) {
-	sess, err := th.PeerUserSession(peer, "User1", commands.ChannelInfo{
+	sess, err := th.CliUserSession(peer, "User1", commands.ChannelInfo{
 		ChannelID: th.channelID,
 	})
 	Expect(err).NotTo(HaveOccurred())
@@ -620,7 +620,7 @@ func (th *testHelper) assertPausedChannel(peer *nwo.Peer) {
 }
 
 func (th *testHelper) assertUnjoinedChannel(peer *nwo.Peer) {
-	sess, err := th.PeerUserSession(peer, "User1", commands.ChannelInfo{
+	sess, err := th.CliUserSession(peer, "User1", commands.ChannelInfo{
 		ChannelID: th.channelID,
 	})
 	Expect(err).NotTo(HaveOccurred())
