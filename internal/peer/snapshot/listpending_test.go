@@ -25,7 +25,7 @@ func TestListPendingCmd(t *testing.T) {
 	mockClient := &client{mockSnapshotClient, mockSigner, buffer}
 
 	resetFlags()
-	cmd := listPendingCmd(mockClient, nil)
+	cmd := listPendingCmd(mockClient, nil, true)
 	cmd.SetArgs([]string{"-c", "mychannel"})
 	err := cmd.Execute()
 	require.NoError(t, err)

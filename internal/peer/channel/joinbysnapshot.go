@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func joinBySnapshotCmd(cf *ChannelCmdFactory) *cobra.Command {
+func joinBySnapshotCmd(cf *ChannelCmdFactory, isNew bool) *cobra.Command {
 	// Set the flags on the channel start command.
 	joinbysnapshotCmd := &cobra.Command{
 		Use:   "joinbysnapshot",
@@ -24,6 +24,10 @@ func joinBySnapshotCmd(cf *ChannelCmdFactory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return joinBySnapshot(cmd, args, cf)
 		},
+	}
+	if !isNew {
+		joinbysnapshotCmd.Short = "[DEPRECATED] Joins the peer to a channel by the specified snapshot (use the \"peercli channel joinbysnapshot\")."
+		joinbysnapshotCmd.Long = "[DEPRECATED] Joins the peer to a channel by the specified snapshot. Instead of this command, use \"peercli channel joinbysnapshot\"."
 	}
 	flagList := []string{
 		"snapshotpath",
@@ -59,6 +63,6 @@ func joinBySnapshot(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) er
 		return err
 	}
 
-	logger.Info(`The joinbysnapshot operation is in progress. Use "peer channel joinbysnapshotstatus" to check the status.`)
+	logger.Info(`The joinbysnapshot operation is in progress. Use "peercli channel joinbysnapshotstatus" to check the status.`)
 	return nil
 }

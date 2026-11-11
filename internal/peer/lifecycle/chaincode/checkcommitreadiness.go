@@ -83,7 +83,7 @@ func (c *CommitReadinessCheckInput) Validate() error {
 
 // CheckCommitReadinessCmd returns the cobra command for the
 // CheckCommitReadiness lifecycle operation
-func CheckCommitReadinessCmd(c *CommitReadinessChecker, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func CheckCommitReadinessCmd(c *CommitReadinessChecker, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	chaincodeCheckCommitReadinessCmd := &cobra.Command{
 		Use:   "checkcommitreadiness",
 		Short: "Check whether a chaincode definition is ready to be committed on a channel.",
@@ -123,6 +123,12 @@ func CheckCommitReadinessCmd(c *CommitReadinessChecker, cryptoProvider bccsp.BCC
 			return c.ReadinessCheck()
 		},
 	}
+
+	if !isNew {
+		chaincodeCheckCommitReadinessCmd.Short = "[DEPRECATED] Check whether a chaincode definition is ready to be committed on a channel (use the \"peercli lifecycle chaincode checkcommitreadiness\")."
+		chaincodeCheckCommitReadinessCmd.Long = "[DEPRECATED] Check whether a chaincode definition is ready to be committed on a channel. Instead of this command, use \"peercli lifecycle chaincode checkcommitreadiness\"."
+	}
+
 	flagList := []string{
 		"channelID",
 		"name",

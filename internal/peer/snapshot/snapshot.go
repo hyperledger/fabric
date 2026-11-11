@@ -21,10 +21,15 @@ import (
 var logger = flogging.MustGetLogger("cli.snapshot")
 
 // Cmd returns the cobra command for Chaincode
-func Cmd(cryptoProvider bccsp.BCCSP) *cobra.Command {
-	snapshotCmd.AddCommand(submitRequestCmd(nil, cryptoProvider))
-	snapshotCmd.AddCommand(cancelRequestCmd(nil, cryptoProvider))
-	snapshotCmd.AddCommand(listPendingCmd(nil, cryptoProvider))
+func Cmd(cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
+	snapshotCmd.AddCommand(submitRequestCmd(nil, cryptoProvider, isNew))
+	snapshotCmd.AddCommand(cancelRequestCmd(nil, cryptoProvider, isNew))
+	snapshotCmd.AddCommand(listPendingCmd(nil, cryptoProvider, isNew))
+
+	if !isNew {
+		snapshotCmd.Short = "[DEPRECATED] Manage snapshot requests: submitrequest|cancelrequest|listpending (use the \"peercli snapshot\")."
+		snapshotCmd.Long = "[DEPRECATED] Manage snapshot requests: submitrequest|cancelrequest|listpending. Instead of this command, use \"peercli snapshot\"."
+	}
 
 	return snapshotCmd
 }
@@ -39,8 +44,8 @@ var (
 
 var snapshotCmd = &cobra.Command{
 	Use:   "snapshot",
-	Short: "Manage snapshot requests: submitrequest|cancelrequest|listpending",
-	Long:  "Manage snapshot requests: submitrequest|cancelrequest|listpending",
+	Short: "Manage snapshot requests: submitrequest|cancelrequest|listpending.",
+	Long:  "Manage snapshot requests: submitrequest|cancelrequest|listpending.",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		common.InitCmd(cmd, args)
 	},

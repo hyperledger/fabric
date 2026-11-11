@@ -30,7 +30,7 @@ func TestQueryCmd(t *testing.T) {
 	args := []string{"-n", "example02", "-c", "{\"Args\": [\"query\",\"a\"]}"}
 	cmd := newQueryCmdForTest(mockCF, args, cryptoProvider)
 	err = cmd.Execute()
-	require.Error(t, err, "'peer chaincode query' command should have failed without -C flag")
+	require.Error(t, err, "'peercli chaincode query' command should have failed without -C flag")
 
 	// Success case: run query command without -r or -x option
 	args = []string{"-C", "mychannel", "-n", "example02", "-c", "{\"Args\": [\"query\",\"a\"]}"}
@@ -99,7 +99,7 @@ func TestQueryCmdEndorsementFailure(t *testing.T) {
 }
 
 func newQueryCmdForTest(cf *ChaincodeCmdFactory, args []string, cryptoProvider bccsp.BCCSP) *cobra.Command {
-	cmd := queryCmd(cf, cryptoProvider)
+	cmd := queryCmd(cf, cryptoProvider, true)
 	addFlags(cmd)
 	cmd.SetArgs(args)
 	return cmd

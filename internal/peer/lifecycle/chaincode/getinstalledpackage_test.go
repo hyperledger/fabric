@@ -219,7 +219,7 @@ var _ = Describe("GetInstalledPackage", func() {
 		BeforeEach(func() {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).To(BeNil())
-			getInstalledPackageCmd = chaincode.GetInstalledPackageCmd(nil, cryptoProvider)
+			getInstalledPackageCmd = chaincode.GetInstalledPackageCmd(nil, cryptoProvider, true)
 			getInstalledPackageCmd.SilenceErrors = true
 			getInstalledPackageCmd.SilenceUsage = true
 			getInstalledPackageCmd.SetArgs([]string{

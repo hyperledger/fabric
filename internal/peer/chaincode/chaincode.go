@@ -31,11 +31,16 @@ func addFlags(cmd *cobra.Command) {
 }
 
 // Cmd returns the cobra command for Chaincode
-func Cmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func Cmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	addFlags(chaincodeCmd)
 
-	chaincodeCmd.AddCommand(invokeCmd(cf, cryptoProvider))
-	chaincodeCmd.AddCommand(queryCmd(cf, cryptoProvider))
+	chaincodeCmd.AddCommand(invokeCmd(cf, cryptoProvider, isNew))
+	chaincodeCmd.AddCommand(queryCmd(cf, cryptoProvider, isNew))
+
+	if !isNew {
+		chaincodeCmd.Short = "[DEPRECATED] " + chainCmdDes[:len(chainCmdDes)-2] + " (use the \"peercli chaincode\")."
+		chaincodeCmd.Long = "[DEPRECATED] " + chainCmdDes + " Instead of this command, use \"peercli chaincode\"."
+	}
 
 	return chaincodeCmd
 }

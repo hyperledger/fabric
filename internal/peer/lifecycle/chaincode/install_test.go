@@ -173,7 +173,7 @@ var _ = Describe("Install", func() {
 		BeforeEach(func() {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).To(BeNil())
-			installCmd = chaincode.InstallCmd(nil, cryptoProvider)
+			installCmd = chaincode.InstallCmd(nil, cryptoProvider, true)
 			installCmd.SilenceErrors = true
 			installCmd.SilenceUsage = true
 			installCmd.SetArgs([]string{
