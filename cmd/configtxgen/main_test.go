@@ -139,7 +139,6 @@ func TestConfigTxFlags(t *testing.T) {
 		"-profile=" + genesisconfig.SampleSingleMSPChannelProfile,
 		"-configPath=" + devConfigDir,
 		"-inspectChannelCreateTx=" + configTxDest,
-		"-asOrg=" + genesisconfig.SampleOrgName,
 	}
 
 	main()
