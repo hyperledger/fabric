@@ -724,6 +724,20 @@ ledger:
       # of 32 MB, the peer would round the size to the next multiple of 32 MB.
       # To disable the cache, 0 MB needs to be assigned to the cacheSize.
       cacheSize: 64
+      # TLS configuration for CouchDB connection
+      tls:
+        # Enable TLS for CouchDB connection (default: false)
+        # When enabled, the peer will use HTTPS to connect to CouchDB
+        # Environment variable: CORE_LEDGER_STATE_COUCHDBCONFIG_TLS_ENABLED
+        enabled: false
+        # Path to CA certificate file for verifying the CouchDB server certificate
+        # If not provided, the system's default CA certificate pool will be used.
+        # Environment variable: CORE_LEDGER_STATE_COUCHDBCONFIG_TLS_CACERTFILE
+        caCertFile:
+        # Skip server certificate verification (default: false)
+        # WARNING: This is insecure and should only be used for testing purposes.
+        # Environment variable: CORE_LEDGER_STATE_COUCHDBCONFIG_TLS_SKIPVERIFY
+        skipVerify: false
 
   history:
     # enableHistoryDatabase - options are true or false
