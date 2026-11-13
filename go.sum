@@ -126,8 +126,8 @@ github.com/gorilla/mux v1.8.1/go.mod h1:AKf9I4AEqPTmMytcMc0KkNouC66V3BtZ4qD5fmWS
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.32.0 h1:QMILzF8BA7xftE4zVORkRrlv08m12St3csK4RsyRgRs=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.32.0/go.mod h1:+ZQ6iUL8+ATyxGDQNuRKpNwJFdGDUi0e7E1QL9MvI7U=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
-github.com/hyperledger/SmartBFT v1.0.2 h1:CPNeo6OmnOBQv+jaYeHiw64ZBdtq/TIRcpQpe60M5tU=
-github.com/hyperledger/SmartBFT v1.0.2/go.mod h1:4GaOkmA7N7TKfZuPX6M6O3q/jMowprHWJjCP2n/6CPI=
+github.com/hyperledger/SmartBFT v1.0.3 h1:Dfws2EeGHAZWDhzcDax/C9X1VDyivrZsNOIGbEycAJc=
+github.com/hyperledger/SmartBFT v1.0.3/go.mod h1:afFtxfRLBUAkVi+upOhyCOeuxR8lMxZefD34LK0sB0s=
 github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2 h1:B1Nt8hKb//KvgGRprk0h1t4lCnwhE9/ryb1WqfZbV+M=
 github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2/go.mod h1:X+DIyUsaTmalOpmpQfIvFZjKHQedrURQ5t4YqquX7lE=
 github.com/hyperledger/fabric-chaincode-go/v2 v2.3.0 h1:NB/QO2t4R5f6Nz/oREqZeaE4splHI2U9gqndfEQZreo=
