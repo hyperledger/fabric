@@ -6,6 +6,7 @@
 package wal
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +17,8 @@ import (
 	"strings"
 
 	"github.com/hyperledger/SmartBFT/pkg/api"
+	protos "github.com/hyperledger/SmartBFT/smartbftprotos"
+	"google.golang.org/protobuf/proto"
 )
 
 var padTable [][]byte
@@ -142,6 +145,14 @@ func getPadSize(recordLength int) int {
 	return (8 - recordLength%8) % 8
 }
 
+// crcAnchorRecordSize returns the on-disk size of the CRC-Anchor record that
+// starts every WAL file.
+func crcAnchorRecordSize() int64 {
+	payloadLength := proto.Size(&protos.LogRecord{Type: protos.LogRecord_CRC_ANCHOR})
+
+	return int64(recordHeaderSize + payloadLength + getPadSize(payloadLength))
+}
+
 func getPadBytes(recordLength int) (int, []byte) {
 	i := getPadSize(recordLength)
 
@@ -157,13 +168,40 @@ func parseWalFileName(fileName string) (index uint64, err error) {
 	return index, nil
 }
 
+// copyFile copies the source file to the target, readable and writable by the owner only,
+// just like the WAL files themselves (walFilePermPrivateRW). Permissions of an already
+// existing target are tightened before anything is written to it, since the open mode
+// applies only when the file is created.
 func copyFile(source, target string) error {
-	input, err := os.ReadFile(source)
+	input, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer input.Close()
+
+	output, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, walFilePermPrivateRW)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(target, input, 0o644)
+	if err = output.Chmod(walFilePermPrivateRW); err != nil {
+		_ = output.Close()
+		return err
+	}
+
+	if _, err = io.Copy(output, input); err != nil {
+		_ = output.Close()
+		return err
+	}
+
+	// The copy is the only evidence left once scanRepairFile truncates or
+	// deletes the original, so flush it to disk before returning.
+	if err = output.Sync(); err != nil {
+		_ = output.Close()
+		return err
+	}
+
+	return output.Close()
 }
 
 func truncateCloseFile(f *os.File, offset int64) error {
@@ -234,13 +272,35 @@ func scanVerify1(logger api.Logger, r *LogRecordReader, i int, crc uint32) (num 
 }
 
 // scanRepairFile scans the file to the last good record and truncates after it. If even the CRC-Anchor cannot be
-// read, the file is deleted.
+// read, the file is deleted only when it holds nothing but that anchor; otherwise the repair is
+// refused with ErrNotRepairable.
+//
+// Only corruption of the last record is repaired. Anything else is refused with
+// ErrNotRepairable, since truncating at a corrupt record in the middle of the file would
+// drop records that were written before it, possibly ones that were already committed.
 func scanRepairFile(logger api.Logger, lastFile string) error {
 	logger.Debugf("Trying to repair file: %s", lastFile)
 
 	r, err := NewLogRecordReader(logger, lastFile)
 	if err != nil {
 		logger.Warnf("Write-Ahead-Log could not open the last file, due to error: %s", err)
+
+		// A torn CRC-Anchor is only possible while the file is being prepared,
+		// before the first Append, so the file holds nothing but that anchor. If
+		// it is larger, records were synced to it and deleting it would lose them.
+		fileInfo, statErr := os.Stat(lastFile)
+		if statErr != nil {
+			return statErr
+		}
+
+		if fileInfo.Size() > crcAnchorRecordSize() {
+			logger.Errorf(
+				"Write-Ahead-Log will not repair file: %s; its CRC-Anchor is corrupt but the file holds records",
+				lastFile,
+			)
+
+			return fmt.Errorf("%w: corrupt CRC-Anchor of file: %s", ErrNotRepairable, lastFile)
+		}
 
 		if err = os.Remove(lastFile); err != nil {
 			return err
@@ -266,6 +326,9 @@ func scanRepairFile(logger api.Logger, lastFile string) error {
 		if readErr != nil {
 			logger.Debugf("Read error: %s", readErr)
 
+			// offset is the end of the last good record, hence the start of the corrupt one.
+			corruptRecordStart := offset
+
 			if closeErr := r.Close(); closeErr != nil {
 				return closeErr
 			}
@@ -276,6 +339,26 @@ func scanRepairFile(logger api.Logger, lastFile string) error {
 				return nil // no need to repair
 			}
 
+			torn, err := isTornTail(logger, lastFile, corruptRecordStart)
+			if err != nil {
+				return err
+			}
+
+			if !torn {
+				logger.Errorf(
+					"Write-Ahead-Log will not repair file: %s; the corrupt record at offset %d is followed by further records, truncating it would drop them",
+					lastFile,
+					corruptRecordStart,
+				)
+
+				return fmt.Errorf(
+					"%w: corrupt record at offset %d of file: %s",
+					ErrNotRepairable,
+					corruptRecordStart,
+					lastFile,
+				)
+			}
+
 			break
 		}
 		// keep the end offset of a good record
@@ -283,6 +366,8 @@ func scanRepairFile(logger api.Logger, lastFile string) error {
 
 		offset, err = r.logFile.Seek(0, io.SeekCurrent)
 		if err != nil {
+			_ = r.Close()
+
 			return err
 		}
 	}
@@ -303,4 +388,239 @@ func scanRepairFile(logger api.Logger, lastFile string) error {
 	}
 
 	return nil
+}
+
+// isTornTail reports whether the record starting at recordStart is the last one in the
+// file, i.e. whether nothing was written after it.
+//
+// Repair truncates the file after the last good record, which is safe only for a torn
+// write of the last record. If real records follow the corrupt one, they were written
+// before the crash and may already be committed, so truncating would silently restart the
+// node from a state in the past.
+//
+// The corrupt record cannot be parsed, so its length is unknown and the offset of the next
+// record cannot be computed. When, however, only its payload or CRC is corrupt, the header
+// still holds the true length, and the next record starts exactly after it - that position
+// is probed first, and the first record there is verified against the corrupt header's CRC.
+// A record that merely parses at that exact position is also treated as evidence that
+// records follow. Otherwise we resynchronize in a single pass: every offset at which a
+// record could start is probed once, and a remainder is accepted only if no readable link
+// is found from any of them. Requiring a readable record at *some* offset keeps this
+// conservative in the safe direction - a false positive refuses the repair, never performs
+// a lossy one.
+func isTornTail(logger api.Logger, fileName string, recordStart int64) (bool, error) {
+	f, err := os.Open(fileName)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	fileInfo, err := f.Stat()
+	if err != nil {
+		return false, err
+	}
+
+	fileSize := fileInfo.Size()
+	if recordStart >= fileSize {
+		return true, nil
+	}
+
+	// The corrupt record cannot be parsed. Read the rest of the file once and
+	// resynchronize over the bytes in memory: probing every candidate offset
+	// with its own ReadAt would issue one syscall per offset.
+	tail := make([]byte, fileSize-recordStart)
+	if _, err := f.ReadAt(tail, recordStart); err != nil {
+		return false, err
+	}
+
+	var corruptCRC uint32
+	if len(tail) >= recordHeaderSize {
+		corruptCRC = uint32((binary.LittleEndian.Uint64(tail) & recordCRCMask) >> 32)
+	}
+
+	if next, ok := nextRecordOffset(tail); ok {
+		// The corrupt header still holds the CRC that the next record chains
+		// from, so a single following record can be verified. A record that
+		// merely parses at the exact next offset is also enough: refusing the
+		// repair is safe, truncating is not.
+		if readableRecordsFollowFrom(tail, next, corruptCRC, true) || readableRecordAt(tail, next) {
+			logger.Debugf(
+				"Corrupt record at offset %d of file: %s is followed by readable records from offset %d",
+				recordStart,
+				fileName,
+				recordStart+next,
+			)
+
+			return false, nil
+		}
+	}
+
+	if readableLinkPresent(tail, corruptCRC) {
+		logger.Debugf(
+			"Corrupt record at offset %d of file: %s is followed by readable records",
+			recordStart,
+			fileName,
+		)
+
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// readableLinkPresent reports whether data holds two consecutive readable
+// records with a verified CRC link. The link is verified either against seedCRC,
+// the CRC of the corrupt record before data, or between consecutive records.
+// Records are interpreted as LogRecordReader.Read interprets them: an anchor
+// reseeds the chain from its header CRC instead of being verified. Every aligned
+// offset is parsed once, so the scan does not restart the chain per candidate.
+func readableLinkPresent(data []byte, seedCRC uint32) bool {
+	for pos := int64(recordHeaderSize); pos+int64(recordHeaderSize) <= int64(len(data)); pos += int64(recordHeaderSize) {
+		current, ok := parseRecordAt(data, pos)
+		if !ok {
+			continue
+		}
+
+		if current.recordType != protos.LogRecord_CRC_ANCHOR && verifyCRC(seedCRC, current.crc, current.payload) {
+			return true
+		}
+
+		next, ok := parseRecordAt(data, current.next)
+		if !ok {
+			continue
+		}
+
+		if next.recordType != protos.LogRecord_CRC_ANCHOR {
+			if verifyCRC(current.crc, next.crc, next.payload) {
+				return true
+			}
+
+			continue
+		}
+
+		afterAnchor, ok := parseRecordAt(data, next.next)
+		if !ok || afterAnchor.recordType == protos.LogRecord_CRC_ANCHOR {
+			continue
+		}
+
+		if verifyCRC(next.crc, afterAnchor.crc, afterAnchor.payload) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// nextRecordOffset returns the offset, relative to the start of data, at which
+// the record following the one at the start of data begins, based on the length
+// in its header. It reports false when the header does not hold a length that
+// leaves room for another record, i.e. when the header is corrupt too.
+func nextRecordOffset(data []byte) (int64, bool) {
+	if len(data) < recordHeaderSize {
+		return 0, false
+	}
+
+	length := int64(binary.LittleEndian.Uint64(data) & recordLengthMask)
+	payloadLength := length + int64(getPadSize(int(length)))
+
+	next := int64(recordHeaderSize) + payloadLength
+	if payloadLength == 0 || next+int64(recordHeaderSize) > int64(len(data)) {
+		return 0, false
+	}
+
+	return next, true
+}
+
+type recordView struct {
+	recordType protos.LogRecord_Type
+	payload    []byte
+	crc        uint32
+	next       int64
+}
+
+// parseRecordAt parses the record starting at pos. It reports false when the
+// record is torn, does not unmarshal, or has an unknown type.
+func parseRecordAt(data []byte, pos int64) (recordView, bool) {
+	var view recordView
+
+	if pos+int64(recordHeaderSize) > int64(len(data)) {
+		return view, false
+	}
+
+	header := binary.LittleEndian.Uint64(data[pos:])
+	length := int64(header & recordLengthMask)
+	view.crc = uint32((header & recordCRCMask) >> 32)
+
+	payloadLength := length + int64(getPadSize(int(length)))
+	if payloadLength == 0 || pos+int64(recordHeaderSize)+payloadLength > int64(len(data)) {
+		return view, false
+	}
+
+	view.payload = data[pos+int64(recordHeaderSize) : pos+int64(recordHeaderSize)+payloadLength]
+
+	record := &protos.LogRecord{}
+	if err := proto.Unmarshal(view.payload[:length], record); err != nil {
+		return view, false
+	}
+
+	switch record.GetType() {
+	case protos.LogRecord_ENTRY, protos.LogRecord_CONTROL, protos.LogRecord_CRC_ANCHOR:
+		view.recordType = record.GetType()
+	default:
+		return view, false
+	}
+
+	view.next = pos + int64(recordHeaderSize) + payloadLength
+
+	return view, true
+}
+
+// readableRecordAt reports whether a structurally valid record starts at offset.
+func readableRecordAt(data []byte, offset int64) bool {
+	_, ok := parseRecordAt(data, offset)
+
+	return ok
+}
+
+// readableRecordsFollow reports whether data holds readable records from offset.
+// The CRC of the first record is not checked, since it depends on the corrupt
+// record. One verified CRC link between consecutive records is enough; a lone
+// record that merely decodes proves nothing.
+func readableRecordsFollow(data []byte, offset int64) bool {
+	return readableRecordsFollowFrom(data, offset, 0, false)
+}
+
+// readableRecordsFollowFrom reports whether data holds readable records from
+// offset. When haveSeed is true, seedCRC is the CRC of the record before offset
+// and the first record's CRC is verified against it. A failed link does not end
+// the search: the current record becomes the new seed, so a later verified link
+// still counts.
+//
+// Records are interpreted as LogRecordReader.Read interprets them: an anchor
+// (CRC_ANCHOR) reseeds the chain from its header CRC instead of being verified,
+// since its header CRC is the CRC of the previous record, not of its payload.
+func readableRecordsFollowFrom(data []byte, offset int64, seedCRC uint32, haveSeed bool) bool {
+	prevCRC := seedCRC
+
+	for pos := offset; ; {
+		record, ok := parseRecordAt(data, pos)
+		if !ok {
+			return false
+		}
+
+		switch record.recordType {
+		case protos.LogRecord_CRC_ANCHOR:
+			prevCRC = record.crc
+			haveSeed = true
+		case protos.LogRecord_ENTRY, protos.LogRecord_CONTROL:
+			if haveSeed && verifyCRC(prevCRC, record.crc, record.payload) {
+				return true
+			}
+
+			prevCRC = record.crc
+			haveSeed = true
+		}
+
+		pos = record.next
+	}
 }

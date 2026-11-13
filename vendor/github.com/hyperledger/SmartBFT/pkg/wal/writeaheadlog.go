@@ -40,12 +40,16 @@ const (
 )
 
 var (
-	ErrCRC                 = errors.New("wal: crc verification failed")
-	ErrWALUnmarshalPayload = errors.New("wal: failed to unmarshal payload")
-	ErrWriteOnly           = errors.New("wal: in WRITE mode")
-	ErrReadOnly            = errors.New("wal: in READ mode")
+	ErrCRC                  = errors.New("wal: crc verification failed")
+	ErrWALUnmarshalPayload  = errors.New("wal: failed to unmarshal payload")
+	ErrUnexpectedRecordType = errors.New("wal: unexpected LogRecord_Type")
+	ErrRecordTooBig         = errors.New("wal: record too big")
+	ErrWriteOnly            = errors.New("wal: in WRITE mode")
+	ErrReadOnly             = errors.New("wal: in READ mode")
 
 	ErrWALAlreadyExists = errors.New("wal: is already exists")
+
+	ErrNotRepairable = errors.New("wal: corruption is not in the last record, not repairable")
 
 	crcTable = crc32.MakeTable(crc32.Castagnoli)
 )
@@ -261,6 +265,7 @@ func Open(logger api.Logger, dirPath string, options *Options) (*WriteAheadLogFi
 
 		return nil, err
 	}
+
 	wal.metrics.CountOfFiles.Set(float64(len(wal.activeIndexes)))
 
 	wal.index, err = parseWalFileName(walNames[0]) // first valid file
@@ -278,11 +283,13 @@ func Open(logger api.Logger, dirPath string, options *Options) (*WriteAheadLogFi
 // Repair tries to repair the last file of a WAL, in case an Open() comes back with a io.ErrUnexpectedEOF,
 // which indicates the possibility to fix the WAL.
 //
-// After a crash, the last log file in the WAL may be left in a state where an attempt tp reopen will result in
-// the last Read() returning an error. This is because of several reasons:
-// - we use pre-allocated / recycled files, the files have a "garbage" tail
-// - the last write may have been torn
+// After a crash, the last log file in the WAL may be left in a state where an attempt to reopen will result in
+// the last Read() returning an error. This is because of two reasons:
+// - the last write may have been torn, which is the only expected source of a corrupt tail
 // - the failure might have occurred when the log file was being prepared (no anchor)
+//
+// Files are created with O_CREATE and truncated to their used size on close, so a file holds no stale bytes
+// beyond the last record, and a torn last write - not a "garbage" tail - is what repair has to deal with.
 //
 // The Repair() tries to repair the last file of the wal by truncating after the last good record.
 // Before doing so it copies the bad file to a side location for later analysis by operators.
@@ -443,7 +450,7 @@ func (w *WriteAheadLogFile) append(record *protos.LogRecord) error {
 
 	recordLength := len(payloadBuff)
 	if (uint64(recordLength) & recordCRCMask) != 0 {
-		return fmt.Errorf("wal: record too big, length does not fit in uint32: %d", recordLength)
+		return fmt.Errorf("%w, length does not fit in uint32: %d", ErrRecordTooBig, recordLength)
 	}
 
 	padSize, padBytes := getPadBytes(recordLength)
@@ -478,7 +485,7 @@ func (w *WriteAheadLogFile) append(record *protos.LogRecord) error {
 		return fmt.Errorf("wal: failed to get offset from log file: %w", err)
 	}
 
-	if record.TruncateTo {
+	if record.GetTruncateTo() {
 		w.truncateIndex = w.index
 	}
 
@@ -552,13 +559,13 @@ FileLoop:
 				break ReadLoop
 			}
 
-			if rec.TruncateTo {
+			if rec.GetTruncateTo() {
 				items = items[0:0]
 				w.truncateIndex = w.index
 			}
 
-			if rec.Type == protos.LogRecord_ENTRY {
-				items = append(items, rec.Data)
+			if rec.GetType() == protos.LogRecord_ENTRY {
+				items = append(items, rec.GetData())
 			}
 
 			w.logger.Debugf("Read record #%d, file: %s", i, r.fileName)
@@ -574,7 +581,9 @@ FileLoop:
 		if index == lastIndex &&
 			(errors.Is(readErr, io.ErrUnexpectedEOF) ||
 				errors.Is(readErr, ErrCRC) ||
-				errors.Is(readErr, ErrWALUnmarshalPayload)) {
+				errors.Is(readErr, ErrWALUnmarshalPayload) ||
+				errors.Is(readErr, ErrUnexpectedRecordType) ||
+				errors.Is(readErr, ErrRecordTooBig)) {
 			w.logger.Warnf(
 				"Received an error in the last file, this can possibly be repaired; file: %s; error: %s",
 				r.fileName,
@@ -593,7 +602,8 @@ FileLoop:
 
 	w.logger.Debugf("Read %d items", len(items))
 
-	// move to write mode on a new file.
+	// move to write mode, reusing the last file when it holds nothing but its
+	// CRC-anchor, or creating the next one otherwise.
 	if err := w.deleteAndCreateFile(); err != nil {
 		w.logger.Errorf("Failed to move to a new file: %s", err)
 
@@ -667,11 +677,6 @@ func (w *WriteAheadLogFile) switchFiles() error {
 func (w *WriteAheadLogFile) deleteAndCreateFile() error {
 	var err error
 
-	w.index++
-	nextFileName := fmt.Sprintf(walFileTemplate, w.index)
-	nextFilePath := filepath.Join(w.dirFile.Name(), nextFileName)
-	w.logger.Debugf("Preparing next log file: %s", nextFilePath)
-
 	if w.activeIndexes[0] < w.truncateIndex {
 		var j int
 
@@ -691,6 +696,35 @@ func (w *WriteAheadLogFile) deleteAndCreateFile() error {
 		w.activeIndexes = w.activeIndexes[j+1:]
 		w.metrics.CountOfFiles.Set(float64(len(w.activeIndexes)))
 	}
+
+	// A file that holds nothing but its CRC-anchor has no data to preserve. Reusing it instead of
+	// creating the next file is what keeps a restart that writes no record from adding a file:
+	// ReadAll() always needs a file to switch to write mode in, and that file used to be new.
+	lastFilePath := filepath.Join(w.dirFile.Name(), fmt.Sprintf(walFileTemplate, w.index))
+	lastFileInfo, err := os.Stat(lastFilePath)
+	if err != nil {
+		return err
+	}
+
+	if lastFileInfo.Size() == crcAnchorRecordSize() {
+		w.logger.Debugf("Reusing the anchor-only log file: %s", lastFilePath)
+
+		w.logFile, err = os.OpenFile(lastFilePath, os.O_WRONLY, walFilePermPrivateRW)
+		if err != nil {
+			return err
+		}
+
+		if _, err = w.logFile.Seek(0, io.SeekEnd); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	w.index++
+	nextFileName := fmt.Sprintf(walFileTemplate, w.index)
+	nextFilePath := filepath.Join(w.dirFile.Name(), nextFileName)
+	w.logger.Debugf("Preparing next log file: %s", nextFilePath)
 
 	w.logger.Debugf("Creating log file: %s", nextFileName)
 
@@ -775,7 +809,25 @@ func InitializeAndReadAll(
 
 		writeAheadLog, err = Open(logger, walDir, options)
 		if err != nil {
-			return nil, nil, fmt.Errorf("Cannot open Write-Ahead-Log: %w", err)
+			// A torn CRC-Anchor in the last file surfaces here, on Open, not on
+			// ReadAll. It is the same repairable condition - the failure happened
+			// while the last file was being prepared - so repair it before giving up.
+			if !errors.Is(err, io.ErrUnexpectedEOF) {
+				return nil, nil, fmt.Errorf("Cannot open Write-Ahead-Log: %w", err)
+			}
+
+			logger.Infof("Received io.ErrUnexpectedEOF on open, trying to repair Write-Ahead-Log at dir: %s", walDir)
+
+			if err = Repair(logger, walDir); err != nil {
+				return nil, nil, fmt.Errorf("Cannot repair Write-Ahead-Log: %w", err)
+			}
+
+			logger.Infof("Opening Write-Ahead-Log, after repair")
+
+			writeAheadLog, err = Open(logger, walDir, options)
+			if err != nil {
+				return nil, nil, fmt.Errorf("Cannot open Write-Ahead-Log, after repair: %w", err)
+			}
 		}
 
 		initialState, err = writeAheadLog.ReadAll()

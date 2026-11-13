@@ -23,6 +23,10 @@ type LogRecordReader struct {
 	logger   api.Logger
 	logFile  *os.File
 	crc      uint32
+	// fileSizeBytes is the size of the log file. A record never spans beyond
+	// the file it is in, so it bounds the length declared in a record header
+	// and prevents a corrupted or forged header from driving a huge allocation.
+	fileSizeBytes int64
 }
 
 func NewLogRecordReader(logger api.Logger, fileName string) (*LogRecordReader, error) {
@@ -41,6 +45,15 @@ func NewLogRecordReader(logger api.Logger, fileName string) (*LogRecordReader, e
 	if err != nil {
 		return nil, err
 	}
+
+	fileInfo, err := r.logFile.Stat()
+	if err != nil {
+		_ = r.Close()
+
+		return nil, err
+	}
+
+	r.fileSizeBytes = fileInfo.Size()
 
 	_, err = r.logFile.Seek(0, io.SeekStart)
 	if err != nil {
@@ -75,7 +88,7 @@ func NewLogRecordReader(logger api.Logger, fileName string) (*LogRecordReader, e
 		return nil, err
 	}
 
-	if record.Type != protos.LogRecord_CRC_ANCHOR {
+	if record.GetType() != protos.LogRecord_CRC_ANCHOR {
 		_ = r.Close()
 
 		return nil, fmt.Errorf("failed reading CRC-Anchor from log file: %s", fileName)
@@ -126,7 +139,7 @@ func (r *LogRecordReader) Read() (*protos.LogRecord, error) {
 		return nil, ErrWALUnmarshalPayload // fmt.Errorf("wal: failed to unmarshal payload: %w", err)
 	}
 
-	switch record.Type {
+	switch record.GetType() {
 	case protos.LogRecord_ENTRY, protos.LogRecord_CONTROL:
 		if !verifyCRC(r.crc, crc, payload) {
 			return nil, ErrCRC
@@ -136,7 +149,7 @@ func (r *LogRecordReader) Read() (*protos.LogRecord, error) {
 	case protos.LogRecord_CRC_ANCHOR:
 		r.crc = crc
 	default:
-		return nil, fmt.Errorf("wal: unexpected LogRecord_Type: %v", record.Type)
+		return nil, fmt.Errorf("%w: %v", ErrUnexpectedRecordType, record.GetType())
 	}
 
 	return record, nil
@@ -157,6 +170,28 @@ func (r *LogRecordReader) readHeader() (length, crc uint32, err error) {
 	header := binary.LittleEndian.Uint64(buff)
 	length = uint32(header & recordLengthMask)
 	crc = uint32((header & recordCRCMask) >> 32)
+
+	// A record, together with its header, must fit in the remaining part of the
+	// file. Otherwise a corrupted header, especially near the end of the file,
+	// makes us allocate up to the whole file size before the read fails.
+	pos, err := r.logFile.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	recSize := int64(length) + int64(getPadSize(int(length)))
+
+	if remaining := r.fileSizeBytes - pos; recSize > remaining {
+		r.logger.Warnf("Record length %d in file: %s exceeds the remaining file size %d", length, r.fileName, remaining)
+
+		// A header claiming more than the whole file can hold is corrupt. A
+		// record that only outgrows what is left is a torn tail.
+		if recSize > r.fileSizeBytes-int64(recordHeaderSize) {
+			return 0, 0, fmt.Errorf("%w: length=%d, file size=%d, file: %s", ErrRecordTooBig, length, r.fileSizeBytes, r.fileName)
+		}
+
+		return 0, 0, io.ErrUnexpectedEOF
+	}
 
 	return length, crc, nil
 }

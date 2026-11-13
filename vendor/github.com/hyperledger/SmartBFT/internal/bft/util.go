@@ -46,15 +46,15 @@ func viewNumber(m *protos.Message) uint64 {
 
 func proposalSequence(m *protos.Message) uint64 {
 	if pp := m.GetPrePrepare(); pp != nil {
-		return pp.Seq
+		return pp.GetSeq()
 	}
 
 	if prp := m.GetPrepare(); prp != nil {
-		return prp.Seq
+		return prp.GetSeq()
 	}
 
 	if cmt := m.GetCommit(); cmt != nil {
-		return cmt.Seq
+		return cmt.GetSeq()
 	}
 
 	return math.MaxUint64
@@ -87,7 +87,7 @@ func getLeaderID(
 		return nodes[view%n]
 	}
 
-	for i := range len(nodes) {
+	for i := range nodes {
 		index := (view + (decisionsInView / decisionsPerLeader)) + uint64(i)
 		node := nodes[index%n]
 		_, exists := blackListed[node]
@@ -213,6 +213,19 @@ func (ifp *InFlightData) IsInFlightPrepared() bool {
 	}
 
 	return ifp.v.prepared
+}
+
+// InFlightProposalAndPrepared returns the in-flight proposal, or nil if there is no such,
+// together with whether it is prepared, so that the two are never taken from different proposals.
+func (ifp *InFlightData) InFlightProposalAndPrepared() (*types.Proposal, bool) {
+	ifp.lock.RLock()
+	defer ifp.lock.RUnlock()
+
+	if ifp.v == nil {
+		return nil, false
+	}
+
+	return ifp.v.proposal, ifp.v.prepared
 }
 
 // StoreProposal stores an in-flight proposal.
@@ -359,11 +372,11 @@ func prePrepareToString(prp *protos.PrePrepare) string {
 	if prp == nil {
 		return "<empty PrePrepare>"
 	}
-	if prp.Proposal == nil {
-		return fmt.Sprintf("<PrePrepare with view: %d, seq: %d, empty proposal>", prp.View, prp.Seq)
+	if prp.GetProposal() == nil {
+		return fmt.Sprintf("<PrePrepare with view: %d, seq: %d, empty proposal>", prp.GetView(), prp.GetSeq())
 	}
 	return fmt.Sprintf("<PrePrepare with view: %d, seq: %d, payload of %d bytes, header: %s>",
-		prp.View, prp.Seq, len(prp.Proposal.Payload), base64.StdEncoding.EncodeToString(prp.Proposal.Header))
+		prp.GetView(), prp.GetSeq(), len(prp.GetProposal().GetPayload()), base64.StdEncoding.EncodeToString(prp.GetProposal().GetHeader()))
 }
 
 func newViewToString(nv *protos.NewView) string {
@@ -372,9 +385,9 @@ func newViewToString(nv *protos.NewView) string {
 	}
 	buff := bytes.Buffer{}
 	buff.WriteString("< NewView with ")
-	for i, svd := range nv.SignedViewData {
+	for i, svd := range nv.GetSignedViewData() {
 		buff.WriteString(signedViewDataToString(svd))
-		if i == len(nv.SignedViewData)-1 {
+		if i == len(nv.GetSignedViewData())-1 {
 			break
 		}
 		buff.WriteString(", ")
@@ -388,12 +401,12 @@ func signedViewDataToString(svd *protos.SignedViewData) string {
 		return "empty ViewData"
 	}
 	vd := &protos.ViewData{}
-	if err := proto.Unmarshal(svd.RawViewData, vd); err != nil {
-		return fmt.Sprintf("<malformed viewdata from %d>", svd.Signer)
+	if err := proto.Unmarshal(svd.GetRawViewData(), vd); err != nil {
+		return fmt.Sprintf("<malformed viewdata from %d>", svd.GetSigner())
 	}
 
 	return fmt.Sprintf("<ViewData signed by %d with NextView: %d>",
-		svd.Signer, vd.NextView)
+		svd.GetSigner(), vd.GetNextView())
 }
 
 func heartBeatToString(hb *protos.HeartBeat) string {
@@ -401,7 +414,7 @@ func heartBeatToString(hb *protos.HeartBeat) string {
 		return "empty HeartBeat"
 	}
 
-	return fmt.Sprintf("<HeartBeat with view: %d, seq: %d", hb.View, hb.Seq)
+	return fmt.Sprintf("<HeartBeat with view: %d, seq: %d", hb.GetView(), hb.GetSeq())
 }
 
 func heartBeatResponseToString(hbr *protos.HeartBeatResponse) string {
@@ -409,7 +422,7 @@ func heartBeatResponseToString(hbr *protos.HeartBeatResponse) string {
 		return "empty HeartBeatResponse"
 	}
 
-	return fmt.Sprintf("<HeartBeatResponse with view: %d", hbr.View)
+	return fmt.Sprintf("<HeartBeatResponse with view: %d", hbr.GetView())
 }
 
 type blacklist struct {
@@ -427,8 +440,8 @@ type blacklist struct {
 }
 
 func (bl blacklist) computeUpdate() []uint64 {
-	newBlacklist := bl.prevMD.BlackList
-	viewBeforeViewChanges := bl.prevMD.ViewId
+	newBlacklist := bl.prevMD.GetBlackList()
+	viewBeforeViewChanges := bl.prevMD.GetViewId()
 
 	bl.logger.Debugf("view before: %d, current view: %d", viewBeforeViewChanges, bl.currView)
 
@@ -439,15 +452,15 @@ func (bl blacklist) computeUpdate() []uint64 {
 		// However, if we are in any subsequent proposal, then the previous leader's ID was computed by adding 1 to the
 		// latest decisions in view that was committed.
 		offset := uint64(1)
-		if bl.prevMD.LatestSequence == 0 {
+		if bl.prevMD.GetLatestSequence() == 0 {
 			offset = 0
 		}
 
 		// Locate every leader of all views previous to this views.
 		for viewPreviousToThisView := viewBeforeViewChanges; viewPreviousToThisView < bl.currView; viewPreviousToThisView++ {
 			bl.logger.Debugf("viewPreviousToThisView: %d, N: %d, Nodes: %v, rotation: %v, decisions in view: %d, decisions per leader: %d, blacklist: %v",
-				viewPreviousToThisView, bl.n, bl.nodes, bl.leaderRotation, bl.prevMD.DecisionsInView, bl.decisionsPerLeader, bl.prevMD.BlackList)
-			leaderID := getLeaderID(viewPreviousToThisView, bl.n, bl.nodes, bl.leaderRotation, bl.prevMD.DecisionsInView+offset, bl.decisionsPerLeader, bl.prevMD.BlackList)
+				viewPreviousToThisView, bl.n, bl.nodes, bl.leaderRotation, bl.prevMD.GetDecisionsInView(), bl.decisionsPerLeader, bl.prevMD.GetBlackList())
+			leaderID := getLeaderID(viewPreviousToThisView, bl.n, bl.nodes, bl.leaderRotation, bl.prevMD.GetDecisionsInView()+offset, bl.decisionsPerLeader, bl.prevMD.GetBlackList())
 			if leaderID == bl.currentLeader {
 				bl.logger.Debugf("Skipping blacklisting current node (%d)", leaderID)
 				continue
@@ -470,8 +483,8 @@ func (bl blacklist) computeUpdate() []uint64 {
 		newBlacklist = newBlacklist[1:]
 	}
 
-	if len(bl.prevMD.BlackList) != len(newBlacklist) {
-		bl.logger.Infof("Blacklist changed: %v --> %v", bl.prevMD.BlackList, newBlacklist)
+	if len(bl.prevMD.GetBlackList()) != len(newBlacklist) {
+		bl.logger.Infof("Blacklist changed: %v --> %v", bl.prevMD.GetBlackList(), newBlacklist)
 	}
 
 	newBlacklistMap := make(map[uint64]bool, len(newBlacklist))
@@ -515,7 +528,7 @@ func pruneBlacklist(prevBlacklist []uint64, preparesFrom map[uint64]*protos.Prep
 	nodeID2Acks := make(map[uint64]int)
 	for from, gotPrepareFrom := range preparesFrom {
 		logger.Debugf("%d observed prepares from %v", from, gotPrepareFrom)
-		for _, prepareSender := range gotPrepareFrom.Ids {
+		for _, prepareSender := range gotPrepareFrom.GetIds() {
 			nodeID2Acks[prepareSender]++
 		}
 	}
@@ -547,9 +560,9 @@ func CommitSignaturesDigest(sigs []*protos.Signature) []byte {
 	idb := IntDoubleBytes{}
 	for _, sig := range sigs {
 		s := IntDoubleByte{
-			A: int64(sig.Signer),
-			B: sig.Value,
-			C: sig.Msg,
+			A: int64(sig.GetSigner()),
+			B: sig.GetValue(),
+			C: sig.GetMsg(),
 		}
 		idb.A = append(idb.A, s)
 	}

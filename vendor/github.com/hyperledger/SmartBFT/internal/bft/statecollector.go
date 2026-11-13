@@ -113,8 +113,8 @@ func (s *StateCollector) collectedEnoughEqualVotes() *types.ViewAndSeq {
 			return nil
 		}
 		viewAndSeq := types.ViewAndSeq{
-			View: response.ViewNum,
-			Seq:  response.Sequence,
+			View: response.GetViewNum(),
+			Seq:  response.GetSequence(),
 		}
 		s.Logger.Debugf("Node %d collected a responses with view - %d and seq - %d", s.SelfID, viewAndSeq.View, viewAndSeq.Seq)
 		s.responses.votes <- vote

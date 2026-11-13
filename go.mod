@@ -14,7 +14,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/hyperledger/SmartBFT v1.0.2
+	github.com/hyperledger/SmartBFT v1.0.3
 	github.com/hyperledger/fabric-chaincode-go/v2 v2.3.0
 	github.com/hyperledger/fabric-config v0.3.1
 	github.com/hyperledger/fabric-lib-go v1.1.5
