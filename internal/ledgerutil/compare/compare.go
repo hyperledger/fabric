@@ -142,11 +142,11 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 	}
 
 	// Read each snapshot record  to begin looking for differences
-	namespace1, snapshotRecord1, err := snapshotReader1.Next()
+	namespace1, snapshotRecord1, err := nextRecord(snapshotReader1)
 	if err != nil {
 		return nil, err
 	}
-	namespace2, snapshotRecord2, err := snapshotReader2.Next()
+	namespace2, snapshotRecord2, err := nextRecord(snapshotReader2)
 	if err != nil {
 		return nil, err
 	}
@@ -176,11 +176,11 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 				}
 			}
 			// Advance both snapshot readers
-			namespace1, snapshotRecord1, err = snapshotReader1.Next()
+			namespace1, snapshotRecord1, err = nextRecord(snapshotReader1)
 			if err != nil {
 				return nil, err
 			}
-			namespace2, snapshotRecord2, err = snapshotReader2.Next()
+			namespace2, snapshotRecord2, err = nextRecord(snapshotReader2)
 			if err != nil {
 				return nil, err
 			}
@@ -200,7 +200,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 				firstRecords.addRecord(diffRecord)
 			}
 			// Advance the second snapshot reader
-			namespace2, snapshotRecord2, err = snapshotReader2.Next()
+			namespace2, snapshotRecord2, err = nextRecord(snapshotReader2)
 			if err != nil {
 				return nil, err
 			}
@@ -220,7 +220,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 				firstRecords.addRecord(diffRecord)
 			}
 			// Advance the first snapshot reader
-			namespace1, snapshotRecord1, err = snapshotReader1.Next()
+			namespace1, snapshotRecord1, err = nextRecord(snapshotReader1)
 			if err != nil {
 				return nil, err
 			}
@@ -246,7 +246,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 			if firstDiffs != 0 {
 				firstRecords.addRecord(diffRecord)
 			}
-			namespace1, snapshotRecord1, err = snapshotReader1.Next()
+			namespace1, snapshotRecord1, err = nextRecord(snapshotReader1)
 			if err != nil {
 				return nil, err
 			}
@@ -266,7 +266,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 			if firstDiffs != 0 {
 				firstRecords.addRecord(diffRecord)
 			}
-			namespace2, snapshotRecord2, err = snapshotReader2.Next()
+			namespace2, snapshotRecord2, err = nextRecord(snapshotReader2)
 			if err != nil {
 				return nil, err
 			}
@@ -279,6 +279,15 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 	}
 
 	return outputFileWriter, nil
+}
+
+// Returns the next record from a snapshot reader. NewSnapshotReader returns a nil reader
+// when the snapshot has no data file, and a nil reader has no records.
+func nextRecord(snapshotReader *privacyenabledstate.SnapshotReader) (string, *privacyenabledstate.SnapshotRecord, error) {
+	if snapshotReader == nil {
+		return "", nil, nil
+	}
+	return snapshotReader.Next()
 }
 
 // firstRecords is a struct used to hold only the earliest records up to a given limit
