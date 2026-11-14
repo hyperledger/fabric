@@ -31,17 +31,22 @@ const (
 
 	// ChannelV3_0 is the capabilities string for standard new non-backwards compatible fabric v3.0 channel capabilities.
 	ChannelV3_0 = "V3_0"
+
+	// PactwayHybridCertificateV1 requires all channel MSP signing identities
+	// to use the explicitly selected Pactway Hybrid Certificate v1 profile.
+	PactwayHybridCertificateV1 = "PactwayHybridCertificateV1"
 )
 
 // ChannelProvider provides capabilities information for channel level config.
 type ChannelProvider struct {
 	*registry
-	v11  bool
-	v13  bool
-	v142 bool
-	v143 bool
-	v20  bool
-	v30  bool
+	v11                        bool
+	v13                        bool
+	v142                       bool
+	v143                       bool
+	v20                        bool
+	v30                        bool
+	pactwayHybridCertificateV1 bool
 }
 
 // NewChannelProvider creates a channel capabilities provider.
@@ -54,6 +59,7 @@ func NewChannelProvider(capabilities map[string]*cb.Capability) *ChannelProvider
 	_, cp.v143 = capabilities[ChannelV1_4_3]
 	_, cp.v20 = capabilities[ChannelV2_0]
 	_, cp.v30 = capabilities[ChannelV3_0]
+	_, cp.pactwayHybridCertificateV1 = capabilities[PactwayHybridCertificateV1]
 	return cp
 }
 
@@ -68,6 +74,8 @@ func (cp *ChannelProvider) HasCapability(capability string) bool {
 	// Add new capability names here
 	case ChannelV3_0:
 		return true
+	case PactwayHybridCertificateV1:
+		return true
 	case ChannelV2_0:
 		return true
 	case ChannelV1_4_3:
@@ -81,6 +89,12 @@ func (cp *ChannelProvider) HasCapability(capability string) bool {
 	default:
 		return false
 	}
+}
+
+// PactwayHybridCertificateV1 reports whether this channel requires hybrid
+// enrollment certificates and application signatures for every Fabric MSP.
+func (cp *ChannelProvider) PactwayHybridCertificateV1() bool {
+	return cp.pactwayHybridCertificateV1
 }
 
 // MSPVersion returns the level of MSP support required by this channel.

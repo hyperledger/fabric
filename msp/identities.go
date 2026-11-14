@@ -181,7 +181,14 @@ func NewSerializedIdentity(mspID string, certPEM []byte) ([]byte, error) {
 // to determine whether this identity produced the
 // signature; it returns nil if so or an error otherwise
 func (id *identity) Verify(msg []byte, sig []byte) error {
-	// mspIdentityLogger.Infof("Verifying signature")
+	if id.msp.hybridRequired {
+		if err := id.Validate(); err != nil {
+			return errors.WithMessage(err, "validating PQ-required signing identity")
+		}
+		if id.qPk == nil {
+			return errors.New("PQ-required MSP identity has no ML-DSA-65 public key")
+		}
+	}
 
 	digestOrMsg := msg
 
@@ -326,7 +333,14 @@ func newSigningIdentity(cert *x509.Certificate, pk bccsp.Key, qPk bccsp.Key, sig
 
 // Sign produces a signature over msg, signed by this instance
 func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
-	// mspIdentityLogger.Infof("Signing message")
+	if id.msp.hybridRequired {
+		if err := id.Validate(); err != nil {
+			return nil, errors.WithMessage(err, "validating PQ-required local signing identity")
+		}
+		if id.qPk == nil {
+			return nil, errors.New("PQ-required MSP signing identity has no ML-DSA-65 private key")
+		}
+	}
 
 	digestOrMsg := msg
 

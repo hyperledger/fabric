@@ -97,6 +97,7 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup, bccsp bccsp.BCCSP) (*Channel
 	}
 
 	mspConfigHandler := NewMSPConfigHandler(channelCapabilities.MSPVersion(), bccsp)
+	mspConfigHandler.hybridRequired = channelCapabilities.PactwayHybridCertificateV1()
 
 	var err error
 	for groupName, group := range channelGroup.GetGroups() {
@@ -168,6 +169,20 @@ func (cc *ChannelConfig) Capabilities() ChannelCapabilities {
 	_ = cc.protos.Capabilities
 	_ = cc.protos.Capabilities.GetCapabilities()
 	return capabilities.NewChannelProvider(cc.protos.Capabilities.GetCapabilities())
+}
+
+func (cc *ChannelConfig) hasPactwayHybridCertificateV1() bool {
+	return cc != nil &&
+		cc.protos != nil &&
+		cc.protos.Capabilities != nil &&
+		cc.Capabilities().PactwayHybridCertificateV1()
+}
+
+func hasPactwayHybridCertificateV1(channel Channel) bool {
+	if channelConfig, ok := channel.(*ChannelConfig); ok {
+		return channelConfig.hasPactwayHybridCertificateV1()
+	}
+	return channel != nil && channel.Capabilities().PactwayHybridCertificateV1()
 }
 
 // Validate inspects the generated configuration protos and ensures that the values are correct

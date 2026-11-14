@@ -82,7 +82,7 @@ func (msp *bccspmsp) validateTLSCAIdentity(cert *x509.Certificate, opts *x509.Ve
 		return errors.New("Only CA identities can be validated")
 	}
 
-	validationChain, err := msp.getUniqueValidationChain(cert, *opts)
+	validationChain, err := msp.getUniqueValidationChainWithHybridRequirement(cert, *opts, false)
 	if err != nil {
 		return errors.WithMessage(err, "could not obtain certification chain")
 	}

@@ -87,6 +87,10 @@ type bccspmsp struct {
 
 	// the provider identifier for this MSP
 	name string
+	// hybridRequired is selected by local MSP configuration or the authenticated channel capability.
+	hybridRequired            bool
+	localHybridSignerRequired bool
+	hybridProfile             *oqs.HybridCertificateProfile
 
 	// verification options for MSP members
 	opts *x509.VerifyOptions
@@ -208,20 +212,9 @@ func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (mspId Identity, pK bcc
 		return nil, nil, nil, err
 	}
 
-	// also attempt to get an alternate (aka, post-quantum) key
-	// If not present, this will return nil with no error.
-	certQPubK, err := msp.bccsp.KeyImport(cert, &bccsp.X509AltPublicKeyImportOpts{Temporary: true})
+	certQPubK, err := msp.importCertificateQuantumKey(cert)
 	if err != nil {
-		// Enforce strict behavior for hybrid certificates: if an alternate key extension
-		// is present but cannot be imported, fail fast instead of silently downgrading.
-		altPub, parseErr := oqs.ParseSubjectAltPublicKeyInfoExtension(cert.Extensions)
-		if parseErr != nil {
-			return nil, nil, nil, errors.WithMessage(parseErr, "failed to parse certificate alternate public key extension")
-		}
-		if altPub != nil {
-			return nil, nil, nil, errors.WithMessage(err, "found an alternate public key but failed to import it")
-		}
-		certQPubK = nil
+		return nil, nil, nil, err
 	}
 	if certQPubK != nil {
 		mspLogger.Debug("Successfully imported quantum-safe public key from certificate")
@@ -265,12 +258,27 @@ func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *m.SigningIdentityInfo) 
 		}
 	}
 
+	if msp.hybridRequired && qPubKey == nil {
+		return nil, errors.New("PQ-required MSP signing identity has no Pactway Hybrid Certificate v1 key")
+	}
+
 	// If a quantum-safe public key was provided, extract the private key information and create a hybrid signer.
 	var qPrivKey bccsp.Key = nil
 	if qPubKey != nil {
 		qPrivKey, err = msp.bccsp.GetKey(qPubKey.SKI())
 		if err != nil {
-			return nil, err
+			if msp.hybridRequired {
+				return nil, errors.WithMessage(err, "PQ-required MSP signing identity has no matching ML-DSA-65 private key")
+			}
+			qPrivKey = nil
+		}
+		if qPrivKey != nil {
+			if err := msp.proveSigningKeyPair(pubKey, privKey, qPubKey, qPrivKey); err != nil {
+				if msp.hybridRequired {
+					return nil, errors.WithMessage(err, "PQ-required MSP signing identity key-possession check failed")
+				}
+				mspLogger.Warnf("Optional hybrid signing key-possession check failed: %s", err)
+			}
 		}
 	}
 	if qPrivKey != nil {
@@ -300,13 +308,117 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	if err != nil {
 		return errors.Wrap(err, "failed unmarshalling fabric msp config")
 	}
+	localHybridRequired, err := hybridRequiredFromConfig(conf)
+	if err != nil {
+		return errors.Wrap(err, "invalid Pactway hybrid MSP policy")
+	}
+	if localHybridRequired {
+		msp.localHybridSignerRequired = true
+		if err := msp.SetHybridRequired(true); err != nil {
+			return err
+		}
+	}
 
 	// set the name for this msp
 	msp.name = conf.GetName()
 	mspLogger.Debugf("Setting up MSP instance %s", msp.name)
 
 	// setup
-	return msp.internalSetupFunc(conf)
+	if err := msp.internalSetupFunc(conf); err != nil {
+		return err
+	}
+	if msp.localHybridSignerRequired && msp.signer == nil {
+		return errors.New("PQ-required local MSP must configure a hybrid signing identity")
+	}
+	return nil
+}
+
+// SetHybridRequired enables fail-closed hybrid certificate and signature
+// validation for identities belonging to an authenticated PQ-required channel.
+func (msp *bccspmsp) SetHybridRequired(required bool) error {
+	if !required {
+		if msp.hybridRequired {
+			return errors.New("PQ-required MSP policy cannot be weakened")
+		}
+		return nil
+	}
+	profile, err := oqs.HybridCertificateProfileFromEnvironment()
+	if err != nil {
+		return errors.WithMessage(err, "selecting the hybrid certificate profile")
+	}
+	if msp.hybridProfile != nil && msp.hybridProfile.Name() != profile.Name() {
+		return errors.New("hybrid certificate profile selection cannot be changed after MSP setup")
+	}
+	msp.hybridProfile = &profile
+	msp.hybridRequired = true
+	return nil
+}
+
+func (msp *bccspmsp) selectedHybridProfile() (oqs.HybridCertificateProfile, error) {
+	if msp.hybridProfile != nil {
+		return *msp.hybridProfile, nil
+	}
+	return oqs.HybridCertificateProfileFromEnvironment()
+}
+
+func (msp *bccspmsp) importCertificateQuantumKey(cert *x509.Certificate) (bccsp.Key, error) {
+	if msp.hybridRequired || oqs.HasRegisteredHybridCertificateExtensions(cert.Extensions) {
+		profile, err := msp.selectedHybridProfile()
+		if err != nil {
+			return nil, errors.WithMessage(err, "selecting certificate profile")
+		}
+		if oqs.HasLegacyHybridExtensions(cert.Extensions) {
+			return nil, errors.New("certificate combines Pactway and legacy alternate-key extensions")
+		}
+		info, found, err := oqs.ParseHybridCertificate(cert, profile)
+		if err != nil {
+			return nil, errors.WithMessage(err, "invalid Pactway Hybrid Certificate v1")
+		}
+		if !found {
+			if msp.hybridRequired {
+				return nil, errors.New("PQ-required MSP identity is missing Pactway Hybrid Certificate v1 credentials")
+			}
+			return nil, nil
+		}
+		key, err := msp.bccsp.KeyImport(&info.SubjectPublicKey, &bccsp.OQSGoPublicKeyImportOpts{Temporary: true})
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed importing Pactway ML-DSA-65 public key")
+		}
+		return key, nil
+	}
+	if msp.hybridRequired {
+		return nil, errors.New("PQ-required MSP identity is missing Pactway Hybrid Certificate v1 credentials")
+	}
+	return msp.bccsp.KeyImport(cert, &bccsp.X509AltPublicKeyImportOpts{Temporary: true})
+}
+
+func (msp *bccspmsp) proveSigningKeyPair(
+	classicalPublic, classicalPrivate, quantumPublic, quantumPrivate bccsp.Key,
+) error {
+	challenge := []byte("Pactway-Hybrid-MSP-local-key-check-v1")
+	classicalSignature, err := msp.bccsp.Sign(classicalPrivate, challenge, nil)
+	if err != nil {
+		return errors.WithMessage(err, "signing local classical key-possession challenge")
+	}
+	valid, err := msp.bccsp.Verify(classicalPublic, classicalSignature, challenge, nil)
+	if err != nil {
+		return errors.WithMessage(err, "verifying local classical key-possession challenge")
+	}
+	if !valid {
+		return errors.New("local classical signing key does not match the certificate")
+	}
+	quantumSignature, err := msp.bccsp.Sign(quantumPrivate, challenge, nil)
+	if err != nil {
+		return errors.WithMessage(err, "signing local ML-DSA-65 key-possession challenge")
+	}
+	valid, err = msp.bccsp.Verify(quantumPublic, quantumSignature, challenge, nil)
+	if err != nil {
+		return errors.WithMessage(err, "verifying local ML-DSA-65 key-possession challenge")
+	}
+	if !valid {
+		return errors.New("local ML-DSA-65 signing key does not match the certificate")
+	}
+	return nil
 }
 
 // GetVersion returns the version of this MSP
@@ -458,20 +570,9 @@ func (msp *bccspmsp) deserializeIdentityInternal(serializedIdentity []byte) (Ide
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to import certificate's public key")
 	}
-	// Attempt to import an alternate quantum-safe key
-	// If this is a classical (non-hybrid) cert, this will return a nil key without error.
-	qPub, err := msp.bccsp.KeyImport(cert, &bccsp.X509AltPublicKeyImportOpts{Temporary: true})
+	qPub, err := msp.importCertificateQuantumKey(cert)
 	if err != nil {
-		altPub, parseErr := oqs.ParseSubjectAltPublicKeyInfoExtension(cert.Extensions)
-		if parseErr != nil {
-			return nil, errors.WithMessage(parseErr, "failed to parse certificate alternate public key extension")
-		}
-		if altPub != nil {
-			return nil, errors.WithMessage(err, "found an alternate public key but failed to import it")
-		}
-
-		// Classical certificate without alternate key extension.
-		qPub = nil
+		return nil, err
 	}
 	if qPub != nil {
 		mspLogger.Debug("Successfully imported quantum-safe public key after deserialization.")
@@ -774,6 +875,14 @@ func (msp *bccspmsp) getCertificationChainForBCCSPIdentity(id *identity) ([]*x50
 }
 
 func (msp *bccspmsp) getUniqueValidationChain(cert *x509.Certificate, opts x509.VerifyOptions) ([]*x509.Certificate, error) {
+	return msp.getUniqueValidationChainWithHybridRequirement(cert, opts, msp.hybridRequired)
+}
+
+func (msp *bccspmsp) getUniqueValidationChainWithHybridRequirement(
+	cert *x509.Certificate,
+	opts x509.VerifyOptions,
+	hybridRequired bool,
+) ([]*x509.Certificate, error) {
 	// ask golang to validate the cert for us based on the options that we've built at setup time
 	if msp.opts == nil {
 		return nil, errors.New("the supplied identity has no verify options")
@@ -796,13 +905,24 @@ func (msp *bccspmsp) getUniqueValidationChain(cert *x509.Certificate, opts x509.
 		return nil, errors.WithMessage(err, "the supplied identity is not valid")
 	}
 
-	// In addition, check that the validation chain has quantum-safe signatures, where required.
-	// Ideally, this would happen in the core x509 library (cert.Verify, above), but instead we run it in the
-	// local x509 library for post-quantum crypto, external_crypto (oqs.Validate())
-	// If the root CA does not have a post-quantum key extension, this Validation will return immediately without error.
-	err = oqs.Validate(validationChains[0])
+	containsPactwayProfile := false
+	for _, certificate := range validationChains[0] {
+		if oqs.HasRegisteredHybridCertificateExtensions(certificate.Extensions) {
+			containsPactwayProfile = true
+			break
+		}
+	}
+	if hybridRequired || containsPactwayProfile {
+		profile, profileErr := msp.selectedHybridProfile()
+		if profileErr != nil {
+			return nil, errors.WithMessage(profileErr, "selecting the hybrid certificate profile")
+		}
+		err = oqs.ValidateHybridCertificateChain(validationChains[0], profile, hybridRequired)
+	} else {
+		err = oqs.Validate(validationChains[0])
+	}
 	if err != nil {
-		return nil, errors.WithMessage(err, "the supplied identity does not have a valid post-quantum certificate")
+		return nil, errors.WithMessage(err, "the supplied identity does not have a valid hybrid certificate chain")
 	}
 
 	return validationChains[0], nil

@@ -4,10 +4,10 @@
 
 The implementation migrates the PQ signing wrapper to the Go standard-library
 `crypto/mldsa` API and pins the root module toolchain to Go 1.27.4. This report
-is a work-in-progress validation record: the PQ and MSP after-change tests have
-been reported passing, but the standalone BCCSP test and full Fabric suite have
-not been rerun. Do not treat this branch as release-ready until the remaining
-validation and review are complete.
+records the final PQ1 merge validation and its remaining evidence limits. PQ1
+was merged with no code changes from its reviewed PR head. Do not interpret the
+CI results below as evidence for subsequent PQ2 changes or as coverage of
+standalone nested-module tests.
 
 ## Baseline
 
@@ -22,24 +22,28 @@ validation and review are complete.
 - `make unit-test` was not run because it requires Docker.
 - The temporary BCCSP workspace was removed; module hashes were unchanged.
 
-Post-change commands and outcomes, reported by the user from the WSL feature
-branch checkout:
+Final merged PR evidence:
 
-- `GOTOOLCHAIN=go1.27.4 go test -short ./pq-crypto` — passed (`ok` reported;
-  timing/output details not supplied).
-- `GOTOOLCHAIN=go1.27.4 go test ./msp` — passed (`ok` reported; timing/output
-  details not supplied).
-- `GOTOOLCHAIN=go1.27.4 go test -mod=readonly ./bccsp/sw` — not rerun after the
-  change.
-- `make unit-test` — not run; Docker is unavailable.
-
-The two reported passing commands ran before the follow-up review fixes for
-unsupported ML-DSA parameter sets and the hybrid byte fixture. Rerun
-`GOTOOLCHAIN=go1.27.4 go test -short ./pq-crypto` to validate those additions.
-
-The WSL checkout at `~/fabric-pq` was confirmed to be on `main`, not the feature
-branch. The reported post-change results apply to the feature-branch checkout
-at `/mnt/c/Users/cogdev/source/repos/private/fabric-pq`.
+- PR #3 final head: `7a17b4d0932f4df9ae3ed5829eb082748fed95a9`; it was merged
+  into the pinned base with no code changes.
+- CI run 43332454263 reported success for Basic Checks, `make unit-test`, and
+  all nine `make integration-test INTEGRATION_TEST_SUITE="..."` matrix jobs:
+  `raft`, `pvtdata`, `pvtdatapurge e2e`, `ledger`, `lifecycle`, `smartbft`,
+  `discovery gossip devmode pluggable`, `gateway idemix pkcs11 configtx
+  configtxlator`, and `sbe nwo msp`.
+- The CI unit-test script covers root-module `github.com/hyperledger/fabric/...`
+  packages and excludes integration packages; it does not independently
+  enumerate the nested replacement module's `bccsp/sw` tests.
+- The workflow selects Go using `go-version-file: go.mod`, which declares
+  `go 1.27.3` and `toolchain go1.27.4`. The exact runtime version was not
+  independently verified because job-log retrieval returned HTTP 403.
+- The standalone post-change BCCSP test remains unconfirmed:
+  `go test -mod=readonly ./bccsp/sw` in a temporary workspace joining the root
+  and local `fabric-lib-go` modules was passed on the baseline, but not rerun
+  after PQ1. `make unit-test` did pass in CI; this does not establish that
+  separate nested-module command.
+- These results are the strongest available final PQ1 evidence. They do not
+  remove the standalone BCCSP and exact-toolchain evidence gaps above.
 
 ## Backend assessment
 
@@ -159,17 +163,9 @@ race tests, and performance tests have not been run after the change.
 
 ## PQ2: certificate and MSP modernization
 
-1. Specify a versioned, standards-based hybrid certificate profile, including
-   algorithm identifiers, extension encoding, criticality, and signer/issuer
-   validation requirements. Do not equate RFC 9881 ML-DSA identifiers with
-   standardized hybrid certificates.
-2. Define certificate, private-key, MSP, and trust-anchor migration behavior
-   for existing ledgers and certificates. Explicitly decide whether any
-   legacy verification-only path is required.
-3. Regenerate and validate demonstration CA/MSP identities and genesis
-   artifacts under the approved profile.
-4. Bind signature algorithms and parameters to the profile in certificate
-   validation; test malformed, duplicate, unsupported, downgraded, and mixed
-   classical/PQ chains.
-5. Add independent full ML-DSA verification vectors and end-to-end BCCSP/MSP
-   hybrid regression tests in the supported build environment.
+PQ2 uses a custom, explicitly versioned Pactway hybrid-certificate profile;
+this is not RFC 10073 composite and does not claim RFC compliance. The current
+development profile uses only isolated RFC 5612 test OIDs while Thinkstratum
+Ltd awaits its official IANA PEN. See
+[`docs/pq2/adr-hybrid-identities.md`](../docs/pq2/adr-hybrid-identities.md)
+for the accepted design, policy, compatibility boundary and remaining gates.

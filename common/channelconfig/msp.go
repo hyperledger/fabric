@@ -24,9 +24,10 @@ type pendingMSPConfig struct {
 
 // MSPConfigHandler
 type MSPConfigHandler struct {
-	version msp.MSPVersion
-	idMap   map[string]*pendingMSPConfig
-	bccsp   bccsp.BCCSP
+	version        msp.MSPVersion
+	idMap          map[string]*pendingMSPConfig
+	bccsp          bccsp.BCCSP
+	hybridRequired bool
 }
 
 func NewMSPConfigHandler(mspVersion msp.MSPVersion, bccsp bccsp.BCCSP) *MSPConfigHandler {
@@ -52,6 +53,15 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 		if err != nil {
 			return nil, errors.WithMessage(err, "creating the MSP manager failed")
 		}
+		if bh.hybridRequired {
+			hybridMSP, ok := mspInst.(interface{ SetHybridRequired(bool) error })
+			if !ok {
+				return nil, errors.New("PQ-required channel MSP does not support Pactway hybrid certificates")
+			}
+			if err := hybridMSP.SetHybridRequired(true); err != nil {
+				return nil, errors.WithMessage(err, "configuring PQ-required channel MSP")
+			}
+		}
 
 		// add a cache layer on top
 		theMsp, err = cache.New(mspInst)
@@ -59,6 +69,9 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 			return nil, errors.WithMessage(err, "creating the MSP cache failed")
 		}
 	case int32(msp.IDEMIX):
+		if bh.hybridRequired {
+			return nil, errors.New("PQ-required channel does not permit an Idemix MSP")
+		}
 		// create the idemix msp instance
 		theMsp, err = msp.New(
 			&msp.IdemixNewOpts{Version: bh.version},

@@ -12,7 +12,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"slices"
 
 	"github.com/pkg/errors"
 )
@@ -267,7 +266,22 @@ func parseAltSignatureValueExtension(extensions []pkix.Extension) ([]byte, error
 	return sig, nil
 }
 
+func HasLegacyHybridExtensions(extensions []pkix.Extension) bool {
+	for _, extension := range extensions {
+		if extension.Id.Equal(oidSubjectAltPublicKeyInfo) ||
+			extension.Id.Equal(oidAltSignatureAlgorithm) ||
+			extension.Id.Equal(oidAltSignatureValue) {
+			return true
+		}
+	}
+	return false
+}
+
 func Validate(validationChain []*x509.Certificate) error {
+	if len(validationChain) == 0 {
+		return errors.New("post-quantum validation chain is empty")
+	}
+
 	// Check the validation chain for post-quantum validation.
 	// If the rootCA has no post-quantum key material, return immediately: no additional validation needed.
 	rootCert := validationChain[len(validationChain)-1]
@@ -283,8 +297,20 @@ func Validate(validationChain []*x509.Certificate) error {
 	// with a valid post-quantum signature from the parent cert matching the cert's key material
 	// The leaf cert IS permitted to have classical-only key material, but all other certs must have
 	// a SubjectAltPublicKeyInfo extension.
-	parentPk := rootPk
-	for i, cert := range slices.Backward(validationChain) {
+	for i := len(validationChain) - 1; i >= 0; i-- {
+		cert := validationChain[i]
+		issuerIndex := i + 1
+		if issuerIndex == len(validationChain) {
+			issuerIndex = i
+		}
+		issuerPk, err := ParseSubjectAltPublicKeyInfoExtension(validationChain[issuerIndex].Extensions)
+		if err != nil {
+			return err
+		}
+		if issuerPk == nil {
+			return errors.Errorf("Found no post-quantum key in issuer cert at index %d on a quantum-safe validation chain", issuerIndex)
+		}
+
 		pk, err := ParseSubjectAltPublicKeyInfoExtension(cert.Extensions)
 		if err != nil {
 			return err
@@ -308,7 +334,7 @@ func Validate(validationChain []*x509.Certificate) error {
 		if err != nil {
 			return err
 		}
-		isValid, err := Verify(*parentPk, sig, km)
+		isValid, err := Verify(*issuerPk, sig, km)
 		if err != nil {
 			return err
 		}

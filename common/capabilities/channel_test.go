@@ -120,6 +120,14 @@ func TestChannelV30(t *testing.T) {
 	require.True(t, cp.ConsensusTypeBFT())
 }
 
+func TestPactwayHybridCertificateV1(t *testing.T) {
+	cp := NewChannelProvider(map[string]*cb.Capability{
+		PactwayHybridCertificateV1: {},
+	})
+	require.NoError(t, cp.Supported())
+	require.True(t, cp.PactwayHybridCertificateV1())
+}
+
 func TestChannelNotSupported(t *testing.T) {
 	cp := NewChannelProvider(map[string]*cb.Capability{
 		ChannelV1_1:           {},

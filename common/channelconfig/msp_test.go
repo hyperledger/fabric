@@ -14,6 +14,7 @@ import (
 	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/msp"
+	oqs "github.com/hyperledger/fabric/pq-crypto"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,4 +65,27 @@ func TestMSPConfigFailure(t *testing.T) {
 		_, err := mspCH.ProposeMSP(&mspprotos.MSPConfig{Type: int32(10)})
 		require.Error(t, err)
 	})
+}
+
+func TestPQRequiredChannelRejectsIdemixMSP(t *testing.T) {
+	mspCH := NewMSPConfigHandler(msp.MSPv1_0, factory.GetDefault())
+	mspCH.hybridRequired = true
+
+	_, err := mspCH.ProposeMSP(&mspprotos.MSPConfig{Type: int32(msp.IDEMIX)})
+	require.ErrorContains(t, err, "PQ-required channel does not permit an Idemix MSP")
+}
+
+func TestPQRequiredChannelRejectsClassicalOnlyMSP(t *testing.T) {
+	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
+	mspConfig, err := msp.GetVerifyingMspConfig(
+		configtest.GetDevMspDir(),
+		"SampleOrg",
+		msp.ProviderTypeToString(msp.FABRIC),
+	)
+	require.NoError(t, err)
+
+	mspCH := NewMSPConfigHandler(msp.MSPv1_0, factory.GetDefault())
+	mspCH.hybridRequired = true
+	_, err = mspCH.ProposeMSP(mspConfig)
+	require.ErrorContains(t, err, "Pactway Hybrid Certificate v1")
 }

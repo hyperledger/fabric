@@ -232,6 +232,10 @@ func derToPrivateKey(der []byte) (key interface{}, err error) {
 		return key, nil
 	}
 
+	if key, err = oqspkg.ParsePKIXPrivateKey(der); err == nil {
+		return key, nil
+	}
+
 	if key, err = x509.ParsePKCS8PrivateKey(der); err == nil {
 		switch key.(type) {
 		case *ecdsa.PrivateKey:
@@ -244,10 +248,6 @@ func derToPrivateKey(der []byte) (key interface{}, err error) {
 	}
 
 	if key, err = x509.ParseECPrivateKey(der); err == nil {
-		return
-	}
-
-	if key, err = oqspkg.ParsePKIXPrivateKey(der); err == nil {
 		return
 	}
 
