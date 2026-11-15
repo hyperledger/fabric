@@ -127,6 +127,16 @@ func TestGenerateThreeOrganizationHybridDemo(t *testing.T) {
 	require.Len(t, channelGroup.GetGroups()[channelconfig.OrdererGroupKey].GetGroups(), 1)
 	require.Len(t, channelGroup.GetGroups()[channelconfig.ApplicationGroupKey].GetGroups(), 2)
 
+	unsupportedVersionConfig := proto.Clone(configEnvelope.GetConfig()).(*cb.Config)
+	unsupportedCapabilities, err := proto.Marshal(&cb.Capabilities{Capabilities: map[string]*cb.Capability{
+		capabilities.ChannelV1_4_2:              {},
+		capabilities.PactwayHybridCertificateV1: {},
+	}})
+	require.NoError(t, err)
+	unsupportedVersionConfig.GetChannelGroup().GetValues()[channelconfig.CapabilitiesKey].Value = unsupportedCapabilities
+	_, err = channelconfig.NewBundle("pactway-test-channel", unsupportedVersionConfig, channelConfigCryptoProvider)
+	require.ErrorContains(t, err, "requires channel capability V1_4_3")
+
 	retainedCapabilityConfig := proto.Clone(configEnvelope.GetConfig()).(*cb.Config)
 	applicationGroup := retainedCapabilityConfig.GetChannelGroup().GetGroups()[channelconfig.ApplicationGroupKey]
 	applicationCapabilities := &cb.Capabilities{}

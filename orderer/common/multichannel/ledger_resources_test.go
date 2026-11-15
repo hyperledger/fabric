@@ -99,7 +99,7 @@ func TestHybridCapabilityActivationStopsIncompatibleOrderer(t *testing.T) {
 	clear(group.GetGroups()[channelconfig.ApplicationGroupKey].GetGroups())
 	delete(group.GetGroups(), channelconfig.ConsortiumsGroupKey)
 	caps := &common.Capabilities{Capabilities: map[string]*common.Capability{
-		capabilities.ChannelV1_4_2:              {},
+		capabilities.ChannelV1_4_3:              {},
 		capabilities.PactwayHybridCertificateV1: {},
 	}}
 	capBytes, err := proto.Marshal(caps)

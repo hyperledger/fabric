@@ -187,6 +187,10 @@ func hasPactwayHybridCertificateV1(channel Channel) bool {
 
 // Validate inspects the generated configuration protos and ensures that the values are correct
 func (cc *ChannelConfig) Validate(channelCapabilities ChannelCapabilities) error {
+	if channelCapabilities.PactwayHybridCertificateV1() && channelCapabilities.MSPVersion() < msp.MSPv1_4_3 {
+		return errors.New("Pactway Hybrid Certificate v1 requires channel capability V1_4_3, V2_0, or V3_0 for orderer principals")
+	}
+
 	for _, validator := range []func() error{
 		cc.validateHashingAlgorithm,
 		cc.validateBlockDataHashingStructure,
