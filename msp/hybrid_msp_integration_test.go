@@ -111,7 +111,7 @@ func TestHybridRequiredRejectsClassicalLocalSignerAndLegacyExtensions(t *testing
 	require.NoError(t, err)
 	localMSP := instance.(*bccspmsp)
 	localSigner := &signingidentity{}
-	localSigner.identity.msp = localMSP
+	localSigner.msp = localMSP
 	localMSP.signer = localSigner
 	require.ErrorContains(
 		t, localSigner.ValidateHybrid(),
