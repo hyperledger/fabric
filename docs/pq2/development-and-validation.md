@@ -65,9 +65,12 @@ expiry enforcement has been validated.
 For PQ-required channels, peer and orderer signer checks now additionally
 require membership in the respective channel organization group and the
 corresponding MSP peer or orderer principal. This requires NodeOU role
-classification; a valid client identity is not a node signer. The hybrid
-channel capability also requires channel capability `V1_4_3`, `V2_0`, or
-`V3_0`, which enables the MSP's orderer principal.
+classification; a valid client identity is not a node signer. Every PQ-required
+channel MSP must enable NodeOUs, define non-empty peer and orderer roles, and
+use distinct identifiers for configured NodeOU roles. Missing or ambiguous
+roles are rejected while constructing the config bundle. The hybrid channel
+capability also requires channel capability `V1_4_3`, `V2_0`, or `V3_0`, which
+enables the MSP's orderer principal.
 
 ## PQ2 validation record
 
