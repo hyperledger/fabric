@@ -268,7 +268,7 @@ func TestHybridCertificateV1RejectsMalformedAndDuplicateExtensions(t *testing.T)
 	require.ErrorContains(t, err, "unsupported hybrid certificate profile version")
 
 	tbsDER := root.RawTBSCertificate
-	require.True(t, len(tbsDER) > 4)
+	require.Greater(t, len(tbsDER), 4)
 	require.Equal(t, byte(0x82), tbsDER[1])
 	nonMinimalTBS := append([]byte{0x30, 0x83, 0x00}, tbsDER[2:]...)
 	_, err = removeHybridSignatureExtension(nonMinimalTBS, profile.pqSignatureOID)

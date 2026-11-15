@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"slices"
 
 	"github.com/pkg/errors"
 )
@@ -297,8 +298,7 @@ func Validate(validationChain []*x509.Certificate) error {
 	// with a valid post-quantum signature from the parent cert matching the cert's key material
 	// The leaf cert IS permitted to have classical-only key material, but all other certs must have
 	// a SubjectAltPublicKeyInfo extension.
-	for i := len(validationChain) - 1; i >= 0; i-- {
-		cert := validationChain[i]
+	for i, cert := range slices.Backward(validationChain) {
 		issuerIndex := i + 1
 		if issuerIndex == len(validationChain) {
 			issuerIndex = i

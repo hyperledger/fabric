@@ -52,7 +52,7 @@ func TestGenerateThreeOrganizationHybridDemo(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, block.GetData().GetData(), 1)
 
-	envelope, err := protoutil.UnmarshalEnvelope(block.Data.Data[0])
+	envelope, err := protoutil.UnmarshalEnvelope(block.GetData().GetData()[0])
 	require.NoError(t, err)
 	channelConfigCryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
@@ -60,25 +60,28 @@ func TestGenerateThreeOrganizationHybridDemo(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, bundle.ChannelConfig().Capabilities().PactwayHybridCertificateV1())
 
-	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+	payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
 	require.NoError(t, err)
-	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.GetData())
 	require.NoError(t, err)
-	channelGroup := configEnvelope.Config.ChannelGroup
+	channelGroup := configEnvelope.GetConfig().GetChannelGroup()
 	channelCapabilities := &cb.Capabilities{}
-	require.NoError(t, proto.Unmarshal(channelGroup.Values[channelconfig.CapabilitiesKey].Value, channelCapabilities))
-	require.Contains(t, channelCapabilities.Capabilities, capabilities.PactwayHybridCertificateV1)
-	require.Len(t, channelGroup.Groups[channelconfig.OrdererGroupKey].Groups, 1)
-	require.Len(t, channelGroup.Groups[channelconfig.ApplicationGroupKey].Groups, 2)
+	require.NoError(t, proto.Unmarshal(
+		channelGroup.GetValues()[channelconfig.CapabilitiesKey].GetValue(),
+		channelCapabilities,
+	))
+	require.Contains(t, channelCapabilities.GetCapabilities(), capabilities.PactwayHybridCertificateV1)
+	require.Len(t, channelGroup.GetGroups()[channelconfig.OrdererGroupKey].GetGroups(), 1)
+	require.Len(t, channelGroup.GetGroups()[channelconfig.ApplicationGroupKey].GetGroups(), 2)
 
-	retainedCapabilityConfig := proto.Clone(configEnvelope.Config).(*cb.Config)
-	applicationGroup := retainedCapabilityConfig.ChannelGroup.Groups[channelconfig.ApplicationGroupKey]
+	retainedCapabilityConfig := proto.Clone(configEnvelope.GetConfig()).(*cb.Config)
+	applicationGroup := retainedCapabilityConfig.GetChannelGroup().GetGroups()[channelconfig.ApplicationGroupKey]
 	applicationCapabilities := &cb.Capabilities{}
 	require.NoError(t, proto.Unmarshal(
-		applicationGroup.Values[channelconfig.CapabilitiesKey].Value,
+		applicationGroup.GetValues()[channelconfig.CapabilitiesKey].GetValue(),
 		applicationCapabilities,
 	))
-	if applicationCapabilities.Capabilities == nil {
+	if applicationCapabilities.GetCapabilities() == nil {
 		applicationCapabilities.Capabilities = make(map[string]*cb.Capability)
 	}
 	applicationCapabilities.Capabilities["V2_0"] = &cb.Capability{}
@@ -91,14 +94,14 @@ func TestGenerateThreeOrganizationHybridDemo(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, bundle.ValidateNew(retainedCapabilityBundle))
 
-	removedCapabilityConfig := proto.Clone(configEnvelope.Config).(*cb.Config)
+	removedCapabilityConfig := proto.Clone(configEnvelope.GetConfig()).(*cb.Config)
 	removedChannelCapabilities := &cb.Capabilities{}
-	channelValues := removedCapabilityConfig.ChannelGroup.Values
+	channelValues := removedCapabilityConfig.GetChannelGroup().GetValues()
 	require.NoError(t, proto.Unmarshal(
-		channelValues[channelconfig.CapabilitiesKey].Value,
+		channelValues[channelconfig.CapabilitiesKey].GetValue(),
 		removedChannelCapabilities,
 	))
-	delete(removedChannelCapabilities.Capabilities, capabilities.PactwayHybridCertificateV1)
+	delete(removedChannelCapabilities.GetCapabilities(), capabilities.PactwayHybridCertificateV1)
 	removedChannelCapabilitiesBytes, err := proto.Marshal(removedChannelCapabilities)
 	require.NoError(t, err)
 	channelValues[channelconfig.CapabilitiesKey].Value = removedChannelCapabilitiesBytes

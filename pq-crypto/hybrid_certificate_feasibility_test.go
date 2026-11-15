@@ -251,7 +251,7 @@ func requireCoveredTBSMutationsFail(
 		require.NoError(t, err)
 		require.Empty(t, rest)
 		valid, err := Verify(issuerPQ, signature.Bytes, feasibilitySignedInput(mutated))
-		require.Error(t, err, "modified TBSCertificate field %d verified", index)
+		require.Errorf(t, err, "modified TBSCertificate field %d verified", index)
 		require.False(t, valid)
 	}
 }
@@ -398,8 +398,9 @@ func feasibilityDERWrap(tag byte, content []byte) []byte {
 func feasibilityECDSAKey(d int64) *ecdsa.PrivateKey {
 	scalar := big.NewInt(d)
 	x, y := elliptic.P256().ScalarBaseMult(scalar.Bytes())
+	publicKey := ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y}
 	return &ecdsa.PrivateKey{
-		PublicKey: ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y},
+		PublicKey: publicKey,
 		D:         scalar,
 	}
 }
@@ -409,11 +410,12 @@ func feasibilityMLDSAKey(t *testing.T, seedByte byte) SecretKey {
 	seed := bytes.Repeat([]byte{seedByte}, 32)
 	privateKey, err := mldsa.NewPrivateKey(mldsa.MLDSA65(), seed)
 	require.NoError(t, err)
+	publicKey := PublicKey{
+		Pk:  privateKey.PublicKey().Bytes(),
+		Sig: OQSSigInfo{Algorithm: MLDSA65ProfileV1},
+	}
 	return SecretKey{
-		Sk: privateKey.Bytes(),
-		PublicKey: PublicKey{
-			Pk:  privateKey.PublicKey().Bytes(),
-			Sig: OQSSigInfo{Algorithm: MLDSA65ProfileV1},
-		},
+		Sk:        privateKey.Bytes(),
+		PublicKey: publicKey,
 	}
 }
