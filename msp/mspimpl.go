@@ -15,6 +15,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
@@ -481,6 +482,12 @@ func (msp *bccspmsp) Validate(id Identity) error {
 	// this is how I can validate it given the
 	// root of trust this MSP has
 	case *identity:
+		if id.validationTime != nil {
+			return msp.validateIdentityAt(id, *id.validationTime)
+		}
+		if msp.hybridRequired || id.qPk != nil {
+			return msp.validateIdentityAt(id, time.Now())
+		}
 		return msp.validateIdentity(id)
 	default:
 		return errors.New("identity type not recognized")
@@ -884,6 +891,20 @@ func (msp *bccspmsp) getCertificationChainForBCCSPIdentity(id *identity) ([]*x50
 	return msp.getValidationChain(id.cert, false)
 }
 
+func (msp *bccspmsp) getCertificationChainForBCCSPIdentityAt(id *identity, validationTime time.Time) ([]*x509.Certificate, error) {
+	if id == nil {
+		return nil, errors.New("Invalid bccsp identity. Must be different from nil.")
+	}
+	if msp.opts == nil {
+		return nil, errors.New("Invalid msp instance")
+	}
+	if id.cert.IsCA {
+		return nil, errors.New("An X.509 certificate with Basic Constraint: Certificate Authority equals true cannot be used as an identity")
+	}
+
+	return msp.getValidationChainAt(id.cert, false, validationTime)
+}
+
 func (msp *bccspmsp) getUniqueValidationChain(cert *x509.Certificate, opts x509.VerifyOptions) ([]*x509.Certificate, error) {
 	return msp.getUniqueValidationChainWithHybridRequirement(cert, opts, msp.hybridRequired)
 }
@@ -1056,6 +1077,28 @@ func (msp *bccspmsp) getValidationChain(cert *x509.Certificate, isIntermediateCh
 
 	// check that the parent is a leaf of the certification tree
 	// if validating an intermediate chain, the first certificate will the parent
+	parentPosition := 1
+	if isIntermediateChain {
+		parentPosition = 0
+	}
+	if msp.certificationTreeInternalNodesMap[string(validationChain[parentPosition].Raw)] {
+		return nil, errors.Errorf("invalid validation chain. Parent certificate should be a leaf of the certification tree [%v]", cert.Raw)
+	}
+	return validationChain, nil
+}
+
+func (msp *bccspmsp) getValidationChainAt(cert *x509.Certificate, isIntermediateChain bool, validationTime time.Time) ([]*x509.Certificate, error) {
+	validationChain, err := msp.getUniqueValidationChain(
+		cert,
+		msp.getValidityOptsForCertAt(cert, validationTime),
+	)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed getting validation chain")
+	}
+	if len(validationChain) < 2 {
+		return nil, errors.Errorf("expected a chain of length at least 2, got %d", len(validationChain))
+	}
+
 	parentPosition := 1
 	if isIntermediateChain {
 		parentPosition = 0

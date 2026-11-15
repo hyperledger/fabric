@@ -7,8 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package statebased
 
 import (
+	"bytes"
 	errors2 "errors"
 	"sync"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
@@ -172,9 +174,11 @@ type RWSetPolicyEvaluator interface {
 /**********************************************************************************************************/
 
 type blockDependency struct {
-	mutex     sync.Mutex
-	blockNum  uint64
-	txDepOnce []sync.Once
+	mutex             sync.Mutex
+	blockNum          uint64
+	blockDataHash     []byte
+	txDepOnce         []sync.Once
+	txValidationTimes []time.Time
 }
 
 // KeyLevelValidator implements per-key level ep validation
@@ -234,10 +238,13 @@ func (klv *KeyLevelValidator) extractDependenciesForTx(blockNum, txNum uint64, e
 
 // PreValidate implements the function of the StateBasedValidator interface
 func (klv *KeyLevelValidator) PreValidate(txNum uint64, block *common.Block) {
+	blockDataHash := protoutil.ComputeBlockDataHash(block.GetData())
 	klv.blockDep.mutex.Lock()
-	if klv.blockDep.blockNum != block.GetHeader().GetNumber() {
+	if klv.blockDep.blockNum != block.GetHeader().GetNumber() || !bytes.Equal(klv.blockDep.blockDataHash, blockDataHash) {
 		klv.blockDep.blockNum = block.GetHeader().GetNumber()
+		klv.blockDep.blockDataHash = append(klv.blockDep.blockDataHash[:0], blockDataHash...)
 		klv.blockDep.txDepOnce = make([]sync.Once, len(block.GetData().GetData()))
+		klv.blockDep.txValidationTimes = make([]time.Time, len(block.GetData().GetData()))
 	}
 	klv.blockDep.mutex.Unlock()
 
@@ -247,13 +254,41 @@ func (klv *KeyLevelValidator) PreValidate(txNum uint64, block *common.Block) {
 		klv.blockDep.txDepOnce[i].Do(
 			func() {
 				klv.extractDependenciesForTx(block.GetHeader().GetNumber(), txPosition, block.GetData().GetData()[txPosition])
+				klv.extractValidationTimeForTx(block.GetHeader().GetNumber(), blockDataHash, txPosition, block.GetData().GetData()[txPosition])
 			},
 		)
 	}
 }
 
+func (klv *KeyLevelValidator) extractValidationTimeForTx(blockNum uint64, blockDataHash []byte, txNum uint64, envelopeBytes []byte) {
+	validationTime := time.Time{}
+	env, err := protoutil.GetEnvelopeFromBlock(envelopeBytes)
+	if err == nil {
+		payload, payloadErr := protoutil.UnmarshalPayload(env.GetPayload())
+		if payloadErr == nil {
+			chdr, headerErr := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
+			if headerErr == nil {
+				validationTime = *protoutil.ChannelHeaderValidationTime(chdr)
+			}
+		}
+	}
+
+	klv.blockDep.mutex.Lock()
+	defer klv.blockDep.mutex.Unlock()
+	if klv.blockDep.blockNum == blockNum && bytes.Equal(klv.blockDep.blockDataHash, blockDataHash) && txNum < uint64(len(klv.blockDep.txValidationTimes)) {
+		klv.blockDep.txValidationTimes[txNum] = validationTime
+	}
+}
+
 // Validate implements the function of the StateBasedValidator interface
 func (klv *KeyLevelValidator) Validate(cc string, blockNum, txNum uint64, rwsetBytes, prp, ccEP []byte, endorsements []*peer.Endorsement) commonerrors.TxValidationError {
+	validationTime := time.Time{}
+	klv.blockDep.mutex.Lock()
+	if klv.blockDep.blockNum == blockNum && txNum < uint64(len(klv.blockDep.txValidationTimes)) {
+		validationTime = klv.blockDep.txValidationTimes[txNum]
+	}
+	klv.blockDep.mutex.Unlock()
+
 	// construct signature set
 	signatureSet := []*protoutil.SignedData{}
 	for _, endorsement := range endorsements {
@@ -267,7 +302,8 @@ func (klv *KeyLevelValidator) Validate(cc string, blockNum, txNum uint64, rwsetB
 			// set the identity that signs the message: it's the endorser
 			Identity: endorsement.GetEndorser(),
 			// set the signature
-			Signature: endorsement.GetSignature(),
+			Signature:      endorsement.GetSignature(),
+			ValidationTime: &validationTime,
 		})
 	}
 

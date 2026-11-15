@@ -48,18 +48,17 @@ quantum-resistant network security.
   against the new config. Replacement signer material must be prepared before
   the update. Direct replacement still needs multi-node config-update,
   restart/replay and failure-injection tests before it is considered supported.
-- Channel MSP validation uses Fabric's historical certificate-time workaround,
-  evaluating chains at the leaf's `NotBefore` rather than the current time. A
-  temporary test with an expired hybrid remote identity confirmed that it
-  still validates in a PQ-required channel MSP. Local MSP setup separately
-  rejects an expired local signing identity. Fixing remote expiration requires
-  an agreed deterministic time model for transaction validation and replay:
-  using a node's wall clock in consensus validation can cause peers to disagree
-  or reject previously committed transactions during replay. MSP identity and
-  principal caches also need time-aware handling.
-
-Expiry enforcement remains an acceptance blocker. Root rotation is not finally
-accepted until the post-commit stop/restart behavior passes the end-to-end gates.
+- Hybrid identities are validated against the signed channel-header timestamp
+  for transaction creators and endorsement signers, so validation is
+  deterministic during block validation and replay. Direct hybrid identity
+  validation uses the current time, and time-independent MSP identity and
+  principal caches are bypassed for hybrid identities. Classical-only
+  identities in classical-permitted configurations retain Fabric's existing
+  certificate-time behavior. Focused tests cover expiry at the supplied
+  timestamp and propagation of that timestamp into state-based endorsement
+  checks; full transaction replay with expired credentials remains an
+  integration gate. Root rotation is not finally accepted until the
+  post-commit stop/restart behavior passes the end-to-end gates.
 
 For PQ-required channels, peer and orderer signer checks now additionally
 require membership in the respective channel organization group and the

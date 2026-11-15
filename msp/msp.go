@@ -160,6 +160,13 @@ type Identity interface {
 	SatisfiesPrincipal(principal *msp.MSPPrincipal) error
 }
 
+// TimeBoundIdentity can validate an identity using a transaction's signed timestamp.
+// A nil timestamp requests validation at the current time.
+type TimeBoundIdentity interface {
+	WithValidationTime(*time.Time) (Identity, error)
+	RequiresTimeBoundValidation() bool
+}
+
 // SigningIdentity is an extension of Identity to cover signing capabilities.
 // E.g., signing identity should be requested in the case of a client who wishes
 // to sign transactions, or fabric endorser who wishes to sign proposal

@@ -60,6 +60,24 @@ func (msp *bccspmsp) validateIdentity(id *identity) error {
 	return nil
 }
 
+func (msp *bccspmsp) validateIdentityAt(id *identity, validationTime time.Time) error {
+	if !msp.supportedPublicKeyAlgorithms[id.cert.PublicKeyAlgorithm] {
+		return errors.Errorf("%s is not supported", id.cert.PublicKeyAlgorithm.String())
+	}
+
+	validationChain, err := msp.getCertificationChainForBCCSPIdentityAt(id, validationTime)
+	if err != nil {
+		return errors.WithMessage(err, "could not obtain certification chain")
+	}
+	if err := msp.validateIdentityAgainstChain(id, validationChain); err != nil {
+		return errors.WithMessage(err, "could not validate identity against certification chain")
+	}
+	if err := msp.internalValidateIdentityOusFunc(id); err != nil {
+		return errors.WithMessage(err, "could not validate identity's OUs")
+	}
+	return nil
+}
+
 func (msp *bccspmsp) validateCAIdentity(id *identity) error {
 	if !id.cert.IsCA {
 		return errors.New("Only CA identities can be validated")
@@ -304,6 +322,12 @@ func (msp *bccspmsp) getValidityOptsForCert(cert *x509.Certificate) x509.VerifyO
 	tempOpts.CurrentTime = cert.NotBefore.Add(time.Second)
 
 	return tempOpts
+}
+
+func (msp *bccspmsp) getValidityOptsForCertAt(cert *x509.Certificate, validationTime time.Time) x509.VerifyOptions {
+	opts := msp.getValidityOptsForCert(cert)
+	opts.CurrentTime = validationTime
+	return opts
 }
 
 /*

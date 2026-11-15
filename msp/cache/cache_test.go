@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	msp2 "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/msp"
@@ -18,6 +19,36 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+type timeSensitiveIdentity struct {
+	*mocks.MockIdentity
+	validationCalls int
+	principalCalls  int
+}
+
+func (id *timeSensitiveIdentity) WithValidationTime(*time.Time) (msp.Identity, error) {
+	return id, nil
+}
+
+func (*timeSensitiveIdentity) RequiresTimeBoundValidation() bool {
+	return true
+}
+
+func (id *timeSensitiveIdentity) Validate() error {
+	id.validationCalls++
+	if id.validationCalls > 1 {
+		return errors.New("identity expired")
+	}
+	return nil
+}
+
+func (id *timeSensitiveIdentity) SatisfiesPrincipal(*msp2.MSPPrincipal) error {
+	id.principalCalls++
+	if id.principalCalls > 1 {
+		return errors.New("identity expired")
+	}
+	return nil
+}
 
 func TestNewCacheMsp(t *testing.T) {
 	i, err := New(nil)
@@ -266,6 +297,23 @@ func TestSatisfiesPrincipalIndirectCall(t *testing.T) {
 	// If the invocation doesn't hit the cache, it will return nil instead of an error.
 	err = identity.SatisfiesPrincipal(mockMSPPrincipal)
 	require.Equal(t, "error: foo", err.Error())
+}
+
+func TestTimeBoundIdentityValidationBypassesPositiveCaches(t *testing.T) {
+	wrappedMSP, err := New(&mocks.MockMSP{})
+	require.NoError(t, err)
+	identity := &timeSensitiveIdentity{
+		MockIdentity: &mocks.MockIdentity{ID: "Alice"},
+	}
+
+	require.NoError(t, wrappedMSP.Validate(identity))
+	require.ErrorContains(t, wrappedMSP.Validate(identity), "identity expired")
+
+	principal := &msp2.MSPPrincipal{}
+	require.NoError(t, wrappedMSP.SatisfiesPrincipal(identity, principal))
+	require.ErrorContains(t, wrappedMSP.SatisfiesPrincipal(identity, principal), "identity expired")
+	require.Equal(t, 2, identity.validationCalls)
+	require.Equal(t, 2, identity.principalCalls)
 }
 
 func TestSatisfiesPrincipal(t *testing.T) {

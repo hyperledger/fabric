@@ -53,6 +53,8 @@ type identity struct {
 	// reference to the MSP that "owns" this identity
 	msp *bccspmsp
 
+	validationTime *time.Time
+
 	// validationMutex is used to synchronise memory operation
 	// over validated and validationErr
 	validationMutex sync.Mutex
@@ -123,6 +125,33 @@ func (id *identity) Validate() error {
 	return id.msp.Validate(id)
 }
 
+func (id *identity) WithValidationTime(validationTime *time.Time) (Identity, error) {
+	if id.qPk == nil && !id.msp.hybridRequired {
+		return id, nil
+	}
+
+	selectedTime := time.Now()
+	if validationTime != nil {
+		selectedTime = *validationTime
+	}
+	if selectedTime.IsZero() {
+		return nil, errors.New("hybrid identity validation requires a valid transaction timestamp")
+	}
+
+	return &identity{
+		id:             id.id,
+		cert:           id.cert,
+		pk:             id.pk,
+		qPk:            id.qPk,
+		msp:            id.msp,
+		validationTime: &selectedTime,
+	}, nil
+}
+
+func (id *identity) RequiresTimeBoundValidation() bool {
+	return id.qPk != nil || id.msp.hybridRequired
+}
+
 type OUIDs []*OUIdentifier
 
 func (o OUIDs) String() string {
@@ -182,10 +211,12 @@ func NewSerializedIdentity(mspID string, certPEM []byte) ([]byte, error) {
 // to determine whether this identity produced the
 // signature; it returns nil if so or an error otherwise
 func (id *identity) Verify(msg []byte, sig []byte) error {
-	if id.msp.hybridRequired {
+	if id.msp.hybridRequired || id.validationTime != nil {
 		if err := id.Validate(); err != nil {
-			return errors.WithMessage(err, "validating PQ-required signing identity")
+			return errors.WithMessage(err, "validating hybrid signing identity")
 		}
+	}
+	if id.msp.hybridRequired {
 		if id.qPk == nil {
 			return errors.New("PQ-required MSP identity has no ML-DSA-65 public key")
 		}

@@ -63,6 +63,35 @@ func TestHybridRequiredMSPSigningAndVerificationWithBCCSP(t *testing.T) {
 	require.Error(t, signingIdentity.Verify([]byte("different message"), signature))
 }
 
+func TestHybridIdentityValidationUsesSuppliedTimestamp(t *testing.T) {
+	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
+	mspConfig, cryptoProvider := newHybridMSPTestConfig(t, true, true)
+
+	instance, err := newBccspMsp(MSPv1_0, cryptoProvider)
+	require.NoError(t, err)
+	require.NoError(t, instance.Setup(mspConfig))
+
+	signingIdentity, err := instance.GetDefaultSigningIdentity()
+	require.NoError(t, err)
+	publicIdentity := signingIdentity.GetPublicVersion()
+	timeBoundIdentity, ok := publicIdentity.(TimeBoundIdentity)
+	require.True(t, ok)
+
+	currentTime := time.Now()
+	currentIdentity, err := timeBoundIdentity.WithValidationTime(&currentTime)
+	require.NoError(t, err)
+	require.NoError(t, currentIdentity.Validate())
+
+	expiredTime := time.Now().Add(48 * time.Hour)
+	expiredIdentity, err := timeBoundIdentity.WithValidationTime(&expiredTime)
+	require.NoError(t, err)
+	require.ErrorContains(t, expiredIdentity.Validate(), "certificate has expired")
+
+	signature, err := signingIdentity.Sign([]byte("expired credential"))
+	require.NoError(t, err)
+	require.ErrorContains(t, expiredIdentity.Verify([]byte("expired credential"), signature), "certificate has expired")
+}
+
 func TestHybridRequiredMSPRejectsClassicalOnlyAndMissingPQPrivateKey(t *testing.T) {
 	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
 

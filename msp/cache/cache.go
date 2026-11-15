@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package cache
 
 import (
+	"time"
+
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	pmsp "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/msp"
@@ -62,6 +64,19 @@ func (id *cachedIdentity) Validate() error {
 	return id.cache.Validate(id.Identity)
 }
 
+func (id *cachedIdentity) WithValidationTime(validationTime *time.Time) (msp.Identity, error) {
+	timeBoundIdentity, ok := id.Identity.(msp.TimeBoundIdentity)
+	if !ok {
+		return id, nil
+	}
+	return timeBoundIdentity.WithValidationTime(validationTime)
+}
+
+func (id *cachedIdentity) RequiresTimeBoundValidation() bool {
+	timeBoundIdentity, ok := id.Identity.(msp.TimeBoundIdentity)
+	return ok && timeBoundIdentity.RequiresTimeBoundValidation()
+}
+
 func (c *cachedMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
 	id, ok := c.deserializeIdentityCache.get(string(serializedIdentity))
 	if ok {
@@ -97,6 +112,14 @@ func (c *cachedMSP) ValidateHybridSigner() error {
 }
 
 func (c *cachedMSP) Validate(id msp.Identity) error {
+	if timeBoundIdentity, ok := id.(msp.TimeBoundIdentity); ok && timeBoundIdentity.RequiresTimeBoundValidation() {
+		timedIdentity, err := timeBoundIdentity.WithValidationTime(nil)
+		if err != nil {
+			return err
+		}
+		return timedIdentity.Validate()
+	}
+
 	identifier := id.GetIdentifier()
 	key := identifier.Mspid + ":" + identifier.Id
 
@@ -115,6 +138,14 @@ func (c *cachedMSP) Validate(id msp.Identity) error {
 }
 
 func (c *cachedMSP) SatisfiesPrincipal(id msp.Identity, principal *pmsp.MSPPrincipal) error {
+	if timeBoundIdentity, ok := id.(msp.TimeBoundIdentity); ok && timeBoundIdentity.RequiresTimeBoundValidation() {
+		timedIdentity, err := timeBoundIdentity.WithValidationTime(nil)
+		if err != nil {
+			return err
+		}
+		return timedIdentity.SatisfiesPrincipal(principal)
+	}
+
 	identifier := id.GetIdentifier()
 	identityKey := identifier.Mspid + ":" + identifier.Id
 	principalKey := string(principal.GetPrincipalClassification()) + string(principal.GetPrincipal())

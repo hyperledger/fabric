@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
@@ -24,9 +25,20 @@ import (
 // include the signing identity and a nonce within the Data, this is left to the crypto
 // implementation.
 type SignedData struct {
-	Data      []byte
-	Identity  []byte
-	Signature []byte
+	Data           []byte
+	Identity       []byte
+	Signature      []byte
+	ValidationTime *time.Time
+}
+
+// ChannelHeaderValidationTime returns the signed transaction timestamp. An invalid or
+// missing timestamp is represented by the zero time so time-bound identities fail closed.
+func ChannelHeaderValidationTime(chdr *common.ChannelHeader) *time.Time {
+	validationTime := time.Time{}
+	if chdr != nil && chdr.GetTimestamp() != nil && chdr.GetTimestamp().CheckValid() == nil {
+		validationTime = chdr.GetTimestamp().AsTime()
+	}
+	return &validationTime
 }
 
 // ConfigUpdateEnvelopeAsSignedData returns the set of signatures for the
