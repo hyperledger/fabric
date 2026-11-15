@@ -70,12 +70,14 @@ func (cr *configResources) CreateBundle(channelID string, config *common.Config)
 
 func (cr *configResources) Update(bndl *channelconfig.Bundle) {
 	checkResourcesOrPanic(bndl)
-	if bndl.ChannelConfig().Capabilities().PactwayHybridCertificateV1() {
-		if err := validateHybridOrdererSigner(bndl, cr.signer); err != nil {
-			logger.Panicf("[channel %s] incompatible local signing identity: %s", bndl.ConfigtxValidator().ChannelID(), err)
-		}
-	}
 	cr.mutableResources.Update(bndl)
+}
+
+func (cr *configResources) ValidateConfigActivation() error {
+	if !cr.ChannelConfig().Capabilities().PactwayHybridCertificateV1() {
+		return nil
+	}
+	return validateHybridOrdererSigner(cr, cr.signer)
 }
 
 func (cr *configResources) SharedConfig() channelconfig.Orderer {

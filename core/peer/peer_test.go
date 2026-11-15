@@ -82,7 +82,9 @@ func TestHybridCapabilityActivationStopsIncompatiblePeer(t *testing.T) {
 			require.NotNil(t, recovered)
 			require.Contains(t, fmt.Sprint(recovered), "incompatible local signing identity")
 		}()
-		capabilitiesSupportedOrPanic(bundle)
+		if err := validateHybridLocalSigner(bundle); err != nil {
+			peerLogger.Panicf("incompatible local signing identity: %s", err)
+		}
 	}()
 }
 

@@ -40,8 +40,9 @@ type mockBlockWriterSupport struct {
 	*mocks.ConfigTXValidator
 	identity.SignerSerializer
 	blockledger.ReadWriter
-	fakeConfig *mock.OrdererConfig
-	bccsp      bccsp.BCCSP
+	fakeConfig         *mock.OrdererConfig
+	bccsp              bccsp.BCCSP
+	validateActivation func() error
 }
 
 func (mbws mockBlockWriterSupport) Update(bundle *channelconfig.Bundle) {}
@@ -52,6 +53,13 @@ func (mbws mockBlockWriterSupport) CreateBundle(channelID string, config *cb.Con
 
 func (mbws mockBlockWriterSupport) SharedConfig() channelconfig.Orderer {
 	return mbws.fakeConfig
+}
+
+func (mbws mockBlockWriterSupport) ValidateConfigActivation() error {
+	if mbws.validateActivation != nil {
+		return mbws.validateActivation()
+	}
+	return nil
 }
 
 func TestCreateBlock(t *testing.T) {
@@ -270,6 +278,7 @@ func TestGoodWriteConfig(t *testing.T) {
 
 	mockValidator := &mocks.ConfigTXValidator{}
 	mockValidator.ChannelIDReturns("testchannelid")
+	activationChecks := 0
 	bw := newBlockWriter(genesisBlockSys,
 		&mockBlockWriterSupport{
 			SignerSerializer:  mockCrypto(),
@@ -277,6 +286,11 @@ func TestGoodWriteConfig(t *testing.T) {
 			ConfigTXValidator: mockValidator,
 			fakeConfig:        fakeConfig,
 			bccsp:             cryptoProvider,
+			validateActivation: func() error {
+				activationChecks++
+				require.Equal(t, uint64(2), l.Height(), "config activation must be checked after ledger append")
+				return nil
+			},
 		})
 
 	ctx := makeConfigTxFull("testchannelid", 1)
@@ -284,6 +298,7 @@ func TestGoodWriteConfig(t *testing.T) {
 	block.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata := []byte("foo")
 	bw.WriteConfigBlock(block, consenterMetadata)
+	require.Equal(t, 1, activationChecks)
 
 	// Wait for the commit to complete
 	bw.committingBlock.Lock()

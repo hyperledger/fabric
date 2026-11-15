@@ -42,13 +42,12 @@ quantum-resistant network security.
 
 ## Open review blockers
 
-- An orderer checks its signer against a new channel MSP before persisting the
-  config block. A direct replacement of the signer's root can therefore stop
-  the orderer before either the old or the replacement signer can restart
-  against the committed configuration. Peer configuration application also
-  occurs during block validation before ledger commit. Do not treat direct
-  root replacement or restart/replay as supported until a recovery-safe
-  transition is implemented and tested end to end.
+- Orderer and peer local-signer compatibility checks now run after the config
+  block has been committed. A node whose old signer no longer chains to the
+  committed MSP stops after persistence; a replacement signer can then restart
+  against the new config. Replacement signer material must be prepared before
+  the update. Direct replacement still needs multi-node config-update,
+  restart/replay and failure-injection tests before it is considered supported.
 - Channel MSP validation uses Fabric's historical certificate-time workaround,
   evaluating chains at the leaf's `NotBefore` rather than the current time. A
   temporary test with an expired hybrid remote identity confirmed that it
@@ -59,8 +58,8 @@ quantum-resistant network security.
   or reject previously committed transactions during replay. MSP identity and
   principal caches also need time-aware handling.
 
-These are acceptance blockers, not assurances that staged root rotation or
-expiry enforcement has been validated.
+Expiry enforcement remains an acceptance blocker. Root rotation is not finally
+accepted until the post-commit stop/restart behavior passes the end-to-end gates.
 
 For PQ-required channels, peer and orderer signer checks now additionally
 require membership in the respective channel organization group and the

@@ -151,6 +151,11 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 	}
 
 	bw.WriteBlockSync(block, encodedMetadataValue)
+	if activationValidator, ok := bw.support.(interface{ ValidateConfigActivation() error }); ok {
+		if err := activationValidator.ValidateConfigActivation(); err != nil {
+			logger.Panicf("[channel %s] incompatible local signing identity after config block commit: %s", bw.support.ChannelID(), err)
+		}
+	}
 }
 
 // WriteBlock should be invoked for blocks which contain normal transactions.

@@ -250,6 +250,9 @@ func (p *Peer) createChannel(
 	}
 
 	capabilitiesSupportedOrPanic(bundle)
+	if err := validateHybridLocalSigner(bundle); err != nil {
+		return errors.Wrapf(err, "[channel %s] incompatible local signing identity", cid)
+	}
 
 	channelconfig.LogSanityChecks(bundle)
 
@@ -307,7 +310,11 @@ func (p *Peer) createChannel(
 		callbacks...,
 	)
 
-	committer := committer.NewLedgerCommitter(l)
+	committer := committer.NewLedgerCommitter(l, func(block *common.Block) {
+		if protoutil.IsConfigBlock(block) {
+			channel.ValidateConfigActivation()
+		}
+	})
 	validator := &txvalidator.ValidationRouter{
 		CapabilityProvider: channel,
 		V14Validator: validatorv14.NewTxValidator(

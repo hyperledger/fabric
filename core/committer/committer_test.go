@@ -139,17 +139,22 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	t.Parallel()
 	gb, ledger := createLedger("TestLedger")
 	block1 := testutil.ConstructBlock(t, 1, gb.GetHeader().GetDataHash(), [][]byte{{1, 2, 3, 4}, {5, 6, 7, 8}}, true)
+	commitCompleted := false
 
 	ledger.On("CommitLegacy", mock.Anything).Run(func(args mock.Arguments) {
 		b := args.Get(0).(*ledger2.BlockAndPvtData)
 		require.Equal(t, uint64(1), b.Block.GetHeader().GetNumber())
 		require.Equal(t, gb.GetHeader().GetDataHash(), b.Block.GetHeader().GetPreviousHash())
 		require.Equal(t, block1.GetHeader().GetDataHash(), b.Block.GetHeader().GetDataHash())
+		commitCompleted = true
 	}).Return(nil)
 
 	ledger.On("GetBlockByNumber", uint64(0)).Return(gb, nil)
 
-	committer := NewLedgerCommitter(ledger)
+	committer := NewLedgerCommitter(ledger, func(block *common.Block) {
+		require.True(t, commitCompleted)
+		require.Equal(t, uint64(1), block.GetHeader().GetNumber())
+	})
 	height, err := committer.LedgerHeight()
 	require.Equal(t, uint64(1), height)
 	require.NoError(t, err)

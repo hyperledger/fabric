@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
@@ -56,24 +55,6 @@ func TestChainSupportBlock(t *testing.T) {
 	require.Equal(t, uint64(99), cs.Block(99).GetHeader().GetNumber())
 }
 
-type mutableResourcesMock struct {
-	*mocks.Resources
-	newConsensusMetadataVal []byte
-}
-
-func (*mutableResourcesMock) Update(*channelconfig.Bundle) {
-	panic("implement me")
-}
-
-func (mrm *mutableResourcesMock) CreateBundle(channelID string, c *common.Config) (channelconfig.Resources, error) {
-	mockOrderer := &mocks.OrdererConfig{}
-	mockOrderer.ConsensusMetadataReturns(mrm.newConsensusMetadataVal)
-	mockResources := &mocks.Resources{}
-	mockResources.OrdererConfigReturns(mockOrderer, true)
-
-	return mockResources, nil
-}
-
 func testConfigEnvelope(t *testing.T) *common.ConfigEnvelope {
 	conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 	conf.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
@@ -91,7 +72,23 @@ func testConfigEnvelope(t *testing.T) *common.ConfigEnvelope {
 	}
 }
 
-func TestHybridCapabilityActivationStopsIncompatibleOrderer(t *testing.T) {
+type mutableResourcesMock struct {
+	*mocks.Resources
+	newConsensusMetadataVal []byte
+}
+
+func (*mutableResourcesMock) Update(*channelconfig.Bundle) {}
+
+func (mrm *mutableResourcesMock) CreateBundle(channelID string, c *common.Config) (channelconfig.Resources, error) {
+	mockOrderer := &mocks.OrdererConfig{}
+	mockOrderer.ConsensusMetadataReturns(mrm.newConsensusMetadataVal)
+	mockResources := &mocks.Resources{}
+	mockResources.OrdererConfigReturns(mockOrderer, true)
+
+	return mockResources, nil
+}
+
+func TestHybridCapabilityActivationChecksOrdererAfterBundleUpdate(t *testing.T) {
 	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
 	config := testConfigEnvelope(t).GetConfig()
 	group := config.GetChannelGroup()
@@ -114,16 +111,11 @@ func TestHybridCapabilityActivationStopsIncompatibleOrderer(t *testing.T) {
 	signer := &mocks.SignerSerializer{}
 	signer.SerializeReturns([]byte("not a channel identity"), nil)
 	resources := &configResources{
-		mutableResources: &mutableResourcesMock{},
+		mutableResources: channelconfig.NewBundleSource(bundle),
 		signer:           signer,
 	}
-	func() {
-		defer func() {
-			recovered := recover()
-			require.NotNil(t, recovered)
-			require.Contains(t, fmt.Sprint(recovered), "incompatible local signing identity")
-		}()
-		resources.Update(bundle)
-	}()
-	require.Equal(t, 1, signer.SerializeCallCount())
+	resources.Update(bundle)
+	require.Equal(t, 0, signer.SerializeCallCount(), "config application must not check process-local signer state")
+	require.ErrorContains(t, resources.ValidateConfigActivation(), "deserializing local signing identity")
+	require.Equal(t, 1, signer.SerializeCallCount(), "local signer validation must run after config application")
 }

@@ -354,7 +354,7 @@ func newCommitter() committer.Committer {
 		ledger: make(map[uint64]*ledger.BlockAndPvtData),
 	}
 	ldgr.CommitLegacy(&ledger.BlockAndPvtData{Block: cb}, &ledger.CommitOptions{})
-	return committer.NewLedgerCommitter(ldgr)
+	return committer.NewLedgerCommitter(ldgr, nil)
 }
 
 func newPeerNodeWithGossip(id int, committer committer.Committer,
