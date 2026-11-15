@@ -83,7 +83,7 @@ func TestHybridCertificateV1GenerationAndIssuerChain(t *testing.T) {
 	require.Empty(t, info.SignatureAlgorithm.Parameters.FullBytes)
 }
 
-func TestHybridCertificateV1AcceptsConfiguredNonSelfIssuedTrustAnchor(t *testing.T) {
+func TestHybridCertificateV1RequiresSelfIssuedTrustAnchorWhenRequired(t *testing.T) {
 	profile, err := HybridCertificateProfileByName(TemporaryHybridProfileV1, profileUseTest)
 	require.NoError(t, err)
 
@@ -133,7 +133,8 @@ func TestHybridCertificateV1AcceptsConfiguredNonSelfIssuedTrustAnchor(t *testing
 	})
 	require.NoError(t, err)
 	require.Len(t, chains, 1)
-	require.NoError(t, ValidateHybridCertificateChain(chains[0], profile, true))
+	require.ErrorContains(t, ValidateHybridCertificateChain(chains[0], profile, true), "trust anchor must be self-issued")
+	require.NoError(t, ValidateHybridCertificateChain(chains[0], profile, false))
 }
 
 func TestHybridCertificateV1RejectsWrongIssuerAndPartialChains(t *testing.T) {

@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/pkg/errors"
 )
 
@@ -98,6 +99,11 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup, bccsp bccsp.BCCSP) (*Channel
 
 	mspConfigHandler := NewMSPConfigHandler(channelCapabilities.MSPVersion(), bccsp)
 	mspConfigHandler.hybridRequired = channelCapabilities.PactwayHybridCertificateV1()
+	if mspConfigHandler.hybridRequired {
+		if err := mspmgmt.ValidateHybridLocalMSP(); err != nil {
+			return nil, errors.WithMessage(err, "validating local signing identity for PQ-required channel")
+		}
+	}
 
 	var err error
 	for groupName, group := range channelGroup.GetGroups() {

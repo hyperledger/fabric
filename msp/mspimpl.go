@@ -267,18 +267,13 @@ func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *m.SigningIdentityInfo) 
 	if qPubKey != nil {
 		qPrivKey, err = msp.bccsp.GetKey(qPubKey.SKI())
 		if err != nil {
-			if msp.hybridRequired {
-				return nil, errors.WithMessage(err, "PQ-required MSP signing identity has no matching ML-DSA-65 private key")
-			}
-			qPrivKey = nil
+			return nil, errors.WithMessage(err, "hybrid MSP signing identity has no matching ML-DSA-65 private key")
 		}
-		if qPrivKey != nil {
-			if err := msp.proveSigningKeyPair(pubKey, privKey, qPubKey, qPrivKey); err != nil {
-				if msp.hybridRequired {
-					return nil, errors.WithMessage(err, "PQ-required MSP signing identity key-possession check failed")
-				}
-				mspLogger.Warnf("Optional hybrid signing key-possession check failed: %s", err)
-			}
+		if qPrivKey == nil {
+			return nil, errors.New("hybrid MSP signing identity has no matching ML-DSA-65 private key")
+		}
+		if err := msp.proveSigningKeyPair(pubKey, privKey, qPubKey, qPrivKey); err != nil {
+			return nil, errors.WithMessage(err, "hybrid MSP signing identity key-possession check failed")
 		}
 	}
 	if qPrivKey != nil {
@@ -349,8 +344,23 @@ func (msp *bccspmsp) SetHybridRequired(required bool) error {
 	if msp.hybridProfile != nil && msp.hybridProfile.Name() != profile.Name() {
 		return errors.New("hybrid certificate profile selection cannot be changed after MSP setup")
 	}
+	if err := msp.ValidateHybridSigner(); err != nil {
+		return err
+	}
 	msp.hybridProfile = &profile
 	msp.hybridRequired = true
+	return nil
+}
+
+// ValidateHybridSigner reports whether the configured local signer has hybrid credentials.
+func (msp *bccspmsp) ValidateHybridSigner() error {
+	if msp.signer == nil {
+		return nil
+	}
+	localSigner, ok := msp.signer.(*signingidentity)
+	if !ok || localSigner.qPk == nil {
+		return errors.New("PQ-required channel cannot use a classical local signing identity")
+	}
 	return nil
 }
 
@@ -905,6 +915,10 @@ func (msp *bccspmsp) getUniqueValidationChainWithHybridRequirement(
 		return nil, errors.WithMessage(err, "the supplied identity is not valid")
 	}
 
+	if err := rejectLegacyHybridExtensions(validationChains[0]); err != nil {
+		return nil, err
+	}
+
 	containsPactwayProfile := false
 	for _, certificate := range validationChains[0] {
 		if oqs.HasRegisteredHybridCertificateExtensions(certificate.Extensions) {
@@ -926,6 +940,15 @@ func (msp *bccspmsp) getUniqueValidationChainWithHybridRequirement(
 	}
 
 	return validationChains[0], nil
+}
+
+func rejectLegacyHybridExtensions(chain []*x509.Certificate) error {
+	for index, certificate := range chain {
+		if oqs.HasLegacyHybridExtensions(certificate.Extensions) {
+			return errors.Errorf("certificate at chain index %d contains legacy alternate-key extensions", index)
+		}
+	}
+	return nil
 }
 
 var (

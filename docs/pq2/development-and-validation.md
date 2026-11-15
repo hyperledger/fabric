@@ -162,6 +162,33 @@ Earlier failed startup attempts were corrected using temporary copies of
 binaries, identities, nodes and logs were removed after capturing the block
 hash and responses.
 
+## Review findings addressed
+
+- MSP chain validation rejects legacy alternate-key extensions before choosing
+  either the optional legacy validator or the versioned profile validator.
+  Tests cover both policy modes, including a classical root without
+  alternate-key material.
+- Required hybrid chains reject configured trust anchors that are not
+  self-issued; optional-mode anchor behavior remains unchanged. Self-issued
+  anchors are checked for both classical and PQ self-signatures.
+- A PQ channel config is rejected when an initialized peer-local signer is
+  classical. The orderer checks its process-local signer while loading channel
+  resources. These checks do not mutate local policy while parsing a config.
+- Any hybrid local signer must have an available ML-DSA-65 private key and
+  pass classical and PQ key-possession checks, even when its MSP is otherwise
+  classical-permitted.
+- Embedded ML-DSA-65 SubjectPublicKeyInfo parsing now rejects extra sequence
+  fields and non-canonical DER.
+- The identity generator emits IP SANs for IP-valued orderer hosts and DNS
+  SANs for hostnames.
+
+The focused validation commands passed:
+
+```text
+go test -count=1 -p=1 ./pq-crypto ./msp/... ./common/channelconfig ./orderer/common/multichannel ./orderer/common/server ./internal/peer/common ./internal/peer/node ./cmd/pactway-pq-gen
+go vet -p=1 ./pq-crypto ./msp/... ./common/channelconfig ./orderer/common/multichannel ./orderer/common/server ./internal/peer/common ./internal/peer/node ./cmd/pactway-pq-gen
+```
+
 The following work remains release- and PQ2-completion-blocking:
 
 - Complete the broader Fabric integration suite: `integration/configtx` passed

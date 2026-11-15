@@ -21,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
 	"time"
@@ -674,7 +675,11 @@ func generateTLSLeaf(ca tlsAuthority, host string, usage x509.ExtKeyUsage) (tlsL
 	if err != nil {
 		return tlsLeaf{}, err
 	}
-	template.DNSNames = []string{host}
+	if ip := net.ParseIP(host); ip != nil {
+		template.IPAddresses = []net.IP{ip}
+	} else {
+		template.DNSNames = []string{host}
+	}
 	template.ExtKeyUsage = []x509.ExtKeyUsage{usage}
 	der, err := x509.CreateCertificate(rand.Reader, template, ca.certificate, &privateKey.PublicKey, ca.privateKey)
 	if err != nil {

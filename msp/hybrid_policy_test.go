@@ -60,7 +60,7 @@ func TestHybridRequiredMSPConfigMarkerRoundTrip(t *testing.T) {
 
 func TestLocalMSPConfigBuilderCarriesRequiredPolicy(t *testing.T) {
 	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
-	mspConfig, _ := newHybridMSPTestConfig(t, true)
+	mspConfig, _ := newHybridMSPTestConfig(t, true, true)
 	sourceConfig := &fabricmsp.FabricMSPConfig{}
 	require.NoError(t, proto.Unmarshal(mspConfig.GetConfig(), sourceConfig))
 

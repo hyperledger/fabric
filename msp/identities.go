@@ -404,6 +404,11 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 	return id.signer.Sign(rand.Reader, digestOrMsg, nil)
 }
 
+// ValidateHybrid reports whether this signing identity can satisfy a hybrid channel requirement.
+func (id *signingidentity) ValidateHybrid() error {
+	return id.msp.ValidateHybridSigner()
+}
+
 // GetPublicVersion returns the public version of this identity,
 // namely, the one that is only able to verify messages and not sign them
 func (id *signingidentity) GetPublicVersion() Identity {

@@ -8,9 +8,12 @@ package msp
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/pem"
 	"errors"
 	"math/big"
@@ -44,7 +47,7 @@ func (signer bccspHybridCertificateSigner) SignHybrid(message []byte) ([]byte, e
 
 func TestHybridRequiredMSPSigningAndVerificationWithBCCSP(t *testing.T) {
 	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
-	mspConfig, cryptoProvider := newHybridMSPTestConfig(t, true)
+	mspConfig, cryptoProvider := newHybridMSPTestConfig(t, true, true)
 
 	instance, err := newBccspMsp(MSPv1_0, cryptoProvider)
 	require.NoError(t, err)
@@ -68,17 +71,121 @@ func TestHybridRequiredMSPRejectsClassicalOnlyAndMissingPQPrivateKey(t *testing.
 	require.NoError(t, classicalOnlyMSP.(*bccspmsp).SetHybridRequired(true))
 	require.ErrorContains(t, classicalOnlyMSP.Setup(conf), "Pactway Hybrid Certificate v1")
 
-	mspConfig, cryptoProvider := newHybridMSPTestConfig(t, false)
+	mspConfig, cryptoProvider := newHybridMSPTestConfig(t, false, true)
 	missingPQPrivateKeyMSP, err := newBccspMsp(MSPv1_0, cryptoProvider)
 	require.NoError(t, err)
 	err = missingPQPrivateKeyMSP.Setup(mspConfig)
 	require.ErrorContains(t, err, "matching ML-DSA-65 private key")
 }
 
+func TestOptionalHybridMSPRejectsUnavailablePQPrivateKey(t *testing.T) {
+	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
+	mspConfig, cryptoProvider := newHybridMSPTestConfig(t, false, false)
+
+	instance, err := newBccspMsp(MSPv1_0, cryptoProvider)
+	require.NoError(t, err)
+	err = instance.Setup(mspConfig)
+	require.ErrorContains(t, err, "hybrid MSP signing identity has no matching ML-DSA-65 private key")
+}
+
+func TestOptionalHybridMSPCanBeRequiredByChannel(t *testing.T) {
+	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
+	mspConfig, cryptoProvider := newHybridMSPTestConfig(t, true, false)
+
+	instance, err := newBccspMsp(MSPv1_0, cryptoProvider)
+	require.NoError(t, err)
+	require.NoError(t, instance.Setup(mspConfig))
+	signingIdentity, err := instance.GetDefaultSigningIdentity()
+	require.NoError(t, err)
+	hybridSigner, ok := signingIdentity.(interface{ ValidateHybrid() error })
+	require.True(t, ok)
+	require.NoError(t, hybridSigner.ValidateHybrid())
+	signature, err := signingIdentity.Sign([]byte("channel-required signature"))
+	require.NoError(t, err)
+	require.NoError(t, signingIdentity.GetPublicVersion().Verify([]byte("channel-required signature"), signature))
+}
+
+func TestHybridRequiredRejectsClassicalLocalSignerAndLegacyExtensions(t *testing.T) {
+	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
+	instance, err := newBccspMsp(MSPv1_0, factory.GetDefault())
+	require.NoError(t, err)
+	localMSP := instance.(*bccspmsp)
+	localSigner := &signingidentity{identity: identity{msp: localMSP}}
+	localMSP.signer = localSigner
+	require.ErrorContains(
+		t, localSigner.ValidateHybrid(),
+		"PQ-required channel cannot use a classical local signing identity",
+	)
+}
+
+func TestMSPRejectsLegacyExtensionsInBothPolicyModes(t *testing.T) {
+	rootKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	rootTemplate := hybridMSPCertificateTemplate(300, "legacy rejection root", true)
+	rootTemplate.PublicKey = &rootKey.PublicKey
+	rootDER, err := x509.CreateCertificate(rand.Reader, rootTemplate, rootTemplate, &rootKey.PublicKey, rootKey)
+	require.NoError(t, err)
+	root, err := x509.ParseCertificate(rootDER)
+	require.NoError(t, err)
+
+	leafKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	leafTemplate := hybridMSPCertificateTemplate(301, "legacy rejection leaf", false)
+	leafTemplate.PublicKey = &leafKey.PublicKey
+	leafTemplate.ExtraExtensions = []pkix.Extension{{
+		Id:    asn1.ObjectIdentifier{2, 5, 29, 71},
+		Value: []byte{0x05, 0x00},
+	}}
+	leafDER, err := x509.CreateCertificate(rand.Reader, leafTemplate, root, &leafKey.PublicKey, rootKey)
+	require.NoError(t, err)
+	leaf, err := x509.ParseCertificate(leafDER)
+	require.NoError(t, err)
+
+	roots := x509.NewCertPool()
+	roots.AddCert(root)
+	verifyOptions := x509.VerifyOptions{
+		Roots:       roots,
+		KeyUsages:   []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+		CurrentTime: time.Now(),
+	}
+	chain, err := leaf.Verify(verifyOptions)
+	require.NoError(t, err)
+	require.Len(t, chain, 1)
+	require.NoError(t, oqs.Validate(chain[0]))
+
+	instance := &bccspmsp{opts: &verifyOptions}
+	for _, hybridRequired := range []bool{false, true} {
+		_, err := instance.getUniqueValidationChainWithHybridRequirement(leaf, verifyOptions, hybridRequired)
+		require.ErrorContains(t, err, "legacy alternate-key extensions", "required=%t", hybridRequired)
+	}
+}
+
+func TestOptionalHybridMSPRejectsMismatchedQuantumPrivateKey(t *testing.T) {
+	cryptoProvider := factory.GetDefault()
+	classicalPrivate, err := cryptoProvider.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: true})
+	require.NoError(t, err)
+	classicalPublic, err := classicalPrivate.PublicKey()
+	require.NoError(t, err)
+	quantumPrivate, err := cryptoProvider.KeyGen(&bccsp.OQSKeyGenOpts{
+		Temporary:       true,
+		SignatureScheme: string(oqs.MLDSA65ProfileV1),
+	})
+	require.NoError(t, err)
+	mismatchedQuantumPrivate, err := cryptoProvider.KeyGen(&bccsp.OQSKeyGenOpts{
+		Temporary:       true,
+		SignatureScheme: string(oqs.MLDSA65ProfileV1),
+	})
+	require.NoError(t, err)
+
+	localMSP := &bccspmsp{bccsp: cryptoProvider}
+	err = localMSP.proveSigningKeyPair(classicalPublic, classicalPrivate, quantumPrivate, mismatchedQuantumPrivate)
+	require.ErrorContains(t, err, "verifying local ML-DSA-65 key-possession challenge")
+}
+
 func TestHybridRequiredMSPCompliantRootRotation(t *testing.T) {
 	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
 
-	oldConfig, oldCryptoProvider := newHybridMSPTestConfig(t, true)
+	oldConfig, oldCryptoProvider := newHybridMSPTestConfig(t, true, true)
 	oldMSP, err := newBccspMsp(MSPv1_0, oldCryptoProvider)
 	require.NoError(t, err)
 	require.NoError(t, oldMSP.Setup(oldConfig))
@@ -86,7 +193,7 @@ func TestHybridRequiredMSPCompliantRootRotation(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, oldMSP.Validate(oldIdentity.GetPublicVersion()))
 
-	newConfig, newCryptoProvider := newHybridMSPTestConfig(t, true)
+	newConfig, newCryptoProvider := newHybridMSPTestConfig(t, true, true)
 	newMSP, err := newBccspMsp(MSPv1_0, newCryptoProvider)
 	require.NoError(t, err)
 	require.NoError(t, newMSP.Setup(newConfig))
@@ -99,7 +206,10 @@ func TestHybridRequiredMSPCompliantRootRotation(t *testing.T) {
 	require.ErrorContains(t, err, "certificate signed by unknown authority")
 }
 
-func newHybridMSPTestConfig(t *testing.T, persistLeafPQKey bool) (*mspprotos.MSPConfig, bccsp.BCCSP) {
+func newHybridMSPTestConfig(
+	t *testing.T,
+	persistLeafPQKey, hybridRequired bool,
+) (*mspprotos.MSPConfig, bccsp.BCCSP) {
 	t.Helper()
 
 	keyStore, err := sw.NewFileBasedKeyStore(nil, filepath.Join(t.TempDir(), "keystore"), false)
@@ -165,7 +275,9 @@ func newHybridMSPTestConfig(t *testing.T, persistLeafPQKey bool) (*mspprotos.MSP
 			IdentityIdentifierHashFunction: bccsp.SHA256,
 		},
 	}
-	require.NoError(t, markHybridRequired(config))
+	if hybridRequired {
+		require.NoError(t, markHybridRequired(config))
+	}
 	serializedConfig, err := proto.Marshal(config)
 	require.NoError(t, err)
 

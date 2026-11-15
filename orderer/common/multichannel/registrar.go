@@ -385,6 +385,15 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) (*ledgerResources,
 	if err != nil {
 		return nil, errors.WithMessage(err, "error creating channelconfig bundle")
 	}
+	if bundle.ChannelConfig().Capabilities().PactwayHybridCertificateV1() {
+		hybridSigner, ok := r.signer.(interface{ ValidateHybrid() error })
+		if !ok {
+			return nil, errors.New("PQ-required channel cannot use a classical local signing identity")
+		}
+		if err := hybridSigner.ValidateHybrid(); err != nil {
+			return nil, errors.WithMessage(err, "validating local signing identity for PQ-required channel")
+		}
+	}
 
 	err = checkResources(bundle)
 	if err != nil {

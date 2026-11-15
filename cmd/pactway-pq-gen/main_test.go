@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,6 +29,43 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
+
+func TestGenerateTLSLeafUsesCorrectSubjectAlternativeName(t *testing.T) {
+	ca, err := generateTLSAuthority(t.TempDir(), "test")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		host        string
+		wantDNSName string
+		wantIP      net.IP
+	}{
+		{name: "dns", host: "orderer.example.test", wantDNSName: "orderer.example.test"},
+		{name: "ipv4", host: "192.0.2.10", wantIP: net.ParseIP("192.0.2.10")},
+		{name: "ipv6", host: "2001:db8::10", wantIP: net.ParseIP("2001:db8::10")},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			leaf, err := generateTLSLeaf(ca, test.host, x509.ExtKeyUsageServerAuth)
+			require.NoError(t, err)
+			block, _ := pem.Decode(leaf.certPEM)
+			require.NotNil(t, block)
+			certificate, err := x509.ParseCertificate(block.Bytes)
+			require.NoError(t, err)
+			if test.wantDNSName != "" {
+				require.Equal(t, []string{test.wantDNSName}, certificate.DNSNames)
+				require.Empty(t, certificate.IPAddresses)
+				require.NoError(t, certificate.VerifyHostname(test.wantDNSName))
+			} else {
+				require.Empty(t, certificate.DNSNames)
+				require.Len(t, certificate.IPAddresses, 1)
+				require.True(t, certificate.IPAddresses[0].Equal(test.wantIP))
+				require.NoError(t, certificate.VerifyHostname(test.host))
+			}
+		})
+	}
+}
 
 func TestGenerateThreeOrganizationHybridDemo(t *testing.T) {
 	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)

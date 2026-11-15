@@ -87,6 +87,15 @@ func (c *cachedMSP) Setup(config *pmsp.MSPConfig) error {
 	return c.MSP.Setup(config)
 }
 
+// ValidateHybridSigner forwards the check to the wrapped MSP.
+func (c *cachedMSP) ValidateHybridSigner() error {
+	hybridMSP, ok := c.MSP.(interface{ ValidateHybridSigner() error })
+	if !ok {
+		return errors.New("MSP does not support Pactway hybrid certificates")
+	}
+	return hybridMSP.ValidateHybridSigner()
+}
+
 func (c *cachedMSP) Validate(id msp.Identity) error {
 	identifier := id.GetIdentifier()
 	key := identifier.Mspid + ":" + identifier.Id

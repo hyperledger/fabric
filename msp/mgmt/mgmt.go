@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package mgmt
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
@@ -87,6 +88,22 @@ func GetLocalMSP(cryptoProvider bccsp.BCCSP) msp.MSP {
 	localMsp = loadLocalMSP(cryptoProvider)
 
 	return localMsp
+}
+
+// ValidateHybridLocalMSP checks the process-local signing identity against an
+// authenticated channel's hybrid requirement when a local MSP is initialized.
+func ValidateHybridLocalMSP() error {
+	m.Lock()
+	defer m.Unlock()
+
+	if localMsp == nil {
+		return nil
+	}
+	hybridMSP, ok := localMsp.(interface{ ValidateHybridSigner() error })
+	if !ok {
+		return errors.New("local MSP does not support Pactway hybrid certificates")
+	}
+	return hybridMSP.ValidateHybridSigner()
 }
 
 func loadLocalMSP(bccsp bccsp.BCCSP) msp.MSP {
