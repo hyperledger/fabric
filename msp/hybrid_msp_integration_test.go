@@ -110,7 +110,8 @@ func TestHybridRequiredRejectsClassicalLocalSignerAndLegacyExtensions(t *testing
 	instance, err := newBccspMsp(MSPv1_0, factory.GetDefault())
 	require.NoError(t, err)
 	localMSP := instance.(*bccspmsp)
-	localSigner := &signingidentity{identity: identity{msp: localMSP}}
+	localSigner := &signingidentity{}
+	localSigner.identity.msp = localMSP
 	localMSP.signer = localSigner
 	require.ErrorContains(
 		t, localSigner.ValidateHybrid(),
@@ -156,7 +157,7 @@ func TestMSPRejectsLegacyExtensionsInBothPolicyModes(t *testing.T) {
 	instance := &bccspmsp{opts: &verifyOptions}
 	for _, hybridRequired := range []bool{false, true} {
 		_, err := instance.getUniqueValidationChainWithHybridRequirement(leaf, verifyOptions, hybridRequired)
-		require.ErrorContains(t, err, "legacy alternate-key extensions", "required=%t", hybridRequired)
+		require.ErrorContains(t, err, "legacy alternate-key extensions")
 	}
 }
 
