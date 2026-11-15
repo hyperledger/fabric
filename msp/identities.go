@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	signeridentity "github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/protobuf/proto"
@@ -411,10 +412,7 @@ func (id *signingidentity) ValidateHybrid() error {
 
 // ValidateHybridChannelSigner checks a local signer against the channel's MSP.
 // The channel MSP must enforce the hybrid certificate and signature policy.
-func ValidateHybridChannelSigner(manager MSPManager, signer interface {
-	Serialize() ([]byte, error)
-	Sign([]byte) ([]byte, error)
-}) error {
+func ValidateHybridChannelSigner(manager MSPManager, signer signeridentity.SignerSerializer) error {
 	if manager == nil || signer == nil {
 		return errors.New("PQ-required channel needs a channel MSP and local signing identity")
 	}

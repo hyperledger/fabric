@@ -93,17 +93,18 @@ func testConfigEnvelope(t *testing.T) *common.ConfigEnvelope {
 
 func TestHybridCapabilityActivationStopsIncompatibleOrderer(t *testing.T) {
 	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
-	config := testConfigEnvelope(t).Config
-	config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups = nil
-	config.ChannelGroup.Groups[channelconfig.ApplicationGroupKey].Groups = nil
-	delete(config.ChannelGroup.Groups, channelconfig.ConsortiumsGroupKey)
+	config := testConfigEnvelope(t).GetConfig()
+	group := config.GetChannelGroup()
+	clear(group.GetGroups()[channelconfig.OrdererGroupKey].GetGroups())
+	clear(group.GetGroups()[channelconfig.ApplicationGroupKey].GetGroups())
+	delete(group.GetGroups(), channelconfig.ConsortiumsGroupKey)
 	caps := &common.Capabilities{Capabilities: map[string]*common.Capability{
 		capabilities.ChannelV1_4_2:              {},
 		capabilities.PactwayHybridCertificateV1: {},
 	}}
 	capBytes, err := proto.Marshal(caps)
 	require.NoError(t, err)
-	config.ChannelGroup.Values[channelconfig.CapabilitiesKey] = &common.ConfigValue{Value: capBytes}
+	group.GetValues()[channelconfig.CapabilitiesKey] = &common.ConfigValue{Value: capBytes}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)

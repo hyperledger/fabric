@@ -61,16 +61,16 @@ func TestHybridCapabilityActivationStopsIncompatiblePeer(t *testing.T) {
 	conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 	group, err := encoder.NewChannelGroup(conf)
 	require.NoError(t, err)
-	group.Groups[channelconfig.OrdererGroupKey].Groups = nil
-	group.Groups[channelconfig.ApplicationGroupKey].Groups = nil
-	delete(group.Groups, channelconfig.ConsortiumsGroupKey)
+	clear(group.GetGroups()[channelconfig.OrdererGroupKey].GetGroups())
+	clear(group.GetGroups()[channelconfig.ApplicationGroupKey].GetGroups())
+	delete(group.GetGroups(), channelconfig.ConsortiumsGroupKey)
 	caps := &common.Capabilities{Capabilities: map[string]*common.Capability{
 		capabilities.ChannelV1_4_2:              {},
 		capabilities.PactwayHybridCertificateV1: {},
 	}}
 	capBytes, err := proto.Marshal(caps)
 	require.NoError(t, err)
-	group.Values[channelconfig.CapabilitiesKey] = &common.ConfigValue{Value: capBytes}
+	group.GetValues()[channelconfig.CapabilitiesKey] = &common.ConfigValue{Value: capBytes}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
