@@ -11,6 +11,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/mock"
@@ -31,6 +32,24 @@ func TestSignedDataToKey(t *testing.T) {
 	require.NoError(t, err1)
 	require.NoError(t, err2)
 	require.NotEqual(t, key1, key2)
+}
+
+func TestSignedDataToKeyIncludesValidationTime(t *testing.T) {
+	firstTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	secondTime := firstTime.Add(time.Second)
+	data := protoutil.SignedData{
+		Data:           []byte{1, 2, 3},
+		Identity:       []byte{4, 5, 6},
+		Signature:      []byte{7, 8, 9},
+		ValidationTime: &firstTime,
+	}
+	firstKey, err := signedDataToKey(data)
+	require.NoError(t, err)
+
+	data.ValidationTime = &secondTime
+	secondKey, err := signedDataToKey(data)
+	require.NoError(t, err)
+	require.NotEqual(t, firstKey, secondKey)
 }
 
 type mockAcSupport struct {

@@ -10,6 +10,7 @@ import (
 	"encoding/asn1"
 	"encoding/hex"
 	"sync"
+	"time"
 
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protoutil"
@@ -186,9 +187,25 @@ func (cache *accessCache) lookup(key string) (cacheHit bool, lookupResult error)
 }
 
 func signedDataToKey(data protoutil.SignedData) (string, error) {
-	b, err := asBytes(data)
+	var validationTime []byte
+	if data.ValidationTime != nil {
+		validationTime = []byte(data.ValidationTime.UTC().Format(time.RFC3339Nano))
+	}
+	b, err := asBytes(signedDataCacheKey{
+		Data:           data.Data,
+		Identity:       data.Identity,
+		Signature:      data.Signature,
+		ValidationTime: validationTime,
+	})
 	if err != nil {
 		return "", errors.Wrap(err, "failed marshaling signed data")
 	}
 	return hex.EncodeToString(util.ComputeSHA256(b)), nil
+}
+
+type signedDataCacheKey struct {
+	Data           []byte
+	Identity       []byte
+	Signature      []byte
+	ValidationTime []byte `asn1:"optional"`
 }
