@@ -105,6 +105,48 @@ func TestOptionalHybridMSPCanBeRequiredByChannel(t *testing.T) {
 	require.NoError(t, signingIdentity.GetPublicVersion().Verify([]byte("channel-required signature"), signature))
 }
 
+func TestHybridChannelSignerUsesChannelMSP(t *testing.T) {
+	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
+	localConfig, localProvider := newHybridMSPTestConfig(t, true, false)
+	localMSP, err := newBccspMsp(MSPv1_0, localProvider)
+	require.NoError(t, err)
+	require.NoError(t, localMSP.Setup(localConfig))
+	localSigner, err := localMSP.GetDefaultSigningIdentity()
+	require.NoError(t, err)
+
+	channelManager := func(config *mspprotos.MSPConfig, provider bccsp.BCCSP) MSPManager {
+		t.Helper()
+		fabricConfig := &mspprotos.FabricMSPConfig{}
+		require.NoError(t, proto.Unmarshal(config.GetConfig(), fabricConfig))
+		fabricConfig.SigningIdentity = nil
+		configBytes, err := proto.Marshal(fabricConfig)
+		require.NoError(t, err)
+		channelMSP, err := newBccspMsp(MSPv1_0, provider)
+		require.NoError(t, err)
+		require.NoError(t, channelMSP.(*bccspmsp).SetHybridRequired(true))
+		require.NoError(t, channelMSP.Setup(&mspprotos.MSPConfig{Type: config.GetType(), Config: configBytes}))
+		manager := NewMSPManager()
+		require.NoError(t, manager.Setup([]MSP{channelMSP}))
+		return manager
+	}
+
+	trusted := channelManager(localConfig, localProvider)
+	require.NoError(t, ValidateHybridChannelSigner(trusted, localSigner))
+	require.ErrorContains(t, ValidateHybridChannelSigner(trusted, invalidChannelSigner{localSigner}), "verifying local identity challenge")
+
+	otherConfig, otherProvider := newHybridMSPTestConfig(t, true, false)
+	untrusted := channelManager(otherConfig, otherProvider)
+	require.ErrorContains(t, ValidateHybridChannelSigner(untrusted, localSigner), "certificate signed by unknown authority")
+}
+
+type invalidChannelSigner struct {
+	SigningIdentity
+}
+
+func (invalidChannelSigner) Sign([]byte) ([]byte, error) {
+	return []byte("not a hybrid signature"), nil
+}
+
 func TestHybridRequiredRejectsClassicalLocalSignerAndLegacyExtensions(t *testing.T) {
 	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
 	instance, err := newBccspMsp(MSPv1_0, factory.GetDefault())

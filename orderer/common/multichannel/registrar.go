@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/filerepo"
@@ -386,11 +387,7 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) (*ledgerResources,
 		return nil, errors.WithMessage(err, "error creating channelconfig bundle")
 	}
 	if bundle.ChannelConfig().Capabilities().PactwayHybridCertificateV1() {
-		hybridSigner, ok := r.signer.(interface{ ValidateHybrid() error })
-		if !ok {
-			return nil, errors.New("PQ-required channel cannot use a classical local signing identity")
-		}
-		if err := hybridSigner.ValidateHybrid(); err != nil {
+		if err := msp.ValidateHybridChannelSigner(bundle.MSPManager(), r.signer); err != nil {
 			return nil, errors.WithMessage(err, "validating local signing identity for PQ-required channel")
 		}
 	}
@@ -426,6 +423,7 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) (*ledgerResources,
 		configResources: &configResources{
 			mutableResources: channelconfig.NewBundleSource(bundle, r.callbacks...),
 			bccsp:            r.bccsp,
+			signer:           r.signer,
 		},
 		ReadWriter:        ledger,
 		signatureVerifier: signatureVerifier,

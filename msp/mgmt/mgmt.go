@@ -90,20 +90,19 @@ func GetLocalMSP(cryptoProvider bccsp.BCCSP) msp.MSP {
 	return localMsp
 }
 
-// ValidateHybridLocalMSP checks the process-local signing identity against an
-// authenticated channel's hybrid requirement when a local MSP is initialized.
-func ValidateHybridLocalMSP() error {
+// ValidateHybridLocalMSP checks the process-local signer against the channel MSP.
+func ValidateHybridLocalMSP(manager msp.MSPManager) error {
 	m.Lock()
-	defer m.Unlock()
-
-	if localMsp == nil {
-		return nil
+	local := localMsp
+	m.Unlock()
+	if local == nil {
+		return errors.New("local MSP is not initialized")
 	}
-	hybridMSP, ok := localMsp.(interface{ ValidateHybridSigner() error })
-	if !ok {
-		return errors.New("local MSP does not support Pactway hybrid certificates")
+	signer, err := local.GetDefaultSigningIdentity()
+	if err != nil {
+		return err
 	}
-	return hybridMSP.ValidateHybridSigner()
+	return msp.ValidateHybridChannelSigner(manager, signer)
 }
 
 func loadLocalMSP(bccsp bccsp.BCCSP) msp.MSP {

@@ -509,11 +509,7 @@ func ValidateHybridCertificateChain(
 	for index, certificate := range chain {
 		isTrustAnchor := index == len(chain)-1
 		if isTrustAnchor && !bytes.Equal(certificate.RawSubject, certificate.RawIssuer) {
-			if required {
-				return errors.New("PQ-required MSP trust anchor must be self-issued and self-signed")
-			}
-			// A classical-permitted configured anchor is trusted by configuration.
-			continue
+			return errors.New("hybrid MSP trust anchor must be self-issued and self-signed")
 		}
 		issuerIndex := index + 1
 		if isTrustAnchor {

@@ -74,6 +74,27 @@ func TestHybridCertificateV1GenerationAndIssuerChain(t *testing.T) {
 	require.NoError(t, ValidateHybridCertificateChain(chains[0], profile, true))
 	require.NoError(t, ValidateHybridCertificateChain(chains[0], profile, false))
 
+	badClassicalRoot := *root
+	badClassicalRoot.Signature = bytes.Clone(root.Signature)
+	badClassicalRoot.Signature[0] ^= 0x01
+	badPQRoot := *root
+	badPQRoot.Extensions = slices.Clone(root.Extensions)
+	unsignedRootTBS, err := removeHybridSignatureExtension(root.RawTBSCertificate, profile.pqSignatureOID)
+	require.NoError(t, err)
+	wrongPQSignature, err := Sign(intermediatePQ, hybridSignedInput(unsignedRootTBS))
+	require.NoError(t, err)
+	wrongPQSignatureValue, err := encodeHybridSignature(wrongPQSignature)
+	require.NoError(t, err)
+	for index := range badPQRoot.Extensions {
+		if badPQRoot.Extensions[index].Id.Equal(profile.pqSignatureOID) {
+			badPQRoot.Extensions[index].Value = wrongPQSignatureValue
+		}
+	}
+	for _, required := range []bool{false, true} {
+		require.ErrorContains(t, ValidateHybridCertificateChain([]*x509.Certificate{&badClassicalRoot}, profile, required), "classical issuer signature")
+		require.ErrorContains(t, ValidateHybridCertificateChain([]*x509.Certificate{&badPQRoot}, profile, required), "issuer ML-DSA-65 signature")
+	}
+
 	info, found, err := ParseHybridCertificate(leaf, profile)
 	require.NoError(t, err)
 	require.True(t, found)
@@ -83,7 +104,7 @@ func TestHybridCertificateV1GenerationAndIssuerChain(t *testing.T) {
 	require.Empty(t, info.SignatureAlgorithm.Parameters.FullBytes)
 }
 
-func TestHybridCertificateV1RequiresSelfIssuedTrustAnchorWhenRequired(t *testing.T) {
+func TestHybridCertificateV1RequiresSelfIssuedTrustAnchor(t *testing.T) {
 	profile, err := HybridCertificateProfileByName(TemporaryHybridProfileV1, profileUseTest)
 	require.NoError(t, err)
 
@@ -134,7 +155,23 @@ func TestHybridCertificateV1RequiresSelfIssuedTrustAnchorWhenRequired(t *testing
 	require.NoError(t, err)
 	require.Len(t, chains, 1)
 	require.ErrorContains(t, ValidateHybridCertificateChain(chains[0], profile, true), "trust anchor must be self-issued")
-	require.NoError(t, ValidateHybridCertificateChain(chains[0], profile, false))
+	require.ErrorContains(t, ValidateHybridCertificateChain(chains[0], profile, false), "trust anchor must be self-issued")
+}
+
+func TestClassicalPermittedAllowsClassicalNonSelfIssuedAnchor(t *testing.T) {
+	profile, err := HybridCertificateProfileByName(TemporaryHybridProfileV1, profileUseTest)
+	require.NoError(t, err)
+	issuerKey := feasibilityECDSAKey(94)
+	issuer := feasibilityCertificateTemplate(98, "classical issuer", issuerKey, true)
+	anchorKey := feasibilityECDSAKey(95)
+	anchorTemplate := feasibilityCertificateTemplate(99, "classical anchor", anchorKey, true)
+	anchorDER, err := x509.CreateCertificate(rand.Reader, anchorTemplate, issuer, &anchorKey.PublicKey, issuerKey)
+	require.NoError(t, err)
+	anchor, err := x509.ParseCertificate(anchorDER)
+	require.NoError(t, err)
+	require.NotEqual(t, anchor.RawSubject, anchor.RawIssuer)
+	require.NoError(t, ValidateHybridCertificateChain([]*x509.Certificate{anchor}, profile, false))
+	require.ErrorContains(t, ValidateHybridCertificateChain([]*x509.Certificate{anchor}, profile, true), "classical-only")
 }
 
 func TestHybridCertificateV1RejectsWrongIssuerAndPartialChains(t *testing.T) {

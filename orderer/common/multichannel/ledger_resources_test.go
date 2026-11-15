@@ -7,11 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
@@ -20,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel/mocks"
+	oqs "github.com/hyperledger/fabric/pq-crypto"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
@@ -86,4 +89,40 @@ func testConfigEnvelope(t *testing.T) *common.ConfigEnvelope {
 			ChannelGroup: group,
 		},
 	}
+}
+
+func TestHybridCapabilityActivationStopsIncompatibleOrderer(t *testing.T) {
+	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
+	config := testConfigEnvelope(t).Config
+	config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups = nil
+	config.ChannelGroup.Groups[channelconfig.ApplicationGroupKey].Groups = nil
+	delete(config.ChannelGroup.Groups, channelconfig.ConsortiumsGroupKey)
+	caps := &common.Capabilities{Capabilities: map[string]*common.Capability{
+		capabilities.ChannelV1_4_2:              {},
+		capabilities.PactwayHybridCertificateV1: {},
+	}}
+	capBytes, err := proto.Marshal(caps)
+	require.NoError(t, err)
+	config.ChannelGroup.Values[channelconfig.CapabilitiesKey] = &common.ConfigValue{Value: capBytes}
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	require.NoError(t, err)
+	bundle, err := channelconfig.NewBundle("testchannel", config, cryptoProvider)
+	require.NoError(t, err)
+
+	signer := &mocks.SignerSerializer{}
+	signer.SerializeReturns([]byte("not a channel identity"), nil)
+	resources := &configResources{
+		mutableResources: &mutableResourcesMock{},
+		signer:           signer,
+	}
+	func() {
+		defer func() {
+			recovered := recover()
+			require.NotNil(t, recovered)
+			require.Contains(t, fmt.Sprint(recovered), "incompatible local signing identity")
+		}()
+		resources.Update(bundle)
+	}()
+	require.Equal(t, 1, signer.SerializeCallCount())
 }

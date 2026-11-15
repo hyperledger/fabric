@@ -409,6 +409,37 @@ func (id *signingidentity) ValidateHybrid() error {
 	return id.msp.ValidateHybridSigner()
 }
 
+// ValidateHybridChannelSigner checks a local signer against the channel's MSP.
+// The channel MSP must enforce the hybrid certificate and signature policy.
+func ValidateHybridChannelSigner(manager MSPManager, signer interface {
+	Serialize() ([]byte, error)
+	Sign([]byte) ([]byte, error)
+}) error {
+	if manager == nil || signer == nil {
+		return errors.New("PQ-required channel needs a channel MSP and local signing identity")
+	}
+	serialized, err := signer.Serialize()
+	if err != nil {
+		return errors.WithMessage(err, "serializing local signing identity")
+	}
+	channelIdentity, err := manager.DeserializeIdentity(serialized)
+	if err != nil {
+		return errors.WithMessage(err, "deserializing local signing identity with channel MSP")
+	}
+	if err := channelIdentity.Validate(); err != nil {
+		return errors.WithMessage(err, "validating local signing identity with channel MSP")
+	}
+	challenge := []byte("Pactway-Hybrid-Channel-Signer-v1")
+	signature, err := signer.Sign(challenge)
+	if err != nil {
+		return errors.WithMessage(err, "signing local identity challenge")
+	}
+	if err := channelIdentity.Verify(challenge, signature); err != nil {
+		return errors.WithMessage(err, "verifying local identity challenge with channel MSP")
+	}
+	return nil
+}
+
 // GetPublicVersion returns the public version of this identity,
 // namely, the one that is only able to verify messages and not sign them
 func (id *signingidentity) GetPublicVersion() Identity {

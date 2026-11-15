@@ -19,10 +19,12 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -34,20 +36,54 @@ import (
 	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/privdata"
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
+	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
+	oqs "github.com/hyperledger/fabric/pq-crypto"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestMain(m *testing.M) {
 	msptesttools.LoadMSPSetupForTesting()
 	rc := m.Run()
 	os.Exit(rc)
+}
+
+func TestHybridCapabilityActivationStopsIncompatiblePeer(t *testing.T) {
+	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
+	conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
+	group, err := encoder.NewChannelGroup(conf)
+	require.NoError(t, err)
+	group.Groups[channelconfig.OrdererGroupKey].Groups = nil
+	group.Groups[channelconfig.ApplicationGroupKey].Groups = nil
+	delete(group.Groups, channelconfig.ConsortiumsGroupKey)
+	caps := &common.Capabilities{Capabilities: map[string]*common.Capability{
+		capabilities.ChannelV1_4_2:              {},
+		capabilities.PactwayHybridCertificateV1: {},
+	}}
+	capBytes, err := proto.Marshal(caps)
+	require.NoError(t, err)
+	group.Values[channelconfig.CapabilitiesKey] = &common.ConfigValue{Value: capBytes}
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	require.NoError(t, err)
+	bundle, err := channelconfig.NewBundle("testchannel", &common.Config{ChannelGroup: group}, cryptoProvider)
+	require.NoError(t, err)
+	func() {
+		defer func() {
+			recovered := recover()
+			require.NotNil(t, recovered)
+			require.Contains(t, fmt.Sprint(recovered), "incompatible local signing identity")
+		}()
+		capabilitiesSupportedOrPanic(bundle)
+	}()
 }
 
 func NewTestPeer(t *testing.T) (*Peer, func()) {

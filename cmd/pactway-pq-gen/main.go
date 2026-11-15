@@ -24,6 +24,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
@@ -394,7 +395,7 @@ func (org *organization) profileOrganization() *genesisconfig.Organization {
 		Policies: policies,
 	}
 	if org.nodeRole == "orderer" {
-		result.OrdererEndpoints = []string{fmt.Sprintf("%s:%d", org.nodeHost, org.nodePort)}
+		result.OrdererEndpoints = []string{net.JoinHostPort(org.nodeHost, strconv.FormatUint(uint64(org.nodePort), 10))}
 	} else {
 		result.AnchorPeers = []*genesisconfig.AnchorPeer{{Host: org.nodeHost, Port: int(org.nodePort)}}
 	}

@@ -168,25 +168,35 @@ hash and responses.
   either the optional legacy validator or the versioned profile validator.
   Tests cover both policy modes, including a classical root without
   alternate-key material.
-- Required hybrid chains reject configured trust anchors that are not
-  self-issued; optional-mode anchor behavior remains unchanged. Self-issued
-  anchors are checked for both classical and PQ self-signatures.
-- A PQ channel config is rejected when an initialized peer-local signer is
-  classical. The orderer checks its process-local signer while loading channel
-  resources. These checks do not mutate local policy while parsing a config.
+- Hybrid chains in either policy mode require a self-issued trust anchor and
+  verify both its classical and PQ self-signatures. All-classical chains
+  retain ordinary upstream trust-anchor behavior in classical-permitted mode.
+- Bundle construction and config-update validation do not depend on the
+  process-local signer. On channel startup and activation of a consensus-ordered
+  PQ-required configuration, the peer and orderer validate their local signer
+  against the channel MSP and verify a hybrid signing challenge. An incompatible
+  node stops rather than activating the configuration or signing classically.
 - Any hybrid local signer must have an available ML-DSA-65 private key and
   pass classical and PQ key-possession checks, even when its MSP is otherwise
   classical-permitted.
 - Embedded ML-DSA-65 SubjectPublicKeyInfo parsing now rejects extra sequence
   fields and non-canonical DER.
-- The identity generator emits IP SANs for IP-valued orderer hosts and DNS
-  SANs for hostnames.
+- The identity generator emits IP SANs for IP-valued orderer hosts, DNS SANs
+  for hostnames, and correctly brackets IPv6 orderer endpoints.
 
 The focused validation commands passed:
 
 ```text
 go test -count=1 -p=1 ./pq-crypto ./msp/... ./common/channelconfig ./orderer/common/multichannel ./orderer/common/server ./internal/peer/common ./internal/peer/node ./cmd/pactway-pq-gen
 go vet -p=1 ./pq-crypto ./msp/... ./common/channelconfig ./orderer/common/multichannel ./orderer/common/server ./internal/peer/common ./internal/peer/node ./cmd/pactway-pq-gen
+```
+
+For the subsequent activation, channel-MSP trust, anchor, and IPv6 fixes, the
+following affected-package checks passed on Go 1.27.4:
+
+```text
+go test -count=1 -p=1 ./pq-crypto ./msp/... ./common/capabilities ./common/channelconfig ./core/peer ./orderer/common/multichannel ./orderer/common/server ./internal/peer/common ./internal/peer/node ./cmd/pactway-pq-gen
+go vet -p=1 ./pq-crypto ./msp/... ./common/capabilities ./common/channelconfig ./core/peer ./orderer/common/multichannel ./orderer/common/server ./internal/peer/common ./internal/peer/node ./cmd/pactway-pq-gen
 ```
 
 The following work remains release- and PQ2-completion-blocking:

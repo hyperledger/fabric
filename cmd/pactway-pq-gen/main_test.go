@@ -67,6 +67,21 @@ func TestGenerateTLSLeafUsesCorrectSubjectAlternativeName(t *testing.T) {
 	}
 }
 
+func TestOrdererEndpointsUseHostPort(t *testing.T) {
+	for _, test := range []struct {
+		host, endpoint string
+	}{
+		{host: "orderer.example.test", endpoint: "orderer.example.test:7050"},
+		{host: "192.0.2.10", endpoint: "192.0.2.10:7050"},
+		{host: "2001:db8::10", endpoint: "[2001:db8::10]:7050"},
+	} {
+		t.Run(test.host, func(t *testing.T) {
+			org := &organization{mspID: "OrdererMSP", nodeRole: "orderer", nodeHost: test.host, nodePort: 7050}
+			require.Equal(t, []string{test.endpoint}, org.profileOrganization().OrdererEndpoints)
+		})
+	}
+}
+
 func TestGenerateThreeOrganizationHybridDemo(t *testing.T) {
 	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
 	profile, err := oqs.HybridCertificateProfileByName(oqs.TemporaryHybridProfileV1, oqs.ProfileUseTest)
@@ -229,6 +244,7 @@ func TestGenerateThreeOrganizationHybridDemo(t *testing.T) {
 		require.NoError(t, instance.Setup(config), "%s/%s", identity.org, identity.localPath)
 		signingIdentity, err := instance.GetDefaultSigningIdentity()
 		require.NoError(t, err)
+		require.NoError(t, fabricmsp.ValidateHybridChannelSigner(bundle.MSPManager(), signingIdentity))
 		message := []byte(identity.org + identity.localPath)
 		signature, err := signingIdentity.Sign(message)
 		require.NoError(t, err)

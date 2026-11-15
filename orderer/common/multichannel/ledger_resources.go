@@ -11,6 +11,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -45,7 +47,8 @@ type mutableResources interface {
 
 type configResources struct {
 	mutableResources
-	bccsp bccsp.BCCSP
+	bccsp  bccsp.BCCSP
+	signer identity.SignerSerializer
 }
 
 func (cr *configResources) CreateBundle(channelID string, config *common.Config) (*channelconfig.Bundle, error) {
@@ -54,6 +57,11 @@ func (cr *configResources) CreateBundle(channelID string, config *common.Config)
 
 func (cr *configResources) Update(bndl *channelconfig.Bundle) {
 	checkResourcesOrPanic(bndl)
+	if bndl.ChannelConfig().Capabilities().PactwayHybridCertificateV1() {
+		if err := msp.ValidateHybridChannelSigner(bndl.MSPManager(), cr.signer); err != nil {
+			logger.Panicf("[channel %s] incompatible local signing identity: %s", bndl.ConfigtxValidator().ChannelID(), err)
+		}
+	}
 	cr.mutableResources.Update(bndl)
 }
 

@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 )
 
 // Channel manages objects and configuration associated with a Channel.
@@ -164,5 +165,10 @@ func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
 
 	if err := res.ChannelConfig().Capabilities().Supported(); err != nil {
 		peerLogger.Panicf("[channel %s] incompatible: %s", res.ConfigtxValidator().ChannelID(), err)
+	}
+	if res.ChannelConfig().Capabilities().PactwayHybridCertificateV1() {
+		if err := mspmgmt.ValidateHybridLocalMSP(res.MSPManager()); err != nil {
+			peerLogger.Panicf("[channel %s] incompatible local signing identity: %s", res.ConfigtxValidator().ChannelID(), err)
+		}
 	}
 }
