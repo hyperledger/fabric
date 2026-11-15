@@ -45,9 +45,12 @@ quantum-resistant network security.
 - Orderer and peer local-signer compatibility checks now run after the config
   block has been committed. A node whose old signer no longer chains to the
   committed MSP stops after persistence; a replacement signer can then restart
-  against the new config. Replacement signer material must be prepared before
-  the update. Direct replacement still needs multi-node config-update,
-  restart/replay and failure-injection tests before it is considered supported.
+  against the new config. A focused Docker-backed integration test now
+  demonstrates a single-orderer root rotation: the old orderer stops after
+  persistence, a replacement signer restarts it, peers restart and replay the
+  committed config, and a subsequent config update succeeds. Replacement
+  signer material must be prepared before the update. Multi-orderer and
+  failure-injection coverage remain open.
 - Hybrid identities are validated against the signed channel-header timestamp
   for transaction creators and endorsement signers, so validation is
   deterministic during block validation and replay. Direct hybrid identity
@@ -57,8 +60,10 @@ quantum-resistant network security.
   certificate-time behavior. Focused tests cover expiry at the supplied
   timestamp and propagation of that timestamp into state-based endorsement
   checks; full transaction replay with expired credentials remains an
-  integration gate. Root rotation is not finally accepted until the
-  post-commit stop/restart behavior passes the end-to-end gates.
+  integration gate. An attempted replay run could not launch chaincode because
+  the WSL Docker host-network path refused the chaincode callback, so it is not
+  counted as passing evidence. Root rotation still needs multi-orderer and
+  failure-injection coverage.
 
 For PQ-required channels, peer and orderer signer checks now additionally
 require membership in the respective channel organization group and the
@@ -107,6 +112,47 @@ Org2MSP, that Org2 accepts its own peer certificate, and that private key files
 are absent from `public/`. A public-only Org2 verifier also verifies the peer's
 signature and checks positive and negative client/admin/peer principals; an
 OrdererOrg verifier checks the orderer principal.
+
+The focused orderer root-rotation/restart/replay integration test passed:
+
+```text
+PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/msp -run '^TestMSP$' -ginkgo.focus='Pactway hybrid orderer root rotation' -timeout 10m
+```
+
+Result: `ok github.com/hyperledger/fabric/integration/msp 276.290s`. This
+covers one orderer and two peers, including a post-rotation config update and
+peer restart/replay; it does not cover multi-orderer rotation or failure
+injection. A subsequent full MSP integration run did not pass:
+
+```text
+PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/msp -timeout 20m
+```
+
+Result: 1 spec passed and 2 failed. The mutual-TLS test's chaincode containers
+timed out connecting to the WSL-host callback (`10.255.255.254:25006` and
+`:25011`); the RSA-CA test timed out waiting for an installed chaincode and
+received an empty package list. Both failures also reproduced when run in
+isolation. These are not passing integration evidence; the broader MSP suite
+remains open until the Docker/WSL callback and chaincode installation failures
+are resolved or validated in a suitable environment.
+
+A later run from the Windows-mounted checkout timed out while packaging the
+mutual-TLS test's chaincode. Its RSA-CA test failed installation with
+`Unknown chaincodeType: BINARY`; the binary external-builder scripts in that
+checkout had CRLF line endings. A fresh Git checkout on the WSL Linux
+filesystem with LF executable scripts and the same three uncommitted changes
+ran:
+
+```text
+PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/msp -count=1 -timeout 20m
+```
+
+Two specs passed, including the RSA-CA and root-rotation tests, and the
+mutual-TLS spec failed because its chaincode containers timed out connecting
+to `10.255.255.254:25006` and `:25011`.
+Advertising `host.docker.internal` in that disposable checkout did not make
+the focused mutual-TLS test pass. These results do not close the full-suite
+or expired-credential replay gates.
 
 Additional focused tests verify that a PQ-required channel MSP handler rejects
 a classical-only MSP, that a required MSP cannot be weakened through the local
@@ -237,9 +283,12 @@ The following work remains release- and PQ2-completion-blocking:
   Git-backed ext4 clone with package parallelism serialized.
 - Exercise authorized config update, compliant root rotation, restart/replay,
   and role-principal behavior end-to-end through both peer and orderer
-  validation paths. The generator test reloads a persisted BCCSP keystore and
-  MSP, replays a prior signature, and verifies new PQ signing. A multi-node
-  process restart and channel-config replay are not demonstrated.
+  validation paths. The focused integration test now covers single-orderer
+  rotation, replacement-signer restart, peer restart/config replay, and a
+  subsequent config update. Multi-orderer/failure-injection and expired-client
+  transaction replay are not demonstrated. The generator test reloads a
+  persisted BCCSP keystore and MSP, replays a prior signature, and verifies
+  new PQ signing.
 - Finalize generation and deployment documentation and independently review
   the custom certificate profile. Replace the temporary OIDs only after the
   official PEN is assigned, regenerate all credentials/genesis, rerun the

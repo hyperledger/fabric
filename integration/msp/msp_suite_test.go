@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gexec"
 )
 
 func TestMSP(t *testing.T) {
@@ -24,6 +25,7 @@ func TestMSP(t *testing.T) {
 var (
 	buildServer *nwo.BuildServer
 	components  *nwo.Components
+	pqGenerator string
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -31,6 +33,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	buildServer.Serve()
 
 	components = buildServer.Components()
+	var err error
+	pqGenerator, err = gexec.Build("github.com/hyperledger/fabric/cmd/pactway-pq-gen")
+	Expect(err).NotTo(HaveOccurred())
 	payload, err := json.Marshal(components)
 	Expect(err).NotTo(HaveOccurred())
 	return payload
@@ -42,6 +47,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 var _ = SynchronizedAfterSuite(func() {
 }, func() {
 	buildServer.Shutdown()
+	gexec.CleanupBuildArtifacts()
 })
 
 func StartPort() int {
