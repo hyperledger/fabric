@@ -140,7 +140,7 @@ var _ = Describe("Pactway hybrid orderer root rotation", func() {
 		ordererProcess = nil
 		installOrdererHybridIdentity(network, newOutput)
 
-		ordererRunner, ordererProcess = network.StartOrderer(orderer.Name)
+		_, ordererProcess = network.StartOrderer(orderer.Name)
 		Eventually(func() uint64 {
 			return nwo.CurrentConfigBlockNumber(network, org1Peer, nil, "testchannel")
 		}, network.EventuallyTimeout).Should(BeNumerically(">", currentBlock))
