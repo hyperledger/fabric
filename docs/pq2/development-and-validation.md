@@ -40,6 +40,33 @@ command, layout, profile, and verification procedure are reproducible.
 TLS and transport remain classical. This demo is not complete
 quantum-resistant network security.
 
+## Open review blockers
+
+- An orderer checks its signer against a new channel MSP before persisting the
+  config block. A direct replacement of the signer's root can therefore stop
+  the orderer before either the old or the replacement signer can restart
+  against the committed configuration. Peer configuration application also
+  occurs during block validation before ledger commit. Do not treat direct
+  root replacement or restart/replay as supported until a recovery-safe
+  transition is implemented and tested end to end.
+- Channel MSP validation uses Fabric's historical certificate-time workaround,
+  evaluating chains at the leaf's `NotBefore` rather than the current time. A
+  temporary test with an expired hybrid remote identity confirmed that it
+  still validates in a PQ-required channel MSP. Local MSP setup separately
+  rejects an expired local signing identity. Fixing remote expiration requires
+  an agreed deterministic time model for transaction validation and replay:
+  using a node's wall clock in consensus validation can cause peers to disagree
+  or reject previously committed transactions during replay. MSP identity and
+  principal caches also need time-aware handling.
+
+These are acceptance blockers, not assurances that staged root rotation or
+expiry enforcement has been validated.
+
+For PQ-required channels, peer and orderer signer checks now additionally
+require membership in the respective channel organization group and the
+corresponding MSP peer or orderer principal. This requires NodeOU role
+classification; a valid client identity is not a node signer.
+
 ## PQ2 validation record
 
 The targeted implementation packages have passed together on the feature

@@ -12,6 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/cache"
 	"github.com/spf13/viper"
@@ -91,7 +92,7 @@ func GetLocalMSP(cryptoProvider bccsp.BCCSP) msp.MSP {
 }
 
 // ValidateHybridLocalMSP checks the process-local signer against the channel MSP.
-func ValidateHybridLocalMSP(manager msp.MSPManager) error {
+func ValidateHybridLocalMSP(manager msp.MSPManager, organizations map[string]struct{}, role mspprotos.MSPRole_MSPRoleType) error {
 	m.Lock()
 	local := localMsp
 	m.Unlock()
@@ -102,7 +103,7 @@ func ValidateHybridLocalMSP(manager msp.MSPManager) error {
 	if err != nil {
 		return err
 	}
-	return msp.ValidateHybridChannelSigner(manager, signer)
+	return msp.ValidateHybridChannelSigner(manager, signer, organizations, role)
 }
 
 func loadLocalMSP(bccsp bccsp.BCCSP) msp.MSP {

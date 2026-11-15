@@ -219,6 +219,8 @@ func TestGenerateThreeOrganizationHybridDemo(t *testing.T) {
 		signature []byte
 	}
 	signatures := make(map[string]hybridSignature, 9)
+	peerOrganizations := map[string]struct{}{"Org1MSP": {}, "Org2MSP": {}}
+	ordererOrganizations := map[string]struct{}{ordererMSPID: {}}
 	for _, identity := range []struct {
 		org, mspID, localPath string
 	}{
@@ -244,7 +246,19 @@ func TestGenerateThreeOrganizationHybridDemo(t *testing.T) {
 		require.NoError(t, instance.Setup(config), "%s/%s", identity.org, identity.localPath)
 		signingIdentity, err := instance.GetDefaultSigningIdentity()
 		require.NoError(t, err)
-		require.NoError(t, fabricmsp.ValidateHybridChannelSigner(bundle.MSPManager(), signingIdentity))
+		peerErr := fabricmsp.ValidateHybridChannelSigner(bundle.MSPManager(), signingIdentity, peerOrganizations, mspprotos.MSPRole_PEER)
+		ordererErr := fabricmsp.ValidateHybridChannelSigner(bundle.MSPManager(), signingIdentity, ordererOrganizations, mspprotos.MSPRole_ORDERER)
+		switch identity.localPath {
+		case filepath.Join("nodes", "peer0", "msp"):
+			require.NoError(t, peerErr)
+			require.Error(t, ordererErr)
+		case filepath.Join("nodes", "orderer0", "msp"):
+			require.Error(t, peerErr)
+			require.NoError(t, ordererErr)
+		default:
+			require.Error(t, peerErr)
+			require.Error(t, ordererErr)
+		}
 		message := []byte(identity.org + identity.localPath)
 		signature, err := signingIdentity.Sign(message)
 		require.NoError(t, err)

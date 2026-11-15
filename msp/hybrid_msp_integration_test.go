@@ -107,8 +107,8 @@ func TestOptionalHybridMSPCanBeRequiredByChannel(t *testing.T) {
 
 func TestHybridChannelSignerUsesChannelMSP(t *testing.T) {
 	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
-	localConfig, localProvider := newHybridMSPTestConfig(t, true, false)
-	localMSP, err := newBccspMsp(MSPv1_0, localProvider)
+	localConfig, localProvider := newHybridMSPTestConfigForRole(t, true, false, "peer")
+	localMSP, err := newBccspMsp(MSPv1_4_3, localProvider)
 	require.NoError(t, err)
 	require.NoError(t, localMSP.Setup(localConfig))
 	localSigner, err := localMSP.GetDefaultSigningIdentity()
@@ -121,7 +121,7 @@ func TestHybridChannelSignerUsesChannelMSP(t *testing.T) {
 		fabricConfig.SigningIdentity = nil
 		configBytes, err := proto.Marshal(fabricConfig)
 		require.NoError(t, err)
-		channelMSP, err := newBccspMsp(MSPv1_0, provider)
+		channelMSP, err := newBccspMsp(MSPv1_4_3, provider)
 		require.NoError(t, err)
 		require.NoError(t, channelMSP.(*bccspmsp).SetHybridRequired(true))
 		require.NoError(t, channelMSP.Setup(&mspprotos.MSPConfig{Type: config.GetType(), Config: configBytes}))
@@ -131,12 +131,32 @@ func TestHybridChannelSignerUsesChannelMSP(t *testing.T) {
 	}
 
 	trusted := channelManager(localConfig, localProvider)
-	require.NoError(t, ValidateHybridChannelSigner(trusted, localSigner))
-	require.ErrorContains(t, ValidateHybridChannelSigner(trusted, invalidChannelSigner{localSigner}), "verifying local identity challenge")
+	organizations := map[string]struct{}{"PQ2TestMSP": {}}
+	require.NoError(t, ValidateHybridChannelSigner(trusted, localSigner, organizations, mspprotos.MSPRole_PEER))
+	require.ErrorContains(t, ValidateHybridChannelSigner(trusted, localSigner, organizations, mspprotos.MSPRole_ORDERER), "does not satisfy channel ORDERER role")
+	require.ErrorContains(t, ValidateHybridChannelSigner(trusted, localSigner, map[string]struct{}{}, mspprotos.MSPRole_PEER), "not a channel PEER organization")
+	require.ErrorContains(t, ValidateHybridChannelSigner(trusted, invalidChannelSigner{localSigner}, organizations, mspprotos.MSPRole_PEER), "verifying local identity challenge")
 
-	otherConfig, otherProvider := newHybridMSPTestConfig(t, true, false)
+	otherConfig, otherProvider := newHybridMSPTestConfigForRole(t, true, false, "orderer")
 	untrusted := channelManager(otherConfig, otherProvider)
-	require.ErrorContains(t, ValidateHybridChannelSigner(untrusted, localSigner), "certificate signed by unknown authority")
+	require.ErrorContains(t, ValidateHybridChannelSigner(untrusted, localSigner, organizations, mspprotos.MSPRole_PEER), "certificate signed by unknown authority")
+	ordererMSP, err := newBccspMsp(MSPv1_4_3, otherProvider)
+	require.NoError(t, err)
+	require.NoError(t, ordererMSP.Setup(otherConfig))
+	ordererSigner, err := ordererMSP.GetDefaultSigningIdentity()
+	require.NoError(t, err)
+	require.NoError(t, ValidateHybridChannelSigner(untrusted, ordererSigner, organizations, mspprotos.MSPRole_ORDERER))
+	require.ErrorContains(t, ValidateHybridChannelSigner(untrusted, ordererSigner, organizations, mspprotos.MSPRole_PEER), "does not satisfy channel PEER role")
+
+	clientConfig, clientProvider := newHybridMSPTestConfigForRole(t, true, false, "client")
+	clientMSP, err := newBccspMsp(MSPv1_4_3, clientProvider)
+	require.NoError(t, err)
+	require.NoError(t, clientMSP.Setup(clientConfig))
+	clientSigner, err := clientMSP.GetDefaultSigningIdentity()
+	require.NoError(t, err)
+	clientManager := channelManager(clientConfig, clientProvider)
+	require.ErrorContains(t, ValidateHybridChannelSigner(clientManager, clientSigner, organizations, mspprotos.MSPRole_ORDERER), "does not satisfy channel ORDERER role")
+	require.ErrorContains(t, ValidateHybridChannelSigner(clientManager, clientSigner, organizations, mspprotos.MSPRole_PEER), "does not satisfy channel PEER role")
 }
 
 type invalidChannelSigner struct {
@@ -253,6 +273,14 @@ func newHybridMSPTestConfig(
 	t *testing.T,
 	persistLeafPQKey, hybridRequired bool,
 ) (*mspprotos.MSPConfig, bccsp.BCCSP) {
+	return newHybridMSPTestConfigForRole(t, persistLeafPQKey, hybridRequired, "")
+}
+
+func newHybridMSPTestConfigForRole(
+	t *testing.T,
+	persistLeafPQKey, hybridRequired bool,
+	role string,
+) (*mspprotos.MSPConfig, bccsp.BCCSP) {
 	t.Helper()
 
 	keyStore, err := sw.NewFileBasedKeyStore(nil, filepath.Join(t.TempDir(), "keystore"), false)
@@ -300,6 +328,9 @@ func newHybridMSPTestConfig(
 	require.NoError(t, err)
 
 	leafTemplate := hybridMSPCertificateTemplate(2, "PQ2 MSP test client", false)
+	if role != "" {
+		leafTemplate.Subject.OrganizationalUnit = []string{role}
+	}
 	leafTemplate.AuthorityKeyId = rootCertificate.SubjectKeyId
 	leafDER, err := oqs.CreateHybridCertificateWithPQSigner(
 		rand.Reader, profile, leafTemplate, rootCertificate,
@@ -317,6 +348,15 @@ func newHybridMSPTestConfig(
 			SignatureHashFamily:            bccsp.SHA2,
 			IdentityIdentifierHashFunction: bccsp.SHA256,
 		},
+	}
+	if role != "" {
+		config.FabricNodeOus = &mspprotos.FabricNodeOUs{
+			Enable:              true,
+			ClientOuIdentifier:  &mspprotos.FabricOUIdentifier{OrganizationalUnitIdentifier: "client"},
+			PeerOuIdentifier:    &mspprotos.FabricOUIdentifier{OrganizationalUnitIdentifier: "peer"},
+			AdminOuIdentifier:   &mspprotos.FabricOUIdentifier{OrganizationalUnitIdentifier: "admin"},
+			OrdererOuIdentifier: &mspprotos.FabricOUIdentifier{OrganizationalUnitIdentifier: "orderer"},
+		}
 	}
 	if hybridRequired {
 		require.NoError(t, markHybridRequired(config))

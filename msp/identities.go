@@ -410,11 +410,14 @@ func (id *signingidentity) ValidateHybrid() error {
 	return id.msp.ValidateHybridSigner()
 }
 
-// ValidateHybridChannelSigner checks a local signer against the channel's MSP.
+// ValidateHybridChannelSigner checks a node signer against its channel organization and role.
 // The channel MSP must enforce the hybrid certificate and signature policy.
-func ValidateHybridChannelSigner(manager MSPManager, signer signeridentity.SignerSerializer) error {
+func ValidateHybridChannelSigner(manager MSPManager, signer signeridentity.SignerSerializer, organizations map[string]struct{}, role msp.MSPRole_MSPRoleType) error {
 	if manager == nil || signer == nil {
 		return errors.New("PQ-required channel needs a channel MSP and local signing identity")
+	}
+	if role != msp.MSPRole_PEER && role != msp.MSPRole_ORDERER {
+		return errors.New("PQ-required channel needs a peer or orderer signing role")
 	}
 	serialized, err := signer.Serialize()
 	if err != nil {
@@ -426,6 +429,18 @@ func ValidateHybridChannelSigner(manager MSPManager, signer signeridentity.Signe
 	}
 	if err := channelIdentity.Validate(); err != nil {
 		return errors.WithMessage(err, "validating local signing identity with channel MSP")
+	}
+	mspID := channelIdentity.GetMSPIdentifier()
+	if _, ok := organizations[mspID]; !ok {
+		return errors.Errorf("local signing identity MSP %s is not a channel %s organization", mspID, role)
+	}
+	roleBytes, err := proto.Marshal(&msp.MSPRole{MspIdentifier: mspID, Role: role})
+	if err != nil {
+		return errors.WithMessage(err, "marshaling local signing identity role")
+	}
+	principal := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_ROLE, Principal: roleBytes}
+	if err := channelIdentity.SatisfiesPrincipal(principal); err != nil {
+		return errors.WithMessagef(err, "local signing identity does not satisfy channel %s role", role)
 	}
 	challenge := []byte("Pactway-Hybrid-Channel-Signer-v1")
 	signature, err := signer.Sign(challenge)

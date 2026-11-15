@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
@@ -167,7 +168,11 @@ func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
 		peerLogger.Panicf("[channel %s] incompatible: %s", res.ConfigtxValidator().ChannelID(), err)
 	}
 	if res.ChannelConfig().Capabilities().PactwayHybridCertificateV1() {
-		if err := mspmgmt.ValidateHybridLocalMSP(res.MSPManager()); err != nil {
+		organizations := make(map[string]struct{})
+		for _, org := range ac.Organizations() {
+			organizations[org.MSPID()] = struct{}{}
+		}
+		if err := mspmgmt.ValidateHybridLocalMSP(res.MSPManager(), organizations, mspprotos.MSPRole_PEER); err != nil {
 			peerLogger.Panicf("[channel %s] incompatible local signing identity: %s", res.ConfigtxValidator().ChannelID(), err)
 		}
 	}
