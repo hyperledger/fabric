@@ -51,8 +51,10 @@ quantum-resistant network security.
   committed config, and a subsequent config update succeeds. A further test
   also verifies that restarting with the stale signer fails before recovery
   with the replacement signer. Replacement signer material must be prepared
-  before the update. Multi-orderer and broader failure-injection coverage
-  remain open.
+  before the update. A three-orderer Raft test now covers an overlapping-root
+  rollout with individually generated signers, rolling restarts, removal of
+  old roots, and rejection and recovery of a stale-signer restart. Broader
+  failure-injection coverage remains open.
 - Hybrid identities are validated against the signed channel-header timestamp
   for transaction creators and endorsement signers, so validation is
   deterministic during block validation and replay. Direct hybrid identity
@@ -64,7 +66,7 @@ quantum-resistant network security.
   checks; full transaction replay with expired credentials remains an
   integration gate. An attempted replay run could not launch chaincode because
   the WSL Docker host-network path refused the chaincode callback, so it is not
-  counted as passing evidence. Root rotation still needs multi-orderer and
+  counted as passing evidence. Root rotation still needs broader
   failure-injection coverage.
 - Security review identified that the signed channel-header timestamp is
   chosen by the submitter and is not proof of endorsement time. An attacker
@@ -185,6 +187,29 @@ PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/msp -count=1 -run='^T
 The same focused command passed again after adding orderer admission filtering
 (`ok github.com/hyperledger/fabric/integration/msp 295.416s`).
 
+The three-orderer Raft rotation test passed:
+
+```text
+PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/msp -count=1 -run '^TestMSP$' -ginkgo.focus='rotates a three-orderer cluster with overlapping roots' -ginkgo.v -timeout=18m -v
+```
+
+Result: one spec passed, `ok github.com/hyperledger/fabric/integration/msp
+303.357s`; a later rerun with the final fixture assertions passed in
+289.874s. The test generates distinct old and replacement identities for
+each orderer, adds replacement roots before rolling restarts, removes old
+roots, and verifies stale-signer rejection, replacement-signer recovery and
+the recovered orderer's config replay. The test MSP trusts multiple issuers
+and uses NodeOUs without issuer-specific certificate pins. This does not
+demonstrate abrupt root removal, loss of quorum, SmartBFT rotation, or
+expired-credential transaction replay.
+
+Both the single-orderer and three-orderer scenarios subsequently passed
+together (two specs, 321.656s):
+
+```text
+PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/msp -count=1 -run '^TestMSP$' -ginkgo.focus='Pactway hybrid orderer root rotation' -ginkgo.v -timeout=20m -v
+```
+
 The orderer admission tests generate fresh hybrid certificates and use a real
 BCCSP-backed MSP. They verify that an expired endorser whose backdated
 timestamp passes historical identity validation is rejected at admission, as
@@ -214,8 +239,8 @@ PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/raft -count=1 -run '^
 ```
 
 Result: `ok github.com/hyperledger/fabric/integration/raft 285.556s`. This
-is a classical Raft TLS-certificate onboarding test, not the outstanding
-multi-orderer hybrid-MSP rotation gate.
+is a classical Raft TLS-certificate onboarding test, not evidence for
+hybrid-MSP rotation.
 
 Additional focused tests verify that a PQ-required channel MSP handler rejects
 a classical-only MSP, that a required MSP cannot be weakened through the local
@@ -348,9 +373,10 @@ The following work remains release- and PQ2-completion-blocking:
   and role-principal behavior end-to-end through both peer and orderer
   validation paths. The focused integration test now covers single-orderer
   rotation, rejection of a stale-signer restart, replacement-signer restart,
-  peer restart/config replay, and a subsequent config update. Multi-orderer,
-  broader failure-injection, and expired-client transaction replay are not
-  demonstrated. The generator test reloads a
+  peer restart/config replay, and a subsequent config update. A three-orderer
+  Raft test covers planned overlapping-root rotation and stale-signer
+  recovery; broader failure-injection and expired-client transaction replay
+  are not demonstrated. The generator test reloads a
   persisted BCCSP keystore and MSP, replays a prior signature, and verifies
   new PQ signing.
 - Replace submitter-controlled endorsement validation time with an approved,

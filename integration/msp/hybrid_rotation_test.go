@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package msp
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -27,6 +29,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon_v2"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -173,6 +176,178 @@ var _ = Describe("Pactway hybrid orderer root rotation", func() {
 		Expect(proto.Equal(rotatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetGroups()[ordererOrg.Name],
 			replayedConfig.GetChannelGroup().GetGroups()["Orderer"].GetGroups()[ordererOrg.Name])).To(BeTrue())
 	})
+
+	It("rotates a three-orderer cluster with overlapping roots and rejects a stale signer", func() {
+		testDir, err := os.MkdirTemp("", "hybrid-multi-orderer-rotation")
+		Expect(err).NotTo(HaveOccurred())
+		oldProfile, oldProfileSet := os.LookupEnv("PACTWAY_HYBRID_PROFILE")
+		oldDevelopment, oldDevelopmentSet := os.LookupEnv("PACTWAY_ISOLATED_DEVELOPMENT")
+		Expect(os.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)).To(Succeed())
+		Expect(os.Setenv("PACTWAY_ISOLATED_DEVELOPMENT", "true")).To(Succeed())
+
+		var network *nwo.Network
+		var peerProcess ifrit.Process
+		ordererProcesses := make([]ifrit.Process, 3)
+		DeferCleanup(func() {
+			if peerProcess != nil {
+				peerProcess.Signal(syscall.SIGTERM)
+				Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+			for _, process := range ordererProcesses {
+				if process != nil {
+					process.Signal(syscall.SIGTERM)
+					Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+				}
+			}
+			if network != nil {
+				network.Cleanup()
+			}
+			Expect(os.RemoveAll(testDir)).To(Succeed())
+			restoreEnvironment("PACTWAY_HYBRID_PROFILE", oldProfile, oldProfileSet)
+			restoreEnvironment("PACTWAY_ISOLATED_DEVELOPMENT", oldDevelopment, oldDevelopmentSet)
+		})
+
+		client, err := dcli.New(dcli.FromEnv)
+		Expect(err).NotTo(HaveOccurred())
+		network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
+		ordererOrg := network.Organization("OrdererOrg")
+		ordererOrg.MSPID = "OrdererOrgMSP"
+		ordererOrg.EnableNodeOUs = true
+		network.Profiles[0].ChannelCapabilities = []string{"V3_0", capabilities.PactwayHybridCertificateV1}
+		network.GenerateConfigTree()
+		network.CreateDockerNetwork()
+		sess, err := network.Cryptogen(commands.Generate{Config: network.CryptoConfigPath(), Output: network.CryptoPath()})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+
+		configDir, err := filepath.Abs(filepath.Join("..", "..", "sampleconfig"))
+		Expect(err).NotTo(HaveOccurred())
+		oldOutputs, newOutputs := make([]string, 3), make([]string, 3)
+		identities := make(map[string]bool)
+		for i := range oldOutputs {
+			oldOutputs[i] = filepath.Join(testDir, fmt.Sprintf("old-profile-%d", i))
+			newOutputs[i] = filepath.Join(testDir, fmt.Sprintf("new-profile-%d", i))
+			generateHybridNetwork(oldOutputs[i], configDir)
+			generateHybridNetwork(newOutputs[i], configDir)
+			for _, output := range []string{oldOutputs[i], newOutputs[i]} {
+				cert, err := os.ReadFile(filepath.Join(output, "public", "organizations", "OrdererOrg", "identities", "orderer0-cert.pem"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(identities).NotTo(HaveKey(string(cert)))
+				identities[string(cert)] = true
+			}
+		}
+		installHybridPeerMSPs(network, oldOutputs[0])
+		ordererMSPDir := network.OrdererOrgMSPDir(ordererOrg)
+		Expect(installMSPKeepingTLS(filepath.Join(oldOutputs[0], "public", "organizations", "OrdererOrg", "msp"), ordererMSPDir)).To(Succeed())
+		configPath := filepath.Join(ordererMSPDir, "config.yaml")
+		configBytes, err := os.ReadFile(configPath)
+		Expect(err).NotTo(HaveOccurred())
+		certPin := []byte("    Certificate: intermediatecerts/intermediate.pem\n")
+		Expect(bytes.Count(configBytes, certPin)).To(Equal(4))
+		configBytes = bytes.ReplaceAll(configBytes, certPin, nil)
+		Expect(os.WriteFile(configPath, configBytes, 0o644)).To(Succeed())
+		for i, orderer := range network.Orderers {
+			installMultiOrdererIdentity(network, orderer, oldOutputs[i])
+			if i > 0 {
+				for _, cert := range []struct{ dir, name string }{{"cacerts", "root.pem"}, {"intermediatecerts", "intermediate.pem"}} {
+					source := filepath.Join(oldOutputs[i], "public", "organizations", "OrdererOrg", "msp", cert.dir, cert.name)
+					data, err := os.ReadFile(source)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(os.WriteFile(filepath.Join(ordererMSPDir, cert.dir, fmt.Sprintf("additional-%d.pem", i)), data, 0o644)).To(Succeed())
+				}
+			}
+		}
+		for _, channel := range network.Channels {
+			sess, err := network.ConfigTxGen(commands.OutputBlock{
+				ChannelID: channel.Name, Profile: channel.Profile, ConfigPath: network.RootDir,
+				OutputBlock: network.OutputBlockPath(channel.Name),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+		}
+		network.ConcatenateTLSCACertificates()
+
+		runners := make([]*ginkgomon_v2.Runner, 3)
+		for i, orderer := range network.Orderers {
+			runners[i], ordererProcesses[i] = network.StartOrderer(orderer.Name)
+		}
+		peerProcess = ifrit.Invoke(network.PeerGroupRunner())
+		Eventually(peerProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		nwo.JoinOrderersAppChannelCluster(network, "testchannel", network.Orderers...)
+		for _, runner := range runners {
+			Eventually(runner.Err(), network.EventuallyTimeout, time.Second).Should(
+				gbytes.Say("Raft leader changed: 0 -> [1-9][0-9]* channel=testchannel"),
+			)
+		}
+		orderer := network.Orderers[0]
+		peer := network.Peer("Org1", "peer0")
+		network.JoinChannel("testchannel", orderer, network.PeersWithChannel("testchannel")...)
+
+		updateRoots := func(removeOld bool) {
+			current := nwo.GetConfig(network, peer, orderer, "testchannel")
+			updated := proto.Clone(current).(*common.Config)
+			value := updated.GetChannelGroup().GetGroups()["Orderer"].GetGroups()[ordererOrg.Name].GetValues()["MSP"]
+			config := &mspprotos.MSPConfig{}
+			Expect(proto.Unmarshal(value.GetValue(), config)).To(Succeed())
+			fabricConfig := &mspprotos.FabricMSPConfig{}
+			Expect(proto.Unmarshal(config.GetConfig(), fabricConfig)).To(Succeed())
+			if removeOld {
+				fabricConfig.RootCerts = nil
+				fabricConfig.IntermediateCerts = nil
+			}
+			for _, output := range newOutputs {
+				newConfig := ordererMSPConfigFromGenesis(output)
+				newFabricConfig := &mspprotos.FabricMSPConfig{}
+				Expect(proto.Unmarshal(newConfig.GetConfig(), newFabricConfig)).To(Succeed())
+				fabricConfig.RootCerts = append(fabricConfig.RootCerts, newFabricConfig.GetRootCerts()...)
+				fabricConfig.IntermediateCerts = append(fabricConfig.IntermediateCerts, newFabricConfig.GetIntermediateCerts()...)
+			}
+			if removeOld {
+				newConfig := ordererMSPConfigFromGenesis(newOutputs[0])
+				newFabricConfig := &mspprotos.FabricMSPConfig{}
+				Expect(proto.Unmarshal(newConfig.GetConfig(), newFabricConfig)).To(Succeed())
+				fabricConfig.Admins = newFabricConfig.GetAdmins()
+			}
+			config.Config = protoutil.MarshalOrPanic(fabricConfig)
+			value.Value = protoutil.MarshalOrPanic(config)
+			nwo.UpdateOrdererConfig(network, orderer, "testchannel", current, updated, peer, orderer)
+		}
+
+		updateRoots(false)
+		for i, node := range network.Orderers {
+			ordererProcesses[i].Signal(syscall.SIGTERM)
+			Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
+			ordererProcesses[i] = nil
+			installMultiOrdererIdentity(network, node, newOutputs[i])
+			runners[i], ordererProcesses[i] = network.StartOrderer(node.Name)
+			Eventually(runners[i].Err(), network.EventuallyTimeout, time.Second).Should(
+				gbytes.Say("Raft leader changed: 0 -> [1-9][0-9]* channel=testchannel"),
+			)
+		}
+		updateRoots(true)
+		rotatedConfig := nwo.GetConfig(network, peer, orderer, "testchannel")
+
+		last := len(network.Orderers) - 1
+		ordererProcesses[last].Signal(syscall.SIGTERM)
+		Eventually(ordererProcesses[last].Wait(), network.EventuallyTimeout).Should(Receive())
+		ordererProcesses[last] = nil
+		installMultiOrdererIdentity(network, network.Orderers[last], oldOutputs[last])
+		staleRunner := network.OrdererRunner(network.Orderers[last])
+		ordererProcesses[last] = ifrit.Invoke(staleRunner)
+		var staleExit error
+		Eventually(ordererProcesses[last].Wait(), network.EventuallyTimeout).Should(Receive(&staleExit))
+		ordererProcesses[last] = nil
+		Expect(staleExit).To(HaveOccurred())
+		Expect(staleRunner.Err()).To(gbytes.Say("validating local signing identity for PQ-required channel"))
+		installMultiOrdererIdentity(network, network.Orderers[last], newOutputs[last])
+		runners[last], ordererProcesses[last] = network.StartOrderer(network.Orderers[last].Name)
+		Eventually(runners[last].Err(), network.EventuallyTimeout, time.Second).Should(
+			gbytes.Say("Raft leader changed: 0 -> [1-9][0-9]* channel=testchannel"),
+		)
+		replayedConfig := nwo.GetConfig(network, peer, network.Orderers[last], "testchannel")
+		Expect(proto.Equal(rotatedConfig.GetChannelGroup().GetGroups()["Orderer"].GetGroups()[ordererOrg.Name],
+			replayedConfig.GetChannelGroup().GetGroups()["Orderer"].GetGroups()[ordererOrg.Name])).To(BeTrue())
+	})
 })
 
 func generateHybridNetwork(outputDir, configDir string) {
@@ -189,6 +364,16 @@ func generateHybridNetwork(outputDir, configDir string) {
 }
 
 func installHybridNetworkMSPs(network *nwo.Network, outputDir string) {
+	installHybridPeerMSPs(network, outputDir)
+
+	orderer := network.Orderer("orderer")
+	ordererOrg := network.Organization("OrdererOrg")
+	publicSource := filepath.Join(outputDir, "public", "organizations", "OrdererOrg", "msp")
+	Expect(installMSPKeepingTLS(publicSource, network.OrdererOrgMSPDir(ordererOrg))).To(Succeed())
+	installMultiOrdererIdentity(network, orderer, outputDir)
+}
+
+func installHybridPeerMSPs(network *nwo.Network, outputDir string) {
 	for _, peer := range network.Peers {
 		org := network.Organization(peer.Organization)
 		publicSource := filepath.Join(outputDir, "public", "organizations", peer.Organization, "msp")
@@ -206,11 +391,9 @@ func installHybridNetworkMSPs(network *nwo.Network, outputDir string) {
 			Expect(installMSPKeepingTLS(source, network.PeerUserMSPDir(peer, user))).To(Succeed())
 		}
 	}
+}
 
-	orderer := network.Orderer("orderer")
-	ordererOrg := network.Organization("OrdererOrg")
-	publicSource := filepath.Join(outputDir, "public", "organizations", "OrdererOrg", "msp")
-	Expect(installMSPKeepingTLS(publicSource, network.OrdererOrgMSPDir(ordererOrg))).To(Succeed())
+func installMultiOrdererIdentity(network *nwo.Network, orderer *nwo.Orderer, outputDir string) {
 	privateSource := filepath.Join(outputDir, "private", "organizations", "OrdererOrg")
 	Expect(installMSPKeepingTLS(
 		filepath.Join(privateSource, "nodes", "orderer0", "msp"),
