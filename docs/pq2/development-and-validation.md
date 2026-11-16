@@ -63,11 +63,13 @@ quantum-resistant network security.
   identities in classical-permitted configurations retain Fabric's existing
   certificate-time behavior. Focused tests cover expiry at the supplied
   timestamp and propagation of that timestamp into state-based endorsement
-  checks; full transaction replay with expired credentials remains an
-  integration gate. An attempted replay run could not launch chaincode because
-  the WSL Docker host-network path refused the chaincode callback, so it is not
-  counted as passing evidence. Root rotation still needs broader
-  failure-injection coverage.
+  checks. A transaction created by an expiring hybrid client is now tested
+  end-to-end: a peer that was offline during submission catches up after the
+  client certificate expires and applies the valid transaction. An earlier
+  replay attempt using Docker chaincode failed because the WSL host-network
+  path refused the chaincode callback; it is not passing evidence. Expired
+  endorser transaction replay and broader failure-injection coverage remain
+  open.
 - Security review identified that the signed channel-header timestamp is
   chosen by the submitter and is not proof of endorsement time. An attacker
   with sufficient expired but still trusted endorser keys and a currently
@@ -208,6 +210,29 @@ together (two specs, 321.656s):
 
 ```text
 PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/msp -count=1 -run '^TestMSP$' -ginkgo.focus='Pactway hybrid orderer root rotation' -ginkgo.v -timeout=20m -v
+```
+
+The expired-client replay test passed using the binary external chaincode
+builder from a clean Linux filesystem checkout of commit `abe602c`, with the
+new test file copied in and its SHA-256 verified against the worktree
+(`8bed2bc3af89258557c770d6d826c25e27c57fc3336974851e3837ef9cd9a3c7`):
+
+```text
+PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/msp -count=1 -run=TestMSP -ginkgo.focus='replays a valid transaction after its client certificate expires' -ginkgo.v -timeout=20m -v
+```
+
+Result: one spec passed, `ok github.com/hyperledger/fabric/integration/msp
+147.122s`. The test generates a fresh short-lived hybrid client identity,
+confirms a valid committed transaction while the identity is unexpired,
+keeps the replay peer offline until after expiry, and verifies that the peer
+catches up and applies the transaction's exact state change. It does not
+demonstrate replay after endorser expiry or prove trusted endorsement time.
+
+All three hybrid integration scenarios passed together in the same Linux
+checkout (three specs, 192.513s):
+
+```text
+PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/msp -count=1 -run=TestMSP -ginkgo.focus='Pactway hybrid' -ginkgo.v -timeout=20m -v
 ```
 
 The orderer admission tests generate fresh hybrid certificates and use a real
@@ -375,8 +400,9 @@ The following work remains release- and PQ2-completion-blocking:
   rotation, rejection of a stale-signer restart, replacement-signer restart,
   peer restart/config replay, and a subsequent config update. A three-orderer
   Raft test covers planned overlapping-root rotation and stale-signer
-  recovery; broader failure-injection and expired-client transaction replay
-  are not demonstrated. The generator test reloads a
+  recovery. A separate test demonstrates replay after client expiry;
+  broader failure-injection and replay after endorser expiry are not
+  demonstrated. The generator test reloads a
   persisted BCCSP keystore and MSP, replays a prior signature, and verifies
   new PQ signing.
 - Replace submitter-controlled endorsement validation time with an approved,
