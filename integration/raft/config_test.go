@@ -857,6 +857,11 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Waiting for orderer4 and to replicate testchannel2")
 			assertBlockReception(map[string]int{"testchannel2": 1}, []*nwo.Orderer{o4}, network)
 
+			By("Waiting for orderer4 to learn the testchannel2 leader")
+			Eventually(orderer4Runner.Err(), network.EventuallyTimeout, time.Second).Should(
+				gbytes.Say("Raft leader changed: 0 -> [1-9][0-9]* channel=testchannel2"),
+			)
+
 			By("Ensuring orderer4 doesn't have any errors in the logs")
 			Consistently(orderer4Runner.Err()).ShouldNot(gbytes.Say("ERRO"))
 

@@ -202,6 +202,21 @@ vulnerabilities in this mitigation; it is not the independent external review
 required for PQ2. These package tests are not full transaction-replay or
 multi-orderer integration evidence.
 
+The PR's Raft integration job failed while onboarding a fourth orderer to
+`testchannel2`: its broadcast returned `SERVICE_UNAVAILABLE` because that
+orderer had not yet learned the Raft leader. The orderer learned the leader
+immediately afterwards; the corresponding push workflow's Raft job passed
+on the same commit. The test now waits for the channel-specific leader
+notification before broadcasting. This focused Docker-backed run passed:
+
+```text
+PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/raft -count=1 -run '^TestRaft$' -ginkgo.focus='is still possible to onboard new orderers' -timeout=15m
+```
+
+Result: `ok github.com/hyperledger/fabric/integration/raft 285.556s`. This
+is a classical Raft TLS-certificate onboarding test, not the outstanding
+multi-orderer hybrid-MSP rotation gate.
+
 Additional focused tests verify that a PQ-required channel MSP handler rejects
 a classical-only MSP, that a required MSP cannot be weakened through the local
 policy API, that a new independently rooted hybrid MSP accepts its new identity
