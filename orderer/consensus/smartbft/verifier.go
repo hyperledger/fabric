@@ -83,6 +83,7 @@ type Verifier struct {
 	Ledger                Ledger
 	Logger                *flogging.FabricLogger
 	ConfigValidator       ConfigValidator
+	ValidateAdmission     func(*cb.Envelope) error
 }
 
 // AuxiliaryData unmarshals and returns auxiliary data from signature
@@ -185,6 +186,15 @@ func (v *Verifier) verifyRequest(rawRequest []byte, noConfigAllowed bool) (types
 	case int32(cb.HeaderType_ENDORSER_TRANSACTION):
 	default:
 		return types.RequestInfo{}, errors.Errorf("transaction of type %s is not allowed to be included in blocks", cb.HeaderType_name[req.chHdr.GetType()])
+	}
+
+	if req.chHdr.GetType() == int32(cb.HeaderType_ENDORSER_TRANSACTION) {
+		if v.ValidateAdmission == nil {
+			return types.RequestInfo{}, errors.New("transaction admission validator is not configured")
+		}
+		if err := v.ValidateAdmission(req.envelope); err != nil {
+			return types.RequestInfo{}, errors.Wrap(err, "transaction admission rejected")
+		}
 	}
 
 	if req.chHdr.GetType() == int32(cb.HeaderType_CONFIG) {

@@ -48,9 +48,11 @@ quantum-resistant network security.
   against the new config. A focused Docker-backed integration test now
   demonstrates a single-orderer root rotation: the old orderer stops after
   persistence, a replacement signer restarts it, peers restart and replay the
-  committed config, and a subsequent config update succeeds. Replacement
-  signer material must be prepared before the update. Multi-orderer and
-  failure-injection coverage remain open.
+  committed config, and a subsequent config update succeeds. A further test
+  also verifies that restarting with the stale signer fails before recovery
+  with the replacement signer. Replacement signer material must be prepared
+  before the update. Multi-orderer and broader failure-injection coverage
+  remain open.
 - Hybrid identities are validated against the signed channel-header timestamp
   for transaction creators and endorsement signers, so validation is
   deterministic during block validation and replay. Direct hybrid identity
@@ -64,6 +66,24 @@ quantum-resistant network security.
   the WSL Docker host-network path refused the chaincode callback, so it is not
   counted as passing evidence. Root rotation still needs multi-orderer and
   failure-injection coverage.
+- Security review identified that the signed channel-header timestamp is
+  chosen by the submitter and is not proof of endorsement time. An attacker
+  with sufficient expired but still trusted endorser keys and a currently
+  authorized writer identity can backdate a transaction and forge endorsements
+  that pass the historical-time checks. PQ-required channels now validate
+  every endorsement identity against the receiving orderer's current time at
+  admission; malformed or expired identities are rejected. SmartBFT also
+  applies admission validation to requests and proposals, including requests
+  submitted through the cluster path. Raft relies on trusted, non-Byzantine
+  orderers; a compromised orderer can bypass normal ingress validation.
+  Admission is not proof of endorsement or commit time: peers still use the
+  signed timestamp for deterministic validation and replay, and current block
+  metadata contains no authenticated ordering time. Transactions admitted
+  before expiry can commit afterwards. Differing orderer clocks or expiry
+  during SmartBFT consensus may cause inconsistent admission or liveness
+  failures; these scenarios have not been tested with a live cluster. An
+  approved, enforceable time design and independent external security review
+  remain necessary before expiry enforcement can be considered secure.
 
 For PQ-required channels, peer and orderer signer checks now additionally
 require membership in the respective channel organization group and the
@@ -153,6 +173,34 @@ to `10.255.255.254:25006` and `:25011`.
 Advertising `host.docker.internal` in that disposable checkout did not make
 the focused mutual-TLS test pass. These results do not close the full-suite
 or expired-credential replay gates.
+
+The root-rotation test was extended to inject a restart with the stale signer
+before installing the replacement. The following focused run passed with
+`ok github.com/hyperledger/fabric/integration/msp 218.587s`:
+
+```text
+PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/msp -count=1 -run='^TestMSP$' -ginkgo.focus='Pactway hybrid orderer root rotation' -timeout=10m
+```
+
+The same focused command passed again after adding orderer admission filtering
+(`ok github.com/hyperledger/fabric/integration/msp 295.416s`).
+
+The orderer admission tests generate fresh hybrid certificates and use a real
+BCCSP-backed MSP. They verify that an expired endorser whose backdated
+timestamp passes historical identity validation is rejected at admission, as
+are malformed identities and mixed valid/expired endorsements. SmartBFT tests
+exercise rejection in both request and proposal verification and fail closed
+when the admission callback is absent. The following checks passed:
+
+```text
+PATH=/usr/local/go/bin:/usr/bin:/bin go test -count=1 ./orderer/common/msgprocessor ./orderer/consensus/smartbft
+PATH=/usr/local/go/bin:/home/cogdev/go/bin:/usr/bin:/bin golangci-lint run ./orderer/common/msgprocessor/... ./orderer/consensus/smartbft/... ./integration/msp/...
+```
+
+An automated follow-up security review found no additional reportable
+vulnerabilities in this mitigation; it is not the independent external review
+required for PQ2. These package tests are not full transaction-replay or
+multi-orderer integration evidence.
 
 Additional focused tests verify that a PQ-required channel MSP handler rejects
 a classical-only MSP, that a required MSP cannot be weakened through the local
@@ -284,11 +332,14 @@ The following work remains release- and PQ2-completion-blocking:
 - Exercise authorized config update, compliant root rotation, restart/replay,
   and role-principal behavior end-to-end through both peer and orderer
   validation paths. The focused integration test now covers single-orderer
-  rotation, replacement-signer restart, peer restart/config replay, and a
-  subsequent config update. Multi-orderer/failure-injection and expired-client
-  transaction replay are not demonstrated. The generator test reloads a
+  rotation, rejection of a stale-signer restart, replacement-signer restart,
+  peer restart/config replay, and a subsequent config update. Multi-orderer,
+  broader failure-injection, and expired-client transaction replay are not
+  demonstrated. The generator test reloads a
   persisted BCCSP keystore and MSP, replays a prior signature, and verifies
   new PQ signing.
+- Replace submitter-controlled endorsement validation time with an approved,
+  enforceable deterministic approach before claiming expiry enforcement.
 - Finalize generation and deployment documentation and independently review
   the custom certificate profile. Replace the temporary OIDs only after the
   official PEN is assigned, regenerate all credentials/genesis, rerun the

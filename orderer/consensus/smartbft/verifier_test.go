@@ -379,6 +379,7 @@ func TestVerifyConsenterSig(t *testing.T) {
 				AccessController:      ac,
 				ConsenterVerifier:     cv,
 				ReqInspector:          reqInspector,
+				ValidateAdmission:     func(*cb.Envelope) error { return nil },
 			}
 
 			if testCase.proposalMutator != nil {
@@ -615,6 +616,21 @@ func TestVerifyProposal(t *testing.T) {
 				AccessController:      ac,
 				ConsenterVerifier:     cv,
 				ReqInspector:          reqInspector,
+				ValidateAdmission:     func(*cb.Envelope) error { return nil },
+			}
+
+			if testCase.description == "green path" {
+				v.ValidateAdmission = nil
+				_, err := v.VerifyRequest(nonConfigTx)
+				require.ErrorContains(t, err, "transaction admission validator is not configured")
+				v.ValidateAdmission = func(*cb.Envelope) error {
+					return errors.New("expired endorsement")
+				}
+				_, err = v.VerifyRequest(nonConfigTx)
+				require.ErrorContains(t, err, "transaction admission rejected: expired endorsement")
+				_, err = v.VerifyProposal(proposal)
+				require.ErrorContains(t, err, "transaction admission rejected: expired endorsement")
+				v.ValidateAdmission = func(*cb.Envelope) error { return nil }
 			}
 
 			reqInfo, err := v.VerifyProposal(proposal)

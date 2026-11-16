@@ -67,6 +67,7 @@ func CreateStandardChannelFilters(filterSupport channelconfig.Resources, config 
 		EmptyRejectRule,
 		NewSizeFilter(filterSupport),
 		NewSigFilter(policies.ChannelWriters, policies.ChannelOrdererWriters, filterSupport),
+		&hybridEndorsementFilter{resources: filterSupport},
 	}
 
 	if !config.General.Authentication.NoExpirationChecks {

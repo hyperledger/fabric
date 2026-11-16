@@ -634,6 +634,13 @@ func buildVerifier(
 		ReqInspector:          requestInspector,
 		Logger:                logger,
 		RuntimeConfig:         runtimeConfig,
+		ValidateAdmission: func(envelope *cb.Envelope) error {
+			if !support.ChannelConfig().Capabilities().PactwayHybridCertificateV1() {
+				return nil
+			}
+			_, err := support.ProcessNormalMsg(envelope)
+			return err
+		},
 		ConsenterVerifier: &consenterVerifier{
 			logger:        logger,
 			channel:       support.ChannelID(),

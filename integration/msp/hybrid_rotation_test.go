@@ -138,6 +138,14 @@ var _ = Describe("Pactway hybrid orderer root rotation", func() {
 		Expect(ordererExitErr).To(HaveOccurred())
 		Expect(ordererRunner.Err()).To(gbytes.Say("incompatible local signing identity"))
 		ordererProcess = nil
+
+		staleRunner := network.OrdererRunner(orderer)
+		ordererProcess = ifrit.Invoke(staleRunner)
+		Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive(&ordererExitErr))
+		ordererProcess = nil
+		Expect(ordererExitErr).To(HaveOccurred())
+		Expect(staleRunner.Err()).To(gbytes.Say("validating local signing identity for PQ-required channel"))
+
 		installOrdererHybridIdentity(network, newOutput)
 
 		_, ordererProcess = network.StartOrderer(orderer.Name)
