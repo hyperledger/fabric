@@ -44,6 +44,7 @@ type DefaultValidation struct {
 //go:generate mockery -dir . -name TransactionValidator -case underscore -output mocks/
 type TransactionValidator interface {
 	Validate(block *common.Block, namespace string, txPosition int, actionPosition int, policy []byte) commonerrors.TxValidationError
+	SignalInvalidTx(blockNum, txNum uint64, err error)
 }
 
 func (v *DefaultValidation) Validate(block *common.Block, namespace string, txPosition int, actionPosition int, contextData ...validation.ContextDatum) error {
@@ -82,6 +83,19 @@ func (v *DefaultValidation) Validate(block *common.Block, namespace string, txPo
 
 	logger.Debugf("block %d, namespace: %s, tx %d validation results is: %v", block.GetHeader().GetNumber(), namespace, txPosition, err)
 	return convertErrorTypeOrPanic(err)
+}
+
+// SignalInvalidTx implements the InvalidTxSignaler interface, releasing
+// transactions waiting on state-based endorsement dependencies of a
+// transaction that was rejected before or during plugin dispatch. The 1.2
+// validator records no such dependencies, so nothing is signaled for it.
+func (v *DefaultValidation) SignalInvalidTx(blockNum, txNum uint64, err error) {
+	switch {
+	case v.Capabilities.V2_0Validation():
+		v.TxValidatorV2_0.SignalInvalidTx(blockNum, txNum, err)
+	case v.Capabilities.V1_3Validation():
+		v.TxValidatorV1_3.SignalInvalidTx(blockNum, txNum, err)
+	}
 }
 
 func convertErrorTypeOrPanic(err error) error {

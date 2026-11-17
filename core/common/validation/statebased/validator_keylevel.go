@@ -308,6 +308,11 @@ func (klv *KeyLevelValidator) PostValidate(cc string, blockNum, txNum uint64, er
 	klv.vpmgr.SetTxValidationResult(cc, blockNum, txNum, err)
 }
 
+// SignalInvalidTx implements the function of the StateBasedValidator interface
+func (klv *KeyLevelValidator) SignalInvalidTx(blockNum, txNum uint64, err error) {
+	klv.vpmgr.SignalInvalidTx(blockNum, txNum, err)
+}
+
 func policyErr(err error) *commonerrors.VSCCEndorsementPolicyError {
 	return &commonerrors.VSCCEndorsementPolicyError{
 		Err: err,

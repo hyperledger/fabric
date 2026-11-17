@@ -356,6 +356,51 @@ func TestDependencyConflict(t *testing.T) {
 	require.Nil(t, sp, "assert failure occurred with seed %d", seed)
 }
 
+func TestSignalInvalidTxNoConflict(t *testing.T) {
+	t.Parallel()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+
+	// Scenario: transaction (1,0) updates the validation parameter of a key
+	// but is rejected before plugin validation, so its result arrives through
+	// SignalInvalidTx instead of SetTxValidationResult. Retrieval of the
+	// validation parameter for transaction (1,1) must not block, no matter
+	// whether the signal arrives before or after the dependency is recorded,
+	// and succeeds from the ledger because an invalid transaction's metadata
+	// updates do not count as a dependency
+
+	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
+	spe := policydsl.SignedByMspMember("foo")
+	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
+	ms := &mockStateFetcher{FetchStateRv: mr}
+	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}
+
+	cc, coll, key := "cc", "", "key"
+
+	rwsetbytes := rwsetUpdatingMetadataFor(cc, key)
+
+	resC := make(chan []byte, 1)
+	errC := make(chan error, 1)
+	runFunctions(t, seed,
+		func() {
+			pm.ExtractValidationParameterDependency(1, 0, rwsetbytes)
+		},
+		func() {
+			pm.SignalInvalidTx(1, 0, errors.New("tx rejected before validation"))
+		},
+		func() {
+			sp, err := pm.GetValidationParameterForKey(cc, coll, key, 1, 1)
+			resC <- sp
+			errC <- err
+		})
+
+	sp := <-resC
+	err := <-errC
+	require.NoErrorf(t, err, "assert failure occurred with seed %d", seed)
+	require.Equal(t, protoutil.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
+	require.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
+}
+
 func TestMultipleDependencyNoConflict(t *testing.T) {
 	t.Parallel()
 	var seed [32]byte

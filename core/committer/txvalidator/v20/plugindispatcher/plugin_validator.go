@@ -72,10 +72,22 @@ func (c Context) String() string {
 	return fmt.Sprintf("Tx %s, seq %d out of %d in block %d for channel %s with validation plugin %s", c.TxID, c.Seq, len(c.Block.GetData().GetData()), c.Block.GetHeader().GetNumber(), c.Channel, c.PluginName)
 }
 
+// invalidTxSignal records that a transaction was rejected before or during
+// plugin dispatch and therefore never produced a plugin validation result
+type invalidTxSignal struct {
+	blockNum, txNum uint64
+	err             error
+}
+
 // PluginValidator values transactions with validation plugins.
 type PluginValidator struct {
 	sync.Mutex
 	pluginChannelMapping map[txvalidatorplugin.Name]*pluginsByChannel
+	// pendingInvalidTxs remembers invalid-transaction signals per channel, so
+	// that plugin instances created lazily afterwards are caught up on them;
+	// entries for older blocks are dropped when a signal for a newer block
+	// arrives, since validation proceeds one block at a time
+	pendingInvalidTxs map[string][]invalidTxSignal
 	txvalidatorplugin.Mapper
 	QueryExecutorCreator
 	msp.IdentityDeserializer
@@ -116,6 +128,7 @@ func NewPluginValidator(pm txvalidatorplugin.Mapper, qec QueryExecutorCreator, d
 	return &PluginValidator{
 		capabilities:               capabilities,
 		pluginChannelMapping:       make(map[txvalidatorplugin.Name]*pluginsByChannel),
+		pendingInvalidTxs:          make(map[string][]invalidTxSignal),
 		Mapper:                     pm,
 		QueryExecutorCreator:       qec,
 		IdentityDeserializer:       deserializer,
@@ -138,6 +151,57 @@ func (pv *PluginValidator) ValidateWithPlugin(ctx *Context) error {
 	}
 	logger.Debug("Transaction", ctx.TxID, "appears to be", validityStatus)
 	return err
+}
+
+// SignalInvalidTx informs all plugin instances serving the given channel that
+// the transaction at the given height was rejected before or during plugin
+// dispatch, so that plugins tracking state-based endorsement dependencies can
+// release transactions waiting on its validation result. The signal is also
+// remembered and replayed to plugin instances created for the channel later
+// on, since those are instantiated lazily on first use.
+func (pv *PluginValidator) SignalInvalidTx(channel string, blockNum, txNum uint64, err error) {
+	pv.Lock()
+	pending := pv.pendingInvalidTxs[channel]
+	kept := pending[:0]
+	for _, s := range pending {
+		if s.blockNum >= blockNum {
+			kept = append(kept, s)
+		}
+	}
+	pv.pendingInvalidTxs[channel] = append(kept, invalidTxSignal{blockNum: blockNum, txNum: txNum, err: err})
+
+	var plugins []validation.Plugin
+	for _, pbc := range pv.pluginChannelMapping {
+		pbc.RLock()
+		if plugin, ok := pbc.channels2Plugins[channel]; ok {
+			plugins = append(plugins, plugin)
+		}
+		pbc.RUnlock()
+	}
+	pv.Unlock()
+
+	for _, plugin := range plugins {
+		if signaler, ok := plugin.(validation.InvalidTxSignaler); ok {
+			signaler.SignalInvalidTx(blockNum, txNum, err)
+		}
+	}
+}
+
+// replayInvalidTxSignals delivers the signals remembered for the given
+// channel to a freshly created plugin instance
+func (pv *PluginValidator) replayInvalidTxSignals(channel string, plugin validation.Plugin) {
+	signaler, ok := plugin.(validation.InvalidTxSignaler)
+	if !ok {
+		return
+	}
+
+	pv.Lock()
+	pending := append([]invalidTxSignal(nil), pv.pendingInvalidTxs[channel]...)
+	pv.Unlock()
+
+	for _, s := range pending {
+		signaler.SignalInvalidTx(s.blockNum, s.txNum, s.err)
+	}
 }
 
 func (pv *PluginValidator) getOrCreatePlugin(ctx *Context) (validation.Plugin, error) {
@@ -181,18 +245,25 @@ func (pbc *pluginsByChannel) createPluginIfAbsent(channel string) (validation.Pl
 	}
 
 	pbc.Lock()
-	defer pbc.Unlock()
 	plugin, exists = pbc.channels2Plugins[channel]
-	if exists {
-		return plugin, nil
+	if !exists {
+		pluginInstance := pbc.pluginFactory.New()
+		newPlugin, err := pbc.initPlugin(pluginInstance, channel)
+		if err != nil {
+			pbc.Unlock()
+			return nil, err
+		}
+		plugin = newPlugin
+		pbc.channels2Plugins[channel] = plugin
 	}
+	pbc.Unlock()
 
-	pluginInstance := pbc.pluginFactory.New()
-	plugin, err := pbc.initPlugin(pluginInstance, channel)
-	if err != nil {
-		return nil, err
+	if !exists {
+		// catch the fresh instance up on invalid-transaction signals that
+		// arrived before it was created; replay must not hold pbc's lock,
+		// which is acquired in the opposite order by SignalInvalidTx
+		pbc.pv.replayInvalidTxSignals(channel, plugin)
 	}
-	pbc.channels2Plugins[channel] = plugin
 	return plugin, nil
 }
 
