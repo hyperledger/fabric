@@ -16,14 +16,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// assembler turns a batch of requests into an engine proposal that carries a
-// complete Fabric block. Carrying the whole block (not just the transactions)
-// means every consenter commits byte-identical blocks and can therefore sign
-// the same header.
-//
-// Fabric requires a config transaction to be alone in its block. The engine's
-// request pool hands over everything it has batched and forgets it, so requests
-// that cannot share the block are kept in `carry` and go first into the next one.
+// assembler builds a complete Fabric block per proposal, so every consenter
+// commits and signs byte-identical blocks. A config transaction must be alone
+// in its block; requests that cannot share the block wait in `carry`.
 type assembler struct {
 	support consensus.ConsenterSupport
 	tip     func() tipState
@@ -32,8 +27,7 @@ type assembler struct {
 	carry [][]byte
 }
 
-// AssembleProposal implements engine.Assembler. It returns a zero Proposal when
-// there is nothing to assemble.
+// AssembleProposal returns a zero Proposal when there is nothing to assemble.
 func (a *assembler) AssembleProposal(metadata []byte, requests [][]byte) engine.Proposal {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -81,15 +75,14 @@ func (a *assembler) AssembleProposal(metadata []byte, requests [][]byte) engine.
 	}
 }
 
-// hasCarry reports whether requests are waiting for the next block.
 func (a *assembler) hasCarry() bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return len(a.carry) > 0
 }
 
-// splitConfigTx returns the requests that go into the next block, and the rest.
-// The block is either a single config transaction, or several non-config ones.
+// splitConfigTx returns the requests for the next block and the rest: a block
+// holds either a single config transaction or only non-config ones.
 func splitConfigTx(requests [][]byte) (batch, rest [][]byte) {
 	for i, raw := range requests {
 		env, err := protoutil.UnmarshalEnvelope(raw)
@@ -98,10 +91,8 @@ func splitConfigTx(requests [][]byte) (batch, rest [][]byte) {
 			continue
 		}
 		if len(batch) == 0 {
-			// The config transaction is first: it gets a block of its own.
 			return [][]byte{raw}, requests[i+1:]
 		}
-		// Non-config transactions precede it: they go first, it waits.
 		return batch, requests[i:]
 	}
 	return batch, nil

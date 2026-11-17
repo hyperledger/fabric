@@ -19,7 +19,7 @@ import (
 // ab.ConsensusRequest payload, which Fabric's cluster service authenticates and
 // attributes to a consenter ID. The payload is a JSON wireEnvelope that is
 // either a message of the BiniBFT engine, or a block signature produced by the
-// plugin itself (see blocksig.go).
+// plugin itself.
 const (
 	kindEngine   = "engine"
 	kindBlockSig = "blocksig"
@@ -50,12 +50,10 @@ type blockSig struct {
 	Signature            []byte `json:"signature"`
 }
 
-// nodeID converts a Fabric consenter ID to the engine's string node ID.
 func nodeID(id uint64) engine.NodeID {
 	return engine.NodeID(strconv.FormatUint(id, 10))
 }
 
-// consenterID converts an engine node ID back to a Fabric consenter ID.
 func consenterID(id engine.NodeID) (uint64, error) {
 	v, err := strconv.ParseUint(string(id), 10, 64)
 	if err != nil {

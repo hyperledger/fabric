@@ -61,7 +61,6 @@ func newEngineNetwork(selfID uint64, rpc rpcSender, logger *flogging.FabricLogge
 	}
 }
 
-// RegisterHandler is called by the engine when it starts.
 func (n *engineNetwork) RegisterHandler(h engine.MessageHandler) {
 	n.mu.Lock()
 	n.handler = h
@@ -93,7 +92,6 @@ func (n *engineNetwork) runInbound() {
 	}
 }
 
-// receive queues an authenticated inbound engine message.
 func (n *engineNetwork) receive(sender uint64, w *engineWire) {
 	msg, err := w.toEngineMessage(sender, n.selfID)
 	if err != nil {
@@ -108,7 +106,6 @@ func (n *engineNetwork) receive(sender uint64, w *engineWire) {
 	}
 }
 
-// Send implements engine.NetworkInterface.
 func (n *engineNetwork) Send(target engine.NodeID, msg engine.Message) error {
 	dest, err := consenterID(target)
 	if err != nil {
@@ -121,7 +118,6 @@ func (n *engineNetwork) Send(target engine.NodeID, msg engine.Message) error {
 	return n.sendWire(dest, raw)
 }
 
-// Broadcast implements engine.NetworkInterface.
 func (n *engineNetwork) Broadcast(targets []engine.NodeID, msg engine.Message) error {
 	raw, err := encodeEngineMessage(msg)
 	if err != nil {
@@ -165,7 +161,6 @@ func (n *engineNetwork) SendTransaction(target engine.NodeID, request []byte) er
 	return n.rpc.SendSubmit(dest, &ab.SubmitRequest{Payload: env}, report)
 }
 
-// sendWire enqueues an already encoded wire message for a destination.
 func (n *engineNetwork) sendWire(dest uint64, raw []byte) error {
 	if dest == n.selfID {
 		return nil
@@ -206,7 +201,6 @@ func (n *engineNetwork) runSender(dest uint64, q chan []byte) {
 	}
 }
 
-// Stop terminates all workers.
 func (n *engineNetwork) Stop() {
 	n.mu.Lock()
 	if n.stopped {

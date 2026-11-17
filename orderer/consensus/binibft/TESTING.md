@@ -15,7 +15,7 @@ The plugin is a Fabric orderer consenter backed by the BiniBFT engine. It lives
 
 | Item | Location (inside WSL `Ubuntu-24.04`) |
 |---|---|
-| Fabric clone, branch `binibft` | `~/dev/fabric` |
+| Fabric clone, branch `ragini/binibft-plugin` | `~/dev/fabric` |
 | Plugin source | `~/dev/fabric/orderer/consensus/binibft/` |
 | Vendored BiniBFT engine | `~/dev/fabric/orderer/consensus/binibft/engine/` |
 | Registration (2-line change) | `~/dev/fabric/orderer/common/server/main.go` |
@@ -325,7 +325,7 @@ The engine is copied into the Fabric tree (not imported as a module) because
 Fabric vendors its dependencies. `sync-engine.sh` copies `consensus/*.go`
 (without tests) and renames the package to `engine`.
 
-Commit your work in `~/dev/fabric` on branch `binibft`. Nothing outside git
+Commit your work in `~/dev/fabric` on branch `ragini/binibft-plugin`. Nothing outside git
 (`~/bin`, `testnet/data`, `testnet/crypto-config`) is preserved by a clone.
 
 ---

@@ -19,12 +19,10 @@ type MessageReceiver interface {
 	HandleRequest(sender uint64, req []byte)
 }
 
-// ReceiverGetter looks up the receiver of a channel.
 type ReceiverGetter interface {
 	ReceiverByChain(channelID string) MessageReceiver
 }
 
-// WarningLogger logs warnings.
 type WarningLogger interface {
 	Warningf(template string, args ...any)
 }
@@ -36,7 +34,6 @@ type Ingress struct {
 	ChainSelector ReceiverGetter
 }
 
-// OnConsensus handles a ConsensusRequest from consenter `sender`.
 func (in *Ingress) OnConsensus(channel string, sender uint64, request *ab.ConsensusRequest) error {
 	receiver := in.ChainSelector.ReceiverByChain(channel)
 	if receiver == nil {
@@ -47,7 +44,7 @@ func (in *Ingress) OnConsensus(channel string, sender uint64, request *ab.Consen
 	return nil
 }
 
-// OnSubmit handles a SubmitRequest (a forwarded transaction) from `sender`.
+// OnSubmit handles a transaction forwarded by consenter `sender`.
 func (in *Ingress) OnSubmit(channel string, sender uint64, request *ab.SubmitRequest) error {
 	receiver := in.ChainSelector.ReceiverByChain(channel)
 	if receiver == nil {

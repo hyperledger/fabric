@@ -35,7 +35,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// ChainGetter obtains the ChainSupport of a channel.
 type ChainGetter interface {
 	GetChain(chainID string) *multichannel.ChainSupport
 }
@@ -57,9 +56,8 @@ var (
 	_ ReceiverGetter             = (*Consenter)(nil)
 )
 
-// New creates the BiniBFT consenter and registers the cluster node service on
-// the orderer's gRPC server. Only one cluster-based consenter can exist per
-// orderer process, because Fabric allows a single registration of that service.
+// New creates the BiniBFT consenter and registers the cluster service, which
+// Fabric allows only once per orderer process.
 func New(
 	signerSerializer identity.SignerSerializer,
 	clusterDialer *cluster.PredicateDialer,
@@ -119,7 +117,6 @@ func New(
 	return c
 }
 
-// ReceiverByChain returns the receiver of a channel, or nil if there is none.
 func (c *Consenter) ReceiverByChain(channelID string) MessageReceiver {
 	cs := c.Chains.GetChain(channelID)
 	if cs == nil {
@@ -135,7 +132,6 @@ func (c *Consenter) ReceiverByChain(channelID string) MessageReceiver {
 	return nil
 }
 
-// HandleChain creates the chain of a channel.
 func (c *Consenter) HandleChain(support consensus.ConsenterSupport, _ *cb.Metadata) (consensus.Chain, error) {
 	consenters := support.SharedConfig().Consenters()
 
@@ -193,8 +189,7 @@ func (c *Consenter) channelMSPs(support consensus.ConsenterSupport) (map[string]
 }
 
 // IsChannelMember reports whether the join block lists this orderer as a
-// consenter. It is what lets `osnadmin channel join` activate a new channel as
-// a consenter instead of a follower.
+// consenter, so `osnadmin channel join` joins it as a consenter, not a follower.
 func (c *Consenter) IsChannelMember(joinBlock *cb.Block) (bool, error) {
 	if joinBlock == nil {
 		return false, errors.New("nil block")
@@ -243,7 +238,6 @@ func publicKeyOfPEMCert(certPEM []byte) ([]byte, error) {
 	return cluster.ExtractPublicKeyFromCert(block.Bytes)
 }
 
-// TargetChannel extracts the channel of a cluster message.
 func (c *Consenter) TargetChannel(message proto.Message) string {
 	switch req := message.(type) {
 	case *ab.ConsensusRequest:

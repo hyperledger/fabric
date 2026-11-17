@@ -20,7 +20,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// consenterInfo is everything the plugin knows about one channel consenter.
 type consenterInfo struct {
 	ID     uint64
 	MSPID  string
@@ -113,7 +112,6 @@ func (s *consenterSet) primary() uint64 {
 	return s.IDs[0]
 }
 
-// pubKeyOf returns the public key of a consenter.
 func (s *consenterSet) pubKeyOf(id uint64) (*ecdsa.PublicKey, bool) {
 	info, ok := s.ByID[id]
 	if !ok {

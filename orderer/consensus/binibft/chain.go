@@ -44,19 +44,15 @@ type pendingBlock struct {
 	sigs   map[uint64]*blockSig
 }
 
-// Chain implements consensus.Chain on top of the BiniBFT engine.
+// Chain implements consensus.Chain on top of the BiniBFT engine:
 //
-// Lifecycle of a transaction:
-//
-//	Order/Configure -> engine request pool -> primary batches & assembles a block
-//	-> engine runs pre-prepare/prepare/commit -> Deliver(proposal) on every node
+//	Order/Configure -> engine request pool -> primary assembles a block
+//	-> pre-prepare/prepare/commit -> Deliver(proposal) on every node
 //	-> every node signs the block and broadcasts the signature
 //	-> a node writes the block once it holds a BFT quorum of signatures.
 //
-// The signature step is what makes the ledger verifiable by peers: they require
-// a quorum of consenter signatures in the block metadata (see
-// protoutil.BlockSignatureVerifier), and the engine's own votes are not in that
-// format.
+// Peers require a quorum of consenter signatures in the block metadata
+// (protoutil.BlockSignatureVerifier); the engine's own votes are not in that format.
 type Chain struct {
 	channel string
 	selfID  uint64
@@ -192,9 +188,6 @@ func (c *Chain) tipSnapshot() tipState {
 	return c.tip
 }
 
-// --- consensus.Chain ---------------------------------------------------------
-
-// Order accepts a normal transaction.
 func (c *Chain) Order(env *cb.Envelope, configSeq uint64) error {
 	if err := c.running(); err != nil {
 		return err
@@ -208,7 +201,6 @@ func (c *Chain) Order(env *cb.Envelope, configSeq uint64) error {
 	return c.submit(env)
 }
 
-// Configure accepts a config transaction.
 func (c *Chain) Configure(config *cb.Envelope, configSeq uint64) error {
 	if err := c.running(); err != nil {
 		return err
@@ -229,7 +221,13 @@ func (c *Chain) submit(env *cb.Envelope) error {
 	if err != nil {
 		return errors.Wrap(err, "marshalling envelope")
 	}
-	return c.engine.SubmitRequest(raw)
+	err = c.engine.SubmitRequest(raw)
+	// The gateway sends each tx to every orderer and needs a quorum of successes;
+	// the primary also receives forwarded copies, so a duplicate is not an error.
+	if errors.Is(err, engine.ErrReqAlreadyExists) || errors.Is(err, engine.ErrReqAlreadyProcessed) {
+		return nil
+	}
+	return err
 }
 
 func (c *Chain) running() error {
@@ -241,13 +239,10 @@ func (c *Chain) running() error {
 	}
 }
 
-// WaitReady implements consensus.Chain.
 func (c *Chain) WaitReady() error { return c.running() }
 
-// Errored implements consensus.Chain. It is closed when the chain halts.
 func (c *Chain) Errored() <-chan struct{} { return c.errorC }
 
-// Start implements consensus.Chain.
 func (c *Chain) Start() {
 	c.stateMu.Lock()
 	defer c.stateMu.Unlock()
@@ -262,7 +257,6 @@ func (c *Chain) Start() {
 	}
 }
 
-// Halt implements consensus.Chain.
 func (c *Chain) Halt() {
 	c.haltOnce.Do(func() {
 		c.logger.Infof("Halting BiniBFT chain on channel %s", c.channel)
@@ -273,9 +267,6 @@ func (c *Chain) Halt() {
 	})
 }
 
-// --- engine.ApplicationDelivery ----------------------------------------------
-
-// ReceiveHeartbeat implements engine.ApplicationDelivery.
 func (c *Chain) ReceiveHeartbeat(engine.NodeID, time.Time) {}
 
 // Deliver is called by the engine once a proposal is finalized. The block is
@@ -370,9 +361,6 @@ func (c *Chain) broadcastSig(s *blockSig) {
 	}
 }
 
-// --- cluster ingress ---------------------------------------------------------
-
-// HandleMessage implements MessageReceiver.
 func (c *Chain) HandleMessage(sender uint64, payload []byte) {
 	if c.running() != nil {
 		return
@@ -394,8 +382,7 @@ func (c *Chain) HandleMessage(sender uint64, payload []byte) {
 	}
 }
 
-// HandleRequest implements MessageReceiver: a transaction forwarded by another
-// consenter.
+// HandleRequest receives a transaction forwarded by another consenter.
 func (c *Chain) HandleRequest(sender uint64, req []byte) {
 	if c.running() != nil {
 		return
@@ -404,8 +391,6 @@ func (c *Chain) HandleRequest(sender uint64, req []byte) {
 		c.logger.Debugf("Forwarded request from %d not accepted: %v", sender, err)
 	}
 }
-
-// --- block signatures ---------------------------------------------------------
 
 type asn1BlockHeader struct {
 	Number       *big.Int
