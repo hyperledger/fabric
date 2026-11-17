@@ -550,8 +550,13 @@ func (v *TxValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upg
 		return invokeIns, nil, nil
 	}
 
-	// ChaincodeActionPayload
-	cap, err := protoutil.UnmarshalChaincodeActionPayload(tx.GetActions()[0].GetPayload())
+	// ChaincodeActionPayload; a block may carry transactions without actions
+	actions := tx.GetActions()
+	if len(actions) == 0 {
+		logger.Errorf("transaction contains no actions")
+		return invokeIns, nil, nil
+	}
+	cap, err := protoutil.UnmarshalChaincodeActionPayload(actions[0].GetPayload())
 	if err != nil {
 		logger.Errorf("GetChaincodeActionPayload failed: %+v", err)
 		return invokeIns, nil, nil
