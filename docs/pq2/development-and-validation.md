@@ -391,9 +391,15 @@ hash and responses.
   transaction-time validation is explicit for replay-sensitive paths. Config
   updates must pass both current-time and signed-timestamp authorization before
   replay validation uses the timestamp.
-- Hybrid endorsement admission caches validation by the deserialized MSP
-  identity identifier, so protobuf wire-encoding differences do not repeat PQ
-  certificate validation.
+- Hybrid endorsement admission deduplicates decoded MSP ID/certificate-DER
+  pairs before MSP deserialization and validation. This corrects the earlier
+  claim that deduplication by the constructed identity identifier prevented
+  repeated PQ chain verification: ECDSA certificate sanitization during
+  `newIdentity` calls `getUniqueValidationChain`, which verifies the hybrid
+  chain. Protobuf field ordering, unknown fields and PEM wrapper differences
+  now reach that expensive path only once per pair per envelope. A real hybrid
+  MSP regression counts deserialization calls, rather than only mocked
+  `Validate` calls.
 - Raft and SmartBFT block signatures carry a versioned signing timestamp inside
   their signed nonce fields. Block replay validates hybrid orderer identities
   at that timestamp; an unversioned nonce supplies zero time and cannot silently
@@ -401,6 +407,23 @@ hash and responses.
   malformed timestamp nonces during consensus verification, before accepting a
   signature that downstream block verifiers would reject. Local hybrid signers
   are validated before signing even when their MSP permits classical identities.
+- SmartBFT live commit votes additionally require current-time authorization;
+  the signer's timestamp cannot authorize an expired consenter to cast a new
+  vote. Historical previous-commit and last-decision verification retain
+  signed-time validation. Live votes must pass both checks so an out-of-validity
+  timestamp cannot produce a committed signature rejected during replay.
+  The SmartBFT verifier interface and live-vote call site carry this explicit
+  distinction. The root module replaces SmartBFT v1.0.3 with the used-source
+  snapshot in `third_party/SmartBFT`, retaining its upstream license and module
+  metadata plus the live-vote patch and regression test. `go mod vendor`
+  regenerates the same patched dependency; module-mode builds also use it.
+  Preserve the patch when refreshing that snapshot. CI explicitly tests the
+  local module's live-vote dispatch because vendoring omits dependency tests.
+  This does not turn a signed timestamp into independent trusted-time evidence.
+- The gateway timeout-leak regression waits for earlier mock Evaluate workers
+  to exit before measuring its own worker. Comparing against a nonzero worker
+  count was flaky when an earlier timeout worker exited during the assertion;
+  the test now requires zero workers before and after the call.
 
 The focused validation commands passed:
 
@@ -416,6 +439,28 @@ following affected-package checks passed on Go 1.27.4:
 go test -count=1 -p=1 ./pq-crypto ./msp/... ./common/capabilities ./common/channelconfig ./core/peer ./orderer/common/multichannel ./orderer/common/server ./internal/peer/common ./internal/peer/node ./cmd/pactway-pq-gen
 go vet -p=1 ./pq-crypto ./msp/... ./common/capabilities ./common/channelconfig ./core/peer ./orderer/common/multichannel ./orderer/common/server ./internal/peer/common ./internal/peer/node ./cmd/pactway-pq-gen
 ```
+
+For the live-vote, admission-deduplication and gateway timeout-test corrections,
+the following checks passed on WSL Linux/amd64 with Go 1.27.4:
+
+```text
+go test -count=1 ./orderer/consensus/smartbft ./orderer/common/msgprocessor ./internal/pkg/gateway ./msp ./protoutil
+go test -mod=mod -race -count=10 -run 'Test(Evaluate.*|VerifyConsenterSig|VerifyLiveConsenterSig|LiveVoteUsesCurrentAuthorization|HybridEndorsementAdmission.*)$' ./internal/pkg/gateway ./orderer/consensus/smartbft ./orderer/common/msgprocessor github.com/hyperledger/SmartBFT/internal/bft
+go test -mod=mod -race github.com/hyperledger/SmartBFT/internal/bft
+go vet ./orderer/consensus/smartbft ./orderer/common/msgprocessor ./internal/pkg/gateway
+go mod tidy
+go mod vendor
+git diff --check
+```
+
+The module and vendor commands left the hashes of `go.mod`, `go.sum` and every
+vendored file unchanged; vendor regeneration is reproducible with the local
+SmartBFT replacement. The diff check used Windows-native Git. Targeted
+`gofmt -l` reported no formatting changes. The full Fabric unit and integration
+suites were not rerun locally for these corrections. At the preceding PR head
+`bfbf8e8`, [PR CI run 44002860818](https://github.com/vignatov/fabric-pq/actions/runs/44002860818)
+passed all integration jobs but failed the gateway timeout-leak unit assertion;
+that run is not passing evidence for the new changes.
 
 The following work remains release- and PQ2-completion-blocking:
 

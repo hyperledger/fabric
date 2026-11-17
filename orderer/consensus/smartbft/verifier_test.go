@@ -423,6 +423,9 @@ func TestVerifyConsenterSig(t *testing.T) {
 
 			require.Error(t, err)
 			require.Equal(t, testCase.expectedErr, strings.ReplaceAll(err.Error(), "\u00a0", " "))
+			_, liveErr := v.VerifyLiveConsenterSig(signature, proposal)
+			require.Error(t, liveErr)
+			require.Equal(t, testCase.expectedErr, strings.ReplaceAll(liveErr.Error(), "\u00a0", " "))
 			if testCase.expectedValidationTime {
 				signedData := cv.Calls[len(cv.Calls)-1].Arguments.Get(0).([]*protoutil.SignedData)
 				require.Len(t, signedData, 1)
@@ -446,6 +449,72 @@ func signatureWithIdentifierNonce(signature types.Signature, nonce []byte) types
 	sig.IdentifierHeader = protoutil.MarshalOrPanic(identifierHeader)
 	signature.Msg = sig.Marshal()
 	return signature
+}
+
+func TestVerifyLiveConsenterSig(t *testing.T) {
+	lastBlock := makeNonConfigBlock(19, 10)
+	lastConfigBlock := makeConfigBlock(10)
+	runtimeConfig := &atomic.Value{}
+	runtimeConfig.Store(smartbft.RuntimeConfig{
+		ID2Identities:   map[uint64][]byte{3: []byte("consenter")},
+		LastBlock:       lastBlock,
+		LastConfigBlock: lastConfigBlock,
+	})
+	assembler := &smartbft.Assembler{
+		VerificationSeq: func() uint64 { return 12 },
+		Logger:          flogging.MustGetLogger("test"),
+		RuntimeConfig:   runtimeConfig,
+	}
+	proposal := assembler.AssembleProposal(protoutil.MarshalOrPanic(&smartbftprotos.ViewMetadata{
+		LatestSequence: 1, ViewId: 2,
+	}), [][]byte{nonConfigTx})
+	ss := &mocks.SignerSerializer{}
+	ss.On("Sign", mock.Anything).Return([]byte("signature"), nil)
+	signer := &smartbft.Signer{
+		LastConfigBlockNum: func(*cb.Block) uint64 { return 10 },
+		SignerSerializer:   ss,
+		Logger:             flogging.MustGetLogger("test"),
+		ID:                 3,
+	}
+	signingTime := time.Now().Add(-2 * time.Hour)
+	signature := signatureWithIdentifierNonce(*signer.SignProposal(proposal, nil),
+		protoutil.BlockSignatureNonceWithTimestamp([]byte("nonce"), signingTime))
+
+	for _, tc := range []struct {
+		name          string
+		historicalErr error
+		currentErr    error
+	}{
+		{name: "valid at both times"},
+		{name: "backdated vote from expired consenter", currentErr: errors.New("certificate has expired")},
+		{name: "timestamp outside certificate validity", historicalErr: errors.New("invalid signing time")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cv := &mocks.ConsenterVerifier{}
+			historical := mock.MatchedBy(func(data []*protoutil.SignedData) bool {
+				return len(data) == 1 && data[0].ValidationTime != nil && data[0].ValidationTime.Equal(signingTime)
+			})
+			current := mock.MatchedBy(func(data []*protoutil.SignedData) bool {
+				return len(data) == 1 && data[0].ValidationTime == nil
+			})
+			cv.On("Evaluate", historical).Return(tc.historicalErr).Twice()
+			if tc.historicalErr == nil {
+				cv.On("Evaluate", current).Return(tc.currentErr).Once()
+			}
+			verifier := &smartbft.Verifier{
+				RuntimeConfig: runtimeConfig, Logger: flogging.MustGetLogger("test"), ConsenterVerifier: cv,
+			}
+			_, err := verifier.VerifyConsenterSig(signature, proposal)
+			require.Equal(t, tc.historicalErr, err, "historical verification must not use the current clock")
+			_, err = verifier.VerifyLiveConsenterSig(signature, proposal)
+			expectedErr := tc.historicalErr
+			if expectedErr == nil {
+				expectedErr = tc.currentErr
+			}
+			require.Equal(t, expectedErr, err)
+			cv.AssertExpectations(t)
+		})
+	}
 }
 
 func TestVerifyProposal(t *testing.T) {

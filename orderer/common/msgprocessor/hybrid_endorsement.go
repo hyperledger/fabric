@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
+	"encoding/pem"
 	"errors"
 	"fmt"
 
@@ -53,10 +54,10 @@ func validateHybridEndorsements(payload *cb.Payload, deserializer msp.IdentityDe
 	}
 
 	type identityKey struct {
-		mspID string
-		id    string
+		mspID   string
+		certDER string
 	}
-	validationResults := make(map[identityKey]error)
+	validatedIdentities := make(map[identityKey]struct{})
 	for actionIndex, action := range transaction.GetActions() {
 		if action == nil {
 			return fmt.Errorf("endorser transaction action %d is missing", actionIndex)
@@ -73,6 +74,19 @@ func validateHybridEndorsements(payload *cb.Payload, deserializer msp.IdentityDe
 				return fmt.Errorf("endorsement %d of action %d is missing", endorsementIndex, actionIndex)
 			}
 			serializedIdentity := endorsement.GetEndorser()
+			serialized, err := protoutil.UnmarshalSerializedIdentity(serializedIdentity)
+			if err != nil {
+				return fmt.Errorf("deserializing endorsement %d of action %d: %w", endorsementIndex, actionIndex, err)
+			}
+			certificate, _ := pem.Decode(serialized.GetIdBytes())
+			if certificate == nil {
+				return fmt.Errorf("deserializing endorsement %d of action %d: could not decode the PEM structure", endorsementIndex, actionIndex)
+			}
+			// Identity construction can verify the PQ chain while sanitizing the certificate.
+			cacheKey := identityKey{mspID: serialized.GetMspid(), certDER: string(certificate.Bytes)}
+			if _, validated := validatedIdentities[cacheKey]; validated {
+				continue
+			}
 			identity, err := deserializer.DeserializeIdentity(serializedIdentity)
 			var validationErr error
 			switch {
@@ -81,22 +95,12 @@ func validateHybridEndorsements(payload *cb.Payload, deserializer msp.IdentityDe
 			case identity == nil:
 				validationErr = fmt.Errorf("deserializing endorsement %d of action %d returned no identity", endorsementIndex, actionIndex)
 			default:
-				identifier := identity.GetIdentifier()
-				if identifier == nil {
-					validationErr = fmt.Errorf("getting identity identifier for endorsement %d of action %d returned nil", endorsementIndex, actionIndex)
-					break
-				}
-				cacheKey := identityKey{mspID: identifier.Mspid, id: identifier.Id}
-				var validated bool
-				validationErr, validated = validationResults[cacheKey]
-				if !validated {
-					validationErr = identity.Validate()
-					validationResults[cacheKey] = validationErr
-				}
+				validationErr = identity.Validate()
 			}
 			if validationErr != nil {
 				return fmt.Errorf("validating endorsement %d of action %d at admission: %w", endorsementIndex, actionIndex, validationErr)
 			}
+			validatedIdentities[cacheKey] = struct{}{}
 		}
 	}
 	return nil

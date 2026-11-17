@@ -57,9 +57,11 @@ type Verifier interface {
 	VerifyProposal(proposal bft.Proposal) ([]bft.RequestInfo, error)
 	// VerifyRequest verifies the given request and returns its info.
 	VerifyRequest(val []byte) (bft.RequestInfo, error)
-	// VerifyConsenterSig verifies the signature for the given proposal.
+	// VerifyConsenterSig verifies a historical signature for the given proposal.
 	// It returns the auxiliary data in the signature.
 	VerifyConsenterSig(signature bft.Signature, prop bft.Proposal) ([]byte, error)
+	// VerifyLiveConsenterSig additionally checks current authorization for a live vote.
+	VerifyLiveConsenterSig(signature bft.Signature, prop bft.Proposal) ([]byte, error)
 	// VerifySignature verifies the signature.
 	VerifySignature(signature bft.Signature) error
 	// VerificationSequence returns the current verification sequence.

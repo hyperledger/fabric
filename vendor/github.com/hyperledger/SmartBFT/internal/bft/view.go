@@ -836,7 +836,7 @@ func (vv *voteVerifier) verifyVote(vote *protos.Message) {
 		return
 	}
 
-	_, err := vv.v.Verifier.VerifyConsenterSig(types.Signature{
+	_, err := vv.v.Verifier.VerifyLiveConsenterSig(types.Signature{
 		ID:    commit.GetSignature().GetSigner(),
 		Value: commit.GetSignature().GetValue(),
 		Msg:   commit.GetSignature().GetMsg(),

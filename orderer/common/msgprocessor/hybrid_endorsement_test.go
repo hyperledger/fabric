@@ -92,10 +92,8 @@ func hybridEndorsementEnvelope(endorsements ...*pb.Endorsement) *cb.Envelope {
 
 func TestHybridEndorsementAdmission(t *testing.T) {
 	identity := &mspmocks.MockIdentity{}
-	identity.On("GetIdentifier").Return(&msp.IdentityIdentifier{Mspid: "Org1MSP", Id: "valid"}).Once()
 	identity.On("Validate").Return(nil).Once()
 	expired := &mspmocks.MockIdentity{}
-	expired.On("GetIdentifier").Return(&msp.IdentityIdentifier{Mspid: "Org1MSP", Id: "expired"}).Once()
 	expired.On("Validate").Return(errors.New("certificate has expired")).Once()
 	deserializer := &policymocks.IdentityDeserializer{}
 	deserializer.DeserializeIdentityReturnsOnCall(0, identity, nil)
@@ -105,11 +103,17 @@ func TestHybridEndorsementAdmission(t *testing.T) {
 		manager:  testHybridManager{deserializer: deserializer},
 	}}
 
-	envelope := hybridEndorsementEnvelope(&pb.Endorsement{Endorser: []byte("valid")})
+	validEncoding := protoutil.MarshalOrPanic(&mspprotos.SerializedIdentity{
+		Mspid: "Org1MSP", IdBytes: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("valid")}),
+	})
+	expiredEncoding := protoutil.MarshalOrPanic(&mspprotos.SerializedIdentity{
+		Mspid: "Org1MSP", IdBytes: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("expired")}),
+	})
+	envelope := hybridEndorsementEnvelope(&pb.Endorsement{Endorser: validEncoding})
 	require.NoError(t, filter.Apply(envelope))
-	envelope = hybridEndorsementEnvelope(&pb.Endorsement{Endorser: []byte("expired")})
+	envelope = hybridEndorsementEnvelope(&pb.Endorsement{Endorser: expiredEncoding})
 	require.ErrorContains(t, filter.Apply(envelope), "certificate has expired")
-	require.Equal(t, []byte("expired"), deserializer.DeserializeIdentityArgsForCall(1))
+	require.Equal(t, expiredEncoding, deserializer.DeserializeIdentityArgsForCall(1))
 }
 
 func TestHybridEndorsementAdmissionRejectsMalformedTransactions(t *testing.T) {
@@ -120,24 +124,25 @@ func TestHybridEndorsementAdmissionRejectsMalformedTransactions(t *testing.T) {
 
 func TestHybridEndorsementAdmissionValidatesDuplicateIdentityOnce(t *testing.T) {
 	identity := &mspmocks.MockIdentity{}
-	identity.On("GetIdentifier").Return(&msp.IdentityIdentifier{Mspid: "Org1MSP", Id: "same"}).Twice()
 	identity.On("Validate").Return(nil).Once()
 	deserializer := &policymocks.IdentityDeserializer{}
 	deserializer.DeserializeIdentityReturnsOnCall(0, identity, nil)
-	deserializer.DeserializeIdentityReturnsOnCall(1, identity, nil)
 	filter := &hybridEndorsementFilter{resources: testHybridResources{
 		required: true,
 		manager:  testHybridManager{deserializer: deserializer},
 	}}
 
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("cert")})
 	firstEncoding := protoutil.MarshalOrPanic(&mspprotos.SerializedIdentity{
 		Mspid:   "Org1MSP",
-		IdBytes: []byte("cert"),
+		IdBytes: certPEM,
 	})
 	secondEncoding := protowire.AppendTag(nil, 2, protowire.BytesType)
-	secondEncoding = protowire.AppendBytes(secondEncoding, []byte("cert"))
+	secondEncoding = protowire.AppendBytes(secondEncoding, certPEM)
 	secondEncoding = protowire.AppendTag(secondEncoding, 1, protowire.BytesType)
 	secondEncoding = protowire.AppendBytes(secondEncoding, []byte("Org1MSP"))
+	secondEncoding = protowire.AppendTag(secondEncoding, 3, protowire.BytesType)
+	secondEncoding = protowire.AppendBytes(secondEncoding, []byte("ignored unknown field"))
 	require.NotEqual(t, firstEncoding, secondEncoding)
 
 	envelope := hybridEndorsementEnvelope(
@@ -145,8 +150,30 @@ func TestHybridEndorsementAdmissionValidatesDuplicateIdentityOnce(t *testing.T) 
 		&pb.Endorsement{Endorser: secondEncoding},
 	)
 	require.NoError(t, filter.Apply(envelope))
-	require.Equal(t, 2, deserializer.DeserializeIdentityCallCount())
+	require.Equal(t, 1, deserializer.DeserializeIdentityCallCount())
 	identity.AssertExpectations(t)
+}
+
+func TestHybridEndorsementAdmissionKeepsMSPsDistinct(t *testing.T) {
+	first := &mspmocks.MockIdentity{}
+	first.On("Validate").Return(nil).Once()
+	second := &mspmocks.MockIdentity{}
+	second.On("Validate").Return(errors.New("wrong organization")).Once()
+	deserializer := &policymocks.IdentityDeserializer{}
+	deserializer.DeserializeIdentityReturnsOnCall(0, first, nil)
+	deserializer.DeserializeIdentityReturnsOnCall(1, second, nil)
+	filter := &hybridEndorsementFilter{resources: testHybridResources{
+		required: true, manager: testHybridManager{deserializer: deserializer},
+	}}
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("cert")})
+	envelope := hybridEndorsementEnvelope(
+		&pb.Endorsement{Endorser: protoutil.MarshalOrPanic(&mspprotos.SerializedIdentity{Mspid: "Org1MSP", IdBytes: certPEM})},
+		&pb.Endorsement{Endorser: protoutil.MarshalOrPanic(&mspprotos.SerializedIdentity{Mspid: "Org2MSP", IdBytes: certPEM})},
+	)
+	require.ErrorContains(t, filter.Apply(envelope), "wrong organization")
+	require.Equal(t, 2, deserializer.DeserializeIdentityCallCount())
+	first.AssertExpectations(t)
+	second.AssertExpectations(t)
 }
 
 func TestHybridEndorsementAdmissionPreservesClassicalChannels(t *testing.T) {
@@ -222,10 +249,34 @@ func TestHybridEndorsementAdmissionUsesCurrentTimeWithRealMSP(t *testing.T) {
 	}))
 	manager := msp.NewMSPManager()
 	require.NoError(t, manager.Setup([]msp.MSP{instance}))
-	filter := &hybridEndorsementFilter{resources: testHybridResources{required: true, manager: manager}}
+	deserializer := &policymocks.IdentityDeserializer{DeserializeIdentityStub: manager.DeserializeIdentity}
+	filter := &hybridEndorsementFilter{resources: testHybridResources{
+		required: true, manager: testHybridManager{deserializer: deserializer},
+	}}
 
 	valid := hybridEndorsementEnvelope(&pb.Endorsement{Endorser: validIdentity})
 	require.NoError(t, filter.Apply(valid))
+	validCert, _ := pem.Decode(serializedValid.GetIdBytes())
+	require.NotNil(t, validCert)
+	alternatePEM := pem.EncodeToMemory(&pem.Block{
+		Type: "CERTIFICATE", Headers: map[string]string{"Comment": "alternate wrapper"}, Bytes: validCert.Bytes,
+	})
+	alternateEncoding := protowire.AppendTag(nil, 2, protowire.BytesType)
+	alternateEncoding = protowire.AppendBytes(alternateEncoding, alternatePEM)
+	alternateEncoding = protowire.AppendTag(alternateEncoding, 1, protowire.BytesType)
+	alternateEncoding = protowire.AppendBytes(alternateEncoding, []byte(serializedValid.GetMspid()))
+	alternateEncoding = protowire.AppendTag(alternateEncoding, 3, protowire.VarintType)
+	alternateEncoding = protowire.AppendVarint(alternateEncoding, 1)
+	require.NotEqual(t, validIdentity, alternateEncoding)
+	duplicates := hybridEndorsementEnvelope(
+		&pb.Endorsement{Endorser: validIdentity},
+		&pb.Endorsement{Endorser: alternateEncoding},
+		&pb.Endorsement{Endorser: validIdentity},
+	)
+	callsBefore := deserializer.DeserializeIdentityCallCount()
+	require.NoError(t, filter.Apply(duplicates))
+	require.Equal(t, callsBefore+1, deserializer.DeserializeIdentityCallCount(),
+		"equivalent encodings must not repeat real MSP deserialization and PQ chain verification")
 	expiredIdentity := makeEndorser(3, now.Add(-time.Hour))
 	expired := hybridEndorsementEnvelope(&pb.Endorsement{Endorser: expiredIdentity})
 	payload, err := protoutil.UnmarshalPayload(expired.GetPayload())

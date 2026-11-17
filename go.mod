@@ -118,3 +118,5 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20261019180522-ce908d29299b // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261019180522-ce908d29299b // indirect
 )
+
+replace github.com/hyperledger/SmartBFT => ./third_party/SmartBFT
