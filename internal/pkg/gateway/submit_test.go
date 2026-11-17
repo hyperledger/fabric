@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/deliverclient/orderers"
+	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -35,6 +36,15 @@ func TestSubmit(t *testing.T) {
 				"g1": {{endorser: localhostMock, height: 3}},
 				"g2": {{endorser: peer1Mock, height: 3}},
 			},
+		},
+		{
+			name: "failed policy or signature check",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			policyErr: errors.New("POLICY_ERROR"),
+			errCode:   codes.PermissionDenied,
+			errString: "POLICY_ERROR",
 		},
 		{
 			name: "discovery fails",
@@ -829,6 +839,101 @@ func TestSubmit(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSubmitAuthorization(t *testing.T) {
+	bftFourOrderers := &dp.ConfigResult{
+		Orderers: map[string]*dp.Endpoints{
+			"msp1": {
+				Endpoint: []*dp.Endpoint{
+					{Host: "orderer1", Port: 7050},
+					{Host: "orderer2", Port: 7050},
+					{Host: "orderer3", Port: 7050},
+					{Host: "orderer4", Port: 7050},
+				},
+			},
+		},
+		Msps: map[string]*msp.FabricMSPConfig{
+			"msp1": {TlsRootCerts: [][]byte{}},
+		},
+	}
+
+	t.Run("unauthorized envelope rejected before any orderer broadcast", func(t *testing.T) {
+		tt := testDef{
+			name:   "unauthorized",
+			isBFT:  true,
+			plan:   endorsementPlan{"g1": {{endorser: localhostMock}}},
+			config: bftFourOrderers,
+			endpointDefinition: &endpointDef{
+				proposalResponseStatus: 200,
+				ordererStatus:          200,
+			},
+			policyErr: errors.New("creator does not satisfy channel writers policy"),
+		}
+		test := prepareTest(t, &tt)
+
+		// fabricated envelope: no Endorse call, garbage payload, invalid signature
+		garbage := &cp.Envelope{
+			Payload:   make([]byte, 8*1024*1024),
+			Signature: []byte{0x01},
+		}
+		_, err := test.server.Submit(test.ctx, &pb.SubmitRequest{
+			TransactionId:       "tx1",
+			ChannelId:           testChannel,
+			PreparedTransaction: garbage,
+		})
+
+		require.Error(t, err)
+		st, _ := status.FromError(err)
+		require.Equal(t, codes.PermissionDenied, st.Code(), "expected local rejection before orderer fan-out, got: %v", err)
+		require.ErrorContains(t, err, "creator does not satisfy channel writers policy")
+
+		require.Equal(t, 1, test.policy.CheckACLCallCount(), "submit must consult the ACL checker exactly once")
+		resource, channel, idinfo := test.policy.CheckACLArgsForCall(0)
+		require.Equal(t, resources.Gateway_Submit, resource)
+		require.Equal(t, testChannel, channel)
+		require.Same(t, garbage, idinfo.(*cp.Envelope), "the envelope itself must be authorized")
+
+		for _, o := range []*orderer{orderer1Mock, orderer2Mock, orderer3Mock, orderer4Mock} {
+			require.Equal(t, 0, o.client.(*mocks.ABClient).BroadcastCallCount(), "no orderer may be contacted for an unauthorized submit")
+		}
+	})
+
+	t.Run("authorized envelope broadcast to all orderers", func(t *testing.T) {
+		tt := testDef{
+			name:   "authorized",
+			isBFT:  true,
+			plan:   endorsementPlan{"g1": {{endorser: localhostMock}}},
+			config: bftFourOrderers,
+			endpointDefinition: &endpointDef{
+				proposalResponseStatus: 200,
+				ordererStatus:          200,
+			},
+		}
+		test := prepareTest(t, &tt)
+
+		endorseResponse, err := test.server.Endorse(test.ctx, &pb.EndorseRequest{ProposedTransaction: test.signedProposal})
+		require.NoError(t, err)
+		preparedTx := endorseResponse.GetPreparedTransaction()
+		preparedTx.Signature = []byte("mysignature")
+
+		submitResponse, err := test.server.Submit(test.ctx, &pb.SubmitRequest{PreparedTransaction: preparedTx, ChannelId: testChannel})
+		require.NoError(t, err)
+		require.True(t, proto.Equal(&pb.SubmitResponse{}, submitResponse))
+
+		require.Equal(t, 1, test.policy.CheckACLCallCount())
+		resource, channel, idinfo := test.policy.CheckACLArgsForCall(0)
+		require.Equal(t, resources.Gateway_Submit, resource)
+		require.Equal(t, testChannel, channel)
+		require.Same(t, preparedTx, idinfo.(*cp.Envelope))
+
+		require.Eventually(t, func() bool {
+			return orderer1Mock.client.(*mocks.ABClient).BroadcastCallCount() == 1 &&
+				orderer2Mock.client.(*mocks.ABClient).BroadcastCallCount() == 1 &&
+				orderer3Mock.client.(*mocks.ABClient).BroadcastCallCount() == 1 &&
+				orderer4Mock.client.(*mocks.ABClient).BroadcastCallCount() == 1
+		}, broadcastTimeout, 10*time.Millisecond)
+	})
 }
 
 func TestSubmitUnsigned(t *testing.T) {
