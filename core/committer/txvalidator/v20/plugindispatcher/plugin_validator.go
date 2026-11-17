@@ -75,8 +75,15 @@ func (c Context) String() string {
 // invalidTxSignal records that a transaction was rejected before or during
 // plugin dispatch and therefore never produced a plugin validation result
 type invalidTxSignal struct {
-	blockNum, txNum uint64
-	err             error
+	txNum uint64
+	err   error
+}
+
+// pendingInvalidTxSignals accumulates the invalid-transaction signals of a
+// single block of a channel
+type pendingInvalidTxSignals struct {
+	blockNum uint64
+	signals  []invalidTxSignal
 }
 
 // PluginValidator values transactions with validation plugins.
@@ -84,10 +91,10 @@ type PluginValidator struct {
 	sync.Mutex
 	pluginChannelMapping map[txvalidatorplugin.Name]*pluginsByChannel
 	// pendingInvalidTxs remembers invalid-transaction signals per channel, so
-	// that plugin instances created lazily afterwards are caught up on them;
-	// entries for older blocks are dropped when a signal for a newer block
-	// arrives, since validation proceeds one block at a time
-	pendingInvalidTxs map[string][]invalidTxSignal
+	// that plugin instances created lazily afterwards are caught up on them.
+	// Only the newest signaled block is kept: validation proceeds one block at
+	// a time, so older blocks' signals can no longer matter
+	pendingInvalidTxs map[string]*pendingInvalidTxSignals
 	txvalidatorplugin.Mapper
 	QueryExecutorCreator
 	msp.IdentityDeserializer
@@ -128,7 +135,7 @@ func NewPluginValidator(pm txvalidatorplugin.Mapper, qec QueryExecutorCreator, d
 	return &PluginValidator{
 		capabilities:               capabilities,
 		pluginChannelMapping:       make(map[txvalidatorplugin.Name]*pluginsByChannel),
-		pendingInvalidTxs:          make(map[string][]invalidTxSignal),
+		pendingInvalidTxs:          make(map[string]*pendingInvalidTxSignals),
 		Mapper:                     pm,
 		QueryExecutorCreator:       qec,
 		IdentityDeserializer:       deserializer,
@@ -162,13 +169,13 @@ func (pv *PluginValidator) ValidateWithPlugin(ctx *Context) error {
 func (pv *PluginValidator) SignalInvalidTx(channel string, blockNum, txNum uint64, err error) {
 	pv.Lock()
 	pending := pv.pendingInvalidTxs[channel]
-	kept := pending[:0]
-	for _, s := range pending {
-		if s.blockNum >= blockNum {
-			kept = append(kept, s)
-		}
+	if pending == nil || pending.blockNum < blockNum {
+		pending = &pendingInvalidTxSignals{blockNum: blockNum}
+		pv.pendingInvalidTxs[channel] = pending
 	}
-	pv.pendingInvalidTxs[channel] = append(kept, invalidTxSignal{blockNum: blockNum, txNum: txNum, err: err})
+	if pending.blockNum == blockNum {
+		pending.signals = append(pending.signals, invalidTxSignal{txNum: txNum, err: err})
+	}
 
 	var plugins []validation.Plugin
 	for _, pbc := range pv.pluginChannelMapping {
@@ -188,19 +195,25 @@ func (pv *PluginValidator) SignalInvalidTx(channel string, blockNum, txNum uint6
 }
 
 // replayInvalidTxSignals delivers the signals remembered for the given
-// channel to a freshly created plugin instance
-func (pv *PluginValidator) replayInvalidTxSignals(channel string, plugin validation.Plugin) {
+// channel to a freshly created plugin instance. Only signals of the block the
+// plugin is created while validating are replayed: older blocks are fully
+// validated already, and forwarding their signals to an instance whose
+// validation context has moved past them would panic the bookkeeping.
+func (pv *PluginValidator) replayInvalidTxSignals(channel string, blockNum uint64, plugin validation.Plugin) {
 	signaler, ok := plugin.(validation.InvalidTxSignaler)
 	if !ok {
 		return
 	}
 
 	pv.Lock()
-	pending := append([]invalidTxSignal(nil), pv.pendingInvalidTxs[channel]...)
+	var signals []invalidTxSignal
+	if pending := pv.pendingInvalidTxs[channel]; pending != nil && pending.blockNum == blockNum {
+		signals = append([]invalidTxSignal(nil), pending.signals...)
+	}
 	pv.Unlock()
 
-	for _, s := range pending {
-		signaler.SignalInvalidTx(s.blockNum, s.txNum, s.err)
+	for _, s := range signals {
+		signaler.SignalInvalidTx(blockNum, s.txNum, s.err)
 	}
 }
 
@@ -211,7 +224,7 @@ func (pv *PluginValidator) getOrCreatePlugin(ctx *Context) (validation.Plugin, e
 	}
 
 	pluginsByChannel := pv.getOrCreatePluginChannelMapping(txvalidatorplugin.Name(ctx.PluginName), pluginFactory)
-	return pluginsByChannel.createPluginIfAbsent(ctx.Channel)
+	return pluginsByChannel.createPluginIfAbsent(ctx.Channel, ctx.Block.GetHeader().GetNumber())
 }
 
 func (pv *PluginValidator) getOrCreatePluginChannelMapping(plugin txvalidatorplugin.Name, pf validation.PluginFactory) *pluginsByChannel {
@@ -236,7 +249,7 @@ type pluginsByChannel struct {
 	pv               *PluginValidator
 }
 
-func (pbc *pluginsByChannel) createPluginIfAbsent(channel string) (validation.Plugin, error) {
+func (pbc *pluginsByChannel) createPluginIfAbsent(channel string, blockNum uint64) (validation.Plugin, error) {
 	pbc.RLock()
 	plugin, exists := pbc.channels2Plugins[channel]
 	pbc.RUnlock()
@@ -259,10 +272,11 @@ func (pbc *pluginsByChannel) createPluginIfAbsent(channel string) (validation.Pl
 	pbc.Unlock()
 
 	if !exists {
-		// catch the fresh instance up on invalid-transaction signals that
-		// arrived before it was created; replay must not hold pbc's lock,
-		// which is acquired in the opposite order by SignalInvalidTx
-		pbc.pv.replayInvalidTxSignals(channel, plugin)
+		// catch the fresh instance up on invalid-transaction signals of the
+		// block being validated that arrived before it was created; replay
+		// must not hold pbc's lock, which is acquired in the opposite order
+		// by SignalInvalidTx
+		pbc.pv.replayInvalidTxSignals(channel, blockNum, plugin)
 	}
 	return plugin, nil
 }

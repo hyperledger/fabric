@@ -401,6 +401,35 @@ func TestSignalInvalidTxNoConflict(t *testing.T) {
 	require.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
+func TestSignalInvalidTxKeepsPostedResult(t *testing.T) {
+	t.Parallel()
+
+	// Scenario: plugin validation already posted the (successful) result of
+	// transaction (1,0) which updated the validation parameter of a key; a
+	// SignalInvalidTx for the same transaction arrives afterwards (e.g. a
+	// replay of a pending signal). The posted result must stand, so the
+	// dependent transaction (1,1) still observes the conflict
+
+	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
+	spe := policydsl.SignedByMspMember("foo")
+	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
+	ms := &mockStateFetcher{FetchStateRv: mr}
+	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}
+
+	cc, coll, key := "cc", "", "key"
+
+	pm.ExtractValidationParameterDependency(1, 0, rwsetUpdatingMetadataFor(cc, key))
+	pm.SetTxValidationResult(cc, 1, 0, nil)
+	pm.SignalInvalidTx(1, 0, errors.New("tx rejected before validation"))
+	pm.SignalInvalidTx(1, 0, errors.New("tx rejected before validation"))
+
+	sp, err := pm.GetValidationParameterForKey(cc, coll, key, 1, 1)
+	require.Errorf(t, err, "assert failure occurred")
+	var target *ValidationParameterUpdatedError
+	require.ErrorAs(t, err, &target)
+	require.Nil(t, sp)
+}
+
 func TestMultipleDependencyNoConflict(t *testing.T) {
 	t.Parallel()
 	var seed [32]byte

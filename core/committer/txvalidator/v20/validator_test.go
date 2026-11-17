@@ -1323,7 +1323,7 @@ func TestPreDispatchRejectedTxDoesNotBlockDependents(t *testing.T) {
 	select {
 	case err := <-done:
 		require.NoError(t, err)
-	case <-time.After(30 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("Validate did not complete: tx1 waits forever on the validation result of the rejected tx0")
 	}
 
@@ -1368,7 +1368,7 @@ func TestUnparseableActionPayloadDoesNotBlockDependents(t *testing.T) {
 	select {
 	case err := <-done:
 		require.NoError(t, err)
-	case <-time.After(30 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("Validate did not complete: tx1 waits forever on dependency insertion of the rejected tx0")
 	}
 

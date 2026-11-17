@@ -44,7 +44,10 @@ type InvalidTxSignaler interface {
 	// SignalInvalidTx signals that the transaction at height `blockNum, txNum`
 	// was invalidated without a plugin validation result, so that bookkeeping
 	// kept by the plugin (e.g. state-based endorsement dependencies) can
-	// release transactions waiting on it
+	// release transactions waiting on it. Implementations must tolerate the
+	// same transaction being signaled more than once: a signal may be
+	// delivered directly and then replayed to a lazily created plugin
+	// instance, and repeated signals must not change the outcome
 	SignalInvalidTx(blockNum, txNum uint64, err error)
 }
 
