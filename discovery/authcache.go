@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -65,6 +66,11 @@ func newAuthCache(s acSupport, conf authCacheConfig) *authCache {
 // service from the discovery service for a given channel
 func (ac *authCache) EligibleForService(channel string, data protoutil.SignedData) error {
 	if !ac.conf.enabled {
+		return ac.acSupport.EligibleForService(channel, data)
+	}
+	// Authorization depends on the validity of every certificate in a hybrid
+	// chain, so a decision must not outlive any chain member's validity period.
+	if crypto.IsHybridIdentity(data.Identity) {
 		return ac.acSupport.EligibleForService(channel, data)
 	}
 	// Check whether we already have a cache for this channel

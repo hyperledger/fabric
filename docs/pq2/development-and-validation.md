@@ -144,6 +144,19 @@ does not authorize ordinary binaries to omit these runtime guards.
   valid transaction. An earlier replay attempt using Docker chaincode failed
   because the WSL host-network path refused the chaincode callback; it is not
   passing evidence. Broader failure-injection coverage remains open.
+- Long-lived Deliver sessions re-run policy evaluation for each block when the
+  creator certificate carries a registered hybrid-profile extension. This
+  forces current-time MSP path validation to notice an intermediate CA expiry
+  even though the session's inexpensive expiry timer only knows the leaf
+  certificate's `NotAfter`. This adds PQ-chain verification cost per delivered
+  block on hybrid streams; classical stream decision caching is unchanged.
+- Discovery's authorization cache is bypassed for recognized hybrid leaf
+  certificates. Each request therefore rechecks the full chain using current
+  validation rules, so cached allows cannot survive `NotAfter` and cached
+  denials cannot survive `NotBefore`. Classical identities retain existing
+  decision-cache behavior. Hybrid requests still incur a small certificate
+  parse to select the uncached path. Detection does not itself authenticate or
+  accept the hybrid certificate.
 - Security review identified that the signed channel-header timestamp is
   chosen by the submitter and is not proof of endorsement time. An attacker
   with sufficient expired but still trusted endorser keys and a currently
@@ -562,6 +575,31 @@ development-only profile`; that refusal is a successful negative gate, not a
 release-build pass. CI must remain green on the final closeout commit before
 merge; the full matrix result above is tied to its exact implementation head.
 
+## Deliver and Discovery expiry-cache follow-up
+
+A later review found that an active Deliver session could outlive an
+intermediate CA's expiry and Discovery could reuse cached hybrid authorization
+across a chain validity transition. Current code rechecks hybrid Deliver
+authorization before every block and bypasses Discovery's authorization cache
+for recognized hybrid identities. This prevents either cached allows or cached
+denials from persisting through hybrid-chain `NotBefore`/`NotAfter` changes.
+Classical identities retain their existing policy/cache behavior.
+
+The following focused checks passed on WSL Linux/amd64 with Go 1.27.4:
+
+```text
+go test -mod=mod -count=1 ./common/crypto ./common/deliver ./discovery ./discovery/support/acl ./orderer/common/server ./orderer/common/msgprocessor ./orderer/consensus/smartbft
+go test -mod=mod -race -count=20 -run 'TestHybridIdentityAuthorizationIsNotCached$' ./discovery
+for i in $(seq 1 20); do go test ./common/deliver -ginkgo.focus="rechecks hybrid identity authorization on every block" -count=1; done
+for i in $(seq 1 5); do go test -race ./common/deliver -ginkgo.focus="rechecks hybrid identity authorization on every block" -count=1; done
+go vet ./common/crypto ./common/deliver ./discovery ./discovery/support/acl ./orderer/common/server
+git diff --check
+```
+
+Fresh CI for these follow-up source changes must pass before merge. The full
+Fabric CI matrix recorded above is evidence for its stated earlier commit,
+not for this follow-up.
+
 ## Development closeout and release gates
 
 The development acceptance evidence now covers both PQ2.0 feasibility gates,
@@ -574,8 +612,8 @@ client or endorser expiry. These completed gates must not be relisted as
 unexecuted merely because earlier local attempts failed.
 
 An automated closeout security review of the profile, MSP enforcement and
-live/historical authorization paths found no confirmed exploitable defect.
-Its remaining focused coverage gap is addressed by
+live/historical authorization paths found no additional confirmed exploitable
+defect at that stage. Its remaining focused coverage gap is addressed by
 `TestVerifyLiveConsenterSigWithHybridMSP`: real ML-DSA/BCCSP signatures and an
 orderer-principal policy check signed times immediately before, exactly at,
 and immediately after `NotAfter`, for both currently valid and expired
@@ -584,6 +622,16 @@ live votes from expired consenters are rejected. The separate SmartBFT
 dispatch regression proves that a rejected live vote is not counted. This
 composed coverage is not a multi-node clock-skew/liveness test or independent
 external cryptographic review.
+
+Subsequent review findings about active Deliver streams and Discovery's
+authorization cache are addressed by rechecking hybrid Deliver policies on
+every block and bypassing Discovery authorization caching for hybrid
+identities. Focused tests cover active-session reauthorization and changing
+allow/deny outcomes in the cache support. Repeated current-time PQ validation
+on each hybrid Deliver block and Discovery request is an intentional
+performance trade-off; no new cache TTL approximates certificate validity.
+The fixes have passed the focused local tests above and remain subject to fresh
+CI on the current PR head.
 
 The recommendation is final maintainer review for a **development-only merge
 for isolated use**, preserving the guards and limitations above. This report

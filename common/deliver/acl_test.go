@@ -7,12 +7,22 @@ SPDX-License-Identifier: Apache-2.0
 package deliver_test
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
+	"math/big"
 	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/deliver/mock"
 	. "github.com/hyperledger/fabric/internal/test"
+	oqs "github.com/hyperledger/fabric/pq-crypto"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -108,6 +118,41 @@ var _ = Describe("SessionAccessControl", func() {
 			expiresAt = func([]byte) time.Time {
 				return time.Now().Add(250 * time.Millisecond)
 			}
+		})
+
+		It("rechecks hybrid identity authorization on every block", func() {
+			profile, err := oqs.HybridCertificateProfileByName(oqs.TemporaryHybridProfileV1, oqs.ProfileUseTest)
+			Expect(err).NotTo(HaveOccurred())
+			key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			Expect(err).NotTo(HaveOccurred())
+			template := &x509.Certificate{
+				SerialNumber: big.NewInt(1),
+				Subject:      pkix.Name{CommonName: "hybrid deliver test"},
+				NotBefore:    time.Now().Add(-time.Hour),
+				NotAfter:     time.Now().Add(time.Hour),
+				ExtraExtensions: []pkix.Extension{{
+					Id: profile.ProfileKeyOID(), Value: []byte{0x30, 0x00},
+				}},
+			}
+			certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+			Expect(err).NotTo(HaveOccurred())
+			identity := protoutil.MarshalOrPanic(&mspprotos.SerializedIdentity{
+				Mspid: "HybridMSP",
+				IdBytes: pem.EncodeToMemory(&pem.Block{
+					Type: "CERTIFICATE", Bytes: certDER,
+				}),
+			})
+			Expect(crypto.IsHybridIdentity(identity)).To(BeTrue())
+			envelope = &cb.Envelope{Payload: protoutil.MarshalOrPanic(&cb.Payload{
+				Header: &cb.Header{SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{Creator: identity})},
+			})}
+			fakePolicyChecker.CheckPolicyReturnsOnCall(0, nil)
+			fakePolicyChecker.CheckPolicyReturnsOnCall(1, errors.New("hybrid certificate chain expired"))
+			sac, err := deliver.NewSessionAC(fakeChain, envelope, fakePolicyChecker, "chain-id", expiresAt)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sac.Evaluate()).To(Succeed())
+			Expect(sac.Evaluate()).To(MatchError("hybrid certificate chain expired"))
+			Expect(fakePolicyChecker.CheckPolicyCallCount()).To(Equal(2))
 		})
 
 		It("returns an identity expired error", func() {

@@ -8,6 +8,8 @@ CI baseline and focused hybrid tests are passing; see the
 [development acceptance report](development-and-validation.md). The closeout
 recommendation is maintainer review for a development-only merge, not automatic
 merge authorization, production approval, or permission to begin PQ3.
+The subsequent Deliver and Discovery expiry-cache fixes have focused local
+test coverage and await CI at their current PR head.
 
 ## Context
 
@@ -103,6 +105,12 @@ live authorization from historical verification:
   timestamp authenticated by the orderer signature. These are replay evidence,
   not independent trusted-time proofs. Missing or malformed required evidence
   must not cause a classical or current-time fallback.
+- Long-lived Deliver sessions reauthorize hybrid identities for each delivered
+  block, and Discovery does not cache hybrid authorization decisions. This
+  keeps both allow and deny decisions from surviving a hybrid chain's validity
+  transition. Hybrid Deliver streams and Discovery requests incur repeated PQ
+  chain-verification cost; classical Deliver and Discovery caching behavior is
+  unchanged.
 - The isolated demo assumes uncompromised, accurately maintained receiver
   clocks and, for Raft, non-Byzantine orderers enforcing admission. SmartBFT
   adds current-time vote admission but does not turn a Byzantine signer's
