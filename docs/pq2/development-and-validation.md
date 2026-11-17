@@ -63,13 +63,12 @@ quantum-resistant network security.
   identities in classical-permitted configurations retain Fabric's existing
   certificate-time behavior. Focused tests cover expiry at the supplied
   timestamp and propagation of that timestamp into state-based endorsement
-  checks. A transaction created by an expiring hybrid client is now tested
-  end-to-end: a peer that was offline during submission catches up after the
-  client certificate expires and applies the valid transaction. An earlier
-  replay attempt using Docker chaincode failed because the WSL host-network
-  path refused the chaincode callback; it is not passing evidence. Expired
-  endorser transaction replay and broader failure-injection coverage remain
-  open.
+  checks. Separate end-to-end tests now cover transactions signed by an
+  expiring hybrid client or endorsed by an expiring hybrid peer: an offline
+  peer catches up after the respective certificate expires and applies the
+  valid transaction. An earlier replay attempt using Docker chaincode failed
+  because the WSL host-network path refused the chaincode callback; it is not
+  passing evidence. Broader failure-injection coverage remains open.
 - Security review identified that the signed channel-header timestamp is
   chosen by the submitter and is not proof of endorsement time. An attacker
   with sufficient expired but still trusted endorser keys and a currently
@@ -226,7 +225,7 @@ Result: one spec passed, `ok github.com/hyperledger/fabric/integration/msp
 confirms a valid committed transaction while the identity is unexpired,
 keeps the replay peer offline until after expiry, and verifies that the peer
 catches up and applies the transaction's exact state change. It does not
-demonstrate replay after endorser expiry or prove trusted endorsement time.
+prove trusted endorsement time.
 
 All three hybrid integration scenarios passed together in the same Linux
 checkout (three specs, 192.513s):
@@ -234,6 +233,21 @@ checkout (three specs, 192.513s):
 ```text
 PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/msp -count=1 -run=TestMSP -ginkgo.focus='Pactway hybrid' -ginkgo.v -timeout=20m -v
 ```
+
+The replay test was extended to cover an expiring endorser as well as an
+expiring client. It checks that the committed transaction actually contains
+the generated short-lived certificate as the relevant signer. Both cases
+passed in the same Linux checkout, with the updated test file copied in and
+SHA-256 verified against the worktree
+(`4ebd37ad69fa16fe9d13f50cee5f302fe7f11ed18072a1cae04b817da8216482`):
+
+```text
+PATH=/usr/local/go/bin:/usr/bin:/bin go test ./integration/msp -count=1 -run=TestMSP -ginkgo.focus='Pactway hybrid transaction expiry replay' -ginkgo.v -timeout=20m -v
+```
+
+Result: two specs passed, `ok github.com/hyperledger/fabric/integration/msp
+280.845s`. Replay uses the signed transaction timestamp; this does not prove
+when the endorsement was made or close the trusted-time security blocker.
 
 The orderer admission tests generate fresh hybrid certificates and use a real
 BCCSP-backed MSP. They verify that an expired endorser whose backdated
@@ -372,6 +386,13 @@ hash and responses.
   fields and non-canonical DER.
 - The identity generator emits IP SANs for IP-valued orderer hosts, DNS SANs
   for hostnames, and correctly brackets IPv6 orderer endpoints.
+- Live envelope authorization continues to validate at current time;
+  transaction-time validation is explicit for replay-sensitive paths. Config
+  updates must pass both current-time and signed-timestamp authorization before
+  replay validation uses the timestamp.
+- Hybrid endorsement admission caches validation by the deserialized MSP
+  identity identifier, so protobuf wire-encoding differences do not repeat PQ
+  certificate validation.
 
 The focused validation commands passed:
 
@@ -400,13 +421,15 @@ The following work remains release- and PQ2-completion-blocking:
   rotation, rejection of a stale-signer restart, replacement-signer restart,
   peer restart/config replay, and a subsequent config update. A three-orderer
   Raft test covers planned overlapping-root rotation and stale-signer
-  recovery. A separate test demonstrates replay after client expiry;
-  broader failure-injection and replay after endorser expiry are not
-  demonstrated. The generator test reloads a
+  recovery. Separate tests demonstrate replay after client and endorser
+  expiry; broader failure-injection is not demonstrated. The generator test reloads a
   persisted BCCSP keystore and MSP, replays a prior signature, and verifies
   new PQ signing.
 - Replace submitter-controlled endorsement validation time with an approved,
   enforceable deterministic approach before claiming expiry enforcement.
+- Add an authenticated timestamp representation for orderer block signatures
+  before using historical certificate validation during block catch-up. Do not
+  use transaction timestamps as evidence of orderer signing time.
 - Finalize generation and deployment documentation and independently review
   the custom certificate profile. Replace the temporary OIDs only after the
   official PEN is assigned, regenerate all credentials/genesis, rerun the

@@ -45,6 +45,12 @@ func ChannelHeaderValidationTime(chdr *common.ChannelHeader) *time.Time {
 // ConfigUpdateEnvelope as SignedData or an error indicating why this was not
 // possible.
 func ConfigUpdateEnvelopeAsSignedData(ce *common.ConfigUpdateEnvelope) ([]*SignedData, error) {
+	return ConfigUpdateEnvelopeAsSignedDataAt(ce, nil)
+}
+
+// ConfigUpdateEnvelopeAsSignedDataAt returns the signatures for a config update
+// and associates them with the validation time from the signed enclosing envelope.
+func ConfigUpdateEnvelopeAsSignedDataAt(ce *common.ConfigUpdateEnvelope, validationTime *time.Time) ([]*SignedData, error) {
 	if ce == nil {
 		return nil, errors.New("No signatures for nil SignedConfigItem")
 	}
@@ -58,9 +64,10 @@ func ConfigUpdateEnvelopeAsSignedData(ce *common.ConfigUpdateEnvelope) ([]*Signe
 		}
 
 		result[i] = &SignedData{
-			Data:      bytes.Join([][]byte{configSig.GetSignatureHeader(), ce.GetConfigUpdate()}, nil),
-			Identity:  sigHeader.GetCreator(),
-			Signature: configSig.GetSignature(),
+			Data:           bytes.Join([][]byte{configSig.GetSignatureHeader(), ce.GetConfigUpdate()}, nil),
+			Identity:       sigHeader.GetCreator(),
+			Signature:      configSig.GetSignature(),
+			ValidationTime: validationTime,
 		}
 	}
 
@@ -70,6 +77,16 @@ func ConfigUpdateEnvelopeAsSignedData(ce *common.ConfigUpdateEnvelope) ([]*Signe
 // EnvelopeAsSignedData returns the signatures for the Envelope as SignedData
 // slice of length 1 or an error indicating why this was not possible.
 func EnvelopeAsSignedData(env *common.Envelope) ([]*SignedData, error) {
+	return envelopeAsSignedData(env, false)
+}
+
+// EnvelopeAsSignedDataWithValidationTime returns the envelope signature and
+// associates it with the signed channel-header timestamp.
+func EnvelopeAsSignedDataWithValidationTime(env *common.Envelope) ([]*SignedData, error) {
+	return envelopeAsSignedData(env, true)
+}
+
+func envelopeAsSignedData(env *common.Envelope, includeValidationTime bool) ([]*SignedData, error) {
 	if env == nil {
 		return nil, errors.New("No signatures for nil Envelope")
 	}
@@ -90,10 +107,23 @@ func EnvelopeAsSignedData(env *common.Envelope) ([]*SignedData, error) {
 		return nil, fmt.Errorf("GetSignatureHeaderFromBytes failed, err %w", err)
 	}
 
+	var validationTime *time.Time
+	if includeValidationTime {
+		validationTime = ChannelHeaderValidationTime(nil)
+	}
+	if includeValidationTime && len(payload.GetHeader().GetChannelHeader()) > 0 {
+		channelHeader, err := UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
+		if err != nil {
+			return nil, fmt.Errorf("unmarshalling channel header: %w", err)
+		}
+		validationTime = ChannelHeaderValidationTime(channelHeader)
+	}
+
 	return []*SignedData{{
-		Data:      env.GetPayload(),
-		Identity:  shdr.GetCreator(),
-		Signature: env.GetSignature(),
+		Data:           env.GetPayload(),
+		Identity:       shdr.GetCreator(),
+		Signature:      env.GetSignature(),
+		ValidationTime: validationTime,
 	}}, nil
 }
 

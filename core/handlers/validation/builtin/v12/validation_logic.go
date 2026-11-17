@@ -187,12 +187,17 @@ func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.En
 	if err != nil {
 		return policyErr(err)
 	}
+	chdr, err := protoutil.UnmarshalChannelHeader(payl.GetHeader().GetChannelHeader())
+	if err != nil {
+		return policyErr(err)
+	}
 
 	// construct signed data we can evaluate the instantiation policy against
 	sd := []*protoutil.SignedData{{
-		Data:      env.GetPayload(),
-		Identity:  shdr.GetCreator(),
-		Signature: env.GetSignature(),
+		Data:           env.GetPayload(),
+		Identity:       shdr.GetCreator(),
+		Signature:      env.GetSignature(),
+		ValidationTime: protoutil.ChannelHeaderValidationTime(chdr),
 	}}
 	err = vscc.policyEvaluator.Evaluate(instantiationPolicy, sd)
 	if err != nil {

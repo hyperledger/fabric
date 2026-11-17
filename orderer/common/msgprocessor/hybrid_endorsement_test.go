@@ -29,6 +29,7 @@ import (
 	oqs "github.com/hyperledger/fabric/pq-crypto"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -91,8 +92,10 @@ func hybridEndorsementEnvelope(endorsements ...*pb.Endorsement) *cb.Envelope {
 
 func TestHybridEndorsementAdmission(t *testing.T) {
 	identity := &mspmocks.MockIdentity{}
+	identity.On("GetIdentifier").Return(&msp.IdentityIdentifier{Mspid: "Org1MSP", Id: "valid"}).Once()
 	identity.On("Validate").Return(nil).Once()
 	expired := &mspmocks.MockIdentity{}
+	expired.On("GetIdentifier").Return(&msp.IdentityIdentifier{Mspid: "Org1MSP", Id: "expired"}).Once()
 	expired.On("Validate").Return(errors.New("certificate has expired")).Once()
 	deserializer := &policymocks.IdentityDeserializer{}
 	deserializer.DeserializeIdentityReturnsOnCall(0, identity, nil)
@@ -112,7 +115,38 @@ func TestHybridEndorsementAdmission(t *testing.T) {
 func TestHybridEndorsementAdmissionRejectsMalformedTransactions(t *testing.T) {
 	filter := &hybridEndorsementFilter{resources: testHybridResources{required: true}}
 	require.ErrorContains(t, filter.Apply(&cb.Envelope{Payload: []byte{0xff}}), "unmarshalling transaction payload")
-	require.ErrorContains(t, filter.Apply(hybridEndorsementEnvelope()), "has no endorsements")
+	require.NoError(t, filter.Apply(hybridEndorsementEnvelope()))
+}
+
+func TestHybridEndorsementAdmissionValidatesDuplicateIdentityOnce(t *testing.T) {
+	identity := &mspmocks.MockIdentity{}
+	identity.On("GetIdentifier").Return(&msp.IdentityIdentifier{Mspid: "Org1MSP", Id: "same"}).Twice()
+	identity.On("Validate").Return(nil).Once()
+	deserializer := &policymocks.IdentityDeserializer{}
+	deserializer.DeserializeIdentityReturnsOnCall(0, identity, nil)
+	deserializer.DeserializeIdentityReturnsOnCall(1, identity, nil)
+	filter := &hybridEndorsementFilter{resources: testHybridResources{
+		required: true,
+		manager:  testHybridManager{deserializer: deserializer},
+	}}
+
+	firstEncoding := protoutil.MarshalOrPanic(&mspprotos.SerializedIdentity{
+		Mspid:   "Org1MSP",
+		IdBytes: []byte("cert"),
+	})
+	secondEncoding := protowire.AppendTag(nil, 2, protowire.BytesType)
+	secondEncoding = protowire.AppendBytes(secondEncoding, []byte("cert"))
+	secondEncoding = protowire.AppendTag(secondEncoding, 1, protowire.BytesType)
+	secondEncoding = protowire.AppendBytes(secondEncoding, []byte("Org1MSP"))
+	require.NotEqual(t, firstEncoding, secondEncoding)
+
+	envelope := hybridEndorsementEnvelope(
+		&pb.Endorsement{Endorser: firstEncoding},
+		&pb.Endorsement{Endorser: secondEncoding},
+	)
+	require.NoError(t, filter.Apply(envelope))
+	require.Equal(t, 2, deserializer.DeserializeIdentityCallCount())
+	identity.AssertExpectations(t)
 }
 
 func TestHybridEndorsementAdmissionPreservesClassicalChannels(t *testing.T) {

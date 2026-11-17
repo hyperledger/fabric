@@ -175,6 +175,7 @@ type RWSetPolicyEvaluator interface {
 
 type blockDependency struct {
 	mutex             sync.Mutex
+	block             *common.Block
 	blockNum          uint64
 	blockDataHash     []byte
 	txDepOnce         []sync.Once
@@ -238,14 +239,18 @@ func (klv *KeyLevelValidator) extractDependenciesForTx(blockNum, txNum uint64, e
 
 // PreValidate implements the function of the StateBasedValidator interface
 func (klv *KeyLevelValidator) PreValidate(txNum uint64, block *common.Block) {
-	blockDataHash := protoutil.ComputeBlockDataHash(block.GetData())
 	klv.blockDep.mutex.Lock()
-	if klv.blockDep.blockNum != block.GetHeader().GetNumber() || !bytes.Equal(klv.blockDep.blockDataHash, blockDataHash) {
+	if klv.blockDep.block != block || klv.blockDep.blockNum != block.GetHeader().GetNumber() {
+		// Blocks are immutable during validation, so pointer identity avoids rehashing
+		// the full block data for every transaction in the same block.
+		blockDataHash := protoutil.ComputeBlockDataHash(block.GetData())
+		klv.blockDep.block = block
 		klv.blockDep.blockNum = block.GetHeader().GetNumber()
 		klv.blockDep.blockDataHash = append(klv.blockDep.blockDataHash[:0], blockDataHash...)
 		klv.blockDep.txDepOnce = make([]sync.Once, len(block.GetData().GetData()))
 		klv.blockDep.txValidationTimes = make([]time.Time, len(block.GetData().GetData()))
 	}
+	blockDataHash := append([]byte(nil), klv.blockDep.blockDataHash...)
 	klv.blockDep.mutex.Unlock()
 
 	for i := int64(txNum); i >= 0; i-- {

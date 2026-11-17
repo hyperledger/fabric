@@ -139,9 +139,16 @@ func (vi *ValidatorImpl) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 		return nil, errors.Errorf("error converting envelope to config update: %s", err)
 	}
 
-	configMap, err := vi.authorizeUpdate(configUpdateEnv)
+	signedData, err := protoutil.EnvelopeAsSignedDataWithValidationTime(configtx)
+	if err != nil {
+		return nil, errors.Errorf("error extracting config update validation time: %s", err)
+	}
+	configMap, err := vi.authorizeUpdate(configUpdateEnv, nil)
 	if err != nil {
 		return nil, errors.Errorf("error authorizing update: %s", err)
+	}
+	if _, err := vi.authorizeUpdate(configUpdateEnv, signedData[0].ValidationTime); err != nil {
+		return nil, errors.Errorf("error authorizing update at signed timestamp: %s", err)
 	}
 
 	channelGroup, err := configMapToConfig(configMap, vi.namespace)
@@ -177,7 +184,11 @@ func (vi *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 		return err
 	}
 
-	configMap, err := vi.authorizeUpdate(configUpdateEnv)
+	signedData, err := protoutil.EnvelopeAsSignedDataWithValidationTime(configEnv.GetLastUpdate())
+	if err != nil {
+		return errors.Errorf("error extracting config update validation time: %s", err)
+	}
+	configMap, err := vi.authorizeUpdate(configUpdateEnv, signedData[0].ValidationTime)
 	if err != nil {
 		return err
 	}

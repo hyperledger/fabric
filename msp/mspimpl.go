@@ -708,7 +708,7 @@ func (msp *bccspmsp) satisfiesPrincipalInternalPreV13(id Identity, principal *m.
 		}
 
 		if bytes.Equal(id.(*identity).cert.Raw, principalId.(*identity).cert.Raw) {
-			return principalId.Validate()
+			return msp.Validate(id)
 		}
 
 		return errors.New("The identities do not match")

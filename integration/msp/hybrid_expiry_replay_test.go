@@ -16,6 +16,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	oqs "github.com/hyperledger/fabric/pq-crypto"
+	"github.com/hyperledger/fabric/protoutil"
 	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -36,7 +38,7 @@ import (
 )
 
 var _ = Describe("Pactway hybrid transaction expiry replay", func() {
-	It("replays a valid transaction after its client certificate expires", func() {
+	DescribeTable("replays a valid transaction after a signer certificate expires", func(role string) {
 		testDir, err := os.MkdirTemp("", "hybrid-expiry-replay")
 		Expect(err).NotTo(HaveOccurred())
 		oldProfile, oldProfileSet := os.LookupEnv("PACTWAY_HYBRID_PROFILE")
@@ -115,17 +117,24 @@ var _ = Describe("Pactway hybrid transaction expiry replay", func() {
 		peerProcess.Signal(syscall.SIGTERM)
 		Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		peerProcess = nil
-		peerProcess = ifrit.Invoke(network.PeerRunner(org1Peer))
-		Eventually(peerProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-		userMSPDir := filepath.Join(testDir, "expiring-user-msp")
+		expiringMSPDir := filepath.Join(testDir, "expiring-signer-msp")
 		intermediateCertificate := filepath.Join(output, "public", "organizations", "Org1", "msp", "intermediatecerts", "intermediate.pem")
 		intermediateKeyStore := filepath.Join(output, "private", "ca", "Org1", "intermediate", "keystore")
-		notAfter := generateExpiringClientMSP(
-			filepath.Join(output, "private", "organizations", "Org1", "users", "Client", "msp"),
-			intermediateCertificate, intermediateKeyStore, userMSPDir, 2*time.Minute,
+		sourceMSP := filepath.Join(output, "private", "organizations", "Org1", "users", "Client", "msp")
+		destinationMSP := network.PeerUserMSPDir(org1Peer, "User1")
+		if role == "peer" {
+			sourceMSP = filepath.Join(output, "private", "organizations", "Org1", "nodes", "peer0", "msp")
+			destinationMSP = network.PeerLocalMSPDir(org1Peer)
+		}
+		notAfter := generateExpiringIdentityMSP(
+			sourceMSP, intermediateCertificate, intermediateKeyStore, expiringMSPDir, role, 2*time.Minute,
 		)
-		Expect(installMSPKeepingTLS(userMSPDir, network.PeerUserMSPDir(org1Peer, "User1"))).To(Succeed())
+		certificate, err := os.ReadFile(filepath.Join(expiringMSPDir, "signcerts", "cert.pem"))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(installMSPKeepingTLS(expiringMSPDir, destinationMSP)).To(Succeed())
+		peerProcess = ifrit.Invoke(network.PeerRunner(org1Peer))
+		Eventually(peerProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		invoke, err := network.PeerUserSession(org1Peer, "User1", commands.ChaincodeInvoke{
 			ChannelID: "testchannel", Orderer: network.OrdererAddress(orderer, nwo.ListenPort),
 			Name: chaincode.Name, Ctor: `{"Args":["invoke","a","b","10"]}`,
@@ -139,6 +148,31 @@ var _ = Describe("Pactway hybrid transaction expiry replay", func() {
 		height := nwo.GetLedgerHeight(network, org1Peer, "testchannel")
 		Expect(height).To(BeNumerically(">", replayHeight))
 		Expect(time.Now()).To(BeTemporally("<", notAfter))
+		block, err := nwo.Fetch(network, orderer, "testchannel", strconv.Itoa(height-1))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(block.GetData().GetData()).To(HaveLen(1))
+		envelope, err := protoutil.GetEnvelopeFromBlock(block.GetData().GetData()[0])
+		Expect(err).NotTo(HaveOccurred())
+		payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
+		Expect(err).NotTo(HaveOccurred())
+		var signerBytes []byte
+		if role == "client" {
+			header, err := protoutil.UnmarshalSignatureHeader(payload.GetHeader().GetSignatureHeader())
+			Expect(err).NotTo(HaveOccurred())
+			signerBytes = header.GetCreator()
+		} else {
+			transaction, err := protoutil.UnmarshalTransaction(payload.GetData())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(transaction.GetActions()).To(HaveLen(1))
+			action, err := protoutil.UnmarshalChaincodeActionPayload(transaction.GetActions()[0].GetPayload())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(action.GetAction().GetEndorsements()).To(HaveLen(1))
+			signerBytes = action.GetAction().GetEndorsements()[0].GetEndorser()
+		}
+		identity, err := protoutil.UnmarshalSerializedIdentity(signerBytes)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(identity.GetMspid()).To(Equal("Org1MSP"))
+		Expect(identity.GetIdBytes()).To(Equal(certificate))
 
 		peerProcess.Signal(syscall.SIGTERM)
 		Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
@@ -157,7 +191,10 @@ var _ = Describe("Pactway hybrid transaction expiry replay", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(query, network.EventuallyTimeout).Should(gexec.Exit(0))
 		Expect(strings.TrimSpace(string(query.Out.Contents()))).To(Equal("90"))
-	})
+	},
+		Entry("client", "client"),
+		Entry("endorser", "peer"),
+	)
 })
 
 type replayCertificateSigner struct {
@@ -206,7 +243,7 @@ func replayPrivateKey(csp bccsp.BCCSP, keyStoreDir string, publicDER []byte) bcc
 	return nil
 }
 
-func generateExpiringClientMSP(source, certificatePath, caKeyStoreDir, destination string, validity time.Duration) time.Time {
+func generateExpiringIdentityMSP(source, certificatePath, caKeyStoreDir, destination, role string, validity time.Duration) time.Time {
 	Expect(copyDirectory(source, destination)).To(Succeed())
 	keyStoreDir := filepath.Join(destination, "keystore")
 	Expect(os.RemoveAll(keyStoreDir)).To(Succeed())
@@ -257,7 +294,7 @@ func generateExpiringClientMSP(source, certificatePath, caKeyStoreDir, destinati
 	_, err = rand.Read(subjectKeyID)
 	Expect(err).NotTo(HaveOccurred())
 	template := &x509.Certificate{
-		SerialNumber: serial, Subject: pkix.Name{CommonName: "expiring-client-org1", OrganizationalUnit: []string{"client"}},
+		SerialNumber: serial, Subject: pkix.Name{CommonName: "expiring-" + role + "-org1", OrganizationalUnit: []string{role}},
 		NotBefore: now.Add(-time.Minute), NotAfter: notAfter, KeyUsage: x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth}, BasicConstraintsValid: true,
 		SubjectKeyId: subjectKeyID, AuthorityKeyId: intermediate.SubjectKeyId,
