@@ -19,6 +19,7 @@ import (
 	gp "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -38,6 +39,10 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	}
 	if len(txn.GetSignature()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "prepared transaction must be signed")
+	}
+	// The fan-out relays the envelope on the peer's own identity, so the caller must be authorized before any orderer is contacted.
+	if err := gs.policy.CheckACL(resources.Gateway_Submit, request.GetChannelId(), txn); err != nil {
+		return nil, status.Error(codes.PermissionDenied, err.Error())
 	}
 	orderers, clusterSize, err := gs.registry.orderers(request.GetChannelId())
 	if err != nil {

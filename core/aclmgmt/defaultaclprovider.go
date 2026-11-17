@@ -112,6 +112,7 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 	// Gateway resources
 	d.cResourcePolicyMap[resources.Gateway_CommitStatus] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Gateway_ChaincodeEvents] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Gateway_Submit] = CHANNELWRITERS
 
 	return d
 }
