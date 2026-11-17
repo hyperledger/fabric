@@ -1,5 +1,38 @@
 # PQ2 Development and Validation
 
+## Verified development baseline
+
+The tested implementation head is
+`f6ff21ca78bce024214f156714f057250cb56db5` on
+`feature/pq2-hybrid-certificates`, based on audited main commit
+`87b7b5855d47089830c03b05246fd4258492a8aa`.
+[PR run 44068010218](https://github.com/vignatov/fabric-pq/actions/runs/44068010218)
+and [push run 44068002211](https://github.com/vignatov/fabric-pq/actions/runs/44068002211)
+both passed at that implementation head. CI logs confirm
+`go version go1.27.4 linux/amd64`.
+
+The PR run provides the following complete, passing workflow evidence:
+
+| Gate | Exact command | Result |
+| --- | --- | --- |
+| Basic Checks | `go mod tidy`; `go mod vendor`; `make basic-checks` | Passed, including generated-module/vendor consistency checks. |
+| SmartBFT live-vote dispatch | `go test -mod=mod -race github.com/hyperledger/SmartBFT/internal/bft` | Passed. |
+| Fabric unit baseline | `make unit-test` | Passed. |
+| Raft integration | `make integration-test INTEGRATION_TEST_SUITE="raft"` | Passed. |
+| Private-data integration | `make integration-test INTEGRATION_TEST_SUITE="pvtdata"` | Passed. |
+| Purge and end-to-end integration | `make integration-test INTEGRATION_TEST_SUITE="pvtdatapurge e2e"` | Passed. |
+| Ledger integration | `make integration-test INTEGRATION_TEST_SUITE="ledger"` | Passed. |
+| Lifecycle integration | `make integration-test INTEGRATION_TEST_SUITE="lifecycle"` | Passed. |
+| SmartBFT integration | `make integration-test INTEGRATION_TEST_SUITE="smartbft"` | Passed. |
+| Discovery and gossip integration | `make integration-test INTEGRATION_TEST_SUITE="discovery gossip devmode pluggable"` | Passed. |
+| Gateway and configuration integration | `make integration-test INTEGRATION_TEST_SUITE="gateway idemix pkcs11 configtx configtxlator"` | Passed. |
+| State-based endorsement, network and MSP integration | `make integration-test INTEGRATION_TEST_SUITE="sbe nwo msp"` | Passed; the MSP suite ran all six specs, including hybrid rotation and client/endorser expiry replay. |
+
+These results supersede the earlier local baseline/integration failures below
+for this implementation head; the failed attempts remain historical evidence,
+not passing runs. Passing CI does not approve the production profile or
+establish independent trusted time, and is not a human security sign-off.
+
 ## Temporary-profile restriction
 
 The only currently registered profile is `rfc5612-test-only-v1`. Its
@@ -17,9 +50,12 @@ built with temporary identifiers.
 ## Generate a fresh isolated demo
 
 Run from the repository root in WSL/bash. Choose a new output directory for
-each run; the generator refuses to overwrite an existing one.
+each run; the generator refuses to overwrite an existing one. Use Go 1.27.4
+and an access-controlled Linux filesystem for private material, rather than
+assuming POSIX permission bits protect a Windows-mounted directory.
 
 ```bash
+PACTWAY_HYBRID_PROFILE=rfc5612-test-only-v1 \
 PACTWAY_ISOLATED_DEVELOPMENT=true go run ./cmd/pactway-pq-gen \
   -output=pq2-demo \
   -configtx-dir=sampleconfig \
@@ -37,10 +73,49 @@ signing keys and local MSPs. Protect `private/` as secret material and do not
 commit or reuse it. Random secret bytes intentionally differ across runs; the
 command, layout, profile, and verification procedure are reproducible.
 
+Before using the output:
+
+- Check `public/manifest.json`: `development_only` must be `true`, the selected
+  profile must be `rfc5612-test-only-v1`, and the channel capability must be
+  `PactwayHybridCertificateV1`. Compare `genesis_sha256` with the generated
+  `public/genesis.block` before distributing public channel material.
+- Distribute only `public/` for remote MSP verification. Provision each node
+  with only its own local MSP and TLS keys; do not copy all organizations'
+  private material to every node. Issuer keystores belong with their respective
+  organization, not in peer/orderer distribution bundles.
+- On Linux the generator requests mode `0700` for the private root and
+  keystore directories and `0600` for secret key files; public certificates
+  and configuration within local MSPs can have less restrictive modes.
+  Verify effective permissions and access controls.
+  Protect backups and keep all output outside source control. Generation
+  failure can leave partial output: treat it as secret material, discard that
+  specific failed output directory and choose a new destination.
+- The default orderer hostname is
+  `orderer0.ordererorg.pactway.local`, port `7050`. Select `-orderer-host` and
+  `-orderer-port` for the isolated network before generation; the host is bound
+  into the classical TLS certificate and genesis consenter endpoint.
+- Stop the associated nodes before retiring an output directory. Remove only
+  that explicitly identified demo's credentials and ledgers according to local
+  key-disposal policy. Never reuse its keys for another genesis or assume file
+  deletion securely erases backups or SSD contents.
+
 TLS and transport remain classical. This demo is not complete
 quantum-resistant network security.
 
-## Open review blockers
+Ordinary peer, orderer and client processes using these temporary-profile
+identities must explicitly select the same profile and opt into isolated use:
+
+```bash
+export PACTWAY_HYBRID_PROFILE=rfc5612-test-only-v1
+export PACTWAY_ISOLATED_DEVELOPMENT=true
+```
+
+Set these only in the isolated demo's process environment. They select and
+permit the development profile; they do not replace authenticated channel
+policy or the generated local `PQ_REQUIRED` sidecar. A test-binary exception
+does not authorize ordinary binaries to omit these runtime guards.
+
+## Security assumptions and remaining release limits
 
 - Orderer and peer local-signer compatibility checks now run after the config
   block has been committed. A node whose old signer no longer chains to the
@@ -83,11 +158,13 @@ quantum-resistant network security.
   transaction timestamp for deterministic transaction validation and use the
   orderer-signed block timestamp for block-signature replay. The latter is an
   authenticated orderer clock assertion, not an independent time authority.
-  Transactions admitted before expiry can commit afterwards. Differing orderer clocks or expiry
-  during SmartBFT consensus may cause inconsistent admission or liveness
+  Transactions admitted before expiry can commit afterwards. Differing orderer
+  clocks or expiry during SmartBFT consensus may cause inconsistent admission or liveness
   failures; these scenarios have not been tested with a live cluster. An
   approved, enforceable time design and independent external security review
-  remain necessary before expiry enforcement can be considered secure.
+  remain necessary before claiming production expiry assurance. The
+  [ADR time model](adr-hybrid-identities.md#time-and-authorization-trust-model)
+  records the narrower isolated-development assumptions.
 
 For PQ-required channels, peer and orderer signer checks now additionally
 require membership in the respective channel organization group and the
@@ -156,9 +233,9 @@ Result: 1 spec passed and 2 failed. The mutual-TLS test's chaincode containers
 timed out connecting to the WSL-host callback (`10.255.255.254:25006` and
 `:25011`); the RSA-CA test timed out waiting for an installed chaincode and
 received an empty package list. Both failures also reproduced when run in
-isolation. These are not passing integration evidence; the broader MSP suite
-remains open until the Docker/WSL callback and chaincode installation failures
-are resolved or validated in a suitable environment.
+isolation. These were not passing integration evidence. The later successful Linux CI
+baseline above closes the broader MSP-suite execution gap without treating
+these local callback/chaincode failures as successes.
 
 A later run from the Windows-mounted checkout timed out while packaging the
 mutual-TLS test's chaincode. Its RSA-CA test failed installation with
@@ -264,8 +341,8 @@ PATH=/usr/local/go/bin:/home/cogdev/go/bin:/usr/bin:/bin golangci-lint run ./ord
 
 An automated follow-up security review found no additional reportable
 vulnerabilities in this mitigation; it is not the independent external review
-required for PQ2. These package tests are not full transaction-replay or
-multi-orderer integration evidence.
+required before production acceptance. These package tests are not full
+transaction-replay or multi-orderer integration evidence.
 
 The PR's Raft integration job failed while onboarding a fourth orderer to
 `testchannel2`: its broadcast returned `SERVICE_UNAVAILABLE` because that
@@ -326,8 +403,9 @@ The full command `/usr/local/go/bin/go test -count=1 ./...` was also started
 after fetching CouchDB. `integration/configtx` passed; multiple other
 integration packages hit Go's 10-minute test timeout during the run, so the
 run was stopped and is not reported as passing. Temporary Fabric test
-containers were removed. The unit suite now passes; completion of the broader
-integration suite remains outstanding.
+containers were removed. That stopped run remains incomplete; the successful
+CI baseline above separately establishes the complete supported integration
+matrix at the recorded implementation head.
 
 The unsupported-binary gate passed using actual unmodified official v3.1.5
 Linux/amd64 binaries. Their hashes were verified:
@@ -462,43 +540,84 @@ suites were not rerun locally for these corrections. At the preceding PR head
 passed all integration jobs but failed the gateway timeout-leak unit assertion;
 that run is not passing evidence for the new changes.
 
-The following work remains release- and PQ2-completion-blocking:
+The final development closeout adds only regression tests and documentation;
+it does not change the production implementation tested at `f6ff21c`.
+The following checks passed with Go 1.27.4 on WSL Linux/amd64:
 
-- Complete the broader Fabric integration suite: `integration/configtx` passed
-  in the `go test -count=1 ./...` run, but multiple other integration packages
-  reached Go's 10-minute timeout. The complete unit suite passed from the
-  Git-backed ext4 clone with package parallelism serialized.
-- Exercise authorized config update, compliant root rotation, restart/replay,
-  and role-principal behavior end-to-end through both peer and orderer
-  validation paths. The focused integration test now covers single-orderer
-  rotation, rejection of a stale-signer restart, replacement-signer restart,
-  peer restart/config replay, and a subsequent config update. A three-orderer
-  Raft test covers planned overlapping-root rotation and stale-signer
-  recovery. Separate tests demonstrate replay after client and endorser
-  expiry; broader failure-injection is not demonstrated. The generator test reloads a
-  persisted BCCSP keystore and MSP, replays a prior signature, and verifies
-  new PQ signing.
-- Replace submitter-controlled endorsement validation time with an approved,
-  enforceable deterministic approach before claiming expiry enforcement.
-- The block-signature timestamp is an orderer-signed clock assertion, not an
-  independent timestamp authority. If the threat model includes malicious
-  orderers backdating signatures, add consensus-quorum or external trusted-time
-  evidence before treating the timestamp as proof of wall-clock signing time.
-- Finalize generation and deployment documentation and independently review
-  the custom certificate profile. Replace the temporary OIDs only after the
-  official PEN is assigned, regenerate all credentials/genesis, rerun the
-  complete suite, and approve the production profile.
+```text
+go build ./cmd/peer ./cmd/orderer ./cmd/pactway-pq-gen
+go test -mod=mod -count=1 ./cmd/pactway-pq-gen ./pq-crypto ./msp ./common/channelconfig ./common/configtx ./common/capabilities github.com/hyperledger/fabric-lib-go/bccsp/sw
+go test -mod=mod -count=1 ./orderer/consensus/smartbft github.com/hyperledger/SmartBFT/internal/bft
+go test -mod=mod -race -count=20 -run 'Test(VerifyLiveConsenterSig.*|VerifyConsenterSig|LiveVoteUsesCurrentAuthorization)$' ./orderer/consensus/smartbft github.com/hyperledger/SmartBFT/internal/bft
+go vet ./orderer/consensus/smartbft
+git diff --check
+```
 
-PQ2.0's two feasibility gates now pass. PQ2 still remains in progress until the
-remaining implementation, broader tests and review are complete. Do not merge
-this feature branch to `main`, publish or externally deploy temporary-profile
-artifacts, or begin PQ3.
+The multi-package build is a compile check, not a release-artifact publication.
+Module mode explicitly executes the local replacement modules' tests,
+including the nested BCCSP suite omitted by normal root-module enumeration.
+`bash ci/scripts/check_release_hybrid_profile.sh` also returned the expected
+exit code `1` and `release blocked: hybrid profile registry contains a
+development-only profile`; that refusal is a successful negative gate, not a
+release-build pass. CI must remain green on the final closeout commit before
+merge; the full matrix result above is tied to its exact implementation head.
+
+## Development closeout and release gates
+
+The development acceptance evidence now covers both PQ2.0 feasibility gates,
+strict certificate/issuer-chain and fail-closed MSP policy tests, real BCCSP
+signing, fresh three-organization generation, and the complete supported Fabric
+unit and nine-job integration baseline. Hybrid integration covers authorized
+updates, single-orderer and planned three-orderer Raft root rotation,
+stale-signer rejection/recovery, peer/orderer config replay, and replay after
+client or endorser expiry. These completed gates must not be relisted as
+unexecuted merely because earlier local attempts failed.
+
+An automated closeout security review of the profile, MSP enforcement and
+live/historical authorization paths found no confirmed exploitable defect.
+Its remaining focused coverage gap is addressed by
+`TestVerifyLiveConsenterSigWithHybridMSP`: real ML-DSA/BCCSP signatures and an
+orderer-principal policy check signed times immediately before, exactly at,
+and immediately after `NotAfter`, for both currently valid and expired
+consenters. Historical signatures remain verifiable through the boundary;
+live votes from expired consenters are rejected. The separate SmartBFT
+dispatch regression proves that a rejected live vote is not counted. This
+composed coverage is not a multi-node clock-skew/liveness test or independent
+external cryptographic review.
+
+The recommendation is final maintainer review for a **development-only merge
+for isolated use**, preserving the guards and limitations above. This report
+is not the maintainer's sign-off; no merge or PQ3 authorization is implied. The
+following gates remain open before production acceptance or external use:
+
+- Obtain the official Thinkstratum Ltd PEN, approve the permanent ASN.1/profile
+  and OIDs, regenerate all certificates/MSPs/genesis and production fixtures,
+  and rerun the complete acceptance suite and unsupported-binary gate.
+- Independently review the custom certificate profile and approve an enforceable
+  time threat model. Submitter/orderer-controlled timestamps are not independent
+  proof of signing or endorsement time; accurate receiver clocks and the
+  non-Byzantine Raft admission assumption remain essential. Do not claim secure
+  production expiry enforcement based only on the current signatures.
+- Validate distributed clock-skew and expiry-during-consensus liveness against
+  the approved operational limits. Abrupt root removal, quorum loss, SmartBFT
+  hybrid rotation and broader failure injection are not demonstrated by the
+  current planned Raft demo tests.
+- Preserve classical TLS/transport and CRL-authentication limitations, and
+  establish production key custody, backup, rotation and disposal procedures.
+
+Production-profile PQ2 acceptance remains open. Do not publish or externally
+deploy temporary-profile artifacts, bypass the release guard, or begin PQ3.
 
 ## PQ3 handoff
 
-PQ3 must not start until PQ2 is reviewed and accepted. Remaining prerequisites
+PQ3 must not start until the maintainer explicitly reviews and accepts the PQ2
+handoff and authorizes the next phase. Remaining production prerequisites
 include obtaining the official Thinkstratum Ltd PEN; reviewing and approving
 the production ASN.1/profile and permanent OIDs; regenerating all certificate,
 MSP and genesis material; rerunning the complete PQ2 tests and unsupported
-binary gate; and independent security review. PQ2 does not include settlement
-application development or a claim of fully quantum-resistant networking.
+binary gate; and independent security review. The handoff must also carry
+forward the time-design and distributed-liveness gates above, classical TLS
+and CRL limitations, and production key-custody requirements. Recording these
+items does not approve their design or move them silently into an authorized
+PQ3 implementation. PQ2 does not include settlement application development
+or a claim of fully quantum-resistant networking.

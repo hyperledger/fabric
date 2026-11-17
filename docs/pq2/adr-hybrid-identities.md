@@ -3,8 +3,11 @@
 ## Status
 
 Accepted for isolated PQ2 development and testing. The production certificate
-profile and production OIDs are not approved or frozen. PQ2 remains subject to
-the milestone gates in the project plan.
+profile and production OIDs are not approved or frozen. The supported Fabric
+CI baseline and focused hybrid tests are passing; see the
+[development acceptance report](development-and-validation.md). The closeout
+recommendation is maintainer review for a development-only merge, not automatic
+merge authorization, production approval, or permission to begin PQ3.
 
 ## Context
 
@@ -83,6 +86,46 @@ trusted because it is configured, not because it self-signs.
 - The migration target is a fresh genesis and new identities. Do not add
   legacy alternate-key certificate verification or reuse historical demo
   private keys without separate authorization.
+
+## Time and authorization trust model
+
+Hybrid certificate validity checks require a time source; a valid signature
+does not independently establish when the message was created. PQ2 separates
+live authorization from historical verification:
+
+- Live envelope authorization and orderer endorsement admission use the
+  receiving node's clock. A hybrid local signing identity must be valid when
+  signing. SmartBFT live commit votes must pass both current-clock and signed
+  timestamp checks; an expired consenter cannot regain live authorization
+  merely by backdating its nonce.
+- Transaction validation/replay uses the submitter-signed channel-header
+  timestamp; block signatures and historical SmartBFT signatures use the
+  timestamp authenticated by the orderer signature. These are replay evidence,
+  not independent trusted-time proofs. Missing or malformed required evidence
+  must not cause a classical or current-time fallback.
+- The isolated demo assumes uncompromised, accurately maintained receiver
+  clocks and, for Raft, non-Byzantine orderers enforcing admission. SmartBFT
+  adds current-time vote admission but does not turn a Byzantine signer's
+  timestamp into proof of actual signing time. No maximum clock-skew or
+  admission-to-commit-delay bound is enforced.
+- A request admitted before expiry may commit afterwards and remain valid on
+  replay. Receiver clock skew or certificate expiry during consensus can
+  produce different live admission decisions and impair liveness. Maintain
+  clocks, rotate credentials with overlapping trust before expiry, and do not
+  claim distributed clock-skew or expiry-during-consensus liveness guarantees.
+
+The focused real-MSP SmartBFT regression checks historical validity at
+`NotAfter - 1ns`, `NotAfter`, and `NotAfter + 1ns`, and rejection of live votes
+from an already expired hybrid consenter despite a historically valid
+timestamp. The separate consensus dispatch regression checks that rejected
+live votes are not counted. These are boundary/composition tests, not a live
+multi-node clock-skew experiment.
+
+Production expiry assurance requires a separately approved enforceable time
+design and threat model, including malicious timestamp assertions, receiver
+clock compromise and distributed liveness. The development closeout does not
+accept those risks on behalf of a production operator or silently defer their
+solution to an authorized PQ3 implementation.
 
 ## Consequences
 

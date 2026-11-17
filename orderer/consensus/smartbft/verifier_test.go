@@ -7,10 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft_test
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/pem"
 	"fmt"
+	"math/big"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -18,11 +26,17 @@ import (
 
 	"github.com/hyperledger/SmartBFT/pkg/types"
 	"github.com/hyperledger/SmartBFT/smartbftprotos"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
+	fabricmsp "github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft/mocks"
+	oqs "github.com/hyperledger/fabric/pq-crypto"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
@@ -513,6 +527,161 @@ func TestVerifyLiveConsenterSig(t *testing.T) {
 			}
 			require.Equal(t, expectedErr, err)
 			cv.AssertExpectations(t)
+		})
+	}
+}
+
+type consenterPolicyEvaluator func([]*protoutil.SignedData) error
+
+func (evaluate consenterPolicyEvaluator) Evaluate(data []*protoutil.SignedData) error {
+	return evaluate(data)
+}
+
+func TestVerifyLiveConsenterSigWithHybridMSP(t *testing.T) {
+	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
+	profile, err := oqs.HybridCertificateProfileByName(oqs.TemporaryHybridProfileV1, oqs.ProfileUseTest)
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Second)
+	rootKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	rootPQ, rootPQSecret, err := oqs.KeyPair(oqs.MLDSA65ProfileV1)
+	require.NoError(t, err)
+	rootTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "consenter expiry root"},
+		NotBefore: now.Add(-24 * time.Hour), NotAfter: now.Add(24 * time.Hour),
+		IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
+		SubjectKeyId: []byte{1, 2, 3}, PublicKey: &rootKey.PublicKey,
+	}
+	rootDER, err := oqs.CreateHybridCertificate(
+		rand.Reader, profile, rootTemplate, rootTemplate, &rootKey.PublicKey, rootKey, rootPQ, rootPQSecret,
+	)
+	require.NoError(t, err)
+	root, err := x509.ParseCertificate(rootDER)
+	require.NoError(t, err)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	require.NoError(t, err)
+	opts := &fabricmsp.BCCSPNewOpts{}
+	opts.Version = fabricmsp.MSPv1_4_3
+	instance, err := fabricmsp.New(opts, cryptoProvider)
+	require.NoError(t, err)
+	requiredMSP, ok := instance.(interface{ SetHybridRequired(bool) error })
+	require.True(t, ok)
+	require.NoError(t, requiredMSP.SetHybridRequired(true))
+	config := &msp.FabricMSPConfig{
+		Name: "ConsenterMSP", RootCerts: [][]byte{pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rootDER})},
+		FabricNodeOus: &msp.FabricNodeOUs{
+			Enable:              true,
+			ClientOuIdentifier:  &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: "client"},
+			PeerOuIdentifier:    &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: "peer"},
+			AdminOuIdentifier:   &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: "admin"},
+			OrdererOuIdentifier: &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: "orderer"},
+		},
+	}
+	require.NoError(t, instance.Setup(&msp.MSPConfig{
+		Type: int32(fabricmsp.FABRIC), Config: protoutil.MarshalOrPanic(config),
+	}))
+	policy, _, err := cauthdsl.NewPolicyProvider(instance).NewPolicy(protoutil.MarshalOrPanic(
+		policydsl.SignedByNOutOfGivenRole(1, msp.MSPRole_ORDERER, []string{"ConsenterMSP"}),
+	))
+	require.NoError(t, err)
+
+	for _, expired := range []bool{false, true} {
+		t.Run(fmt.Sprintf("expired=%t", expired), func(t *testing.T) {
+			leafKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			require.NoError(t, err)
+			leafKeyDER, err := x509.MarshalECPrivateKey(leafKey)
+			require.NoError(t, err)
+			classicalKey, err := cryptoProvider.KeyImport(leafKeyDER, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: true})
+			require.NoError(t, err)
+			pqKey, err := cryptoProvider.KeyGen(&bccsp.OQSKeyGenOpts{
+				Temporary: true, SignatureScheme: string(oqs.MLDSA65ProfileV1),
+			})
+			require.NoError(t, err)
+			pqPublic, err := pqKey.PublicKey()
+			require.NoError(t, err)
+			pqDER, err := pqPublic.Bytes()
+			require.NoError(t, err)
+			parsedPQ, err := oqs.ParsePKIXPublicKey(pqDER)
+			require.NoError(t, err)
+			leafPQ, ok := parsedPQ.(*oqs.PublicKey)
+			require.True(t, ok)
+			expiry := now.Add(time.Hour)
+			if expired {
+				expiry = now.Add(-time.Hour)
+			}
+			leafTemplate := &x509.Certificate{
+				SerialNumber: big.NewInt(expiry.Unix()),
+				Subject:      pkix.Name{CommonName: "hybrid consenter", OrganizationalUnit: []string{"orderer"}},
+				NotBefore:    now.Add(-3 * time.Hour), NotAfter: expiry,
+				BasicConstraintsValid: true, KeyUsage: x509.KeyUsageDigitalSignature, AuthorityKeyId: root.SubjectKeyId,
+			}
+			leafDER, err := oqs.CreateHybridCertificate(
+				rand.Reader, profile, leafTemplate, root, &leafKey.PublicKey, rootKey, *leafPQ, rootPQSecret,
+			)
+			require.NoError(t, err)
+			identity := protoutil.MarshalOrPanic(&msp.SerializedIdentity{
+				Mspid: "ConsenterMSP", IdBytes: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: leafDER}),
+			})
+			runtimeConfig := &atomic.Value{}
+			runtimeConfig.Store(smartbft.RuntimeConfig{
+				ID2Identities: map[uint64][]byte{3: identity},
+				LastBlock:     makeNonConfigBlock(19, 10), LastConfigBlock: makeConfigBlock(10),
+			})
+			logger := flogging.MustGetLogger("test")
+			assembler := &smartbft.Assembler{
+				VerificationSeq: func() uint64 { return 12 }, Logger: logger, RuntimeConfig: runtimeConfig,
+			}
+			proposal := assembler.AssembleProposal(protoutil.MarshalOrPanic(&smartbftprotos.ViewMetadata{
+				LatestSequence: 1, ViewId: 2,
+			}), [][]byte{nonConfigTx})
+			block, err := smartbft.ProposalToBlock(proposal)
+			require.NoError(t, err)
+			verifier := &smartbft.Verifier{
+				RuntimeConfig: runtimeConfig, Logger: logger, ConsenterVerifier: consenterPolicyEvaluator(policy.EvaluateSignedData),
+			}
+			for _, offset := range []time.Duration{-time.Nanosecond, 0, time.Nanosecond} {
+				t.Run(offset.String(), func(t *testing.T) {
+					signature := &smartbft.Signature{
+						BlockHeader: protoutil.BlockHeaderBytes(block.GetHeader()),
+						IdentifierHeader: protoutil.MarshalOrPanic(&cb.IdentifierHeader{
+							Identifier: 3, Nonce: protoutil.BlockSignatureNonceWithTimestamp([]byte("nonce"), expiry.Add(offset)),
+						}),
+						OrdererBlockMetadata: protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
+							LastConfig: &cb.LastConfig{Index: 10}, ConsenterMetadata: proposal.Metadata,
+						}),
+					}
+					// Retained keys can sign even after expiry; do not use the expiry-enforcing local MSP signer.
+					digest, err := cryptoProvider.Hash(signature.AsBytes(), &bccsp.SHA256Opts{})
+					require.NoError(t, err)
+					pqSignature, err := cryptoProvider.Sign(pqKey, digest, nil)
+					require.NoError(t, err)
+					hybridDigest, err := cryptoProvider.Hash(append(digest, pqSignature...), &bccsp.SHA384Opts{})
+					require.NoError(t, err)
+					classicalSignature, err := cryptoProvider.Sign(classicalKey, hybridDigest, nil)
+					require.NoError(t, err)
+					value, err := asn1.Marshal(struct {
+						ClassicalSign asn1.BitString
+						QuantumSign   asn1.BitString
+					}{
+						ClassicalSign: asn1.BitString{Bytes: classicalSignature, BitLength: len(classicalSignature) * 8},
+						QuantumSign:   asn1.BitString{Bytes: pqSignature, BitLength: len(pqSignature) * 8},
+					})
+					require.NoError(t, err)
+					vote := types.Signature{ID: 3, Msg: signature.Marshal(), Value: value}
+					_, historicalErr := verifier.VerifyConsenterSig(vote, proposal)
+					_, liveErr := verifier.VerifyLiveConsenterSig(vote, proposal)
+					if offset > 0 {
+						require.Error(t, historicalErr, "the certificate is invalid immediately after NotAfter")
+					} else {
+						require.NoError(t, historicalErr, "historical verification includes the NotAfter boundary")
+					}
+					if expired || offset > 0 {
+						require.Error(t, liveErr, "an expired consenter or invalid signed time must not authorize a live vote")
+					} else {
+						require.NoError(t, liveErr)
+					}
+				})
+			}
 		})
 	}
 }
