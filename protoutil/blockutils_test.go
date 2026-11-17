@@ -514,6 +514,28 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 	copy(tmp[len(forgedBlock.GetData().GetData()[0]):], forgedBlock.GetData().GetData()[1])
 	forgedBlock.Data.Data = [][]byte{tmp} // Replace transactions {0,1} with transaction {0 || 1}
 
+	configTx := protoutil.MarshalOrPanic(&cb.Envelope{
+		Payload: protoutil.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+					Type: int32(cb.HeaderType_CONFIG),
+				}),
+			},
+		}),
+		Signature: []byte{1, 2, 3},
+	})
+	endorserTx := protoutil.MarshalOrPanic(&cb.Envelope{
+		Payload: protoutil.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+					Type: int32(cb.HeaderType_ENDORSER_TRANSACTION),
+				}),
+			},
+		}),
+		Signature: []byte{4, 5, 6},
+	})
+	concatenatedConfigTx := append(append([]byte{}, endorserTx...), configTx...)
+
 	for _, tst := range []struct {
 		name          string
 		expectedError string
@@ -536,6 +558,11 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 					),
 				},
 			}},
+		},
+		{
+			name:          "config block with concatenated transaction",
+			block:         &cb.Block{Data: &cb.BlockData{Data: [][]byte{concatenatedConfigTx}}},
+			expectedError: "trailing bytes",
 		},
 		{
 			name:          "no block data",

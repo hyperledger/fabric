@@ -1237,6 +1237,33 @@ func TestValidationPluginNotFound(t *testing.T) {
 	require.Contains(t, executionErr.Error(), "plugin with name vscc wasn't found")
 }
 
+func TestValidateRejectsConfigTransactionWithOtherTransactions(t *testing.T) {
+	block := &common.Block{
+		Header: &common.BlockHeader{Number: 1},
+		Data: &common.BlockData{Data: [][]byte{
+			makeConfigAloneTestEnvelope(common.HeaderType_ENDORSER_TRANSACTION),
+			makeConfigAloneTestEnvelope(common.HeaderType_CONFIG),
+		}},
+	}
+
+	v := &txvalidatorv20.TxValidator{}
+	err := v.Validate(block)
+	require.EqualError(t, err, "config transaction at index 1 must be alone in the block")
+}
+
+func makeConfigAloneTestEnvelope(headerType common.HeaderType) []byte {
+	return protoutil.MarshalOrPanic(&common.Envelope{
+		Signature: []byte{1, 2, 3},
+		Payload: protoutil.MarshalOrPanic(&common.Payload{
+			Header: &common.Header{
+				ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
+					Type: int32(headerType),
+				}),
+			},
+		}),
+	})
+}
+
 var signer msp.SigningIdentity
 
 var signerSerialized []byte
