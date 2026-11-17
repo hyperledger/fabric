@@ -79,10 +79,11 @@ quantum-resistant network security.
   applies admission validation to requests and proposals, including requests
   submitted through the cluster path. Raft relies on trusted, non-Byzantine
   orderers; a compromised orderer can bypass normal ingress validation.
-  Admission is not proof of endorsement or commit time: peers still use the
-  signed timestamp for deterministic validation and replay, and current block
-  metadata contains no authenticated ordering time. Transactions admitted
-  before expiry can commit afterwards. Differing orderer clocks or expiry
+  Admission is not proof of endorsement or commit time: peers use the signed
+  transaction timestamp for deterministic transaction validation and use the
+  orderer-signed block timestamp for block-signature replay. The latter is an
+  authenticated orderer clock assertion, not an independent time authority.
+  Transactions admitted before expiry can commit afterwards. Differing orderer clocks or expiry
   during SmartBFT consensus may cause inconsistent admission or liveness
   failures; these scenarios have not been tested with a live cluster. An
   approved, enforceable time design and independent external security review
@@ -396,7 +397,10 @@ hash and responses.
 - Raft and SmartBFT block signatures carry a versioned signing timestamp inside
   their signed nonce fields. Block replay validates hybrid orderer identities
   at that timestamp; an unversioned nonce supplies zero time and cannot silently
-  fall back to current-time validation for a hybrid identity.
+  fall back to current-time validation for a hybrid identity. SmartBFT rejects
+  malformed timestamp nonces during consensus verification, before accepting a
+  signature that downstream block verifiers would reject. Local hybrid signers
+  are validated before signing even when their MSP permits classical identities.
 
 The focused validation commands passed:
 

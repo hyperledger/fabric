@@ -365,11 +365,11 @@ func newSigningIdentity(cert *x509.Certificate, pk bccsp.Key, qPk bccsp.Key, sig
 
 // Sign produces a signature over msg, signed by this instance
 func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
-	if id.msp.hybridRequired {
+	if id.msp.hybridRequired || id.qPk != nil {
 		if err := id.Validate(); err != nil {
-			return nil, errors.WithMessage(err, "validating PQ-required local signing identity")
+			return nil, errors.WithMessage(err, "validating local hybrid signing identity")
 		}
-		if id.qPk == nil {
+		if id.msp.hybridRequired && id.qPk == nil {
 			return nil, errors.New("PQ-required MSP signing identity has no ML-DSA-65 private key")
 		}
 	}

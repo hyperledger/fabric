@@ -63,6 +63,28 @@ func TestHybridRequiredMSPSigningAndVerificationWithBCCSP(t *testing.T) {
 	require.Error(t, signingIdentity.Verify([]byte("different message"), signature))
 }
 
+func TestClassicalPermittedHybridSignerRejectsExpiredCertificate(t *testing.T) {
+	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
+	mspConfig, cryptoProvider := newHybridMSPTestConfig(t, true, false)
+
+	instance, err := newBccspMsp(MSPv1_0, cryptoProvider)
+	require.NoError(t, err)
+	require.NoError(t, instance.Setup(mspConfig))
+	require.False(t, instance.(*bccspmsp).hybridRequired)
+
+	signingIdentity, err := instance.GetDefaultSigningIdentity()
+	require.NoError(t, err)
+	internalIdentity, ok := signingIdentity.(*signingidentity)
+	require.True(t, ok)
+	require.NotNil(t, internalIdentity.qPk)
+	_, err = signingIdentity.Sign([]byte("valid hybrid signing identity"))
+	require.NoError(t, err)
+
+	internalIdentity.cert.NotAfter = time.Now().Add(-time.Hour)
+	_, err = signingIdentity.Sign([]byte("expired hybrid signing identity"))
+	require.ErrorContains(t, err, "certificate has expired")
+}
+
 func TestHybridIdentityValidationUsesSuppliedTimestamp(t *testing.T) {
 	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
 	mspConfig, cryptoProvider := newHybridMSPTestConfig(t, true, true)

@@ -236,11 +236,25 @@ func (v *Verifier) VerifyConsenterSig(signature types.Signature, prop types.Prop
 		return nil, err
 	}
 
+	identifierHeader, err := protoutil.UnmarshalIdentifierHeader(sig.IdentifierHeader)
+	if err != nil {
+		return nil, errors.Wrap(err, "malformed signature header")
+	}
+	validationTime := protoutil.ChannelHeaderValidationTime(nil)
+	signingTime, err := protoutil.BlockSignatureTimestampFromNonce(identifierHeader.GetNonce())
+	if err != nil {
+		return nil, errors.Wrap(err, "malformed SmartBFT consenter signature timestamp")
+	}
+	if signingTime != nil {
+		validationTime = signingTime
+	}
+
 	expectedMsgToBeSigned := util.ConcatenateBytes(sig.OrdererBlockMetadata, sig.IdentifierHeader, sig.BlockHeader, nil)
 	signedData := &protoutil.SignedData{
-		Signature: signature.Value,
-		Data:      expectedMsgToBeSigned,
-		Identity:  identity,
+		Signature:      signature.Value,
+		Data:           expectedMsgToBeSigned,
+		Identity:       identity,
+		ValidationTime: validationTime,
 	}
 
 	return nil, v.ConsenterVerifier.Evaluate([]*protoutil.SignedData{signedData})

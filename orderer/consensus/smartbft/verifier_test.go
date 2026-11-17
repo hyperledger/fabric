@@ -8,11 +8,13 @@ package smartbft_test
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/SmartBFT/pkg/types"
 	"github.com/hyperledger/SmartBFT/smartbftprotos"
@@ -130,7 +132,38 @@ func TestVerifyConsenterSig(t *testing.T) {
 		proposalMutator             func(proposal types.Proposal) types.Proposal
 		ordererBlockMetadataMutator func(metadata *cb.OrdererBlockMetadata)
 		expectedErr                 string
+		expectedValidationTime      bool
 	}{
+		{
+			description:            "timestamp is passed to the consenter verifier",
+			expectedErr:            "bad signature",
+			expectedValidationTime: true,
+			lastBlock:              lastBlock,
+			lastConfigBlockNum:     lastConfigBlock.GetHeader().GetNumber(),
+			id2Identity:            map[uint64][]byte{3: {0, 2, 4, 6}},
+		},
+		{
+			description:        "malformed timestamp nonce is rejected",
+			expectedErr:        "malformed SmartBFT consenter signature timestamp: malformed Pactway block signature nonce",
+			lastBlock:          lastBlock,
+			lastConfigBlockNum: lastConfigBlock.GetHeader().GetNumber(),
+			id2Identity:        map[uint64][]byte{3: {0, 2, 4, 6}},
+			signatureMutator: func(signature types.Signature) types.Signature {
+				return signatureWithIdentifierNonce(signature, []byte("PWBTSIG1"))
+			},
+		},
+		{
+			description:        "invalid timestamp nanoseconds are rejected",
+			expectedErr:        "malformed SmartBFT consenter signature timestamp: invalid nanoseconds in Pactway block signature nonce: 1000000000",
+			lastBlock:          lastBlock,
+			lastConfigBlockNum: lastConfigBlock.GetHeader().GetNumber(),
+			id2Identity:        map[uint64][]byte{3: {0, 2, 4, 6}},
+			signatureMutator: func(signature types.Signature) types.Signature {
+				nonce := protoutil.BlockSignatureNonceWithTimestamp([]byte("nonce"), time.Now())
+				binary.BigEndian.PutUint32(nonce[16:20], 1_000_000_000)
+				return signatureWithIdentifierNonce(signature, nonce)
+			},
+		},
 		{
 			description:        "No consenter in mapping",
 			expectedErr:        "node with id of 3 doesn't exist",
@@ -390,8 +423,29 @@ func TestVerifyConsenterSig(t *testing.T) {
 
 			require.Error(t, err)
 			require.Equal(t, testCase.expectedErr, strings.ReplaceAll(err.Error(), "\u00a0", " "))
+			if testCase.expectedValidationTime {
+				signedData := cv.Calls[len(cv.Calls)-1].Arguments.Get(0).([]*protoutil.SignedData)
+				require.Len(t, signedData, 1)
+				require.NotNil(t, signedData[0].ValidationTime)
+				require.WithinDuration(t, time.Now(), *signedData[0].ValidationTime, time.Minute)
+			}
 		})
 	}
+}
+
+func signatureWithIdentifierNonce(signature types.Signature, nonce []byte) types.Signature {
+	sig := &smartbft.Signature{}
+	if err := sig.Unmarshal(signature.Msg); err != nil {
+		panic(err)
+	}
+	identifierHeader, err := protoutil.UnmarshalIdentifierHeader(sig.IdentifierHeader)
+	if err != nil {
+		panic(err)
+	}
+	identifierHeader.Nonce = nonce
+	sig.IdentifierHeader = protoutil.MarshalOrPanic(identifierHeader)
+	signature.Msg = sig.Marshal()
+	return signature
 }
 
 func TestVerifyProposal(t *testing.T) {
