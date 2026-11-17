@@ -45,9 +45,6 @@ type ChannelDataRemover interface {
 }
 
 // MetadataValidator performs the validation of updates to ConsensusMetadata during config updates to the channel.
-// NOTE: We expect the MetadataValidator interface to be optionally implemented by the Consenter implementation.
-//
-//	If a Consenter does not implement MetadataValidator, we default to using a no-op MetadataValidator.
 type MetadataValidator interface {
 	// ValidateConsensusMetadata determines the validity of a ConsensusMetadata update during config
 	// updates on the channel.
@@ -147,13 +144,4 @@ type ConsenterSupport interface {
 	// Append appends a new block to the ledger in its raw form,
 	// unlike WriteBlock that also mutates its metadata.
 	Append(block *cb.Block) error
-}
-
-// NoOpMetadataValidator implements a MetadataValidator that always returns nil error irrespective of the inputs.
-type NoOpMetadataValidator struct{}
-
-// ValidateConsensusMetadata determines the validity of a ConsensusMetadata update during config updates
-// on the channel, and it always returns nil error for the NoOpMetadataValidator implementation.
-func (n NoOpMetadataValidator) ValidateConsensusMetadata(oldChannelConfig, newChannelConfig channelconfig.Orderer, newChannel bool) error {
-	return nil
 }
