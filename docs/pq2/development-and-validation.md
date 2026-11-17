@@ -2,6 +2,18 @@
 
 ## Verified development baseline
 
+The full supported CI matrix passed at the final reviewed implementation head
+`77f0528809aa7bf927a3ab7c382bf3219946d043`:
+[PR run 44081591055](https://github.com/vignatov/fabric-pq/actions/runs/44081591055)
+and [push run 44081579090](https://github.com/vignatov/fabric-pq/actions/runs/44081579090)
+both completed with all 11 jobs successful, including Basic Checks, Unit Tests
+and all nine integration groups, on Go 1.27.4 linux/amd64. This supersedes the
+earlier note below that the Deliver/Discovery follow-up awaited CI. The
+associated technical decision is accepted for development-only merge in
+[PR review comment #5940337911](https://github.com/vignatov/fabric-pq/pull/4#pullrequestreview-5940337911);
+GitHub records it as `COMMENTED`, not `APPROVED`, because it was submitted by
+the PR author. The PR remains a draft and no merge has occurred.
+
 The tested implementation head is
 `f6ff21ca78bce024214f156714f057250cb56db5` on
 `feature/pq2-hybrid-certificates`, based on audited main commit
@@ -630,13 +642,16 @@ identities. Focused tests cover active-session reauthorization and changing
 allow/deny outcomes in the cache support. Repeated current-time PQ validation
 on each hybrid Deliver block and Discovery request is an intentional
 performance trade-off; no new cache TTL approximates certificate validity.
-The fixes have passed the focused local tests above and remain subject to fresh
-CI on the current PR head.
+The fixes passed focused local tests and the complete 11-job CI matrix at
+`77f0528809aa7bf927a3ab7c382bf3219946d043`; the exact commands and results are
+recorded in the verified development baseline above.
 
-The recommendation is final maintainer review for a **development-only merge
-for isolated use**, preserving the guards and limitations above. This report
-is not the maintainer's sign-off; no merge or PQ3 authorization is implied. The
-following gates remain open before production acceptance or external use:
+The technical acceptance decision is **development-only merge for isolated
+use**, preserving the guards and limitations above. GitHub's independent
+approval requirement remains unsatisfied, the PR is still a draft, and no merge
+has occurred. This acceptance does not constitute production approval or PQ3
+authorization. The following gates remain open before production acceptance
+or external use:
 
 - Obtain the official Thinkstratum Ltd PEN, approve the permanent ASN.1/profile
   and OIDs, regenerate all certificates/MSPs/genesis and production fixtures,
@@ -659,7 +674,8 @@ deploy temporary-profile artifacts, bypass the release guard, or begin PQ3.
 ## PQ3 handoff
 
 PQ3 must not start until the maintainer explicitly reviews and accepts the PQ2
-handoff and authorizes the next phase. Remaining production prerequisites
+handoff and separately authorizes the next phase. PQ2's development-only
+acceptance is not that authorization. Remaining production prerequisites
 include obtaining the official Thinkstratum Ltd PEN; reviewing and approving
 the production ASN.1/profile and permanent OIDs; regenerating all certificate,
 MSP and genesis material; rerunning the complete PQ2 tests and unsupported

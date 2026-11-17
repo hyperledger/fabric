@@ -2,14 +2,14 @@
 
 ## Status
 
-Accepted for isolated PQ2 development and testing. The production certificate
-profile and production OIDs are not approved or frozen. The supported Fabric
-CI baseline and focused hybrid tests are passing; see the
-[development acceptance report](development-and-validation.md). The closeout
-recommendation is maintainer review for a development-only merge, not automatic
-merge authorization, production approval, or permission to begin PQ3.
-The subsequent Deliver and Discovery expiry-cache fixes have focused local
-test coverage and await CI at their current PR head.
+Accepted by the project reviewer for a development-only PQ2 merge and isolated
+testing at commit `77f0528809aa7bf927a3ab7c382bf3219946d043`; see the
+[development acceptance report](development-and-validation.md) and PR review
+comment #5940337911. The PR author recorded the review as `COMMENTED`, not a
+GitHub `APPROVED` event, so any required independent GitHub approval remains
+outstanding. The PR remains a draft and has not been merged. This acceptance
+does not approve the production profile/OIDs, authorize PQ3, or claim external
+cryptographic certification.
 
 ## Context
 
@@ -40,6 +40,18 @@ used in released or externally deployed networks. Runtime selection must name
 one profile explicitly; there is no acceptance of multiple namespaces as a
 fallback. The release workflow blocks while the registry contains any
 development-only profile.
+
+The current registry contains only one profile, and runtime selection uses the
+explicit `PACTWAY_HYBRID_PROFILE` process setting. The authenticated channel
+capability identifies that hybrid certificates are required, but does not
+identify a choice among multiple profiles. Before adding another profile,
+extend authenticated channel/MSP configuration to pin the required profile
+identifier (including its version and algorithm set); every peer, orderer and
+client must enforce that same selection against its local runtime configuration
+and fail closed on missing or mismatched values. A process-local environment
+setting alone must never let channel participants silently select different
+certificate profiles. Profile rollover needs an explicitly reviewed channel
+migration; it must not be treated as an automatic fallback.
 
 The profile keeps the ordinary classical X.509 signature and adds exactly one
 profile/key extension and one PQ signature extension. The key extension
