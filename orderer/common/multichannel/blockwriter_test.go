@@ -120,6 +120,11 @@ func TestBlockSignature(t *testing.T) {
 
 	require.Equal(t, expectedMetadataValue, md.GetValue(), "Value contains the consensus metadata and the last config")
 	require.NotNil(t, md.GetSignatures(), "Should have signature")
+	signatureHeader := &cb.SignatureHeader{}
+	require.NoError(t, proto.Unmarshal(md.GetSignatures()[0].GetSignatureHeader(), signatureHeader))
+	signingTime, err := protoutil.BlockSignatureTimestampFromNonce(signatureHeader.GetNonce())
+	require.NoError(t, err)
+	require.NotNil(t, signingTime)
 }
 
 func TestBlockLastConfig(t *testing.T) {

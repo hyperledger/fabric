@@ -11,8 +11,10 @@ import (
 	"crypto/sha256"
 	"encoding/asn1"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"math/big"
+	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
@@ -20,6 +22,40 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
+
+const (
+	blockSignatureTimestampNoncePrefix = "PWBTSIG1"
+	blockSignatureTimestampNonceSize   = 20
+)
+
+// BlockSignatureNonceWithTimestamp embeds the signing time in an opaque nonce
+// that is already covered by the orderer's block signature.
+func BlockSignatureNonceWithTimestamp(nonce []byte, signingTime time.Time) []byte {
+	encoded := make([]byte, blockSignatureTimestampNonceSize, blockSignatureTimestampNonceSize+len(nonce))
+	copy(encoded, blockSignatureTimestampNoncePrefix)
+	binary.BigEndian.PutUint64(encoded[8:16], uint64(signingTime.Unix()))
+	binary.BigEndian.PutUint32(encoded[16:20], uint32(signingTime.Nanosecond()))
+	return append(encoded, nonce...)
+}
+
+// BlockSignatureTimestampFromNonce extracts a Pactway block-signature timestamp.
+// A nil timestamp means the nonce uses the conventional, unversioned format.
+func BlockSignatureTimestampFromNonce(nonce []byte) (*time.Time, error) {
+	if !bytes.HasPrefix(nonce, []byte(blockSignatureTimestampNoncePrefix)) {
+		return nil, nil
+	}
+	if len(nonce) <= blockSignatureTimestampNonceSize {
+		return nil, errors.New("malformed Pactway block signature nonce")
+	}
+
+	nanoseconds := binary.BigEndian.Uint32(nonce[16:20])
+	if nanoseconds >= 1_000_000_000 {
+		return nil, errors.Errorf("invalid nanoseconds in Pactway block signature nonce: %d", nanoseconds)
+	}
+
+	timestamp := time.Unix(int64(binary.BigEndian.Uint64(nonce[8:16])), int64(nanoseconds)).UTC()
+	return &timestamp, nil
+}
 
 // NewBlock constructs a block with no data and no metadata.
 func NewBlock(seqNum uint64, previousHash []byte) *cb.Block {
@@ -263,6 +299,7 @@ func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy 
 		for _, metadataSignature := range md.GetSignatures() {
 			var signerIdentity []byte
 			var signedPayload []byte
+			var signerNonce []byte
 			// if the SignatureHeader is empty and the IdentifierHeader is present, then  the consenter expects us to fetch its identity by its numeric identifier
 			if bftEnabled && len(metadataSignature.GetSignatureHeader()) == 0 && len(metadataSignature.GetIdentifierHeader()) > 0 {
 				identifierHeader, err := UnmarshalIdentifierHeader(metadataSignature.GetIdentifierHeader())
@@ -276,6 +313,7 @@ func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy 
 					continue
 				}
 				signedPayload = util.ConcatenateBytes(md.GetValue(), metadataSignature.GetIdentifierHeader(), BlockHeaderBytes(header))
+				signerNonce = identifierHeader.GetNonce()
 			} else {
 				signatureHeader, err := UnmarshalSignatureHeader(metadataSignature.GetSignatureHeader())
 				if err != nil {
@@ -285,14 +323,25 @@ func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy 
 				signedPayload = util.ConcatenateBytes(md.GetValue(), metadataSignature.GetSignatureHeader(), BlockHeaderBytes(header))
 
 				signerIdentity = signatureHeader.GetCreator()
+				signerNonce = signatureHeader.GetNonce()
+			}
+
+			validationTime := ChannelHeaderValidationTime(nil)
+			signingTime, err := BlockSignatureTimestampFromNonce(signerNonce)
+			if err != nil {
+				return fmt.Errorf("failed parsing block %d signature timestamp: %w", header.GetNumber(), err)
+			}
+			if signingTime != nil {
+				validationTime = signingTime
 			}
 
 			signatureSet = append(
 				signatureSet,
 				&SignedData{
-					Identity:  signerIdentity,
-					Data:      signedPayload,
-					Signature: metadataSignature.GetSignature(),
+					Identity:       signerIdentity,
+					Data:           signedPayload,
+					Signature:      metadataSignature.GetSignature(),
+					ValidationTime: validationTime,
 				},
 			)
 		}

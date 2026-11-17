@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft
 
 import (
+	"time"
+
 	"github.com/hyperledger/SmartBFT/pkg/types"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -45,7 +47,7 @@ func (s *Signer) SignProposal(proposal types.Proposal, _ []byte) *types.Signatur
 		s.Logger.Panicf("Tried to sign bad proposal: %v", err)
 	}
 
-	nonce := randomNonceOrPanic()
+	nonce := protoutil.BlockSignatureNonceWithTimestamp(randomNonceOrPanic(), time.Now().UTC())
 
 	sig := &Signature{
 		BlockHeader:      protoutil.BlockHeaderBytes(block.GetHeader()),

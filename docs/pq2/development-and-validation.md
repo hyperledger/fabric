@@ -393,6 +393,10 @@ hash and responses.
 - Hybrid endorsement admission caches validation by the deserialized MSP
   identity identifier, so protobuf wire-encoding differences do not repeat PQ
   certificate validation.
+- Raft and SmartBFT block signatures carry a versioned signing timestamp inside
+  their signed nonce fields. Block replay validates hybrid orderer identities
+  at that timestamp; an unversioned nonce supplies zero time and cannot silently
+  fall back to current-time validation for a hybrid identity.
 
 The focused validation commands passed:
 
@@ -427,9 +431,10 @@ The following work remains release- and PQ2-completion-blocking:
   new PQ signing.
 - Replace submitter-controlled endorsement validation time with an approved,
   enforceable deterministic approach before claiming expiry enforcement.
-- Add an authenticated timestamp representation for orderer block signatures
-  before using historical certificate validation during block catch-up. Do not
-  use transaction timestamps as evidence of orderer signing time.
+- The block-signature timestamp is an orderer-signed clock assertion, not an
+  independent timestamp authority. If the threat model includes malicious
+  orderers backdating signatures, add consensus-quorum or external trusted-time
+  evidence before treating the timestamp as proof of wall-clock signing time.
 - Finalize generation and deployment documentation and independently review
   the custom certificate profile. Replace the temporary OIDs only after the
   official PEN is assigned, regenerate all credentials/genesis, rerun the

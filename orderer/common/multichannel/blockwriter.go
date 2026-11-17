@@ -8,6 +8,7 @@ package multichannel
 
 import (
 	"sync"
+	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
@@ -209,8 +210,10 @@ func (bw *BlockWriter) commitBlock(encodedMetadataValue []byte) {
 }
 
 func (bw *BlockWriter) addBlockSignature(block *cb.Block, consenterMetadata []byte) {
+	signatureHeader := protoutil.NewSignatureHeaderOrPanic(bw.support)
+	signatureHeader.Nonce = protoutil.BlockSignatureNonceWithTimestamp(signatureHeader.GetNonce(), time.Now().UTC())
 	blockSignature := &cb.MetadataSignature{
-		SignatureHeader: protoutil.MarshalOrPanic(protoutil.NewSignatureHeaderOrPanic(bw.support)),
+		SignatureHeader: protoutil.MarshalOrPanic(signatureHeader),
 	}
 
 	blockSignatureValue := protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{

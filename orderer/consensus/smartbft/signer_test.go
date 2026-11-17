@@ -99,6 +99,11 @@ func TestSignProposal(t *testing.T) {
 	sigHdr := &cb.SignatureHeader{}
 	require.NoError(t, proto.Unmarshal(signature.IdentifierHeader, sigHdr))
 	require.Nil(t, sigHdr.GetCreator())
+	identifierHeader := &cb.IdentifierHeader{}
+	require.NoError(t, proto.Unmarshal(signature.IdentifierHeader, identifierHeader))
+	signingTime, err := protoutil.BlockSignatureTimestampFromNonce(identifierHeader.GetNonce())
+	require.NoError(t, err)
+	require.NotNil(t, signingTime)
 	require.Equal(t, signature.OrdererBlockMetadata, protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
 		LastConfig:        &cb.LastConfig{Index: 10},
 		ConsenterMetadata: prop.Metadata,
