@@ -9,6 +9,7 @@ package configtx
 import (
 	"maps"
 	"strings"
+	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/policies"
@@ -113,7 +114,7 @@ func verifyFullProposedConfig(writeSet, fullProposedConfig map[string]comparable
 
 // authorizeUpdate validates that all modified config has the corresponding modification policies satisfied by the signature set
 // it returns a map of the modified config
-func (vi *ValidatorImpl) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelope) (map[string]comparable, error) {
+func (vi *ValidatorImpl) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelope, validationTime *time.Time) (map[string]comparable, error) {
 	if configUpdateEnv == nil {
 		return nil, errors.Errorf("cannot process nil ConfigUpdateEnvelope")
 	}
@@ -142,7 +143,7 @@ func (vi *ValidatorImpl) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 	}
 
 	deltaSet := computeDeltaSet(readSet, writeSet)
-	signedData, err := protoutil.ConfigUpdateEnvelopeAsSignedData(configUpdateEnv)
+	signedData, err := protoutil.ConfigUpdateEnvelopeAsSignedDataAt(configUpdateEnv, validationTime)
 	if err != nil {
 		return nil, err
 	}

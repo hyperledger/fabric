@@ -191,7 +191,29 @@ func GetLocalMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string) 
 
 	sigid := &msp.SigningIdentityInfo{PublicSigner: signcert[0], PrivateSigner: nil}
 
-	return getMspConfig(dir, ID, sigid)
+	localConfig, err := getMspConfig(dir, ID, sigid)
+	if err != nil {
+		return nil, err
+	}
+	hybridRequired, err := localHybridPolicyRequired(dir)
+	if err != nil {
+		return nil, err
+	}
+	if hybridRequired {
+		fabricConfig := &msp.FabricMSPConfig{}
+		if err := proto.Unmarshal(localConfig.GetConfig(), fabricConfig); err != nil {
+			return nil, errors.Wrap(err, "failed unmarshalling local MSP config for Pactway hybrid policy")
+		}
+		if err := markHybridRequired(fabricConfig); err != nil {
+			return nil, err
+		}
+		localConfig.Config, err = proto.Marshal(fabricConfig)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed marshalling local MSP config with Pactway hybrid policy")
+		}
+	}
+
+	return localConfig, nil
 }
 
 // GetVerifyingMspConfig returns an MSP config given directory, ID and type

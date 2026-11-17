@@ -136,6 +136,9 @@ type ChannelCapabilities interface {
 
 	// ConsensusTypeBFT returns true if the channel must support BFT consensus
 	ConsensusTypeBFT() bool
+
+	// PactwayHybridCertificateV1 reports whether the channel requires hybrid enrollment certificates.
+	PactwayHybridCertificateV1() bool
 }
 
 // ApplicationCapabilities defines the capabilities for the application portion of a channel

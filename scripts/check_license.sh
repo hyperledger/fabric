@@ -17,7 +17,7 @@ fi
 
 # grep exits with status 1 when no lines remain after filtering; treat that as
 # an empty filtered set rather than a hard failure under pipefail.
-FILTERED=$(filterExcludedAndGeneratedFiles "$CHECK" | grep -Ev '^(pq-crypto|third_party/fabric-lib-go)/' || true)
+FILTERED=$(filterExcludedAndGeneratedFiles "$CHECK" | grep -Ev '^(pq-crypto|third_party/(fabric-lib-go|SmartBFT))/' || true)
 if [[ -z "$FILTERED" ]]; then
     echo "All files are excluded from having license headers"
     exit 0

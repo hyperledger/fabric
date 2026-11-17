@@ -60,6 +60,8 @@ jobs:
           go-version-file: go.mod
       - run: ci/scripts/setup_hsm.sh
         name: Install SoftHSM
+      - run: go test -mod=mod -race github.com/hyperledger/SmartBFT/internal/bft
+        name: Check SmartBFT live-vote authorization
       - run: make unit-test
         name: Run Unit Tests
   integration-tests:

@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
@@ -20,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel/mocks"
+	oqs "github.com/hyperledger/fabric/pq-crypto"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
@@ -53,24 +55,6 @@ func TestChainSupportBlock(t *testing.T) {
 	require.Equal(t, uint64(99), cs.Block(99).GetHeader().GetNumber())
 }
 
-type mutableResourcesMock struct {
-	*mocks.Resources
-	newConsensusMetadataVal []byte
-}
-
-func (*mutableResourcesMock) Update(*channelconfig.Bundle) {
-	panic("implement me")
-}
-
-func (mrm *mutableResourcesMock) CreateBundle(channelID string, c *common.Config) (channelconfig.Resources, error) {
-	mockOrderer := &mocks.OrdererConfig{}
-	mockOrderer.ConsensusMetadataReturns(mrm.newConsensusMetadataVal)
-	mockResources := &mocks.Resources{}
-	mockResources.OrdererConfigReturns(mockOrderer, true)
-
-	return mockResources, nil
-}
-
 func testConfigEnvelope(t *testing.T) *common.ConfigEnvelope {
 	conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 	conf.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
@@ -86,4 +70,52 @@ func testConfigEnvelope(t *testing.T) *common.ConfigEnvelope {
 			ChannelGroup: group,
 		},
 	}
+}
+
+type mutableResourcesMock struct {
+	*mocks.Resources
+	newConsensusMetadataVal []byte
+}
+
+func (*mutableResourcesMock) Update(*channelconfig.Bundle) {}
+
+func (mrm *mutableResourcesMock) CreateBundle(channelID string, c *common.Config) (channelconfig.Resources, error) {
+	mockOrderer := &mocks.OrdererConfig{}
+	mockOrderer.ConsensusMetadataReturns(mrm.newConsensusMetadataVal)
+	mockResources := &mocks.Resources{}
+	mockResources.OrdererConfigReturns(mockOrderer, true)
+
+	return mockResources, nil
+}
+
+func TestHybridCapabilityActivationChecksOrdererAfterBundleUpdate(t *testing.T) {
+	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
+	config := testConfigEnvelope(t).GetConfig()
+	group := config.GetChannelGroup()
+	clear(group.GetGroups()[channelconfig.OrdererGroupKey].GetGroups())
+	clear(group.GetGroups()[channelconfig.ApplicationGroupKey].GetGroups())
+	delete(group.GetGroups(), channelconfig.ConsortiumsGroupKey)
+	caps := &common.Capabilities{Capabilities: map[string]*common.Capability{
+		capabilities.ChannelV1_4_3:              {},
+		capabilities.PactwayHybridCertificateV1: {},
+	}}
+	capBytes, err := proto.Marshal(caps)
+	require.NoError(t, err)
+	group.GetValues()[channelconfig.CapabilitiesKey] = &common.ConfigValue{Value: capBytes}
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	require.NoError(t, err)
+	bundle, err := channelconfig.NewBundle("testchannel", config, cryptoProvider)
+	require.NoError(t, err)
+
+	signer := &mocks.SignerSerializer{}
+	signer.SerializeReturns([]byte("not a channel identity"), nil)
+	resources := &configResources{
+		mutableResources: channelconfig.NewBundleSource(bundle),
+		signer:           signer,
+	}
+	resources.Update(bundle)
+	require.Equal(t, 0, signer.SerializeCallCount(), "config application must not check process-local signer state")
+	require.ErrorContains(t, resources.ValidateConfigActivation(), "deserializing local signing identity")
+	require.Equal(t, 1, signer.SerializeCallCount(), "local signer validation must run after config application")
 }

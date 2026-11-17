@@ -10,12 +10,15 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	mockpolicies "github.com/hyperledger/fabric/common/configtx/mock"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 //go:generate counterfeiter -o mock/policy_manager.go --fake-name PolicyManager . policyManager
@@ -37,6 +40,23 @@ func defaultPolicyManager() *mockpolicies.PolicyManager {
 	fakePolicyManager.GetPolicyReturns(fakePolicy, true)
 	fakePolicyManager.ManagerReturns(fakePolicyManager, true)
 	return fakePolicyManager
+}
+
+type timestampRejectingPolicy struct {
+	rejectBefore time.Time
+}
+
+func (p *timestampRejectingPolicy) EvaluateSignedData(signedData []*protoutil.SignedData) error {
+	for _, signedDatum := range signedData {
+		if signedDatum.ValidationTime != nil && signedDatum.ValidationTime.Before(p.rejectBefore) {
+			return errors.New("identity invalid at signed timestamp")
+		}
+	}
+	return nil
+}
+
+func (*timestampRejectingPolicy) EvaluateIdentities([]msp.Identity) error {
+	return nil
 }
 
 type configPair struct {
@@ -160,6 +180,38 @@ func TestValidConfigChange(t *testing.T) {
 	if err != nil {
 		t.Errorf("Should not have errored validating config: %s", err)
 	}
+}
+
+func TestProposeConfigUpdateRejectsInvalidSignedTimestamp(t *testing.T) {
+	policy := &timestampRejectingPolicy{rejectBefore: time.Date(2010, time.January, 1, 0, 0, 0, 0, time.UTC)}
+	pm := &mockpolicies.PolicyManager{}
+	pm.GetPolicyReturns(policy, true)
+	pm.ManagerReturns(pm, true)
+	vi, err := NewValidatorImpl(
+		defaultChannel,
+		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
+		"foonamespace",
+		pm,
+	)
+	require.NoError(t, err)
+
+	update := makeConfigUpdateEnvelope(defaultChannel, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
+	payload, err := protoutil.UnmarshalPayload(update.GetPayload())
+	require.NoError(t, err)
+	channelHeader, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
+	require.NoError(t, err)
+	channelHeader.Timestamp = timestamppb.New(time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC))
+	payload.Header.ChannelHeader = protoutil.MarshalOrPanic(channelHeader)
+	configUpdate, err := protoutil.EnvelopeToConfigUpdate(update)
+	require.NoError(t, err)
+	configUpdate.Signatures = []*cb.ConfigSignature{{
+		SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{}),
+	}}
+	payload.Data = protoutil.MarshalOrPanic(configUpdate)
+	update.Payload = protoutil.MarshalOrPanic(payload)
+
+	_, err = vi.ProposeConfigUpdate(update)
+	require.ErrorContains(t, err, "error authorizing update at signed timestamp")
 }
 
 // TestConfigChangeRegressedSequence tests to make sure that a new config cannot roll back one of the

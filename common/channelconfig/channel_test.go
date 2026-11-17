@@ -14,12 +14,51 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/stretchr/testify/require"
 )
 
 func TestInterface(t *testing.T) {
 	_ = Channel(&ChannelConfig{})
+}
+
+func TestHybridCapabilityRequiresOrdererPrincipalSupport(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		version     string
+		hybrid      bool
+		shouldError bool
+	}{
+		{"no version", "", true, true},
+		{"v1.3", capabilities.ChannelV1_3, true, true},
+		{"v1.4.2", capabilities.ChannelV1_4_2, true, true},
+		{"v1.4.3", capabilities.ChannelV1_4_3, true, false},
+		{"v2.0", capabilities.ChannelV2_0, true, false},
+		{"v3.0", capabilities.ChannelV3_0, true, false},
+		{"classical v1.4.2", capabilities.ChannelV1_4_2, false, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caps := map[string]*cb.Capability{}
+			if test.version != "" {
+				caps[test.version] = &cb.Capability{}
+			}
+			if test.hybrid {
+				caps[capabilities.PactwayHybridCertificateV1] = &cb.Capability{}
+			}
+			cc := &ChannelConfig{protos: &ChannelProtos{
+				HashingAlgorithm:          &cb.HashingAlgorithm{Name: bccsp.SHA256},
+				BlockDataHashingStructure: &cb.BlockDataHashingStructure{Width: math.MaxUint32},
+				OrdererAddresses:          &cb.OrdererAddresses{},
+			}}
+			err := cc.Validate(capabilities.NewChannelProvider(caps))
+			if test.shouldError {
+				require.ErrorContains(t, err, "requires channel capability V1_4_3")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestChannelConfig(t *testing.T) {

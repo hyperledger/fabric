@@ -8,11 +8,13 @@ package validation
 
 import (
 	"bytes"
+	"time"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	mspi "github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -24,6 +26,10 @@ var putilsLogger = flogging.MustGetLogger("protoutils")
 // this function returns nil if the creator
 // is a valid cert and the signature is valid
 func checkSignatureFromCreator(creatorBytes, sig, msg []byte, ChannelID string, cryptoProvider bccsp.BCCSP) error {
+	return checkSignatureFromCreatorAt(creatorBytes, sig, msg, ChannelID, cryptoProvider, nil)
+}
+
+func checkSignatureFromCreatorAt(creatorBytes, sig, msg []byte, ChannelID string, cryptoProvider bccsp.BCCSP, validationTime *time.Time) error {
 	putilsLogger.Debugf("begin")
 
 	// check for nil argument
@@ -40,6 +46,13 @@ func checkSignatureFromCreator(creatorBytes, sig, msg []byte, ChannelID string, 
 	creator, err := mspObj.DeserializeIdentity(creatorBytes)
 	if err != nil {
 		return errors.WithMessage(err, "MSP error")
+	}
+
+	if timeBoundIdentity, ok := creator.(mspi.TimeBoundIdentity); ok {
+		creator, err = timeBoundIdentity.WithValidationTime(validationTime)
+		if err != nil {
+			return errors.WithMessage(err, "creator validation time is invalid")
+		}
 	}
 
 	putilsLogger.Debugf("creator is %s", creator.GetIdentifier())
@@ -271,7 +284,14 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 	}
 
 	// validate the signature in the envelope
-	err = checkSignatureFromCreator(shdr.GetCreator(), e.GetSignature(), e.GetPayload(), chdr.GetChannelId(), cryptoProvider)
+	err = checkSignatureFromCreatorAt(
+		shdr.GetCreator(),
+		e.GetSignature(),
+		e.GetPayload(),
+		chdr.GetChannelId(),
+		cryptoProvider,
+		protoutil.ChannelHeaderValidationTime(chdr),
+	)
 	if err != nil {
 		putilsLogger.Errorf("checkSignatureFromCreator returns err %s", err)
 		return nil, pb.TxValidationCode_BAD_CREATOR_SIGNATURE

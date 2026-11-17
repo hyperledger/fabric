@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
@@ -24,15 +25,32 @@ import (
 // include the signing identity and a nonce within the Data, this is left to the crypto
 // implementation.
 type SignedData struct {
-	Data      []byte
-	Identity  []byte
-	Signature []byte
+	Data           []byte
+	Identity       []byte
+	Signature      []byte
+	ValidationTime *time.Time
+}
+
+// ChannelHeaderValidationTime returns the signed transaction timestamp. An invalid or
+// missing timestamp is represented by the zero time so time-bound identities fail closed.
+func ChannelHeaderValidationTime(chdr *common.ChannelHeader) *time.Time {
+	validationTime := time.Time{}
+	if chdr != nil && chdr.GetTimestamp() != nil && chdr.GetTimestamp().CheckValid() == nil {
+		validationTime = chdr.GetTimestamp().AsTime()
+	}
+	return &validationTime
 }
 
 // ConfigUpdateEnvelopeAsSignedData returns the set of signatures for the
 // ConfigUpdateEnvelope as SignedData or an error indicating why this was not
 // possible.
 func ConfigUpdateEnvelopeAsSignedData(ce *common.ConfigUpdateEnvelope) ([]*SignedData, error) {
+	return ConfigUpdateEnvelopeAsSignedDataAt(ce, nil)
+}
+
+// ConfigUpdateEnvelopeAsSignedDataAt returns the signatures for a config update
+// and associates them with the validation time from the signed enclosing envelope.
+func ConfigUpdateEnvelopeAsSignedDataAt(ce *common.ConfigUpdateEnvelope, validationTime *time.Time) ([]*SignedData, error) {
 	if ce == nil {
 		return nil, errors.New("No signatures for nil SignedConfigItem")
 	}
@@ -46,9 +64,10 @@ func ConfigUpdateEnvelopeAsSignedData(ce *common.ConfigUpdateEnvelope) ([]*Signe
 		}
 
 		result[i] = &SignedData{
-			Data:      bytes.Join([][]byte{configSig.GetSignatureHeader(), ce.GetConfigUpdate()}, nil),
-			Identity:  sigHeader.GetCreator(),
-			Signature: configSig.GetSignature(),
+			Data:           bytes.Join([][]byte{configSig.GetSignatureHeader(), ce.GetConfigUpdate()}, nil),
+			Identity:       sigHeader.GetCreator(),
+			Signature:      configSig.GetSignature(),
+			ValidationTime: validationTime,
 		}
 	}
 
@@ -58,6 +77,16 @@ func ConfigUpdateEnvelopeAsSignedData(ce *common.ConfigUpdateEnvelope) ([]*Signe
 // EnvelopeAsSignedData returns the signatures for the Envelope as SignedData
 // slice of length 1 or an error indicating why this was not possible.
 func EnvelopeAsSignedData(env *common.Envelope) ([]*SignedData, error) {
+	return envelopeAsSignedData(env, false)
+}
+
+// EnvelopeAsSignedDataWithValidationTime returns the envelope signature and
+// associates it with the signed channel-header timestamp.
+func EnvelopeAsSignedDataWithValidationTime(env *common.Envelope) ([]*SignedData, error) {
+	return envelopeAsSignedData(env, true)
+}
+
+func envelopeAsSignedData(env *common.Envelope, includeValidationTime bool) ([]*SignedData, error) {
 	if env == nil {
 		return nil, errors.New("No signatures for nil Envelope")
 	}
@@ -78,10 +107,23 @@ func EnvelopeAsSignedData(env *common.Envelope) ([]*SignedData, error) {
 		return nil, fmt.Errorf("GetSignatureHeaderFromBytes failed, err %w", err)
 	}
 
+	var validationTime *time.Time
+	if includeValidationTime {
+		validationTime = ChannelHeaderValidationTime(nil)
+	}
+	if includeValidationTime && len(payload.GetHeader().GetChannelHeader()) > 0 {
+		channelHeader, err := UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
+		if err != nil {
+			return nil, fmt.Errorf("unmarshalling channel header: %w", err)
+		}
+		validationTime = ChannelHeaderValidationTime(channelHeader)
+	}
+
 	return []*SignedData{{
-		Data:      env.GetPayload(),
-		Identity:  shdr.GetCreator(),
-		Signature: env.GetSignature(),
+		Data:           env.GetPayload(),
+		Identity:       shdr.GetCreator(),
+		Signature:      env.GetSignature(),
+		ValidationTime: validationTime,
 	}}, nil
 }
 

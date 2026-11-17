@@ -197,7 +197,7 @@ github.com/gorilla/mux
 # github.com/grpc-ecosystem/grpc-gateway/v2 v2.32.0
 ## explicit; go 1.26.0
 github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options
-# github.com/hyperledger/SmartBFT v1.0.3
+# github.com/hyperledger/SmartBFT v1.0.3 => ./third_party/SmartBFT
 ## explicit; go 1.27.3
 github.com/hyperledger/SmartBFT/internal/bft
 github.com/hyperledger/SmartBFT/pkg/api
@@ -754,3 +754,4 @@ google.golang.org/protobuf/types/known/timestamppb
 ## explicit
 gopkg.in/alecthomas/kingpin.v2
 # github.com/hyperledger/fabric-lib-go => ./third_party/fabric-lib-go
+# github.com/hyperledger/SmartBFT => ./third_party/SmartBFT

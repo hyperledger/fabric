@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging/floggingtest"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -33,6 +34,20 @@ type identityDeserializer interface {
 //go:generate counterfeiter -o mocks/identity.go --fake-name Identity . identity
 type identity interface {
 	mspi.Identity
+}
+
+type validationTimedIdentity struct {
+	mspi.Identity
+	validationTime *time.Time
+}
+
+func (id *validationTimedIdentity) WithValidationTime(validationTime *time.Time) (mspi.Identity, error) {
+	id.validationTime = validationTime
+	return id.Identity, nil
+}
+
+func (*validationTimedIdentity) RequiresTimeBoundValidation() bool {
+	return true
 }
 
 type mockProvider struct{}
@@ -285,6 +300,29 @@ func TestSignatureSetToValidIdentities(t *testing.T) {
 	require.Equal(t, []byte("signature1"), sig)
 	sidBytes := fIDDs.DeserializeIdentityArgsForCall(0)
 	require.Equal(t, []byte("identity1"), sidBytes)
+}
+
+func TestSignatureSetToValidIdentitiesUsesTransactionTimestamp(t *testing.T) {
+	validationTime := time.Date(2025, time.January, 2, 3, 4, 5, 0, time.UTC)
+	fID := &mocks.Identity{}
+	fID.VerifyReturns(nil)
+	fID.GetIdentifierReturns(&mspi.IdentityIdentifier{Id: "id", Mspid: "mspid"})
+	timeBoundIdentity := &validationTimedIdentity{Identity: fID}
+
+	fIDDs := &mocks.IdentityDeserializer{}
+	fIDDs.DeserializeIdentityReturns(timeBoundIdentity, nil)
+
+	identities := SignatureSetToValidIdentities([]*protoutil.SignedData{
+		{
+			Data:           []byte("data"),
+			Identity:       []byte("identity"),
+			Signature:      []byte("signature"),
+			ValidationTime: &validationTime,
+		},
+	}, fIDDs)
+
+	require.Len(t, identities, 1)
+	require.Equal(t, validationTime, *timeBoundIdentity.validationTime)
 }
 
 func TestSignatureSetToValidIdentitiesDeserializeErr(t *testing.T) {

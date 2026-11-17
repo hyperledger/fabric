@@ -97,6 +97,7 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup, bccsp bccsp.BCCSP) (*Channel
 	}
 
 	mspConfigHandler := NewMSPConfigHandler(channelCapabilities.MSPVersion(), bccsp)
+	mspConfigHandler.hybridRequired = channelCapabilities.PactwayHybridCertificateV1()
 
 	var err error
 	for groupName, group := range channelGroup.GetGroups() {
@@ -170,8 +171,26 @@ func (cc *ChannelConfig) Capabilities() ChannelCapabilities {
 	return capabilities.NewChannelProvider(cc.protos.Capabilities.GetCapabilities())
 }
 
+func (cc *ChannelConfig) hasPactwayHybridCertificateV1() bool {
+	return cc != nil &&
+		cc.protos != nil &&
+		cc.protos.Capabilities != nil &&
+		cc.Capabilities().PactwayHybridCertificateV1()
+}
+
+func hasPactwayHybridCertificateV1(channel Channel) bool {
+	if channelConfig, ok := channel.(*ChannelConfig); ok {
+		return channelConfig.hasPactwayHybridCertificateV1()
+	}
+	return channel != nil && channel.Capabilities().PactwayHybridCertificateV1()
+}
+
 // Validate inspects the generated configuration protos and ensures that the values are correct
 func (cc *ChannelConfig) Validate(channelCapabilities ChannelCapabilities) error {
+	if channelCapabilities.PactwayHybridCertificateV1() && channelCapabilities.MSPVersion() < msp.MSPv1_4_3 {
+		return errors.New("Pactway Hybrid Certificate v1 requires channel capability V1_4_3, V2_0, or V3_0 for orderer principals")
+	}
+
 	for _, validator := range []func() error{
 		cc.validateHashingAlgorithm,
 		cc.validateBlockDataHashingStructure,

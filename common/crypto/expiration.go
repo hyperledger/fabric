@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	oqs "github.com/hyperledger/fabric/pq-crypto"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
@@ -26,6 +27,24 @@ func ExpiresAt(identityBytes []byte) time.Time {
 		return time.Time{}
 	}
 	return certExpirationTime(sId.GetIdBytes())
+}
+
+// IsHybridIdentity reports whether the serialized X.509 identity contains an
+// extension from a registered Pactway hybrid-certificate namespace.
+func IsHybridIdentity(identityBytes []byte) bool {
+	sId := &msp.SerializedIdentity{}
+	if err := proto.Unmarshal(identityBytes, sId); err != nil {
+		return false
+	}
+	block, _ := pem.Decode(sId.GetIdBytes())
+	if block == nil {
+		return false
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return false
+	}
+	return oqs.HasRegisteredHybridCertificateExtensions(cert.Extensions)
 }
 
 func certExpirationTime(pemBytes []byte) time.Time {

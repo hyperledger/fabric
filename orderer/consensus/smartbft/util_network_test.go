@@ -33,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
+	multichannelmocks "github.com/hyperledger/fabric/orderer/common/multichannel/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	smartBFTMocks "github.com/hyperledger/fabric/orderer/consensus/smartbft/mocks"
 	"github.com/hyperledger/fabric/protoutil"
@@ -515,6 +516,9 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 	// the number of blocks is determined by the number of blocks in the node's ledger
 	supportMock := smartBFTMocks.NewConsenterSupport(t)
 	supportMock.EXPECT().ChannelID().Return(channelId)
+	channelConfig := &multichannelmocks.ChannelConfig{}
+	channelConfig.CapabilitiesReturns(&multichannelmocks.ChannelCapabilities{})
+	supportMock.EXPECT().ChannelConfig().Return(channelConfig).Maybe()
 	supportMock.EXPECT().Height().Return(uint64(node.State.GetLedgerHeight()))
 	supportMock.EXPECT().Block(mock.AnythingOfType("uint64")).RunAndReturn(
 		func(blockIdx uint64) *cb.Block {

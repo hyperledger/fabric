@@ -7,11 +7,22 @@ SPDX-License-Identifier: Apache-2.0
 package discovery
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/pem"
 	"errors"
+	"math/big"
 	"sync"
 	"testing"
+	"time"
 
+	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric/common/crypto"
+	oqs "github.com/hyperledger/fabric/pq-crypto"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -31,6 +42,70 @@ func TestSignedDataToKey(t *testing.T) {
 	require.NoError(t, err1)
 	require.NoError(t, err2)
 	require.NotEqual(t, key1, key2)
+}
+
+func TestSignedDataToKeyIncludesValidationTime(t *testing.T) {
+	firstTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	secondTime := firstTime.Add(time.Second)
+	data := protoutil.SignedData{
+		Data:           []byte{1, 2, 3},
+		Identity:       []byte{4, 5, 6},
+		Signature:      []byte{7, 8, 9},
+		ValidationTime: &firstTime,
+	}
+	firstKey, err := signedDataToKey(data)
+	require.NoError(t, err)
+
+	data.ValidationTime = &secondTime
+	secondKey, err := signedDataToKey(data)
+	require.NoError(t, err)
+	require.NotEqual(t, firstKey, secondKey)
+}
+
+func TestHybridIdentityAuthorizationIsNotCached(t *testing.T) {
+	profile, err := oqs.HybridCertificateProfileByName(oqs.TemporaryHybridProfileV1, oqs.ProfileUseTest)
+	require.NoError(t, err)
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "hybrid discovery test"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+		ExtraExtensions: []pkix.Extension{{
+			Id: profile.ProfileKeyOID(), Value: []byte{0x30, 0x00},
+		}},
+	}
+	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	require.NoError(t, err)
+	identity := protoutil.MarshalOrPanic(&mspprotos.SerializedIdentity{
+		Mspid: "HybridMSP",
+		IdBytes: pem.EncodeToMemory(&pem.Block{
+			Type: "CERTIFICATE", Bytes: certDER,
+		}),
+	})
+	require.True(t, crypto.IsHybridIdentity(identity))
+	sd := protoutil.SignedData{Data: []byte("request"), Identity: identity, Signature: []byte("signature")}
+
+	for _, testCase := range []struct {
+		name        string
+		firstResult error
+		nextResult  error
+	}{
+		{name: "authorization expires", nextResult: errors.New("certificate expired")},
+		{name: "authorization becomes valid", firstResult: errors.New("certificate not yet valid")},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			support := &mockAcSupport{}
+			support.On("EligibleForService", "channel", sd).Return(testCase.firstResult).Once()
+			support.On("EligibleForService", "channel", sd).Return(testCase.nextResult).Once()
+			cache := newAuthCache(support, defaultConfig())
+			require.Equal(t, testCase.firstResult, cache.EligibleForService("channel", sd))
+			require.Equal(t, testCase.nextResult, cache.EligibleForService("channel", sd))
+			support.AssertNumberOfCalls(t, "EligibleForService", 2)
+			support.AssertNotCalled(t, "ConfigSequence", mock.Anything)
+		})
+	}
 }
 
 type mockAcSupport struct {

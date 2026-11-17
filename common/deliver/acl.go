@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -36,6 +37,7 @@ func NewSessionAC(chain ConfigSequencer, env *common.Envelope, policyChecker Pol
 		sequencer:      chain,
 		policyChecker:  policyChecker,
 		sessionEndTime: expiresAt(signedData[0].Identity),
+		hybridIdentity: crypto.IsHybridIdentity(signedData[0].Identity),
 	}, nil
 }
 
@@ -49,18 +51,20 @@ type SessionAccessControl struct {
 	envelope           *common.Envelope
 	lastConfigSequence uint64
 	sessionEndTime     time.Time
+	hybridIdentity     bool
 	usedAtLeastOnce    bool
 }
 
 // Evaluate uses the PolicyChecker to determine if a request should be allowed.
-// The decision is cached until the identity expires or the chain configuration
-// changes.
+// Classical decisions are cached until the leaf identity expires or the chain
+// configuration changes. Hybrid decisions are rechecked for every block so
+// validity changes in any certificate in the chain take effect during a stream.
 func (ac *SessionAccessControl) Evaluate() error {
 	if !ac.sessionEndTime.IsZero() && time.Now().After(ac.sessionEndTime) {
 		return errors.Errorf("deliver client identity expired %v before", time.Since(ac.sessionEndTime))
 	}
 
-	policyCheckNeeded := !ac.usedAtLeastOnce
+	policyCheckNeeded := !ac.usedAtLeastOnce || ac.hybridIdentity
 
 	if currentConfigSequence := ac.sequencer.Sequence(); currentConfigSequence > ac.lastConfigSequence {
 		ac.lastConfigSequence = currentConfigSequence

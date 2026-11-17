@@ -11,6 +11,7 @@ import (
 	errors2 "errors"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -150,7 +151,7 @@ func (vscc *Validator) Validate(
 		return policyErr(err)
 	}
 
-	signatureSet, err := vscc.deduplicateIdentity(cap)
+	signatureSet, err := vscc.deduplicateIdentity(cap, protoutil.ChannelHeaderValidationTime(chdr))
 	if err != nil {
 		return policyErr(err)
 	}
@@ -186,12 +187,17 @@ func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.En
 	if err != nil {
 		return policyErr(err)
 	}
+	chdr, err := protoutil.UnmarshalChannelHeader(payl.GetHeader().GetChannelHeader())
+	if err != nil {
+		return policyErr(err)
+	}
 
 	// construct signed data we can evaluate the instantiation policy against
 	sd := []*protoutil.SignedData{{
-		Data:      env.GetPayload(),
-		Identity:  shdr.GetCreator(),
-		Signature: env.GetSignature(),
+		Data:           env.GetPayload(),
+		Identity:       shdr.GetCreator(),
+		Signature:      env.GetSignature(),
+		ValidationTime: protoutil.ChannelHeaderValidationTime(chdr),
 	}}
 	err = vscc.policyEvaluator.Evaluate(instantiationPolicy, sd)
 	if err != nil {
@@ -772,7 +778,7 @@ func (vscc *Validator) getInstantiatedCC(chid, ccid string) (cd *ccprovider.Chai
 	return
 }
 
-func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*protoutil.SignedData, error) {
+func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload, validationTime *time.Time) ([]*protoutil.SignedData, error) {
 	// this is the first part of the signed message
 	prespBytes := cap.GetAction().GetProposalResponsePayload()
 
@@ -802,7 +808,8 @@ func (vscc *Validator) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*p
 			// set the identity that signs the message: it's the endorser
 			Identity: endorsement.GetEndorser(),
 			// set the signature
-			Signature: endorsement.GetSignature(),
+			Signature:      endorsement.GetSignature(),
+			ValidationTime: validationTime,
 		})
 		signatureMap[identity] = struct{}{}
 	}

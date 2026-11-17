@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	signeridentity "github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/protobuf/proto"
@@ -51,6 +52,8 @@ type identity struct {
 
 	// reference to the MSP that "owns" this identity
 	msp *bccspmsp
+
+	validationTime *time.Time
 
 	// validationMutex is used to synchronise memory operation
 	// over validated and validationErr
@@ -122,6 +125,33 @@ func (id *identity) Validate() error {
 	return id.msp.Validate(id)
 }
 
+func (id *identity) WithValidationTime(validationTime *time.Time) (Identity, error) {
+	if id.qPk == nil && !id.msp.hybridRequired {
+		return id, nil
+	}
+
+	selectedTime := time.Now()
+	if validationTime != nil {
+		selectedTime = *validationTime
+	}
+	if selectedTime.IsZero() {
+		return nil, errors.New("hybrid identity validation requires a valid transaction timestamp")
+	}
+
+	return &identity{
+		id:             id.id,
+		cert:           id.cert,
+		pk:             id.pk,
+		qPk:            id.qPk,
+		msp:            id.msp,
+		validationTime: &selectedTime,
+	}, nil
+}
+
+func (id *identity) RequiresTimeBoundValidation() bool {
+	return id.qPk != nil || id.msp.hybridRequired
+}
+
 type OUIDs []*OUIdentifier
 
 func (o OUIDs) String() string {
@@ -181,7 +211,16 @@ func NewSerializedIdentity(mspID string, certPEM []byte) ([]byte, error) {
 // to determine whether this identity produced the
 // signature; it returns nil if so or an error otherwise
 func (id *identity) Verify(msg []byte, sig []byte) error {
-	// mspIdentityLogger.Infof("Verifying signature")
+	if id.msp.hybridRequired || id.validationTime != nil {
+		if err := id.Validate(); err != nil {
+			return errors.WithMessage(err, "validating hybrid signing identity")
+		}
+	}
+	if id.msp.hybridRequired {
+		if id.qPk == nil {
+			return errors.New("PQ-required MSP identity has no ML-DSA-65 public key")
+		}
+	}
 
 	digestOrMsg := msg
 
@@ -326,7 +365,14 @@ func newSigningIdentity(cert *x509.Certificate, pk bccsp.Key, qPk bccsp.Key, sig
 
 // Sign produces a signature over msg, signed by this instance
 func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
-	// mspIdentityLogger.Infof("Signing message")
+	if id.msp.hybridRequired || id.qPk != nil {
+		if err := id.Validate(); err != nil {
+			return nil, errors.WithMessage(err, "validating local hybrid signing identity")
+		}
+		if id.msp.hybridRequired && id.qPk == nil {
+			return nil, errors.New("PQ-required MSP signing identity has no ML-DSA-65 private key")
+		}
+	}
 
 	digestOrMsg := msg
 
@@ -388,6 +434,54 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 
 	// Sign digest for ECDSA or msg for ED25519
 	return id.signer.Sign(rand.Reader, digestOrMsg, nil)
+}
+
+// ValidateHybrid reports whether this signing identity can satisfy a hybrid channel requirement.
+func (id *signingidentity) ValidateHybrid() error {
+	return id.msp.ValidateHybridSigner()
+}
+
+// ValidateHybridChannelSigner checks a node signer against its channel organization and role.
+// The channel MSP must enforce the hybrid certificate and signature policy.
+func ValidateHybridChannelSigner(manager MSPManager, signer signeridentity.SignerSerializer, organizations map[string]struct{}, role msp.MSPRole_MSPRoleType) error {
+	if manager == nil || signer == nil {
+		return errors.New("PQ-required channel needs a channel MSP and local signing identity")
+	}
+	if role != msp.MSPRole_PEER && role != msp.MSPRole_ORDERER {
+		return errors.New("PQ-required channel needs a peer or orderer signing role")
+	}
+	serialized, err := signer.Serialize()
+	if err != nil {
+		return errors.WithMessage(err, "serializing local signing identity")
+	}
+	channelIdentity, err := manager.DeserializeIdentity(serialized)
+	if err != nil {
+		return errors.WithMessage(err, "deserializing local signing identity with channel MSP")
+	}
+	if err := channelIdentity.Validate(); err != nil {
+		return errors.WithMessage(err, "validating local signing identity with channel MSP")
+	}
+	mspID := channelIdentity.GetMSPIdentifier()
+	if _, ok := organizations[mspID]; !ok {
+		return errors.Errorf("local signing identity MSP %s is not a channel %s organization", mspID, role)
+	}
+	roleBytes, err := proto.Marshal(&msp.MSPRole{MspIdentifier: mspID, Role: role})
+	if err != nil {
+		return errors.WithMessage(err, "marshaling local signing identity role")
+	}
+	principal := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_ROLE, Principal: roleBytes}
+	if err := channelIdentity.SatisfiesPrincipal(principal); err != nil {
+		return errors.WithMessagef(err, "local signing identity does not satisfy channel %s role", role)
+	}
+	challenge := []byte("Pactway-Hybrid-Channel-Signer-v1")
+	signature, err := signer.Sign(challenge)
+	if err != nil {
+		return errors.WithMessage(err, "signing local identity challenge")
+	}
+	if err := channelIdentity.Verify(challenge, signature); err != nil {
+		return errors.WithMessage(err, "verifying local identity challenge with channel MSP")
+	}
+	return nil
 }
 
 // GetPublicVersion returns the public version of this identity,

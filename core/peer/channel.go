@@ -7,10 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package peer
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
@@ -18,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 )
 
 // Channel manages objects and configuration associated with a Channel.
@@ -65,6 +68,13 @@ func (c *Channel) Apply(configtx *common.ConfigEnvelope) error {
 
 	c.bundleSource.Update(bundle)
 	return nil
+}
+
+func (c *Channel) ValidateConfigActivation() {
+	res := c.Resources()
+	if err := validateHybridLocalSigner(res); err != nil {
+		peerLogger.Panicf("[channel %s] incompatible local signing identity after config block commit: %s", res.ConfigtxValidator().ChannelID(), err)
+	}
 }
 
 // bundleUpdate is called by the bundleSource when the channel configuration
@@ -165,4 +175,19 @@ func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
 	if err := res.ChannelConfig().Capabilities().Supported(); err != nil {
 		peerLogger.Panicf("[channel %s] incompatible: %s", res.ConfigtxValidator().ChannelID(), err)
 	}
+}
+
+func validateHybridLocalSigner(res channelconfig.Resources) error {
+	if !res.ChannelConfig().Capabilities().PactwayHybridCertificateV1() {
+		return nil
+	}
+	ac, ok := res.ApplicationConfig()
+	if !ok {
+		return errors.New("PQ-required channel does not have application config")
+	}
+	organizations := make(map[string]struct{})
+	for _, org := range ac.Organizations() {
+		organizations[org.MSPID()] = struct{}{}
+	}
+	return mspmgmt.ValidateHybridLocalMSP(res.MSPManager(), organizations, mspprotos.MSPRole_PEER)
 }

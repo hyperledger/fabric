@@ -48,12 +48,13 @@ type PeerLedgerSupport interface {
 // chain information
 type LedgerCommitter struct {
 	PeerLedgerSupport
+	postCommit func(*common.Block)
 }
 
 // NewLedgerCommitter is a factory function to create an instance of the committer
 // which passes incoming blocks via validation and commits them into the ledger.
-func NewLedgerCommitter(ledger PeerLedgerSupport) *LedgerCommitter {
-	return &LedgerCommitter{PeerLedgerSupport: ledger}
+func NewLedgerCommitter(ledger PeerLedgerSupport, postCommit func(*common.Block)) *LedgerCommitter {
+	return &LedgerCommitter{PeerLedgerSupport: ledger, postCommit: postCommit}
 }
 
 // CommitLegacy commits blocks atomically with private data
@@ -61,6 +62,9 @@ func (lc *LedgerCommitter) CommitLegacy(blockAndPvtData *ledger.BlockAndPvtData,
 	// Committing new block
 	if err := lc.PeerLedgerSupport.CommitLegacy(blockAndPvtData, commitOpts); err != nil {
 		return err
+	}
+	if lc.postCommit != nil && blockAndPvtData != nil {
+		lc.postCommit(blockAndPvtData.Block)
 	}
 
 	return nil

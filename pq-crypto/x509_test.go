@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/pem"
 	"io"
 	"testing"
@@ -75,6 +76,28 @@ func TestParsePKIXPublicKeySuccess(t *testing.T) {
 			require.Equal(t, string(oqsKey.Sig.Algorithm), string(pk.Sig.Algorithm))
 		})
 	}
+}
+
+func TestParsePKIXPublicKeyRejectsExtraSequenceFields(t *testing.T) {
+	publicKey, _, err := KeyPair(MLDSA65ProfileV1)
+	require.NoError(t, err)
+	derBytes, err := MarshalPKIXPublicKey(&publicKey)
+	require.NoError(t, err)
+
+	var sequence asn1.RawValue
+	rest, err := asn1.Unmarshal(derBytes, &sequence)
+	require.NoError(t, err)
+	require.Empty(t, rest)
+	nonCanonicalDER, err := asn1.Marshal(asn1.RawValue{
+		Class:      asn1.ClassUniversal,
+		Tag:        asn1.TagSequence,
+		IsCompound: true,
+		Bytes:      append(sequence.Bytes, 0x05, 0x00),
+	})
+	require.NoError(t, err)
+
+	_, err = ParsePKIXPublicKey(nonCanonicalDER)
+	require.ErrorContains(t, err, "extra fields in SubjectPublicKeyInfo sequence")
 }
 
 var pemRSAPublicKey = `-----BEGIN PUBLIC KEY-----

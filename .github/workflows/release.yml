@@ -19,8 +19,20 @@ permissions:
   contents: read
 
 jobs:
+  check-hybrid-profile-release:
+    name: Reject development-only hybrid profiles
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Fabric Code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Check hybrid profile registry
+        run: bash ci/scripts/check_release_hybrid_profile.sh
+
   build-binaries:
     name: Build Fabric Binaries
+    needs: check-hybrid-profile-release
     strategy:
       matrix:
         include:
@@ -67,6 +79,7 @@ jobs:
   # build native images using a different runner for each architecture (faster and more reliable than using qemu to build multi-architecture images on ubuntu-24.04)
   build-and-push-native-docker-images:
     name: Build and Push native images
+    needs: check-hybrid-profile-release
     runs-on: ${{ matrix.runner }}
 
     permissions:

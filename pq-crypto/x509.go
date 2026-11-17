@@ -35,25 +35,67 @@ func MarshalPKIXPublicKey(pub any) ([]byte, error) {
 }
 
 func ParsePKIXPublicKey(derBytes []byte) (any, error) {
-	var info struct {
-		Algorithm pkix.AlgorithmIdentifier
-		PublicKey asn1.BitString
-	}
-	rest, err := asn1.Unmarshal(derBytes, &info)
+	var sequence asn1.RawValue
+	rest, err := asn1.Unmarshal(derBytes, &sequence)
 	if err != nil {
 		return nil, err
 	}
-	if len(rest) != 0 {
-		return nil, errors.New("x509: trailing data after ASN.1 of public key")
+	if len(rest) != 0 || sequence.Class != asn1.ClassUniversal || sequence.Tag != asn1.TagSequence || !sequence.IsCompound {
+		return nil, errors.New("x509: malformed SubjectPublicKeyInfo sequence")
 	}
-	if !info.Algorithm.Algorithm.Equal(oidMLDSA65) {
+
+	sequenceDER := sequence.Bytes
+	var algorithmSequence asn1.RawValue
+	sequenceDER, err = asn1.Unmarshal(sequenceDER, &algorithmSequence)
+	if err != nil {
+		return nil, errors.Wrap(err, "x509: malformed SubjectPublicKeyInfo algorithm")
+	}
+	if algorithmSequence.Class != asn1.ClassUniversal || algorithmSequence.Tag != asn1.TagSequence || !algorithmSequence.IsCompound {
+		return nil, errors.New("x509: malformed SubjectPublicKeyInfo algorithm sequence")
+	}
+	algorithmDER := algorithmSequence.Bytes
+	if len(algorithmDER) == 0 {
+		return nil, errors.New("x509: empty SubjectPublicKeyInfo algorithm")
+	}
+	var algorithmOID asn1.ObjectIdentifier
+	algorithmDER, err = asn1.Unmarshal(algorithmDER, &algorithmOID)
+	if err != nil {
+		return nil, errors.Wrap(err, "x509: malformed SubjectPublicKeyInfo algorithm OID")
+	}
+	if !algorithmOID.Equal(oidMLDSA65) {
 		return nil, errors.New("unknown OQS public key algorithm; only ML-DSA-65 is supported")
 	}
-	if len(info.Algorithm.Parameters.FullBytes) != 0 {
+	if len(algorithmDER) != 0 {
 		return nil, errors.New("ML-DSA-65 AlgorithmIdentifier parameters must be absent")
+	}
+	info := struct {
+		Algorithm pkix.AlgorithmIdentifier
+		PublicKey asn1.BitString
+	}{
+		Algorithm: pkix.AlgorithmIdentifier{Algorithm: algorithmOID},
+	}
+	sequenceDER, err = asn1.Unmarshal(sequenceDER, &info.PublicKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "x509: malformed SubjectPublicKeyInfo public key")
+	}
+	if len(sequenceDER) != 0 {
+		return nil, errors.New("x509: extra fields in SubjectPublicKeyInfo sequence")
 	}
 	if info.PublicKey.BitLength != 8*len(info.PublicKey.Bytes) {
 		return nil, errors.New("ML-DSA-65 public key BIT STRING must be byte-aligned")
+	}
+	canonicalDER, err := asn1.Marshal(struct {
+		Algorithm pkix.AlgorithmIdentifier
+		PublicKey asn1.BitString
+	}{
+		Algorithm: info.Algorithm,
+		PublicKey: info.PublicKey,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "x509: failed reconstructing SubjectPublicKeyInfo")
+	}
+	if !bytes.Equal(canonicalDER, derBytes) {
+		return nil, errors.New("x509: non-canonical SubjectPublicKeyInfo DER")
 	}
 	mlDSAKey, err := mldsa.NewPublicKey(mldsa.MLDSA65(), info.PublicKey.RightAlign())
 	if err != nil {
@@ -267,7 +309,22 @@ func parseAltSignatureValueExtension(extensions []pkix.Extension) ([]byte, error
 	return sig, nil
 }
 
+func HasLegacyHybridExtensions(extensions []pkix.Extension) bool {
+	for _, extension := range extensions {
+		if extension.Id.Equal(oidSubjectAltPublicKeyInfo) ||
+			extension.Id.Equal(oidAltSignatureAlgorithm) ||
+			extension.Id.Equal(oidAltSignatureValue) {
+			return true
+		}
+	}
+	return false
+}
+
 func Validate(validationChain []*x509.Certificate) error {
+	if len(validationChain) == 0 {
+		return errors.New("post-quantum validation chain is empty")
+	}
+
 	// Check the validation chain for post-quantum validation.
 	// If the rootCA has no post-quantum key material, return immediately: no additional validation needed.
 	rootCert := validationChain[len(validationChain)-1]
@@ -283,8 +340,19 @@ func Validate(validationChain []*x509.Certificate) error {
 	// with a valid post-quantum signature from the parent cert matching the cert's key material
 	// The leaf cert IS permitted to have classical-only key material, but all other certs must have
 	// a SubjectAltPublicKeyInfo extension.
-	parentPk := rootPk
 	for i, cert := range slices.Backward(validationChain) {
+		issuerIndex := i + 1
+		if issuerIndex == len(validationChain) {
+			issuerIndex = i
+		}
+		issuerPk, err := ParseSubjectAltPublicKeyInfoExtension(validationChain[issuerIndex].Extensions)
+		if err != nil {
+			return err
+		}
+		if issuerPk == nil {
+			return errors.Errorf("Found no post-quantum key in issuer cert at index %d on a quantum-safe validation chain", issuerIndex)
+		}
+
 		pk, err := ParseSubjectAltPublicKeyInfoExtension(cert.Extensions)
 		if err != nil {
 			return err
@@ -308,7 +376,7 @@ func Validate(validationChain []*x509.Certificate) error {
 		if err != nil {
 			return err
 		}
-		isValid, err := Verify(*parentPk, sig, km)
+		isValid, err := Verify(*issuerPk, sig, km)
 		if err != nil {
 			return err
 		}

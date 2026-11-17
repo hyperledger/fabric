@@ -7,20 +7,36 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft_test
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/asn1"
+	"encoding/binary"
 	"encoding/hex"
+	"encoding/pem"
 	"fmt"
+	"math/big"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/SmartBFT/pkg/types"
 	"github.com/hyperledger/SmartBFT/smartbftprotos"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
+	fabricmsp "github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft/mocks"
+	oqs "github.com/hyperledger/fabric/pq-crypto"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
@@ -130,7 +146,38 @@ func TestVerifyConsenterSig(t *testing.T) {
 		proposalMutator             func(proposal types.Proposal) types.Proposal
 		ordererBlockMetadataMutator func(metadata *cb.OrdererBlockMetadata)
 		expectedErr                 string
+		expectedValidationTime      bool
 	}{
+		{
+			description:            "timestamp is passed to the consenter verifier",
+			expectedErr:            "bad signature",
+			expectedValidationTime: true,
+			lastBlock:              lastBlock,
+			lastConfigBlockNum:     lastConfigBlock.GetHeader().GetNumber(),
+			id2Identity:            map[uint64][]byte{3: {0, 2, 4, 6}},
+		},
+		{
+			description:        "malformed timestamp nonce is rejected",
+			expectedErr:        "malformed SmartBFT consenter signature timestamp: malformed Pactway block signature nonce",
+			lastBlock:          lastBlock,
+			lastConfigBlockNum: lastConfigBlock.GetHeader().GetNumber(),
+			id2Identity:        map[uint64][]byte{3: {0, 2, 4, 6}},
+			signatureMutator: func(signature types.Signature) types.Signature {
+				return signatureWithIdentifierNonce(signature, []byte("PWBTSIG1"))
+			},
+		},
+		{
+			description:        "invalid timestamp nanoseconds are rejected",
+			expectedErr:        "malformed SmartBFT consenter signature timestamp: invalid nanoseconds in Pactway block signature nonce: 1000000000",
+			lastBlock:          lastBlock,
+			lastConfigBlockNum: lastConfigBlock.GetHeader().GetNumber(),
+			id2Identity:        map[uint64][]byte{3: {0, 2, 4, 6}},
+			signatureMutator: func(signature types.Signature) types.Signature {
+				nonce := protoutil.BlockSignatureNonceWithTimestamp([]byte("nonce"), time.Now())
+				binary.BigEndian.PutUint32(nonce[16:20], 1_000_000_000)
+				return signatureWithIdentifierNonce(signature, nonce)
+			},
+		},
 		{
 			description:        "No consenter in mapping",
 			expectedErr:        "node with id of 3 doesn't exist",
@@ -379,6 +426,7 @@ func TestVerifyConsenterSig(t *testing.T) {
 				AccessController:      ac,
 				ConsenterVerifier:     cv,
 				ReqInspector:          reqInspector,
+				ValidateAdmission:     func(*cb.Envelope) error { return nil },
 			}
 
 			if testCase.proposalMutator != nil {
@@ -389,6 +437,251 @@ func TestVerifyConsenterSig(t *testing.T) {
 
 			require.Error(t, err)
 			require.Equal(t, testCase.expectedErr, strings.ReplaceAll(err.Error(), "\u00a0", " "))
+			_, liveErr := v.VerifyLiveConsenterSig(signature, proposal)
+			require.Error(t, liveErr)
+			require.Equal(t, testCase.expectedErr, strings.ReplaceAll(liveErr.Error(), "\u00a0", " "))
+			if testCase.expectedValidationTime {
+				signedData := cv.Calls[len(cv.Calls)-1].Arguments.Get(0).([]*protoutil.SignedData)
+				require.Len(t, signedData, 1)
+				require.NotNil(t, signedData[0].ValidationTime)
+				require.WithinDuration(t, time.Now(), *signedData[0].ValidationTime, time.Minute)
+			}
+		})
+	}
+}
+
+func signatureWithIdentifierNonce(signature types.Signature, nonce []byte) types.Signature {
+	sig := &smartbft.Signature{}
+	if err := sig.Unmarshal(signature.Msg); err != nil {
+		panic(err)
+	}
+	identifierHeader, err := protoutil.UnmarshalIdentifierHeader(sig.IdentifierHeader)
+	if err != nil {
+		panic(err)
+	}
+	identifierHeader.Nonce = nonce
+	sig.IdentifierHeader = protoutil.MarshalOrPanic(identifierHeader)
+	signature.Msg = sig.Marshal()
+	return signature
+}
+
+func TestVerifyLiveConsenterSig(t *testing.T) {
+	lastBlock := makeNonConfigBlock(19, 10)
+	lastConfigBlock := makeConfigBlock(10)
+	runtimeConfig := &atomic.Value{}
+	runtimeConfig.Store(smartbft.RuntimeConfig{
+		ID2Identities:   map[uint64][]byte{3: []byte("consenter")},
+		LastBlock:       lastBlock,
+		LastConfigBlock: lastConfigBlock,
+	})
+	assembler := &smartbft.Assembler{
+		VerificationSeq: func() uint64 { return 12 },
+		Logger:          flogging.MustGetLogger("test"),
+		RuntimeConfig:   runtimeConfig,
+	}
+	proposal := assembler.AssembleProposal(protoutil.MarshalOrPanic(&smartbftprotos.ViewMetadata{
+		LatestSequence: 1, ViewId: 2,
+	}), [][]byte{nonConfigTx})
+	ss := &mocks.SignerSerializer{}
+	ss.On("Sign", mock.Anything).Return([]byte("signature"), nil)
+	signer := &smartbft.Signer{
+		LastConfigBlockNum: func(*cb.Block) uint64 { return 10 },
+		SignerSerializer:   ss,
+		Logger:             flogging.MustGetLogger("test"),
+		ID:                 3,
+	}
+	signingTime := time.Now().Add(-2 * time.Hour)
+	signature := signatureWithIdentifierNonce(*signer.SignProposal(proposal, nil),
+		protoutil.BlockSignatureNonceWithTimestamp([]byte("nonce"), signingTime))
+
+	for _, tc := range []struct {
+		name          string
+		historicalErr error
+		currentErr    error
+	}{
+		{name: "valid at both times"},
+		{name: "backdated vote from expired consenter", currentErr: errors.New("certificate has expired")},
+		{name: "timestamp outside certificate validity", historicalErr: errors.New("invalid signing time")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cv := &mocks.ConsenterVerifier{}
+			historical := mock.MatchedBy(func(data []*protoutil.SignedData) bool {
+				return len(data) == 1 && data[0].ValidationTime != nil && data[0].ValidationTime.Equal(signingTime)
+			})
+			current := mock.MatchedBy(func(data []*protoutil.SignedData) bool {
+				return len(data) == 1 && data[0].ValidationTime == nil
+			})
+			cv.On("Evaluate", historical).Return(tc.historicalErr).Twice()
+			if tc.historicalErr == nil {
+				cv.On("Evaluate", current).Return(tc.currentErr).Once()
+			}
+			verifier := &smartbft.Verifier{
+				RuntimeConfig: runtimeConfig, Logger: flogging.MustGetLogger("test"), ConsenterVerifier: cv,
+			}
+			_, err := verifier.VerifyConsenterSig(signature, proposal)
+			require.Equal(t, tc.historicalErr, err, "historical verification must not use the current clock")
+			_, err = verifier.VerifyLiveConsenterSig(signature, proposal)
+			expectedErr := tc.historicalErr
+			if expectedErr == nil {
+				expectedErr = tc.currentErr
+			}
+			require.Equal(t, expectedErr, err)
+			cv.AssertExpectations(t)
+		})
+	}
+}
+
+type consenterPolicyEvaluator func([]*protoutil.SignedData) error
+
+func (evaluate consenterPolicyEvaluator) Evaluate(data []*protoutil.SignedData) error {
+	return evaluate(data)
+}
+
+func TestVerifyLiveConsenterSigWithHybridMSP(t *testing.T) {
+	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
+	profile, err := oqs.HybridCertificateProfileByName(oqs.TemporaryHybridProfileV1, oqs.ProfileUseTest)
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Second)
+	rootKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	rootPQ, rootPQSecret, err := oqs.KeyPair(oqs.MLDSA65ProfileV1)
+	require.NoError(t, err)
+	rootTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "consenter expiry root"},
+		NotBefore: now.Add(-24 * time.Hour), NotAfter: now.Add(24 * time.Hour),
+		IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
+		SubjectKeyId: []byte{1, 2, 3}, PublicKey: &rootKey.PublicKey,
+	}
+	rootDER, err := oqs.CreateHybridCertificate(
+		rand.Reader, profile, rootTemplate, rootTemplate, &rootKey.PublicKey, rootKey, rootPQ, rootPQSecret,
+	)
+	require.NoError(t, err)
+	root, err := x509.ParseCertificate(rootDER)
+	require.NoError(t, err)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	require.NoError(t, err)
+	opts := &fabricmsp.BCCSPNewOpts{}
+	opts.Version = fabricmsp.MSPv1_4_3
+	instance, err := fabricmsp.New(opts, cryptoProvider)
+	require.NoError(t, err)
+	requiredMSP, ok := instance.(interface{ SetHybridRequired(bool) error })
+	require.True(t, ok)
+	require.NoError(t, requiredMSP.SetHybridRequired(true))
+	config := &msp.FabricMSPConfig{
+		Name: "ConsenterMSP", RootCerts: [][]byte{pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rootDER})},
+		FabricNodeOus: &msp.FabricNodeOUs{
+			Enable:              true,
+			ClientOuIdentifier:  &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: "client"},
+			PeerOuIdentifier:    &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: "peer"},
+			AdminOuIdentifier:   &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: "admin"},
+			OrdererOuIdentifier: &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: "orderer"},
+		},
+	}
+	require.NoError(t, instance.Setup(&msp.MSPConfig{
+		Type: int32(fabricmsp.FABRIC), Config: protoutil.MarshalOrPanic(config),
+	}))
+	policy, _, err := cauthdsl.NewPolicyProvider(instance).NewPolicy(protoutil.MarshalOrPanic(
+		policydsl.SignedByNOutOfGivenRole(1, msp.MSPRole_ORDERER, []string{"ConsenterMSP"}),
+	))
+	require.NoError(t, err)
+
+	for _, expired := range []bool{false, true} {
+		t.Run(fmt.Sprintf("expired=%t", expired), func(t *testing.T) {
+			leafKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			require.NoError(t, err)
+			leafKeyDER, err := x509.MarshalECPrivateKey(leafKey)
+			require.NoError(t, err)
+			classicalKey, err := cryptoProvider.KeyImport(leafKeyDER, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: true})
+			require.NoError(t, err)
+			pqKey, err := cryptoProvider.KeyGen(&bccsp.OQSKeyGenOpts{
+				Temporary: true, SignatureScheme: string(oqs.MLDSA65ProfileV1),
+			})
+			require.NoError(t, err)
+			pqPublic, err := pqKey.PublicKey()
+			require.NoError(t, err)
+			pqDER, err := pqPublic.Bytes()
+			require.NoError(t, err)
+			parsedPQ, err := oqs.ParsePKIXPublicKey(pqDER)
+			require.NoError(t, err)
+			leafPQ, ok := parsedPQ.(*oqs.PublicKey)
+			require.True(t, ok)
+			expiry := now.Add(time.Hour)
+			if expired {
+				expiry = now.Add(-time.Hour)
+			}
+			leafTemplate := &x509.Certificate{
+				SerialNumber: big.NewInt(expiry.Unix()),
+				Subject:      pkix.Name{CommonName: "hybrid consenter", OrganizationalUnit: []string{"orderer"}},
+				NotBefore:    now.Add(-3 * time.Hour), NotAfter: expiry,
+				BasicConstraintsValid: true, KeyUsage: x509.KeyUsageDigitalSignature, AuthorityKeyId: root.SubjectKeyId,
+			}
+			leafDER, err := oqs.CreateHybridCertificate(
+				rand.Reader, profile, leafTemplate, root, &leafKey.PublicKey, rootKey, *leafPQ, rootPQSecret,
+			)
+			require.NoError(t, err)
+			identity := protoutil.MarshalOrPanic(&msp.SerializedIdentity{
+				Mspid: "ConsenterMSP", IdBytes: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: leafDER}),
+			})
+			runtimeConfig := &atomic.Value{}
+			runtimeConfig.Store(smartbft.RuntimeConfig{
+				ID2Identities: map[uint64][]byte{3: identity},
+				LastBlock:     makeNonConfigBlock(19, 10), LastConfigBlock: makeConfigBlock(10),
+			})
+			logger := flogging.MustGetLogger("test")
+			assembler := &smartbft.Assembler{
+				VerificationSeq: func() uint64 { return 12 }, Logger: logger, RuntimeConfig: runtimeConfig,
+			}
+			proposal := assembler.AssembleProposal(protoutil.MarshalOrPanic(&smartbftprotos.ViewMetadata{
+				LatestSequence: 1, ViewId: 2,
+			}), [][]byte{nonConfigTx})
+			block, err := smartbft.ProposalToBlock(proposal)
+			require.NoError(t, err)
+			verifier := &smartbft.Verifier{
+				RuntimeConfig: runtimeConfig, Logger: logger, ConsenterVerifier: consenterPolicyEvaluator(policy.EvaluateSignedData),
+			}
+			for _, offset := range []time.Duration{-time.Nanosecond, 0, time.Nanosecond} {
+				t.Run(offset.String(), func(t *testing.T) {
+					signature := &smartbft.Signature{
+						BlockHeader: protoutil.BlockHeaderBytes(block.GetHeader()),
+						IdentifierHeader: protoutil.MarshalOrPanic(&cb.IdentifierHeader{
+							Identifier: 3, Nonce: protoutil.BlockSignatureNonceWithTimestamp([]byte("nonce"), expiry.Add(offset)),
+						}),
+						OrdererBlockMetadata: protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
+							LastConfig: &cb.LastConfig{Index: 10}, ConsenterMetadata: proposal.Metadata,
+						}),
+					}
+					// Retained keys can sign even after expiry; do not use the expiry-enforcing local MSP signer.
+					digest, err := cryptoProvider.Hash(signature.AsBytes(), &bccsp.SHA256Opts{})
+					require.NoError(t, err)
+					pqSignature, err := cryptoProvider.Sign(pqKey, digest, nil)
+					require.NoError(t, err)
+					hybridDigest, err := cryptoProvider.Hash(append(digest, pqSignature...), &bccsp.SHA384Opts{})
+					require.NoError(t, err)
+					classicalSignature, err := cryptoProvider.Sign(classicalKey, hybridDigest, nil)
+					require.NoError(t, err)
+					value, err := asn1.Marshal(struct {
+						ClassicalSign asn1.BitString
+						QuantumSign   asn1.BitString
+					}{
+						ClassicalSign: asn1.BitString{Bytes: classicalSignature, BitLength: len(classicalSignature) * 8},
+						QuantumSign:   asn1.BitString{Bytes: pqSignature, BitLength: len(pqSignature) * 8},
+					})
+					require.NoError(t, err)
+					vote := types.Signature{ID: 3, Msg: signature.Marshal(), Value: value}
+					_, historicalErr := verifier.VerifyConsenterSig(vote, proposal)
+					_, liveErr := verifier.VerifyLiveConsenterSig(vote, proposal)
+					if offset > 0 {
+						require.Error(t, historicalErr, "the certificate is invalid immediately after NotAfter")
+					} else {
+						require.NoError(t, historicalErr, "historical verification includes the NotAfter boundary")
+					}
+					if expired || offset > 0 {
+						require.Error(t, liveErr, "an expired consenter or invalid signed time must not authorize a live vote")
+					} else {
+						require.NoError(t, liveErr)
+					}
+				})
+			}
 		})
 	}
 }
@@ -615,6 +908,21 @@ func TestVerifyProposal(t *testing.T) {
 				AccessController:      ac,
 				ConsenterVerifier:     cv,
 				ReqInspector:          reqInspector,
+				ValidateAdmission:     func(*cb.Envelope) error { return nil },
+			}
+
+			if testCase.description == "green path" {
+				v.ValidateAdmission = nil
+				_, err := v.VerifyRequest(nonConfigTx)
+				require.ErrorContains(t, err, "transaction admission validator is not configured")
+				v.ValidateAdmission = func(*cb.Envelope) error {
+					return errors.New("expired endorsement")
+				}
+				_, err = v.VerifyRequest(nonConfigTx)
+				require.ErrorContains(t, err, "transaction admission rejected: expired endorsement")
+				_, err = v.VerifyProposal(proposal)
+				require.ErrorContains(t, err, "transaction admission rejected: expired endorsement")
+				v.ValidateAdmission = func(*cb.Envelope) error { return nil }
 			}
 
 			reqInfo, err := v.VerifyProposal(proposal)

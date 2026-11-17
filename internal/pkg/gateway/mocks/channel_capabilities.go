@@ -80,6 +80,10 @@ func (fake *ChannelCapabilities) ConsensusTypeBFT() bool {
 	return fakeReturns.result1
 }
 
+func (fake *ChannelCapabilities) PactwayHybridCertificateV1() bool {
+	return false
+}
+
 func (fake *ChannelCapabilities) ConsensusTypeBFTCallCount() int {
 	fake.consensusTypeBFTMutex.RLock()
 	defer fake.consensusTypeBFTMutex.RUnlock()

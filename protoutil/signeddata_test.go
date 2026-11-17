@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
@@ -19,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // More duplicate utility which should go away, but the utils are a bit of a mess right now with import cycles
@@ -76,6 +78,20 @@ func TestConfigEnvelopeAsSignedData(t *testing.T) {
 	}
 }
 
+func TestConfigEnvelopeAsSignedDataAt(t *testing.T) {
+	validationTime := time.Date(2025, time.January, 2, 3, 4, 5, 0, time.UTC)
+	ce := &common.ConfigUpdateEnvelope{
+		Signatures: []*common.ConfigSignature{{
+			SignatureHeader: marshalOrPanic(&common.SignatureHeader{Creator: []byte("identity")}),
+		}},
+	}
+
+	signedData, err := protoutil.ConfigUpdateEnvelopeAsSignedDataAt(ce, &validationTime)
+	require.NoError(t, err)
+	require.Len(t, signedData, 1)
+	require.Equal(t, &validationTime, signedData[0].ValidationTime)
+}
+
 func TestNilEnvelopeAsSignedData(t *testing.T) {
 	var env *common.Envelope
 	_, err := protoutil.EnvelopeAsSignedData(env)
@@ -87,6 +103,7 @@ func TestNilEnvelopeAsSignedData(t *testing.T) {
 func TestEnvelopeAsSignedData(t *testing.T) {
 	identity := []byte("Foo")
 	sig := []byte("Bar")
+	validationTime := time.Date(2025, time.January, 2, 3, 4, 5, 0, time.UTC)
 
 	shdrbytes, err := proto.Marshal(&common.SignatureHeader{Creator: identity})
 	if err != nil {
@@ -97,6 +114,9 @@ func TestEnvelopeAsSignedData(t *testing.T) {
 		Payload: marshalOrPanic(&common.Payload{
 			Header: &common.Header{
 				SignatureHeader: shdrbytes,
+				ChannelHeader: marshalOrPanic(&common.ChannelHeader{
+					Timestamp: timestamppb.New(validationTime),
+				}),
 			},
 		}),
 		Signature: sig,
@@ -120,6 +140,11 @@ func TestEnvelopeAsSignedData(t *testing.T) {
 	if !bytes.Equal(signedData[0].Signature, sig) {
 		t.Errorf("Wrong data bytes")
 	}
+	require.Nil(t, signedData[0].ValidationTime)
+
+	signedData, err = protoutil.EnvelopeAsSignedDataWithValidationTime(env)
+	require.NoError(t, err)
+	require.Equal(t, &validationTime, signedData[0].ValidationTime)
 }
 
 func TestLogMessageForSerializedIdentity(t *testing.T) {

@@ -320,7 +320,7 @@ func TestDeduplicateIdentity(t *testing.T) {
 		},
 	}
 
-	signedData, err := (&Validator{}).deduplicateIdentity(chaincodeActionPayload)
+	signedData, err := (&Validator{}).deduplicateIdentity(chaincodeActionPayload, nil)
 	require.NoError(t, err)
 	// The original bytes of proposalResponsePayload are preserved
 	require.Equal(t, proposalResponsePayload, signedData[0].Data[:len(proposalResponsePayload)])

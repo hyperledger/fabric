@@ -11,6 +11,7 @@ import (
 	"encoding/asn1"
 	"math"
 	"testing"
+	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
@@ -417,6 +418,7 @@ func TestBlockSignatureVerifierByIdentifier(t *testing.T) {
 	}
 
 	policies := mocks.Policy{}
+	signingTime := time.Date(2026, time.January, 2, 3, 4, 5, 123, time.UTC)
 
 	verify := protoutil.BlockSignatureVerifier(true, consenters, &policies)
 
@@ -425,8 +427,11 @@ func TestBlockSignatureVerifierByIdentifier(t *testing.T) {
 		Metadata: [][]byte{
 			protoutil.MarshalOrPanic(&cb.Metadata{Signatures: []*cb.MetadataSignature{
 				{
-					Signature:        []byte{},
-					IdentifierHeader: protoutil.MarshalOrPanic(&cb.IdentifierHeader{Identifier: 1}),
+					Signature: []byte{},
+					IdentifierHeader: protoutil.MarshalOrPanic(&cb.IdentifierHeader{
+						Identifier: 1,
+						Nonce:      protoutil.BlockSignatureNonceWithTimestamp([]byte("nonce"), signingTime),
+					}),
 				},
 				{
 					Signature:        []byte{},
@@ -442,6 +447,7 @@ func TestBlockSignatureVerifierByIdentifier(t *testing.T) {
 	require.Len(t, signatureSet, 2)
 	require.Equal(t, protoutil.MarshalOrPanic(&msp.SerializedIdentity{Mspid: "msp1", IdBytes: []byte("identity1")}), signatureSet[0].Identity)
 	require.Equal(t, protoutil.MarshalOrPanic(&msp.SerializedIdentity{Mspid: "msp3", IdBytes: []byte("identity3")}), signatureSet[1].Identity)
+	require.Equal(t, &signingTime, signatureSet[0].ValidationTime)
 }
 
 func TestBlockSignatureVerifierByCreator(t *testing.T) {
@@ -470,6 +476,7 @@ func TestBlockSignatureVerifierByCreator(t *testing.T) {
 	}
 
 	policies := mocks.Policy{}
+	signingTime := time.Date(2026, time.January, 2, 3, 4, 5, 123, time.UTC)
 
 	verify := protoutil.BlockSignatureVerifier(true, consenters, &policies)
 
@@ -478,8 +485,11 @@ func TestBlockSignatureVerifierByCreator(t *testing.T) {
 		Metadata: [][]byte{
 			protoutil.MarshalOrPanic(&cb.Metadata{Signatures: []*cb.MetadataSignature{
 				{
-					Signature:       []byte{},
-					SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{Creator: []byte("creator1")}),
+					Signature: []byte{},
+					SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{
+						Creator: []byte("creator1"),
+						Nonce:   protoutil.BlockSignatureNonceWithTimestamp([]byte("nonce"), signingTime),
+					}),
 				},
 			}}),
 		},
@@ -490,6 +500,45 @@ func TestBlockSignatureVerifierByCreator(t *testing.T) {
 	signatureSet := policies.EvaluateSignedDataArgsForCall(0)
 	require.Len(t, signatureSet, 1)
 	require.Equal(t, []byte("creator1"), signatureSet[0].Identity)
+	require.Equal(t, &signingTime, signatureSet[0].ValidationTime)
+}
+
+func TestBlockSignatureVerifierMissingTimestampUsesZeroTime(t *testing.T) {
+	policies := mocks.Policy{}
+	verify := protoutil.BlockSignatureVerifier(false, nil, &policies)
+	metadata := &cb.BlockMetadata{
+		Metadata: [][]byte{protoutil.MarshalOrPanic(&cb.Metadata{
+			Signatures: []*cb.MetadataSignature{{
+				SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{Creator: []byte("creator1")}),
+			}},
+		})},
+	}
+
+	require.NoError(t, verify(&cb.BlockHeader{}, metadata))
+	signatureSet := policies.EvaluateSignedDataArgsForCall(0)
+	require.Len(t, signatureSet, 1)
+	require.NotNil(t, signatureSet[0].ValidationTime)
+	require.True(t, signatureSet[0].ValidationTime.IsZero())
+}
+
+func TestBlockSignatureVerifierRejectsMalformedTimestamp(t *testing.T) {
+	policies := mocks.Policy{}
+	verify := protoutil.BlockSignatureVerifier(false, nil, &policies)
+	nonce := protoutil.BlockSignatureNonceWithTimestamp([]byte("nonce"), time.Now())
+	nonce = nonce[:20]
+	metadata := &cb.BlockMetadata{
+		Metadata: [][]byte{protoutil.MarshalOrPanic(&cb.Metadata{
+			Signatures: []*cb.MetadataSignature{{
+				SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{
+					Creator: []byte("creator1"),
+					Nonce:   nonce,
+				}),
+			}},
+		})},
+	}
+
+	err := verify(&cb.BlockHeader{}, metadata)
+	require.ErrorContains(t, err, "malformed Pactway block signature nonce")
 }
 
 func TestVerifyTransactionsAreWellFormed(t *testing.T) {

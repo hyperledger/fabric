@@ -371,6 +371,14 @@ func SignatureSetToValidIdentities(signedData []*protoutil.SignedData, identityD
 			continue
 		}
 
+		if timeBoundIdentity, ok := identity.(mspi.TimeBoundIdentity); ok {
+			identity, err = timeBoundIdentity.WithValidationTime(sd.ValidationTime)
+			if err != nil {
+				logger.Warnw("invalid identity validation time", "error", err.Error(), "identity", protoutil.LogMessageForSerializedIdentity(sd.Identity))
+				continue
+			}
+		}
+
 		key := identity.GetIdentifier().Mspid + identity.GetIdentifier().Id
 
 		// We check if this identity has already appeared before doing a signature check, to ensure that

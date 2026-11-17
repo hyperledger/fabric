@@ -79,6 +79,11 @@ func (b *Bundle) ConfigtxValidator() configtx.Validator {
 // ValidateNew checks if a new bundle's contained configuration is valid to be derived from the current bundle.
 // This allows checks of the nature "Make sure that the consensus type did not change".
 func (b *Bundle) ValidateNew(nb Resources) error {
+	if b.channelConfig.hasPactwayHybridCertificateV1() &&
+		!hasPactwayHybridCertificateV1(nb.ChannelConfig()) {
+		return errors.New("attempted to remove the required Pactway Hybrid Certificate v1 channel capability")
+	}
+
 	if oc, ok := b.OrdererConfig(); ok {
 		noc, ok := nb.OrdererConfig()
 		if !ok {

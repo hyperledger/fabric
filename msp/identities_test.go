@@ -19,9 +19,9 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/bccsp/signer"
-	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-lib-go/bccsp/utils"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	oqs "github.com/hyperledger/fabric/pq-crypto"
 	"github.com/onsi/gomega"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -221,32 +221,13 @@ func TestIdentityValidation(t *testing.T) {
 }
 
 func TestHybridSigningIdentitySignAndVerify(t *testing.T) {
-	bccspDefault, err := sw.NewDefaultSecurityLevel(t.TempDir())
+	t.Setenv("PACTWAY_HYBRID_PROFILE", oqs.TemporaryHybridProfileV1)
+	mspConfig, cryptoProvider := newHybridMSPTestConfig(t, true, false)
+	mspImpl, err := newBccspMsp(MSPv1_0, cryptoProvider)
 	require.NoError(t, err)
-	mspImpl, _ := newBccspMsp(MSPv3_0, bccspDefault)
-	mspImpl.(*bccspmsp).cryptoConfig = &msp.FabricCryptoConfig{
-		SignatureHashFamily:            "SHA2",
-		IdentityIdentifierHashFunction: "SHA256",
-	}
+	require.NoError(t, mspImpl.Setup(mspConfig))
 
-	ecdsaDer, _ := pem.Decode([]byte(ecdsaCertPem))
-	ecdsaCert, _ := x509.ParseCertificate(ecdsaDer.Bytes)
-	ecdsaPrivKeyDer, _ := pem.Decode([]byte(ecdsaPrivPem))
-
-	ecdsaFabricPubKey, _ := bccspDefault.KeyImport(ecdsaCert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
-	ecdsaFabricPrivKey, _ := bccspDefault.KeyImport(ecdsaPrivKeyDer.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: false})
-
-	ecdsaSigner, _ := signer.New(bccspDefault, ecdsaFabricPrivKey)
-
-	// Reuse the classical key as qPk in this unit test to deterministically exercise
-	// the hybrid signature packing and verification flow.
-	hybridSigningIdentity, err := newSigningIdentity(
-		ecdsaCert,
-		ecdsaFabricPubKey,
-		ecdsaFabricPubKey,
-		ecdsaSigner,
-		mspImpl.(*bccspmsp),
-	)
+	hybridSigningIdentity, err := mspImpl.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 
 	msg := []byte("TEST")

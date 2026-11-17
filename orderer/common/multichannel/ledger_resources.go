@@ -9,8 +9,11 @@ package multichannel
 import (
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -38,6 +41,18 @@ func checkResourcesOrPanic(res channelconfig.Resources) {
 	}
 }
 
+func validateHybridOrdererSigner(res channelconfig.Resources, signer identity.SignerSerializer) error {
+	oc, ok := res.OrdererConfig()
+	if !ok {
+		return errors.New("config does not contain orderer config")
+	}
+	organizations := make(map[string]struct{})
+	for _, org := range oc.Organizations() {
+		organizations[org.MSPID()] = struct{}{}
+	}
+	return msp.ValidateHybridChannelSigner(res.MSPManager(), signer, organizations, mspprotos.MSPRole_ORDERER)
+}
+
 type mutableResources interface {
 	channelconfig.Resources
 	Update(*channelconfig.Bundle)
@@ -45,7 +60,8 @@ type mutableResources interface {
 
 type configResources struct {
 	mutableResources
-	bccsp bccsp.BCCSP
+	bccsp  bccsp.BCCSP
+	signer identity.SignerSerializer
 }
 
 func (cr *configResources) CreateBundle(channelID string, config *common.Config) (*channelconfig.Bundle, error) {
@@ -55,6 +71,13 @@ func (cr *configResources) CreateBundle(channelID string, config *common.Config)
 func (cr *configResources) Update(bndl *channelconfig.Bundle) {
 	checkResourcesOrPanic(bndl)
 	cr.mutableResources.Update(bndl)
+}
+
+func (cr *configResources) ValidateConfigActivation() error {
+	if !cr.ChannelConfig().Capabilities().PactwayHybridCertificateV1() {
+		return nil
+	}
+	return validateHybridOrdererSigner(cr, cr.signer)
 }
 
 func (cr *configResources) SharedConfig() channelconfig.Orderer {

@@ -442,6 +442,25 @@ func generateMigrationBundle(sysChan bool, cType string, cState ab.ConsensusType
 	return b
 }
 
+func TestHybridCertificateCapabilityCannotBeRemoved(t *testing.T) {
+	required := &Bundle{
+		channelConfig: &ChannelConfig{
+			protos: &ChannelProtos{
+				Capabilities: &cb.Capabilities{
+					Capabilities: map[string]*cb.Capability{
+						cc.PactwayHybridCertificateV1: {},
+					},
+				},
+			},
+		},
+	}
+	classical := &Bundle{channelConfig: &ChannelConfig{}}
+
+	require.ErrorContains(t, required.ValidateNew(classical), "remove the required Pactway Hybrid Certificate v1")
+	require.NoError(t, required.ValidateNew(required))
+	require.NoError(t, classical.ValidateNew(required))
+}
+
 func TestPrevalidation(t *testing.T) {
 	t.Run("NilConfig", func(t *testing.T) {
 		err := preValidate(nil)

@@ -9,6 +9,7 @@ package statebased
 import (
 	errors2 "errors"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
@@ -17,14 +18,17 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type mockPolicyEvaluator struct {
 	EvaluateRV          error
 	EvaluateResByPolicy map[string]error
+	EvaluatedSignatures []*protoutil.SignedData
 }
 
 func (m *mockPolicyEvaluator) Evaluate(policyBytes []byte, signatureSet []*protoutil.SignedData) error {
+	m.EvaluatedSignatures = signatureSet
 	if res, ok := m.EvaluateResByPolicy[string(policyBytes)]; ok {
 		return res
 	}
@@ -43,29 +47,35 @@ func buildBlockWithTxs(txs ...[]byte) *common.Block {
 	}
 }
 
-func buildTXWithRwset(rws []byte) []byte {
-	return protoutil.MarshalOrPanic(&common.Envelope{
-		Payload: protoutil.MarshalOrPanic(
-			&common.Payload{
-				Data: protoutil.MarshalOrPanic(
-					&pb.Transaction{
-						Actions: []*pb.TransactionAction{
-							{
-								Payload: protoutil.MarshalOrPanic(&pb.ChaincodeActionPayload{
-									Action: &pb.ChaincodeEndorsedAction{
-										ProposalResponsePayload: protoutil.MarshalOrPanic(
-											&pb.ProposalResponsePayload{
-												Extension: protoutil.MarshalOrPanic(&pb.ChaincodeAction{Results: rws}),
-											},
-										),
+func buildTXWithRwset(rws []byte, timestamps ...time.Time) []byte {
+	payload := &common.Payload{
+		Data: protoutil.MarshalOrPanic(
+			&pb.Transaction{
+				Actions: []*pb.TransactionAction{
+					{
+						Payload: protoutil.MarshalOrPanic(&pb.ChaincodeActionPayload{
+							Action: &pb.ChaincodeEndorsedAction{
+								ProposalResponsePayload: protoutil.MarshalOrPanic(
+									&pb.ProposalResponsePayload{
+										Extension: protoutil.MarshalOrPanic(&pb.ChaincodeAction{Results: rws}),
 									},
-								}),
+								),
 							},
-						},
+						}),
 					},
-				),
+				},
 			},
 		),
+	}
+	if len(timestamps) > 0 {
+		payload.Header = &common.Header{
+			ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
+				Timestamp: timestamppb.New(timestamps[0]),
+			}),
+		}
+	}
+	return protoutil.MarshalOrPanic(&common.Envelope{
+		Payload: protoutil.MarshalOrPanic(payload),
 	})
 }
 
@@ -95,7 +105,11 @@ func TestKeylevelValidation(t *testing.T) {
 
 	rwsb := rwsetBytes(t, "cc")
 	prp := []byte("barf")
-	block := buildBlockWithTxs(buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")), buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")))
+	validationTime := time.Date(2025, time.January, 2, 3, 4, 5, 0, time.UTC)
+	block := buildBlockWithTxs(
+		buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key"), validationTime),
+		buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key"), validationTime),
+	)
 
 	validator.PreValidate(1, block)
 
@@ -112,6 +126,9 @@ func TestKeylevelValidation(t *testing.T) {
 
 	err := validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), endorsements)
 	require.NoError(t, err)
+	require.NotEmpty(t, pe.EvaluatedSignatures)
+	require.NotNil(t, pe.EvaluatedSignatures[0].ValidationTime)
+	require.Equal(t, validationTime, *pe.EvaluatedSignatures[0].ValidationTime)
 
 	pe.EvaluateRV = errors2.New("policy evaluation error")
 

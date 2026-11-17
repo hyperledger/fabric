@@ -83,6 +83,7 @@ type Verifier struct {
 	Ledger                Ledger
 	Logger                *flogging.FabricLogger
 	ConfigValidator       ConfigValidator
+	ValidateAdmission     func(*cb.Envelope) error
 }
 
 // AuxiliaryData unmarshals and returns auxiliary data from signature
@@ -187,6 +188,15 @@ func (v *Verifier) verifyRequest(rawRequest []byte, noConfigAllowed bool) (types
 		return types.RequestInfo{}, errors.Errorf("transaction of type %s is not allowed to be included in blocks", cb.HeaderType_name[req.chHdr.GetType()])
 	}
 
+	if req.chHdr.GetType() == int32(cb.HeaderType_ENDORSER_TRANSACTION) {
+		if v.ValidateAdmission == nil {
+			return types.RequestInfo{}, errors.New("transaction admission validator is not configured")
+		}
+		if err := v.ValidateAdmission(req.envelope); err != nil {
+			return types.RequestInfo{}, errors.Wrap(err, "transaction admission rejected")
+		}
+	}
+
 	if req.chHdr.GetType() == int32(cb.HeaderType_CONFIG) {
 		err = v.ConfigValidator.ValidateConfig(req.envelope)
 		if err != nil {
@@ -205,8 +215,17 @@ func (v *Verifier) verifyRequest(rawRequest []byte, noConfigAllowed bool) (types
 	return v.ReqInspector.requestIDFromSigHeader(req.sigHdr)
 }
 
-// VerifyConsenterSig verifies consenter signature
+// VerifyConsenterSig verifies a historical consenter signature.
 func (v *Verifier) VerifyConsenterSig(signature types.Signature, prop types.Proposal) ([]byte, error) {
+	return v.verifyConsenterSig(signature, prop, false)
+}
+
+// VerifyLiveConsenterSig requires both historical and current authorization.
+func (v *Verifier) VerifyLiveConsenterSig(signature types.Signature, prop types.Proposal) ([]byte, error) {
+	return v.verifyConsenterSig(signature, prop, true)
+}
+
+func (v *Verifier) verifyConsenterSig(signature types.Signature, prop types.Proposal, live bool) ([]byte, error) {
 	id2Identity := v.RuntimeConfig.Load().(RuntimeConfig).ID2Identities
 
 	identity, exists := id2Identity[signature.ID]
@@ -226,14 +245,37 @@ func (v *Verifier) VerifyConsenterSig(signature types.Signature, prop types.Prop
 		return nil, err
 	}
 
-	expectedMsgToBeSigned := util.ConcatenateBytes(sig.OrdererBlockMetadata, sig.IdentifierHeader, sig.BlockHeader, nil)
-	signedData := &protoutil.SignedData{
-		Signature: signature.Value,
-		Data:      expectedMsgToBeSigned,
-		Identity:  identity,
+	identifierHeader, err := protoutil.UnmarshalIdentifierHeader(sig.IdentifierHeader)
+	if err != nil {
+		return nil, errors.Wrap(err, "malformed signature header")
+	}
+	validationTime := protoutil.ChannelHeaderValidationTime(nil)
+	signingTime, err := protoutil.BlockSignatureTimestampFromNonce(identifierHeader.GetNonce())
+	if err != nil {
+		return nil, errors.Wrap(err, "malformed SmartBFT consenter signature timestamp")
+	}
+	if signingTime != nil {
+		validationTime = signingTime
 	}
 
-	return nil, v.ConsenterVerifier.Evaluate([]*protoutil.SignedData{signedData})
+	expectedMsgToBeSigned := util.ConcatenateBytes(sig.OrdererBlockMetadata, sig.IdentifierHeader, sig.BlockHeader, nil)
+	signedData := &protoutil.SignedData{
+		Signature:      signature.Value,
+		Data:           expectedMsgToBeSigned,
+		Identity:       identity,
+		ValidationTime: validationTime,
+	}
+
+	if err := v.ConsenterVerifier.Evaluate([]*protoutil.SignedData{signedData}); err != nil {
+		return nil, err
+	}
+	if live {
+		// The signer-controlled timestamp is replay evidence, not live authorization.
+		currentData := *signedData
+		currentData.ValidationTime = nil
+		return nil, v.ConsenterVerifier.Evaluate([]*protoutil.SignedData{&currentData})
+	}
+	return nil, nil
 }
 
 // VerificationSequence returns verification sequence
