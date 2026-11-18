@@ -69,6 +69,7 @@ type General struct {
 	MaxRecvMsgSize    int32
 	MaxSendMsgSize    int32
 	Throttling        Throttling
+	Limits            Limits
 }
 
 type Cluster struct {
@@ -182,6 +183,19 @@ type Throttling struct {
 	// inactive clients are pruned from memory and are not considered
 	// when allocating the budget for throttling per client.
 	InactivityTimeout time.Duration
+}
+
+// Limits defines resource limits for services exposed by the orderer.
+type Limits struct {
+	// Concurrency limits the number of concurrent requests per service.
+	Concurrency Concurrency
+}
+
+// Concurrency defines concurrency limits for services exposed by the orderer.
+// A zero value for a service disables the limit for that service.
+type Concurrency struct {
+	// DeliverService limits the number of concurrent deliver streams.
+	DeliverService int
 }
 
 // ChannelParticipation provides the channel participation API configuration for the orderer.

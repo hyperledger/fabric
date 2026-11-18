@@ -539,16 +539,21 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		metricsProvider = &disabled.Provider{}
 	}
 
+	streamInterceptors := []grpc.StreamServerInterceptor{
+		grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
+		grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+	}
+	if semaphores := initGrpcSemaphores(conf); len(semaphores) != 0 {
+		streamInterceptors = append(streamInterceptors, streamGrpcLimiter(semaphores))
+	}
+
 	return comm.ServerConfig{
 		SecOpts:            secureOpts,
 		KaOpts:             kaOpts,
 		Logger:             commLogger,
 		ServerStatsHandler: comm.NewServerStatsHandler(metricsProvider),
 		ConnectionTimeout:  conf.General.ConnectionTimeout,
-		StreamInterceptors: []grpc.StreamServerInterceptor{
-			grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
-			grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
-		},
+		StreamInterceptors: streamInterceptors,
 		UnaryInterceptors: []grpc.UnaryServerInterceptor{
 			grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
 			grpclogging.UnaryServerInterceptor(

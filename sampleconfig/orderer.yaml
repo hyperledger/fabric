@@ -83,6 +83,17 @@ General:
     # when allocating the budget for throttling per client.
     InactivityTimeout: 5s
 
+  # Limits defines resource limits for the services exposed by the orderer.
+  Limits:
+    # Concurrency limits the number of concurrent requests per service.
+    # When a property is missing or the value is 0, the concurrency limit
+    # is disabled for the service.
+    Concurrency:
+      # DeliverService limits the number of concurrent deliver streams.
+      # Each stream holds ledger and memory resources for its lifetime,
+      # so an unbounded number of streams can exhaust orderer memory.
+      DeliverService: 2500
+
   # Cluster settings for ordering service nodes that communicate with other ordering service nodes
   # such as Raft based ordering service.
   Cluster:
