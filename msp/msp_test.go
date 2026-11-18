@@ -1497,6 +1497,54 @@ func TestCollectPrincipalContainingEmptyCombinedPrincipal(t *testing.T) {
 	require.Error(t, err)
 }
 
+func nestedRolePrincipal(t *testing.T, depth int) *msp.MSPPrincipal {
+	roleBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "SampleOrg"})
+	require.NoError(t, err)
+	p := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_ROLE, Principal: roleBytes}
+	for range depth {
+		// marshal one level at a time so the test itself stays shallow
+		b, err := proto.Marshal(&msp.CombinedPrincipal{Principals: []*msp.MSPPrincipal{p}})
+		require.NoError(t, err)
+		p = &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_COMBINED, Principal: b}
+	}
+	return p
+}
+
+func TestCollectPrincipalsDepthBound(t *testing.T) {
+	principals, err := collectPrincipals(nestedRolePrincipal(t, maxCombinedPrincipalDepth), MSPv1_3)
+	require.NoError(t, err)
+	require.Len(t, principals, 1)
+
+	_, err = collectPrincipals(nestedRolePrincipal(t, maxCombinedPrincipalDepth+1), MSPv1_3)
+	require.ErrorContains(t, err, "maximum supported depth")
+}
+
+func TestCollectPrincipalsDepthBoundDeepInput(t *testing.T) {
+	_, err := collectPrincipals(nestedRolePrincipal(t, 10000), MSPv1_3)
+	require.ErrorContains(t, err, "maximum supported depth")
+}
+
+func TestCollectPrincipalsTotalBound(t *testing.T) {
+	roleBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "SampleOrg"})
+	require.NoError(t, err)
+	leaf := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_ROLE, Principal: roleBytes}
+	leaves := make([]*msp.MSPPrincipal, maxCollectedPrincipals)
+	for i := range leaves {
+		leaves[i] = leaf
+	}
+
+	atLimit, err := createCombinedPrincipal(leaves...)
+	require.NoError(t, err)
+	principals, err := collectPrincipals(atLimit, MSPv1_3)
+	require.NoError(t, err)
+	require.Len(t, principals, maxCollectedPrincipals)
+
+	overLimit, err := createCombinedPrincipal(append(leaves, leaf)...)
+	require.NoError(t, err)
+	_, err = collectPrincipals(overLimit, MSPv1_3)
+	require.ErrorContains(t, err, "maximum supported")
+}
+
 func TestMSPIdentityIdentifier(t *testing.T) {
 	// testdata/mspid
 	// 1) a key and a signcert (used to populate the default signing identity) with the cert having a HighS signature
