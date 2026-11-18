@@ -327,6 +327,43 @@ func TestVerifyConsenterSig(t *testing.T) {
 				return proposal
 			},
 		},
+		{
+			description:        "block data doesn't match the block header",
+			expectedErr:        "block data does not match the data hash in the block header",
+			lastBlock:          lastBlock,
+			lastConfigBlockNum: lastConfigBlock.GetHeader().GetNumber(),
+			id2Identity:        map[uint64][]byte{3: {0, 2, 4, 6}},
+			proposalMutator: func(proposal types.Proposal) types.Proposal {
+				block, _ := smartbft.ProposalToBlock(proposal)
+				block.Data.Data = append(block.Data.Data, nonConfigTx)
+				bbt := &smartbft.ByteBufferTuple{}
+				_ = bbt.FromBytes(proposal.Payload)
+				bbt.A = protoutil.MarshalOrPanic(block.GetData())
+				proposal.Payload = bbt.ToBytes()
+				return proposal
+			},
+		},
+		{
+			description:        "block data is not well formed",
+			expectedErr:        "malformed block data: transaction 0 has no signature",
+			lastBlock:          lastBlock,
+			lastConfigBlockNum: lastConfigBlock.GetHeader().GetNumber(),
+			id2Identity:        map[uint64][]byte{3: {0, 2, 4, 6}},
+			proposalMutator: func(proposal types.Proposal) types.Proposal {
+				// Split the transaction into two entries; the data hash stays the same.
+				block, _ := smartbft.ProposalToBlock(proposal)
+				tx := block.GetData().GetData()[0]
+				env := &cb.Envelope{}
+				_ = proto.Unmarshal(tx, env)
+				split := len(protoutil.MarshalOrPanic(&cb.Envelope{Payload: env.GetPayload()}))
+				block.Data.Data = [][]byte{tx[:split], tx[split:]}
+				bbt := &smartbft.ByteBufferTuple{}
+				_ = bbt.FromBytes(proposal.Payload)
+				bbt.A = protoutil.MarshalOrPanic(block.GetData())
+				proposal.Payload = bbt.ToBytes()
+				return proposal
+			},
+		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
 			ss := &mocks.SignerSerializer{}

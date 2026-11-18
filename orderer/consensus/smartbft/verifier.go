@@ -438,6 +438,15 @@ func (v *Verifier) verifySignatureIsBoundToProposal(sig *Signature, identityID u
 		return err
 	}
 
+	// Ensure the block data matches the data hash in the signed block header
+	dataHash, err := protoutil.BlockDataHash(block.GetData())
+	if err != nil {
+		return errors.Wrap(err, "malformed block data")
+	}
+	if !bytes.Equal(dataHash, block.GetHeader().GetDataHash()) {
+		return errors.New("block data does not match the data hash in the block header")
+	}
+
 	// Ensure Metadata slice is of the right size
 	if len(block.GetMetadata().GetMetadata()) != len(cb.BlockMetadataIndex_name) {
 		return errors.Errorf("block metadata is of size %d but should be of size %d",
