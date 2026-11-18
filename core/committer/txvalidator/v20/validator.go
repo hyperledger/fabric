@@ -157,6 +157,24 @@ func (v *TxValidator) chainExists(chain string) bool {
 	return true
 }
 
+func validateConfigTxIsAlone(block *common.Block) error {
+	if len(block.GetData().GetData()) <= 1 {
+		return nil
+	}
+
+	for i, tx := range block.GetData().GetData() {
+		env, err := protoutil.UnmarshalEnvelope(tx)
+		if err != nil {
+			continue
+		}
+		if protoutil.IsConfigTransaction(env) {
+			return errors.Errorf("config transaction at index %d must be alone in the block", i)
+		}
+	}
+
+	return nil
+}
+
 // Validate performs the validation of a block. The validation
 // of each transaction in the block is performed in parallel.
 // The approach is as follows: the committer thread starts the
@@ -178,6 +196,10 @@ func (v *TxValidator) chainExists(chain string) bool {
 //     guaranteed to be alone in the block. If/when this assumption
 //     is violated, this code must be changed.
 func (v *TxValidator) Validate(block *common.Block) error {
+	if err := validateConfigTxIsAlone(block); err != nil {
+		return err
+	}
+
 	var err error
 	var errPos int
 
