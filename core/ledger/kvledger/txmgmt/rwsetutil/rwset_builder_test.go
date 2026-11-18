@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package rwsetutil
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -476,4 +477,88 @@ func TestNilOrZeroLengthByteArrayValueConvertedToDelete(t *testing.T) {
 			))
 		})
 	})
+}
+
+func TestWriteSetSizeLimit(t *testing.T) {
+	t.Run("public writes are metered and excess is rejected", func(t *testing.T) {
+		// each entry is key(4) + value(46) = 50 bytes; the budget fits two
+		b := NewRWSetBuilderWithMaxWriteSetSize(104)
+		require.NoError(t, b.AddToWriteSet("ns1", "key1", make([]byte, 46)))
+		require.NoError(t, b.AddToWriteSet("ns1", "key2", make([]byte, 46)))
+		require.EqualError(
+			t,
+			b.AddToWriteSet("ns1", "key3", make([]byte, 46)),
+			"transaction write set size 150 exceeds the maximum allowed size 104",
+		)
+		// the rejected write is not retained and the builder stays usable
+		require.NotContains(t, b.pubRwBuilderMap["ns1"].writeMap, "key3")
+		require.NoError(t, b.AddToWriteSet("ns1", "key3", nil))
+	})
+
+	t.Run("overwrites are credited", func(t *testing.T) {
+		b := NewRWSetBuilderWithMaxWriteSetSize(60)
+		require.NoError(t, b.AddToWriteSet("ns1", "key1", make([]byte, 46)))
+		// rewriting the same key keeps the metered size at 50 bytes
+		require.NoError(t, b.AddToWriteSet("ns1", "key1", make([]byte, 46)))
+		// shrinking the value frees budget
+		require.NoError(t, b.AddToWriteSet("ns1", "key1", nil))
+		require.NoError(t, b.AddToWriteSet("ns1", "key1", make([]byte, 56)))
+		require.Error(t, b.AddToWriteSet("ns1", "key2", make([]byte, 1)))
+	})
+
+	t.Run("metadata writes are metered", func(t *testing.T) {
+		// key(4) + name(5) + value(16) = 25 bytes per metadata write
+		b := NewRWSetBuilderWithMaxWriteSetSize(30)
+		metadata := map[string][]byte{"meta1": make([]byte, 16)}
+		require.NoError(t, b.AddToMetadataWriteSet("ns1", "key1", metadata))
+		require.Error(t, b.AddToMetadataWriteSet("ns1", "key2", metadata))
+		// deleting metadata frees budget
+		require.NoError(t, b.AddToMetadataWriteSet("ns1", "key1", nil))
+		require.NoError(t, b.AddToMetadataWriteSet("ns1", "key2", metadata))
+	})
+
+	t.Run("private data writes are metered", func(t *testing.T) {
+		// key(4) + value(10) + keyHash(32) + valueHash(32) = 78 bytes
+		b := NewRWSetBuilderWithMaxWriteSetSize(78)
+		require.NoError(t, b.AddToPvtAndHashedWriteSet("ns1", "coll1", "key1", make([]byte, 10)))
+		require.Error(t, b.AddToPvtAndHashedWriteSet("ns1", "coll1", "key2", make([]byte, 1)))
+		// purging the key shrinks the metered size to key(4) + keyHash(32)
+		require.NoError(t, b.AddToPvtAndHashedWriteSetForPurge("ns1", "coll1", "key1"))
+	})
+
+	t.Run("hashed metadata writes are metered", func(t *testing.T) {
+		// key(4) + keyHash(32) + name(5) + value(8) = 49 bytes
+		b := NewRWSetBuilderWithMaxWriteSetSize(49)
+		metadata := map[string][]byte{"meta1": make([]byte, 8)}
+		require.NoError(t, b.AddToHashedMetadataWriteSet("ns1", "coll1", "key1", metadata))
+		require.Error(t, b.AddToHashedMetadataWriteSet("ns1", "coll1", "key2", metadata))
+	})
+
+	t.Run("unlimited builder never rejects", func(t *testing.T) {
+		b := NewRWSetBuilder()
+		for i := range 1000 {
+			require.NoError(t, b.AddToWriteSet("ns1", fmt.Sprintf("key%d", i), make([]byte, 1024)))
+		}
+	})
+}
+
+// TestWriteSetSizeLimitBulkWrites drives the bulk-write pattern of a chaincode
+// performing many large PutState calls in a single simulation and asserts that
+// the accumulation is cut off deterministically at the configured budget
+func TestWriteSetSizeLimitBulkWrites(t *testing.T) {
+	const valueSize = 50 * 1024
+	const limit = 4 * 1024 * 1024
+	b := NewRWSetBuilderWithMaxWriteSetSize(limit)
+	entrySize := int64(len("rwset-00000000") + valueSize)
+	expected := int(limit / entrySize)
+	for i := range expected {
+		require.NoError(t, b.AddToWriteSet("ns", fmt.Sprintf("rwset-%08d", i), make([]byte, valueSize)))
+	}
+	err := b.AddToWriteSet("ns", "rwset-overflow", make([]byte, valueSize))
+	require.ErrorContains(t, err, "exceeds the maximum allowed size")
+	// the breach rejects the write but the accumulated set remains intact
+	res, resErr := b.GetTxSimulationResults()
+	require.NoError(t, resErr)
+	require.NotNil(t, res.PubSimulationResults)
+	require.Len(t, b.GetTxReadWriteSet().NsRwSets[0].KvRwSet.GetWrites(), expected)
 }

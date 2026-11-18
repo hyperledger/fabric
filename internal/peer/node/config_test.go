@@ -61,6 +61,7 @@ func TestLedgerConfig(t *testing.T) {
 				SnapshotsConfig: &ledger.SnapshotsConfig{
 					RootDir: "/peerfs/snapshots",
 				},
+				MaxWriteSetSize: 100 * 1024 * 1024,
 			},
 		},
 		{
@@ -93,6 +94,7 @@ func TestLedgerConfig(t *testing.T) {
 				SnapshotsConfig: &ledger.SnapshotsConfig{
 					RootDir: "/peerfs/snapshots",
 				},
+				MaxWriteSetSize: 100 * 1024 * 1024,
 			},
 		},
 		{
@@ -142,6 +144,7 @@ func TestLedgerConfig(t *testing.T) {
 				SnapshotsConfig: &ledger.SnapshotsConfig{
 					RootDir: "/peerfs/snapshots",
 				},
+				MaxWriteSetSize: 100 * 1024 * 1024,
 			},
 		},
 		{
@@ -166,6 +169,7 @@ func TestLedgerConfig(t *testing.T) {
 				"ledger.pvtdataStore.deprioritizedDataReconcilerInterval": "180m",
 				"ledger.history.enableHistoryDatabase":                    true,
 				"ledger.snapshots.rootDir":                                "/peerfs/customLocationForsnapshots",
+				"ledger.state.maxWriteSetSize":                            12345,
 			},
 			expected: &ledger.Config{
 				RootFSPath:    "/peerfs/ledgersData",
@@ -200,6 +204,7 @@ func TestLedgerConfig(t *testing.T) {
 				SnapshotsConfig: &ledger.SnapshotsConfig{
 					RootDir: "/peerfs/customLocationForsnapshots",
 				},
+				MaxWriteSetSize: 12345,
 			},
 		},
 	}

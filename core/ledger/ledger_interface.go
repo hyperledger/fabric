@@ -57,6 +57,11 @@ type Config struct {
 	HistoryDBConfig *HistoryDBConfig
 	// SnapshotsConfig holds the configuration parameters for the snapshots.
 	SnapshotsConfig *SnapshotsConfig
+	// MaxWriteSetSize is the maximum total size in bytes of the keys and values
+	// (including private data) that a transaction simulation may accumulate in
+	// its write set before the simulation is rejected; a non-positive value
+	// disables the limit.
+	MaxWriteSetSize int
 }
 
 // StateDBConfig is a structure used to configure the state parameters for the ledger.

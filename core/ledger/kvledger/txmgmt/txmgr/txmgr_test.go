@@ -1755,3 +1755,22 @@ func testTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T, env testE
 	metadata.Add(ns, coll, "key1", sbe2)
 	require.Equal(t, metadata, simRes4.WritesetMetadata)
 }
+
+func TestTxSimulatorWriteSetSizeLimit(t *testing.T) {
+	env := testEnvsMap[levelDBtestEnvName].(*lockBasedEnv)
+	env.maxWriteSetSize = 100
+	defer func() { env.maxWriteSetSize = 0 }()
+	env.init(t, "testtxsimulatorwritesetsizelimit", nil)
+	defer env.cleanup()
+
+	s, err := env.getTxMgr().NewTxSimulator("test_txid")
+	require.NoError(t, err)
+	// each entry is key(4) + value(46) = 50 bytes; the budget fits two
+	require.NoError(t, s.SetState("ns1", "key1", make([]byte, 46)))
+	require.NoError(t, s.SetState("ns1", "key2", make([]byte, 46)))
+	require.ErrorContains(
+		t,
+		s.SetState("ns1", "key3", make([]byte, 46)),
+		"exceeds the maximum allowed size",
+	)
+}

@@ -687,6 +687,11 @@ ledger:
     stateDatabase: goleveldb
     # Limit on the number of records to return per query
     totalQueryLimit: 100000
+    # Limit on the total size (in bytes) of the keys and values, including
+    # private data, that a transaction simulation may accumulate in its write
+    # set. A simulation that exceeds this limit is rejected and the
+    # endorsement fails. A value of 0 or less disables the limit.
+    maxWriteSetSize: 104857600
     couchDBConfig:
       # It is recommended to run CouchDB on the same server as the peer, and
       # not map the CouchDB container port to a server port in docker-compose.

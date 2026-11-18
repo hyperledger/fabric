@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("rwsetutil")
@@ -31,6 +32,10 @@ var logger = flogging.MustGetLogger("rwsetutil")
 type RWSetBuilder struct {
 	pubRwBuilderMap map[string]*nsPubRwBuilder
 	pvtRwBuilderMap map[string]*nsPvtRwBuilder
+	// maxWriteSetBytes bounds the cumulative size of the write set so that a
+	// single simulation cannot exhaust the endorser's memory
+	maxWriteSetBytes int64
+	writeSetBytes    int64
 }
 
 type nsPubRwBuilder struct {
@@ -68,9 +73,40 @@ type rangeQueryKey struct {
 	itrExhausted bool
 }
 
-// NewRWSetBuilder constructs a new instance of RWSetBuilder
+// NewRWSetBuilder constructs a new instance of RWSetBuilder with no limit on
+// the write set size
 func NewRWSetBuilder() *RWSetBuilder {
-	return &RWSetBuilder{make(map[string]*nsPubRwBuilder), make(map[string]*nsPvtRwBuilder)}
+	return NewRWSetBuilderWithMaxWriteSetSize(0)
+}
+
+// NewRWSetBuilderWithMaxWriteSetSize constructs a new instance of RWSetBuilder
+// that rejects a write once the cumulative size of the write set keys and
+// values would exceed maxWriteSetBytes; a non-positive maxWriteSetBytes
+// disables the limit
+func NewRWSetBuilderWithMaxWriteSetSize(maxWriteSetBytes int64) *RWSetBuilder {
+	return &RWSetBuilder{
+		pubRwBuilderMap:  make(map[string]*nsPubRwBuilder),
+		pvtRwBuilderMap:  make(map[string]*nsPvtRwBuilder),
+		maxWriteSetBytes: maxWriteSetBytes,
+	}
+}
+
+// accountWriteSetSize meters the net growth of the write set, crediting
+// overwritten entries, and rejects the write before any state changes once
+// the maximum would be exceeded
+func (b *RWSetBuilder) accountWriteSetSize(newBytes, oldBytes int64) error {
+	if b.maxWriteSetBytes <= 0 {
+		return nil
+	}
+	updated := b.writeSetBytes - oldBytes + newBytes
+	if updated > b.maxWriteSetBytes {
+		return errors.Errorf(
+			"transaction write set size %d exceeds the maximum allowed size %d",
+			updated, b.maxWriteSetBytes,
+		)
+	}
+	b.writeSetBytes = updated
+	return nil
 }
 
 // AddToReadSet adds a key and corresponding version to the read-set
@@ -80,16 +116,33 @@ func (b *RWSetBuilder) AddToReadSet(ns string, key string, version *version.Heig
 }
 
 // AddToWriteSet adds a key and value to the write-set
-func (b *RWSetBuilder) AddToWriteSet(ns string, key string, value []byte) {
+func (b *RWSetBuilder) AddToWriteSet(ns string, key string, value []byte) error {
 	nsPubRwBuilder := b.getOrCreateNsPubRwBuilder(ns)
+	var oldBytes int64
+	if existing := nsPubRwBuilder.writeMap[key]; existing != nil {
+		oldBytes = int64(len(key) + len(existing.GetValue()))
+	}
+	if err := b.accountWriteSetSize(int64(len(key)+len(value)), oldBytes); err != nil {
+		return err
+	}
 	nsPubRwBuilder.writeMap[key] = newKVWrite(key, value)
+	return nil
 }
 
 // AddToMetadataWriteSet adds a metadata to a key in the write-set
 // A nil/empty-map for 'metadata' parameter indicates the delete of the metadata
-func (b *RWSetBuilder) AddToMetadataWriteSet(ns, key string, metadata map[string][]byte) {
-	b.getOrCreateNsPubRwBuilder(ns).
-		metadataWriteMap[key] = mapToMetadataWrite(key, metadata)
+func (b *RWSetBuilder) AddToMetadataWriteSet(ns, key string, metadata map[string][]byte) error {
+	metadataWrite := mapToMetadataWrite(key, metadata)
+	nsPubRwBuilder := b.getOrCreateNsPubRwBuilder(ns)
+	var oldBytes int64
+	if existing := nsPubRwBuilder.metadataWriteMap[key]; existing != nil {
+		oldBytes = metadataWriteSize(existing)
+	}
+	if err := b.accountWriteSetSize(metadataWriteSize(metadataWrite), oldBytes); err != nil {
+		return err
+	}
+	nsPubRwBuilder.metadataWriteMap[key] = metadataWrite
+	return nil
 }
 
 // AddToRangeQuerySet adds a range query info for performing phantom read validation
@@ -110,29 +163,72 @@ func (b *RWSetBuilder) AddToHashedReadSet(ns string, coll string, key string, ve
 }
 
 // AddToPvtAndHashedWriteSet adds a key and value to the private and hashed write-set
-func (b *RWSetBuilder) AddToPvtAndHashedWriteSet(ns string, coll string, key string, value []byte) {
+func (b *RWSetBuilder) AddToPvtAndHashedWriteSet(ns string, coll string, key string, value []byte) error {
 	kvWrite, kvWriteHash := newPvtKVWriteAndHash(key, value)
-	b.getOrCreateCollPvtRwBuilder(ns, coll).writeMap[key] = kvWrite
-	b.getOrCreateCollHashedRwBuilder(ns, coll).writeMap[key] = kvWriteHash
+	pvtRwBuilder := b.getOrCreateCollPvtRwBuilder(ns, coll)
+	hashRwBuilder := b.getOrCreateCollHashedRwBuilder(ns, coll)
+	var oldBytes int64
+	if existing := pvtRwBuilder.writeMap[key]; existing != nil {
+		oldBytes += int64(len(existing.GetKey()) + len(existing.GetValue()))
+	}
+	if existing := hashRwBuilder.writeMap[key]; existing != nil {
+		oldBytes += int64(len(existing.GetKeyHash()) + len(existing.GetValueHash()))
+	}
+	newBytes := int64(len(kvWrite.GetKey())+len(kvWrite.GetValue())) +
+		int64(len(kvWriteHash.GetKeyHash())+len(kvWriteHash.GetValueHash()))
+	if err := b.accountWriteSetSize(newBytes, oldBytes); err != nil {
+		return err
+	}
+	pvtRwBuilder.writeMap[key] = kvWrite
+	hashRwBuilder.writeMap[key] = kvWriteHash
+	return nil
 }
 
 // AddToPvtAndHashedWriteSetForPurge adds a purge key to the hashed write-set
-func (b *RWSetBuilder) AddToPvtAndHashedWriteSetForPurge(ns string, coll string, key string) {
+func (b *RWSetBuilder) AddToPvtAndHashedWriteSetForPurge(ns string, coll string, key string) error {
 	kvWrite, kvWriteHash := newPvtKVWriteAndHash(key, nil)
 	kvWriteHash.IsPurge = true
-	b.getOrCreateCollPvtRwBuilder(ns, coll).writeMap[key] = kvWrite
-	b.getOrCreateCollHashedRwBuilder(ns, coll).writeMap[key] = kvWriteHash
+	pvtRwBuilder := b.getOrCreateCollPvtRwBuilder(ns, coll)
+	hashRwBuilder := b.getOrCreateCollHashedRwBuilder(ns, coll)
+	var oldBytes int64
+	if existing := pvtRwBuilder.writeMap[key]; existing != nil {
+		oldBytes += int64(len(existing.GetKey()) + len(existing.GetValue()))
+	}
+	if existing := hashRwBuilder.writeMap[key]; existing != nil {
+		oldBytes += int64(len(existing.GetKeyHash()) + len(existing.GetValueHash()))
+	}
+	newBytes := int64(len(kvWrite.GetKey())+len(kvWrite.GetValue())) +
+		int64(len(kvWriteHash.GetKeyHash())+len(kvWriteHash.GetValueHash()))
+	if err := b.accountWriteSetSize(newBytes, oldBytes); err != nil {
+		return err
+	}
+	pvtRwBuilder.writeMap[key] = kvWrite
+	hashRwBuilder.writeMap[key] = kvWriteHash
+	return nil
 }
 
 // AddToHashedMetadataWriteSet adds a metadata to a key in the hashed write-set
-func (b *RWSetBuilder) AddToHashedMetadataWriteSet(ns, coll, key string, metadata map[string][]byte) {
+func (b *RWSetBuilder) AddToHashedMetadataWriteSet(ns, coll, key string, metadata map[string][]byte) error {
 	// pvt write set just need the key; not the entire metadata. The metadata is stored only
 	// by the hashed key. Pvt write-set need to know the key for handling a special case where only
 	// metadata is updated so, the version of the key present in the pvt data should be incremented
-	b.getOrCreateCollPvtRwBuilder(ns, coll).
-		metadataWriteMap[key] = &kvrwset.KVMetadataWrite{Key: key, Entries: nil}
-	b.getOrCreateCollHashedRwBuilder(ns, coll).
-		metadataWriteMap[key] = mapToMetadataWriteHash(key, metadata)
+	metadataWrite := &kvrwset.KVMetadataWrite{Key: key, Entries: nil}
+	metadataWriteHash := mapToMetadataWriteHash(key, metadata)
+	pvtRwBuilder := b.getOrCreateCollPvtRwBuilder(ns, coll)
+	hashRwBuilder := b.getOrCreateCollHashedRwBuilder(ns, coll)
+	var oldBytes int64
+	if existing := pvtRwBuilder.metadataWriteMap[key]; existing != nil {
+		oldBytes += metadataWriteSize(existing)
+	}
+	if existing := hashRwBuilder.metadataWriteMap[key]; existing != nil {
+		oldBytes += metadataWriteHashSize(existing)
+	}
+	if err := b.accountWriteSetSize(metadataWriteSize(metadataWrite)+metadataWriteHashSize(metadataWriteHash), oldBytes); err != nil {
+		return err
+	}
+	pvtRwBuilder.metadataWriteMap[key] = metadataWrite
+	hashRwBuilder.metadataWriteMap[key] = metadataWriteHash
+	return nil
 }
 
 // GetTxSimulationResults returns the proto bytes of public rwset
@@ -375,4 +471,20 @@ func mapToMetadataWriteHash(key string, m map[string][]byte) *kvrwset.KVMetadata
 		)
 	}
 	return proto
+}
+
+func metadataWriteSize(metadataWrite *kvrwset.KVMetadataWrite) int64 {
+	size := int64(len(metadataWrite.GetKey()))
+	for _, entry := range metadataWrite.GetEntries() {
+		size += int64(len(entry.GetName()) + len(entry.GetValue()))
+	}
+	return size
+}
+
+func metadataWriteHashSize(metadataWriteHash *kvrwset.KVMetadataWriteHash) int64 {
+	size := int64(len(metadataWriteHash.GetKeyHash()))
+	for _, entry := range metadataWriteHash.GetEntries() {
+		size += int64(len(entry.GetName()) + len(entry.GetValue()))
+	}
+	return size
 }

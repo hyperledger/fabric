@@ -45,6 +45,12 @@ func ledgerConfig() *ledger.Config {
 	if viper.IsSet("ledger.pvtdataStore.purgedKeyAuditLogging") {
 		purgedKeyAuditLogging = viper.GetBool("ledger.pvtdataStore.purgedKeyAuditLogging")
 	}
+	// default mirrors the 100MB gRPC message size cap, the largest payload a
+	// peer exchanges; a write set beyond that could never leave the peer
+	maxWriteSetSize := 100 * 1024 * 1024
+	if viper.IsSet("ledger.state.maxWriteSetSize") {
+		maxWriteSetSize = viper.GetInt("ledger.state.maxWriteSetSize")
+	}
 
 	fsPath := coreconfig.GetPath("peer.fileSystemPath")
 	ledgersDataRootDir := filepath.Join(fsPath, "ledgersData")
@@ -84,6 +90,7 @@ func ledgerConfig() *ledger.Config {
 		SnapshotsConfig: &ledger.SnapshotsConfig{
 			RootDir: snapshotsRootDir,
 		},
+		MaxWriteSetSize: maxWriteSetSize,
 	}
 
 	if conf.StateDBConfig.StateDatabase == ledger.CouchDB {
