@@ -871,7 +871,7 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 	require.EqualError(t, err, "txid [txid1]: unsuppored transaction. Queries on pvt data is supported only in a read-only transaction")
 
 	simulator, _ = txMgr.NewTxSimulator("txid2")
-	_, err = simulator.GetPrivateDataRangeScanIterator("ns1", "coll1", "startKey", "endKey")
+	_, err = simulator.GetPrivateDataRangeScanIterator("ns1", "coll1", "startKey", "startKey0")
 	require.NoError(t, err)
 	err = simulator.SetState("ns", "key", []byte("value"))
 	require.EqualError(t, err, "txid [txid2]: unsuppored transaction. Transaction has already performed queries on pvt data. Writes are not allowed")
@@ -883,7 +883,7 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 	require.EqualError(t, err, "txid [txid3]: unsuppored transaction. Paginated queries are supported only in a read-only transaction")
 
 	simulator, _ = txMgr.NewTxSimulator("txid4")
-	_, err = simulator.GetStateRangeScanIteratorWithPagination("ns1", "startKey", "endKey", 2)
+	_, err = simulator.GetStateRangeScanIteratorWithPagination("ns1", "startKey", "startKey0", 2)
 	require.NoError(t, err)
 	err = simulator.SetState("ns", "key", []byte("value"))
 	require.EqualError(t, err, "txid [txid4]: unsuppored transaction. Transaction has already performed a paginated query. Writes are not allowed")

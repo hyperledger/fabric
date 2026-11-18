@@ -46,7 +46,11 @@ func newCombinedIterator(db statedb.VersionedDB, updates *statedb.UpdateBatch,
 	var dbItr statedb.ResultsIterator
 	var updatesItr statedb.ResultsIterator
 	var err error
-	if dbItr, err = db.GetStateRangeScanIterator(ns, startKey, endKey); err != nil {
+	if endKey != "" && startKey > endKey {
+		// a reversed range matches no keys; evaluate it as an empty scan, consistent
+		// with the CouchDB backend, so the phantom-read comparison decides validity
+		dbItr = &emptyResultsIterator{}
+	} else if dbItr, err = db.GetStateRangeScanIterator(ns, startKey, endKey); err != nil {
 		return nil, err
 	}
 	updatesItr = updates.GetRangeScanIterator(ns, startKey, endKey)
@@ -176,3 +180,10 @@ func compareKeys(item1 *statedb.VersionedKV, item2 *statedb.VersionedKV) int {
 func isDelete(item *statedb.VersionedKV) bool {
 	return item.Value == nil
 }
+
+// emptyResultsIterator is a statedb.ResultsIterator over an empty result set
+type emptyResultsIterator struct{}
+
+func (itr *emptyResultsIterator) Next() (*statedb.VersionedKV, error) { return nil, nil }
+
+func (itr *emptyResultsIterator) Close() {}

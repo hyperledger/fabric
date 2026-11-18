@@ -217,3 +217,40 @@ func TestCreateDBInNonEmptyDir(t *testing.T) {
 	}()
 	db.Open()
 }
+
+func TestGetIteratorWithReversedRange(t *testing.T) {
+	env := newTestDBEnv(t, testDBPath)
+	defer env.cleanup()
+	db := env.db
+	db.Open()
+	defer db.Close()
+
+	for _, k := range []string{"key1", "key2", "key3"} {
+		require.NoError(t, db.Put([]byte(k), []byte("value"), false))
+	}
+
+	t.Run("reversed range returns error", func(t *testing.T) {
+		itr, err := db.GetIterator([]byte("key3"), []byte("key1"))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid iterator range")
+		require.Nil(t, itr)
+	})
+
+	t.Run("equal bounds return empty iterator", func(t *testing.T) {
+		itr, err := db.GetIterator([]byte("key2"), []byte("key2"))
+		require.NoError(t, err)
+		defer itr.Release()
+		require.False(t, itr.Next())
+	})
+
+	t.Run("valid range is unaffected", func(t *testing.T) {
+		itr, err := db.GetIterator([]byte("key1"), []byte("key3"))
+		require.NoError(t, err)
+		defer itr.Release()
+		var keys []string
+		for itr.Next() {
+			keys = append(keys, string(itr.Key()))
+		}
+		require.Equal(t, []string{"key1", "key2"}, keys)
+	})
+}

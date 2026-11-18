@@ -164,6 +164,27 @@ func TestIterator(t *testing.T) {
 	})
 }
 
+func TestDBHandleGetIteratorWithReversedRange(t *testing.T) {
+	env := newTestProviderEnv(t, testDBPath)
+	defer env.cleanup()
+
+	db1 := env.provider.GetDBHandle("db1")
+	for _, k := range []string{"key1", "key2", "key3"} {
+		require.NoError(t, db1.Put([]byte(k), []byte("value1"), false))
+	}
+
+	itr, err := db1.GetIterator([]byte("key3"), []byte("key1"))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid iterator range")
+	require.Nil(t, itr)
+
+	// a valid range over the same keys is unaffected
+	itr, err = db1.GetIterator([]byte("key1"), []byte("key3"))
+	require.NoError(t, err)
+	defer itr.Release()
+	checkItrResults(t, itr, []string{"key1", "key2"}, []string{"value1", "value1"})
+}
+
 func TestBatchedUpdates(t *testing.T) {
 	env := newTestProviderEnv(t, testDBPath)
 	defer env.cleanup()

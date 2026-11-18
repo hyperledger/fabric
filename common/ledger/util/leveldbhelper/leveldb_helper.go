@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package leveldbhelper
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 	"syscall"
@@ -160,17 +161,25 @@ func (dbInst *DB) Delete(key []byte, sync bool) error {
 	return nil
 }
 
-func (dbInst *DB) getRawIterator(startKey []byte, endKey []byte) iterator.Iterator {
+func (dbInst *DB) getRawIterator(startKey []byte, endKey []byte) (iterator.Iterator, error) {
+	// goleveldb panics when iterating a reversed range that spans level tables; reject it deterministically
+	if startKey != nil && endKey != nil && bytes.Compare(startKey, endKey) > 0 {
+		return nil, errors.Errorf("invalid iterator range: startKey [%#v] is greater than endKey [%#v]", startKey, endKey)
+	}
 	dbInst.mutex.RLock()
 	defer dbInst.mutex.RUnlock()
-	return dbInst.db.NewIterator(&goleveldbutil.Range{Start: startKey, Limit: endKey}, dbInst.readOpts)
+	return dbInst.db.NewIterator(&goleveldbutil.Range{Start: startKey, Limit: endKey}, dbInst.readOpts), nil
 }
 
 // GetIterator returns an iterator over key-value store. The iterator should be released after the use.
 // The resultset contains all the keys that are present in the db between the startKey (inclusive) and the endKey (exclusive).
 // A nil startKey represents the first available key and a nil endKey represent a logical key after the last available key
+// An error is returned if the startKey is greater than the endKey.
 func (dbInst *DB) GetIterator(startKey []byte, endKey []byte) (db.Iterator, error) {
-	itr := dbInst.getRawIterator(startKey, endKey)
+	itr, err := dbInst.getRawIterator(startKey, endKey)
+	if err != nil {
+		return nil, err
+	}
 	if err := itr.Error(); err != nil {
 		itr.Release()
 		return nil, err
