@@ -564,8 +564,9 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 				grpclogging.WithLeveler(grpclogging.LevelerFunc(grpcLeveler)),
 			),
 		},
-		MaxRecvMsgSize: int(conf.General.MaxRecvMsgSize),
-		MaxSendMsgSize: int(conf.General.MaxSendMsgSize),
+		MaxRecvMsgSize:       int(conf.General.MaxRecvMsgSize),
+		MaxSendMsgSize:       int(conf.General.MaxSendMsgSize),
+		MaxConcurrentStreams: conf.General.MaxConcurrentStreams,
 	}
 }
 

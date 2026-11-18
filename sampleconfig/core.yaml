@@ -529,6 +529,10 @@ peer:
   maxRecvMsgSize: 104857600
   # Max message size in bytes GRPC server and client can send
   maxSendMsgSize: 104857600
+  # Max concurrent streams per GRPC connection; excess streams are refused
+  # before any message is decoded. Must accommodate the service concurrency
+  # limits above (e.g. gateway Submit fan-out per orderer connection).
+  maxConcurrentStreams: 2500
 
 ###############################################################################
 #

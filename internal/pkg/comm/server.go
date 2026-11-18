@@ -135,6 +135,12 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 	}
 	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(maxSendMsgSize))
 	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(maxRecvMsgSize))
+	// refuse excess streams at the transport, before any message is decoded
+	maxConcurrentStreams := DefaultMaxConcurrentStreams
+	if serverConfig.MaxConcurrentStreams != 0 {
+		maxConcurrentStreams = serverConfig.MaxConcurrentStreams
+	}
+	serverOpts = append(serverOpts, grpc.MaxConcurrentStreams(maxConcurrentStreams))
 	// set the keepalive options
 	serverOpts = append(serverOpts, serverConfig.KaOpts.ServerKeepaliveOptions()...)
 	// set connection timeout

@@ -66,6 +66,9 @@ General:
   MaxRecvMsgSize: 104857600
   # Max message size in bytes the GRPC server and client can send
   MaxSendMsgSize: 104857600
+  # Max concurrent streams per GRPC connection; excess streams are refused
+  # before any message is decoded
+  MaxConcurrentStreams: 2500
   # Throttling prevents clients from sending too many transactions
   # per second to the broadcast API of this node.
   # It is only enforced when the Rate is non-zero, and when the client

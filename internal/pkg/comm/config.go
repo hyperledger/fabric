@@ -27,6 +27,10 @@ import (
 const (
 	DefaultMaxRecvMsgSize = 100 * 1024 * 1024
 	DefaultMaxSendMsgSize = 100 * 1024 * 1024
+	// DefaultMaxConcurrentStreams caps concurrent streams per connection;
+	// sized to stay above existing per-service budgets (2500 endorser/deliver,
+	// 500 gateway Submit fan-out)
+	DefaultMaxConcurrentStreams uint32 = 2500
 )
 
 var (
@@ -81,6 +85,9 @@ type ServerConfig struct {
 	MaxRecvMsgSize int
 	// Maximum message size the server can send
 	MaxSendMsgSize int
+	// Maximum concurrent streams per connection; 0 selects
+	// DefaultMaxConcurrentStreams
+	MaxConcurrentStreams uint32
 }
 
 // ClientConfig defines the parameters for configuring a GRPCClient instance
