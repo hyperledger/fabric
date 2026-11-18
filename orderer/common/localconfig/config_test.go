@@ -14,6 +14,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	db "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,6 +25,7 @@ func TestLoadGoodConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, cfg, "Could not load config")
 	require.NoError(t, err, "Load good config returned unexpected error")
+	require.Equal(t, comm.DefaultMaxConcurrentStreams, cfg.General.MaxConcurrentStreams)
 }
 
 func TestMissingConfigValueOverridden(t *testing.T) {

@@ -50,25 +50,26 @@ type TopLevel struct {
 
 // General contains config which should be common among all orderer types.
 type General struct {
-	ListenAddress     string
-	ListenPort        uint16
-	TLS               TLS
-	Cluster           Cluster
-	Keepalive         Keepalive
-	Backoff           Backoff
-	ConnectionTimeout time.Duration
-	GenesisMethod     string // Deprecated: For compatibility only, will be replaced by BootstrapMethod
-	GenesisFile       string // Deprecated: For compatibility only, will be replaced by BootstrapFile
-	BootstrapMethod   string // Deprecated: System channel is no longer supported.
-	BootstrapFile     string // Deprecated: System channel is no longer supported.
-	Profile           Profile
-	LocalMSPDir       string
-	LocalMSPID        string
-	BCCSP             *bccsp.FactoryOpts
-	Authentication    Authentication
-	MaxRecvMsgSize    int32
-	MaxSendMsgSize    int32
-	Throttling        Throttling
+	ListenAddress        string
+	ListenPort           uint16
+	TLS                  TLS
+	Cluster              Cluster
+	Keepalive            Keepalive
+	Backoff              Backoff
+	ConnectionTimeout    time.Duration
+	GenesisMethod        string // Deprecated: For compatibility only, will be replaced by BootstrapMethod
+	GenesisFile          string // Deprecated: For compatibility only, will be replaced by BootstrapFile
+	BootstrapMethod      string // Deprecated: System channel is no longer supported.
+	BootstrapFile        string // Deprecated: System channel is no longer supported.
+	Profile              Profile
+	LocalMSPDir          string
+	LocalMSPID           string
+	BCCSP                *bccsp.FactoryOpts
+	Authentication       Authentication
+	MaxRecvMsgSize       int32
+	MaxSendMsgSize       int32
+	MaxConcurrentStreams uint32
+	Throttling           Throttling
 }
 
 type Cluster struct {
@@ -218,8 +219,9 @@ var Defaults = TopLevel{
 		Authentication: Authentication{
 			TimeWindow: 15 * time.Minute,
 		},
-		MaxRecvMsgSize: comm.DefaultMaxRecvMsgSize,
-		MaxSendMsgSize: comm.DefaultMaxSendMsgSize,
+		MaxRecvMsgSize:       comm.DefaultMaxRecvMsgSize,
+		MaxSendMsgSize:       comm.DefaultMaxSendMsgSize,
+		MaxConcurrentStreams: comm.DefaultMaxConcurrentStreams,
 		Throttling: Throttling{
 			InactivityTimeout: time.Second * 5,
 		},
@@ -388,6 +390,9 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.MaxSendMsgSize == 0:
 			logger.Infof("General.MaxSendMsgSize is unset, setting to %v", Defaults.General.MaxSendMsgSize)
 			c.General.MaxSendMsgSize = Defaults.General.MaxSendMsgSize
+		case c.General.MaxConcurrentStreams == 0:
+			logger.Infof("General.MaxConcurrentStreams is unset, setting to %v", Defaults.General.MaxConcurrentStreams)
+			c.General.MaxConcurrentStreams = Defaults.General.MaxConcurrentStreams
 		case c.General.Throttling.InactivityTimeout == 0:
 			logger.Infof("General.Throttling.InactivityTimeout is unset, setting to %v", Defaults.General.Throttling.InactivityTimeout)
 			c.General.Throttling.InactivityTimeout = Defaults.General.Throttling.InactivityTimeout

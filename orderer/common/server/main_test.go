@@ -164,6 +164,10 @@ func TestInitializeServerConfig(t *testing.T) {
 	require.Len(t, sc.UnaryInterceptors, 2)
 	require.Len(t, sc.StreamInterceptors, 2)
 
+	conf.General.MaxConcurrentStreams = 1000
+	sc = initializeServerConfig(conf, nil)
+	require.Equal(t, uint32(1000), sc.MaxConcurrentStreams)
+
 	sc = initializeServerConfig(conf, &prometheus.Provider{})
 	require.NotNil(t, sc.ServerStatsHandler)
 
