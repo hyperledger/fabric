@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package persistence_test
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"encoding/json/v2"
 	"io"
 	"os"
@@ -253,6 +256,38 @@ var _ = Describe("ChaincodePackageParser", func() {
 
 				_, err = ccpp.Parse(data)
 				Expect(err).To(MatchError("did not find a code package inside the package"))
+			})
+		})
+
+		Context("when an entry expands beyond the decompression limit", func() {
+			It("fails fast instead of allocating the expanded contents", func() {
+				var buf bytes.Buffer
+				gw, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+				Expect(err).NotTo(HaveOccurred())
+				tw := tar.NewWriter(gw)
+
+				metadata := []byte(`{"type":"golang","label":"bomb"}`)
+				Expect(tw.WriteHeader(&tar.Header{Name: "metadata.json", Mode: 0o600, Size: int64(len(metadata))})).To(Succeed())
+				_, err = tw.Write(metadata)
+				Expect(err).NotTo(HaveOccurred())
+
+				const oversizedEntry = 256<<20 + 1
+				Expect(tw.WriteHeader(&tar.Header{Name: "code.tar.gz", Mode: 0o600, Size: oversizedEntry})).To(Succeed())
+				zeros := make([]byte, 1<<20)
+				for written := int64(0); written < oversizedEntry; {
+					n := int64(len(zeros))
+					if remaining := oversizedEntry - written; remaining < n {
+						n = remaining
+					}
+					w, err := tw.Write(zeros[:n])
+					Expect(err).NotTo(HaveOccurred())
+					written += int64(w)
+				}
+				Expect(tw.Close()).To(Succeed())
+				Expect(gw.Close()).To(Succeed())
+
+				_, _, err = persistence.ParseChaincodePackage(buf.Bytes())
+				Expect(err).To(MatchError(ContainSubstring("exceeds the maximum decompressed package size")))
 			})
 		})
 	})

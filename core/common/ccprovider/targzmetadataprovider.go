@@ -19,6 +19,11 @@ import (
 // to allow for arbitrary metadata to be packaged with the chaincode.
 const (
 	ccPackageStatedbDir = "META-INF/statedb/"
+
+	// maxStatedbArtifactsSize bounds the decompressed statedb metadata bytes
+	// copied out of a code package, so a high-expansion-ratio archive cannot
+	// exhaust peer memory.
+	maxStatedbArtifactsSize = 256 << 20 // 256 MiB
 )
 
 type PersistenceAdapter func([]byte) ([]byte, error)
@@ -41,6 +46,8 @@ func MetadataAsTarEntries(code []byte) ([]byte, error) {
 
 	tr := tar.NewReader(gr)
 
+	var artifactsSize int64
+
 	// For each file in the code package tar,
 	// add it to the statedb artifact tar if it has "statedb" in the path
 	for {
@@ -57,14 +64,23 @@ func MetadataAsTarEntries(code []byte) ([]byte, error) {
 			continue
 		}
 
+		// tar.Reader reads exactly the declared size, so checking it against
+		// the remaining budget before copying caps total allocation.
+		if header.Size > maxStatedbArtifactsSize-artifactsSize {
+			ccproviderLogger.Errorf("Statedb entry %s of size %d exceeds the maximum decompressed metadata size", header.Name, header.Size)
+			return nil, errors.New("statedb metadata exceeds the maximum decompressed size")
+		}
+
 		if err = tw.WriteHeader(header); err != nil {
 			ccproviderLogger.Error("Error adding header to statedb tar:", err, header.Name)
 			return nil, err
 		}
-		if _, err := io.Copy(tw, tr); err != nil {
+		written, err := io.Copy(tw, tr)
+		if err != nil {
 			ccproviderLogger.Error("Error copying file to statedb tar:", err, header.Name)
 			return nil, err
 		}
+		artifactsSize += written
 		ccproviderLogger.Debug("Wrote file to statedb tar:", header.Name)
 	}
 

@@ -36,6 +36,11 @@ const (
 	// CodePackageFile is the expected location of the code package in the
 	// top level of the chaincode package
 	CodePackageFile = "code.tar.gz"
+
+	// maxDecompressedPackageSize bounds the total bytes decompressed while
+	// parsing a package, so a high-expansion-ratio archive cannot exhaust
+	// peer memory.
+	maxDecompressedPackageSize = 256 << 20 // 256 MiB
 )
 
 //go:generate counterfeiter -o mock/legacy_cc_package_locator.go --fake-name LegacyCCPackageLocator . LegacyCCPackageLocator
@@ -287,6 +292,7 @@ func ParseChaincodePackage(source []byte) (*ChaincodePackageMetadata, []byte, er
 
 	var codePackage []byte
 	var ccPackageMetadata *ChaincodePackageMetadata
+	var decompressedSize int64
 	for {
 		header, err := tarReader.Next()
 		if errors.Is(err, io.EOF) {
@@ -301,10 +307,17 @@ func ParseChaincodePackage(source []byte) (*ChaincodePackageMetadata, []byte, er
 			return ccPackageMetadata, nil, errors.Errorf("tar entry %s is not a regular file, type %v", header.Name, header.Typeflag)
 		}
 
+		// tar.Reader reads exactly the declared size, so checking it against
+		// the remaining budget before reading caps total allocation.
+		if header.Size > maxDecompressedPackageSize-decompressedSize {
+			return ccPackageMetadata, nil, errors.Errorf("tar entry %s of size %d exceeds the maximum decompressed package size", header.Name, header.Size)
+		}
+
 		fileBytes, err := io.ReadAll(tarReader)
 		if err != nil {
 			return ccPackageMetadata, nil, errors.Wrapf(err, "could not read %s from tar", header.Name)
 		}
+		decompressedSize += int64(len(fileBytes))
 
 		switch header.Name {
 		case MetadataFile:
