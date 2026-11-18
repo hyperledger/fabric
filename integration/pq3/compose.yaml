@@ -1,0 +1,194 @@
+services:
+  orderer:
+    image: localhost/pactway-pq3/fabric-orderer:${PQ3_IMAGE_TAG:?}
+    pull_policy: never
+    command: ["orderer", "start"]
+    environment:
+      FABRIC_CFG_PATH: /etc/hyperledger/fabric
+      ORDERER_GENERAL_LISTENADDRESS: 0.0.0.0
+      ORDERER_GENERAL_LISTENPORT: "7050"
+      ORDERER_GENERAL_BOOTSTRAPMETHOD: none
+      ORDERER_GENERAL_LOCALMSPID: OrdererOrgMSP
+      ORDERER_GENERAL_LOCALMSPDIR: /etc/hyperledger/fabric/msp
+      ORDERER_GENERAL_TLS_ENABLED: "true"
+      ORDERER_GENERAL_TLS_PRIVATEKEY: /etc/hyperledger/fabric/tls/server.key
+      ORDERER_GENERAL_TLS_CERTIFICATE: /etc/hyperledger/fabric/tls/server.crt
+      ORDERER_GENERAL_TLS_ROOTCAS: "[/etc/hyperledger/fabric/msp/tlscacerts/tls-ca.pem]"
+      ORDERER_CHANNELPARTICIPATION_ENABLED: "true"
+      ORDERER_ADMIN_LISTENADDRESS: 0.0.0.0:9443
+      ORDERER_ADMIN_TLS_ENABLED: "true"
+      ORDERER_ADMIN_TLS_CERTIFICATE: /etc/hyperledger/fabric/tls/server.crt
+      ORDERER_ADMIN_TLS_PRIVATEKEY: /etc/hyperledger/fabric/tls/server.key
+      ORDERER_ADMIN_TLS_ROOTCAS: "[/etc/hyperledger/fabric/msp/tlscacerts/tls-ca.pem]"
+      ORDERER_ADMIN_TLS_CLIENTROOTCAS: "[/etc/hyperledger/fabric/msp/tlscacerts/tls-ca.pem]"
+      ORDERER_ADMIN_TLS_CLIENTAUTHREQUIRED: "true"
+      PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+      PACTWAY_ISOLATED_DEVELOPMENT: "true"
+    volumes:
+      - ${PQ3_MATERIAL_DIR}/private/organizations/OrdererOrg/nodes/orderer0/msp:/etc/hyperledger/fabric/msp:ro
+      - ${PQ3_MATERIAL_DIR}/private/organizations/OrdererOrg/nodes/orderer0/tls:/etc/hyperledger/fabric/tls:ro
+      - orderer-ledger:/var/hyperledger/production
+      - ${PQ3_RUN_DIR}/config/orderer.yaml:/etc/hyperledger/fabric/orderer.yaml:ro
+    networks:
+      pq3:
+        aliases:
+          - orderer0.ordererorg.pactway.local
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "echo > /dev/tcp/127.0.0.1/7050"]
+      interval: 3s
+      timeout: 2s
+      retries: 40
+      start_period: 10s
+
+  peer-org1:
+    image: localhost/pactway-pq3/fabric-peer:${PQ3_IMAGE_TAG:?}
+    pull_policy: never
+    command: ["peer", "node", "start"]
+    environment:
+      FABRIC_CFG_PATH: /etc/hyperledger/fabric
+      CORE_PEER_ID: peer0.org1.pactway.local
+      CORE_PEER_ADDRESS: peer0.org1.pactway.local:7051
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7051
+      CORE_PEER_LOCALMSPID: Org1MSP
+      CORE_PEER_MSPCONFIGPATH: /etc/hyperledger/fabric/msp
+      CORE_PEER_FILESYSTEMPATH: /var/hyperledger/production
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.org1.pactway.local:7051
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer0.org1.pactway.local:7051
+      CORE_PEER_GOSSIP_USELEADERELECTION: "false"
+      CORE_PEER_GOSSIP_ORGLEADER: "true"
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/msp/tlscacerts/tls-ca.pem
+      PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+      PACTWAY_ISOLATED_DEVELOPMENT: "true"
+    volumes:
+      - ${PQ3_MATERIAL_DIR}/private/organizations/Org1/nodes/peer0/msp:/etc/hyperledger/fabric/msp:ro
+      - ${PQ3_MATERIAL_DIR}/private/organizations/Org1/nodes/peer0/tls:/etc/hyperledger/fabric/tls:ro
+      - peer-org1-ledger:/var/hyperledger/production
+    networks:
+      pq3:
+        aliases:
+          - peer0.org1.pactway.local
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "echo > /dev/tcp/127.0.0.1/7051"]
+      interval: 3s
+      timeout: 2s
+      retries: 40
+      start_period: 10s
+
+  peer-org2:
+    image: localhost/pactway-pq3/fabric-peer:${PQ3_IMAGE_TAG:?}
+    pull_policy: never
+    command: ["peer", "node", "start"]
+    environment:
+      FABRIC_CFG_PATH: /etc/hyperledger/fabric
+      CORE_PEER_ID: peer0.org2.pactway.local
+      CORE_PEER_ADDRESS: peer0.org2.pactway.local:8051
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:8051
+      CORE_PEER_LOCALMSPID: Org2MSP
+      CORE_PEER_MSPCONFIGPATH: /etc/hyperledger/fabric/msp
+      CORE_PEER_FILESYSTEMPATH: /var/hyperledger/production
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.org2.pactway.local:8051
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer0.org2.pactway.local:8051
+      CORE_PEER_GOSSIP_USELEADERELECTION: "false"
+      CORE_PEER_GOSSIP_ORGLEADER: "true"
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/msp/tlscacerts/tls-ca.pem
+      PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+      PACTWAY_ISOLATED_DEVELOPMENT: "true"
+    volumes:
+      - ${PQ3_MATERIAL_DIR}/private/organizations/Org2/nodes/peer0/msp:/etc/hyperledger/fabric/msp:ro
+      - ${PQ3_MATERIAL_DIR}/private/organizations/Org2/nodes/peer0/tls:/etc/hyperledger/fabric/tls:ro
+      - peer-org2-ledger:/var/hyperledger/production
+    networks:
+      pq3:
+        aliases:
+          - peer0.org2.pactway.local
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "echo > /dev/tcp/127.0.0.1/8051"]
+      interval: 3s
+      timeout: 2s
+      retries: 40
+      start_period: 10s
+
+  ccaas:
+    image: localhost/pactway-pq3/ccaas:${PQ3_IMAGE_TAG:?}
+    pull_policy: never
+    environment:
+      CHAINCODE_ID: ${PQ3_CHAINCODE_ID:-}
+      CHAINCODE_SERVER_ADDRESS: 0.0.0.0:9999
+    networks:
+      pq3:
+        aliases:
+          - pq3-chaincode
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "echo > /dev/tcp/127.0.0.1/9999"]
+      interval: 3s
+      timeout: 2s
+      retries: 40
+      start_period: 3s
+
+  cli-org1:
+    image: localhost/pactway-pq3/fabric-peer:${PQ3_IMAGE_TAG:?}
+    pull_policy: never
+    profiles: ["cli"]
+    environment:
+      FABRIC_CFG_PATH: /etc/hyperledger/fabric
+      CORE_PEER_LOCALMSPID: Org1MSP
+      CORE_PEER_ADDRESS: peer0.org1.pactway.local:7051
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_TLS_ROOTCERT_FILE: /run/public/organizations/Org1/msp/tlscacerts/tls-ca.pem
+      CORE_PEER_MSPCONFIGPATH: /run/msp/client
+      PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+      PACTWAY_ISOLATED_DEVELOPMENT: "true"
+    volumes:
+      - ${PQ3_MATERIAL_DIR}/private/organizations/Org1/users/Client/msp:/run/msp/client:ro
+      - ${PQ3_MATERIAL_DIR}/private/organizations/Org1/users/Admin/msp:/run/msp/admin:ro
+      - ${PQ3_MATERIAL_DIR}/public:/run/public:ro
+    networks:
+      - pq3
+
+  cli-org2:
+    image: localhost/pactway-pq3/fabric-peer:${PQ3_IMAGE_TAG:?}
+    pull_policy: never
+    profiles: ["cli"]
+    environment:
+      FABRIC_CFG_PATH: /etc/hyperledger/fabric
+      CORE_PEER_LOCALMSPID: Org2MSP
+      CORE_PEER_ADDRESS: peer0.org2.pactway.local:8051
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_TLS_ROOTCERT_FILE: /run/public/organizations/Org2/msp/tlscacerts/tls-ca.pem
+      CORE_PEER_MSPCONFIGPATH: /run/msp/admin
+      PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+      PACTWAY_ISOLATED_DEVELOPMENT: "true"
+    volumes:
+      - ${PQ3_MATERIAL_DIR}/private/organizations/Org2/users/Client/msp:/run/msp/client:ro
+      - ${PQ3_MATERIAL_DIR}/private/organizations/Org2/users/Admin/msp:/run/msp/admin:ro
+      - ${PQ3_MATERIAL_DIR}/public:/run/public:ro
+    networks:
+      - pq3
+
+  cli-orderer-admin:
+    image: localhost/pactway-pq3/tools:${PQ3_IMAGE_TAG:?}
+    pull_policy: never
+    profiles: ["cli"]
+    environment:
+      PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+      PACTWAY_ISOLATED_DEVELOPMENT: "true"
+    volumes:
+      - ${PQ3_MATERIAL_DIR}/private/organizations/OrdererOrg/nodes/orderer0/tls:/run/orderer-tls:ro
+      - ${PQ3_MATERIAL_DIR}/public:/run/public:ro
+    networks:
+      - pq3
+
+networks:
+  pq3:
+    internal: true
+
+volumes:
+  orderer-ledger:
+  peer-org1-ledger:
+  peer-org2-ledger:

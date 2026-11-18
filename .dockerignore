@@ -18,3 +18,5 @@ docs
 images
 release_notes
 vagrant
+integration/pq3/runtime
+integration/pq3/evidence

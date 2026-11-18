@@ -15,6 +15,8 @@
 *.log
 .project
 /release
+/integration/pq3/runtime/
+/integration/pq3/evidence/
 report.xml
 results.xml
 .settings

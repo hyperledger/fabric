@@ -12,9 +12,12 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/hex"
+	"encoding/json/v2"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -25,16 +28,18 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp/signer"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric/common/capabilities"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	oqs "github.com/hyperledger/fabric/pq-crypto"
 	"github.com/hyperledger/fabric/protoutil"
-	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("Pactway hybrid transaction expiry replay", func() {
@@ -48,7 +53,12 @@ var _ = Describe("Pactway hybrid transaction expiry replay", func() {
 
 		var network *nwo.Network
 		var ordererProcess, peerProcess, replayPeerProcess ifrit.Process
+		var chaincodeServer ifrit.Process
 		DeferCleanup(func() {
+			if chaincodeServer != nil {
+				chaincodeServer.Signal(syscall.SIGTERM)
+				Eventually(chaincodeServer.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
 			for _, process := range []ifrit.Process{replayPeerProcess, peerProcess, ordererProcess} {
 				if process != nil {
 					process.Signal(syscall.SIGTERM)
@@ -63,15 +73,12 @@ var _ = Describe("Pactway hybrid transaction expiry replay", func() {
 			restoreEnvironment("PACTWAY_ISOLATED_DEVELOPMENT", oldDevelopment, oldDevelopmentSet)
 		})
 
-		client, err := dcli.New(dcli.FromEnv)
-		Expect(err).NotTo(HaveOccurred())
-		network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaft(), testDir, nil, StartPort(), components)
 		ordererOrg := network.Organization("OrdererOrg")
 		ordererOrg.MSPID = "OrdererOrgMSP"
 		ordererOrg.EnableNodeOUs = true
 		network.Profiles[0].ChannelCapabilities = []string{"V3_0", capabilities.PactwayHybridCertificateV1}
 		network.GenerateConfigTree()
-		network.CreateDockerNetwork()
 		sess, err := network.Cryptogen(commands.Generate{Config: network.CryptoConfigPath(), Output: network.CryptoPath()})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
@@ -99,19 +106,51 @@ var _ = Describe("Pactway hybrid transaction expiry replay", func() {
 		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, runner)
 		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, org1Peer, org2Peer)
 
+		chaincodeServerAddress := fmt.Sprintf("127.0.0.1:%d", network.ReservePort())
+		connectionData, serverConfig := generateReplayChaincodeConfig(chaincodeServerAddress)
+		assetDir, err := os.MkdirTemp(testDir, "chaincode-assets")
+		Expect(err).NotTo(HaveOccurred())
+		connectionJSON, err := json.Marshal(connectionData)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(os.WriteFile(filepath.Join(assetDir, "connection.json"), connectionJSON, 0o644)).To(Succeed())
+		serverConfigJSON, err := json.Marshal(serverConfig)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(os.WriteFile(filepath.Join(assetDir, "config.json"), serverConfigJSON, 0o644)).To(Succeed())
+
 		chaincode := nwo.Chaincode{
 			Name:            "hybrid-expiry-cc",
 			Version:         "0.0",
-			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
-			Lang:            "binary",
+			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/server"),
+			Lang:            "ccaas",
 			PackageFile:     filepath.Join(testDir, "hybrid-expiry-cc.tar.gz"),
 			Ctor:            `{"Args":["init","a","100","b","200"]}`,
 			SignaturePolicy: `OR ('Org1MSP.peer')`,
 			Sequence:        "1",
 			InitRequired:    true,
 			Label:           "hybrid_expiry_cc",
+			CodeFiles: map[string]string{
+				filepath.Join(assetDir, "connection.json"): "connection.json",
+				filepath.Join(assetDir, "config.json"):     "config.json",
+			},
 		}
-		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+		peers := network.PeersWithChannel("testchannel")
+		nwo.PackageAndInstallChaincode(network, chaincode, peers...)
+		chaincode.SetPackageIDFromPackageFile()
+		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, peers...)
+		nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), peers...)
+		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, org1Peer, peers...)
+		chaincodeServer = ifrit.Invoke(ginkgomon.New(ginkgomon.Config{
+			Name: chaincode.PackageID,
+			Command: &exec.Cmd{
+				Path: chaincode.Path,
+				Args: []string{chaincode.Path, chaincode.PackageID},
+				Dir:  assetDir,
+			},
+			StartCheck:        `Starting chaincode ` + chaincode.PackageID + ` at ` + chaincodeServerAddress,
+			StartCheckTimeout: 15 * time.Second,
+		}))
+		Eventually(chaincodeServer.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		nwo.InitChaincode(network, "testchannel", orderer, chaincode, peers...)
 
 		replayHeight := nwo.GetLedgerHeight(network, org2Peer, "testchannel")
 		peerProcess.Signal(syscall.SIGTERM)
@@ -308,4 +347,36 @@ func generateExpiringIdentityMSP(source, certificatePath, caKeyStoreDir, destina
 	Expect(os.MkdirAll(signcerts, 0o700)).To(Succeed())
 	Expect(os.WriteFile(filepath.Join(signcerts, "cert.pem"), pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0o600)).To(Succeed())
 	return notAfter
+}
+
+type replayChaincodeServerConfig struct {
+	ListenAddress string `json:"listen_address,omitempty"`
+	Key           string `json:"key,omitempty"`
+	Cert          string `json:"cert,omitempty"`
+	CA            string `json:"ca,omitempty"`
+}
+
+func generateReplayChaincodeConfig(address string) (externalbuilder.ChaincodeServerUserData, replayChaincodeServerConfig) {
+	tlsCA, err := tlsgen.NewCA()
+	Expect(err).NotTo(HaveOccurred())
+	serverPair, err := tlsCA.NewServerCertKeyPair("127.0.0.1")
+	Expect(err).NotTo(HaveOccurred())
+	clientPair, err := tlsCA.NewClientCertKeyPair()
+	Expect(err).NotTo(HaveOccurred())
+
+	caCert := string(tlsCA.CertBytes())
+	return externalbuilder.ChaincodeServerUserData{
+			Address:            address,
+			DialTimeout:        externalbuilder.Duration(10 * time.Second),
+			TLSRequired:        true,
+			ClientAuthRequired: true,
+			ClientKey:          string(clientPair.Key),
+			ClientCert:         string(clientPair.Cert),
+			RootCert:           caCert,
+		}, replayChaincodeServerConfig{
+			ListenAddress: address,
+			Key:           string(serverPair.Key),
+			Cert:          string(serverPair.Cert),
+			CA:            caCert,
+		}
 }

@@ -1,0 +1,124 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: PQ3 Isolated Network
+
+on:
+  pull_request:
+    branches: ["**"]
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pq3-isolated:
+    name: PQ3 isolated acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.4
+          cache: true
+
+      - name: Check PQ3 scripts and tools
+        run: |
+          bash -n integration/pq3/pq3.sh
+          go test -mod=vendor ./cmd/pq3-verify ./integration/pq3
+          go test -mod=vendor ./pq-crypto ./msp ./common/channelconfig ./orderer/common/msgprocessor
+          go build -mod=vendor ./cmd/pq3-verify ./integration/pq3
+        env:
+          PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+          PACTWAY_ISOLATED_DEVELOPMENT: "true"
+
+      - name: Install verified upstream peer for compatibility check
+        run: |
+          set -euo pipefail
+          version=3.1.5
+          archive="$RUNNER_TEMP/hyperledger-fabric-linux-amd64-$version.tar.gz"
+          install_dir="$RUNNER_TEMP/upstream-fabric"
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://github.com/hyperledger/fabric/releases/download/v$version/hyperledger-fabric-linux-amd64-$version.tar.gz" \
+            --output "$archive"
+          echo "b9c31fd490991e76f8acb1835dee09fc19fee5428cb13e190ee6e0bdd2c37858  $archive" | sha256sum --check
+          mkdir -p "$install_dir"
+          tar -xzf "$archive" -C "$install_dir"
+          "$install_dir/bin/peer" version
+          echo "PACTWAY_UPSTREAM_PEER=$install_dir/bin/peer" >> "$GITHUB_ENV"
+
+      - name: Run hybrid MSP transaction acceptance
+        run: |
+          make ccaasbuilder
+          go test -mod=vendor ./integration/msp -ginkgo.focus='Pactway hybrid transaction (expiry replay|signature rejection)|Upstream channel capability compatibility' -ginkgo.v
+        env:
+          PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+          PACTWAY_ISOLATED_DEVELOPMENT: "true"
+
+      - name: Start source-built isolated network
+        run: integration/pq3/pq3.sh fresh
+        env:
+          PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+          PACTWAY_ISOLATED_DEVELOPMENT: "true"
+
+      - name: Join orderer and both peers
+        run: integration/pq3/pq3.sh join
+        env:
+          PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+          PACTWAY_ISOLATED_DEVELOPMENT: "true"
+
+      - name: Deploy two-organization chaincode
+        run: integration/pq3/pq3.sh deploy
+        env:
+          PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+          PACTWAY_ISOLATED_DEVELOPMENT: "true"
+
+      - name: Verify transaction state and cryptographic evidence
+        run: |
+          integration/pq3/pq3.sh invoke
+          repo_key="$(printf '%s' "$(git rev-parse --show-toplevel)" | sha256sum | cut -c1-12)"
+          run_id="$(<"$HOME/.local/share/pactway-pq3/$repo_key/active-run")"
+          run_dir="$HOME/.local/share/pactway-pq3/$repo_key/$run_id"
+          {
+            echo "## PQ3 transaction verification"
+            echo
+            echo '```json'
+            cat "$run_dir/evidence/transaction-verification.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+          PACTWAY_ISOLATED_DEVELOPMENT: "true"
+
+      - name: Reject a transaction missing Org2 endorsement
+        run: integration/pq3/pq3.sh negative-endorsement
+        env:
+          PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+          PACTWAY_ISOLATED_DEVELOPMENT: "true"
+
+      - name: Verify stop/start/restart/resume recovery
+        run: integration/pq3/pq3.sh recovery
+        env:
+          PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+          PACTWAY_ISOLATED_DEVELOPMENT: "true"
+
+      - name: Remove isolated runtime
+        if: always()
+        run: |
+          repo_key="$(printf '%s' "$(git rev-parse --show-toplevel)" | sha256sum | cut -c1-12)"
+          active_file="$HOME/.local/share/pactway-pq3/$repo_key/active-run"
+          if [[ -f "$active_file" ]]; then
+            integration/pq3/pq3.sh reset
+          fi
+        env:
+          PACTWAY_HYBRID_PROFILE: rfc5612-test-only-v1
+          PACTWAY_ISOLATED_DEVELOPMENT: "true"
