@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle_test
 
 import (
+	"sync"
+
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
@@ -80,6 +82,28 @@ var _ = Describe("MetadataProvider", func() {
 	It("returns metadata for implicit collections", func() {
 		metadata := metadataProvider.Metadata("testchannel", "cc-name", "_implicit_org_msp1")
 		Expect(metadata.CollectionPolicies).To(HaveKey("_implicit_org_msp1"))
+	})
+
+	It("does not mutate the cached chaincode definition for implicit collections", func() {
+		for range 100 {
+			metadata := metadataProvider.Metadata("testchannel", "cc-name", "_implicit_org_msp1")
+			Expect(metadata.CollectionsConfig.GetConfig()).To(HaveLen(1))
+			Expect(metadata.CollectionPolicies).To(HaveKey("_implicit_org_msp1"))
+		}
+		Expect(ccInfo.Definition.Collections.GetConfig()).To(BeEmpty())
+	})
+
+	It("is safe for concurrent metadata requests for implicit collections", func() {
+		var wg sync.WaitGroup
+		for range 8 {
+			wg.Go(func() {
+				for range 50 {
+					metadataProvider.Metadata("testchannel", "cc-name", "_implicit_org_msp1")
+				}
+			})
+		}
+		wg.Wait()
+		Expect(ccInfo.Definition.Collections.GetConfig()).To(BeEmpty())
 	})
 
 	Context("when the chaincode is not found by the ChaincodeInfoProvider", func() {
