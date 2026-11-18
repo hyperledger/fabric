@@ -26,12 +26,6 @@ func TestInitGrpcSemaphores(t *testing.T) {
 	require.Equal(t, 100, cap(semaphores[ab.AtomicBroadcast_Deliver_FullMethodName]))
 }
 
-func TestInitGrpcSemaphoresPanicsOnNegativeLimit(t *testing.T) {
-	conf := &localconfig.TopLevel{}
-	conf.General.Limits.Concurrency.DeliverService = -1
-	require.PanicsWithValue(t, "permits must be greater than 0", func() { initGrpcSemaphores(conf) })
-}
-
 func TestStreamGrpcLimiterRejectsBeyondLimit(t *testing.T) {
 	limit := 3
 	conf := &localconfig.TopLevel{}

@@ -192,7 +192,7 @@ type Limits struct {
 }
 
 // Concurrency defines concurrency limits for services exposed by the orderer.
-// A zero value for a service disables the limit for that service.
+// A zero value for a service is replaced by its default limit.
 type Concurrency struct {
 	// DeliverService limits the number of concurrent deliver streams.
 	DeliverService int
@@ -236,6 +236,11 @@ var Defaults = TopLevel{
 		MaxSendMsgSize: comm.DefaultMaxSendMsgSize,
 		Throttling: Throttling{
 			InactivityTimeout: time.Second * 5,
+		},
+		Limits: Limits{
+			Concurrency: Concurrency{
+				DeliverService: 2500,
+			},
 		},
 	},
 	FileLedger: FileLedger{
@@ -405,6 +410,11 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.Throttling.InactivityTimeout == 0:
 			logger.Infof("General.Throttling.InactivityTimeout is unset, setting to %v", Defaults.General.Throttling.InactivityTimeout)
 			c.General.Throttling.InactivityTimeout = Defaults.General.Throttling.InactivityTimeout
+		case c.General.Limits.Concurrency.DeliverService < 0:
+			logger.Panicf("General.Limits.Concurrency.DeliverService must be greater than or equal to 0, got %d", c.General.Limits.Concurrency.DeliverService)
+		case c.General.Limits.Concurrency.DeliverService == 0:
+			logger.Infof("General.Limits.Concurrency.DeliverService is unset, setting to %v", Defaults.General.Limits.Concurrency.DeliverService)
+			c.General.Limits.Concurrency.DeliverService = Defaults.General.Limits.Concurrency.DeliverService
 		case c.FileLedger.StateDatabase == "":
 			c.FileLedger.StateDatabase = Defaults.FileLedger.StateDatabase
 		default:

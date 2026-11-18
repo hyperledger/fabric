@@ -201,6 +201,28 @@ func TestAdminTLSConfig(t *testing.T) {
 	}
 }
 
+func TestDeliverServiceConcurrencyLimit(t *testing.T) {
+	t.Run("unset defaults to the default limit", func(t *testing.T) {
+		uconf := &TopLevel{}
+		uconf.completeInitialization("/dummy/path")
+		require.Equal(t, Defaults.General.Limits.Concurrency.DeliverService, uconf.General.Limits.Concurrency.DeliverService)
+		require.Equal(t, 2500, uconf.General.Limits.Concurrency.DeliverService)
+	})
+
+	t.Run("explicit value is preserved", func(t *testing.T) {
+		uconf := &TopLevel{}
+		uconf.General.Limits.Concurrency.DeliverService = 42
+		uconf.completeInitialization("/dummy/path")
+		require.Equal(t, 42, uconf.General.Limits.Concurrency.DeliverService)
+	})
+
+	t.Run("negative value panics", func(t *testing.T) {
+		uconf := &TopLevel{}
+		uconf.General.Limits.Concurrency.DeliverService = -1
+		require.PanicsWithValue(t, "General.Limits.Concurrency.DeliverService must be greater than or equal to 0, got -1", func() { uconf.completeInitialization("/dummy/path") })
+	})
+}
+
 func TestClusterDefaults(t *testing.T) {
 	configtest.SetDevFabricConfigPath(t)
 
