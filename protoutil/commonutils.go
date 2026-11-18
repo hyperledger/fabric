@@ -202,6 +202,12 @@ func IsConfigBlock(block *cb.Block) bool {
 		return false
 	}
 
+	return IsConfigTransaction(envelope)
+}
+
+// IsConfigTransaction returns true if the envelope contains a configuration
+// update or an orderer transaction.
+func IsConfigTransaction(envelope *cb.Envelope) bool {
 	payload, err := UnmarshalPayload(envelope.GetPayload())
 	if err != nil {
 		return false

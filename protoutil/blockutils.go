@@ -226,11 +226,10 @@ func VerifyTransactionsAreWellFormed(block *cb.Block) error {
 		return errors.New("empty block")
 	}
 
-	// If we have a single transaction, and the block is a config block, then no need to check
-	// well formed-ness, because there cannot be another transaction in the original block.
-	if IsConfigBlock(block) {
-		return nil
-	}
+	// Config blocks may carry an unsigned envelope (the genesis block),
+	// but every entry must still be canonical to keep the data hash unambiguous.
+	isConfigBlock := IsConfigBlock(block)
+	txCount := len(block.GetData().GetData())
 
 	for i, rawTx := range block.GetData().GetData() {
 		env := &cb.Envelope{}
@@ -242,8 +241,12 @@ func VerifyTransactionsAreWellFormed(block *cb.Block) error {
 			return fmt.Errorf("transaction %d has no payload", i)
 		}
 
-		if len(env.GetSignature()) == 0 {
+		if len(env.GetSignature()) == 0 && !isConfigBlock {
 			return fmt.Errorf("transaction %d has no signature", i)
+		}
+
+		if txCount > 1 && IsConfigTransaction(env) {
+			return fmt.Errorf("transaction %d is a config transaction but the block contains %d transactions", i, txCount)
 		}
 
 		expected, err := proto.Marshal(env)
