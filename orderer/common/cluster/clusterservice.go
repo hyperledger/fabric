@@ -40,8 +40,15 @@ type ClusterStepStream interface {
 
 type ChannelMembersConfig struct {
 	MemberMapping     map[uint64][]byte
-	AuthorizedStreams sync.Map // Stream ID --> node identifier
+	AuthorizedStreams sync.Map // Stream ID --> authorizedStream
 	nextStreamID      atomic.Uint64
+}
+
+// authorizedStream records the node a stream was authenticated as,
+// and the identity it was authenticated with.
+type authorizedStream struct {
+	nodeID   uint64
+	identity []byte
 }
 
 // ClusterService implements the server API for ClusterNodeService service
@@ -95,8 +102,12 @@ func (s *ClusterService) Step(stream orderer.ClusterNodeService_StepServer) erro
 		return status.Errorf(codes.Unauthenticated, "access denied")
 	}
 
-	streamID := s.MembershipByChannel[authReq.GetChannel()].nextStreamID.Add(1)
-	s.MembershipByChannel[authReq.GetChannel()].AuthorizedStreams.Store(streamID, authReq.GetFromId())
+	membership := s.MembershipByChannel[authReq.GetChannel()]
+	streamID := membership.nextStreamID.Add(1)
+	membership.AuthorizedStreams.Store(streamID, authorizedStream{
+		nodeID:   authReq.GetFromId(),
+		identity: membership.MemberMapping[authReq.GetFromId()],
+	})
 	s.Lock.RUnlock()
 
 	defer s.Logger.Debugf("Closing connection from %s(%s)", commonName, addr)
@@ -272,9 +283,12 @@ func (c *ClusterService) ConfigureNodeCerts(channel string, newNodes []*common.C
 		channelMembership.MemberMapping[uint64(nodeIdentity.GetId())] = sanitizedID
 	}
 
-	// Iterate over existing streams and prune those that should not be there anymore
-	channelMembership.AuthorizedStreams.Range(func(streamID, nodeID any) bool {
-		if _, exists := channelMembership.MemberMapping[nodeID.(uint64)]; !exists {
+	// Iterate over existing streams and prune those whose node was removed,
+	// or whose node identity was replaced since the stream was authenticated
+	channelMembership.AuthorizedStreams.Range(func(streamID, stream any) bool {
+		as := stream.(authorizedStream)
+		identity, exists := channelMembership.MemberMapping[as.nodeID]
+		if !exists || !bytes.Equal(identity, as.identity) {
 			channelMembership.AuthorizedStreams.Delete(streamID.(uint64))
 		}
 		return true
