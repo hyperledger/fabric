@@ -247,6 +247,11 @@ func verifyHashChainAndDataHash(block *cb.Block, prevHeaderHash string) error {
 		return errors.Errorf("previous header hash is %s but expected %s", thisHdrHashOfPrevHdr, prevHeaderHash)
 	}
 
+	return verifyDataHash(block)
+}
+
+// verifyDataHash ensures the block data matches the data hash committed in the signed header.
+func verifyDataHash(block *cb.Block) error {
 	dataHash, err := protoutil.BlockDataHash(block.GetData())
 	if err != nil {
 		return err
@@ -413,6 +418,11 @@ func (v *Verifier) verifySignatureIsBoundToProposal(sig *Signature, identityID u
 	block, err := ProposalToBlock(prop)
 	if err != nil {
 		v.Logger.Warnf("got malformed proposal: %v", err)
+		return err
+	}
+
+	// The signature only binds to the header, so the payload must match the header's data hash.
+	if err := verifyDataHash(block); err != nil {
 		return err
 	}
 
