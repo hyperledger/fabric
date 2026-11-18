@@ -330,6 +330,10 @@ func (v *Verifier) verifyBlockDataAndMetadata(block *cb.Block, metadata []byte) 
 }
 
 func validateTransactions(blockData [][]byte, verifyReq requestVerifier) ([]types.RequestInfo, error) {
+	if err := ensureConfigTxIsAlone(blockData); err != nil {
+		return nil, err
+	}
+
 	var validationFinished sync.WaitGroup
 	validationFinished.Add(len(blockData))
 
@@ -371,6 +375,24 @@ func validateTransactions(blockData [][]byte, verifyReq requestVerifier) ([]type
 	}
 
 	return res, nil
+}
+
+func ensureConfigTxIsAlone(blockData [][]byte) error {
+	if len(blockData) <= 1 {
+		return nil
+	}
+
+	for i, payload := range blockData {
+		env, err := protoutil.UnmarshalEnvelope(payload)
+		if err != nil {
+			return errors.Wrapf(err, "transaction %d is invalid", i)
+		}
+		if protoutil.IsConfigTransaction(env) {
+			return errors.Errorf("transaction %d is a config transaction but the block contains %d transactions", i, len(blockData))
+		}
+	}
+
+	return nil
 }
 
 func (v *Verifier) verifySignatureIsBoundToProposal(sig *Signature, identityID uint64, prop types.Proposal) error {

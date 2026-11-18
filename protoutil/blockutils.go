@@ -318,11 +318,9 @@ func VerifyTransactionsAreWellFormed(bd *cb.BlockData) error {
 		return errors.New("empty block")
 	}
 
-	// If we have a single transaction, and the block is a config block, then no need to check
-	// well formed-ness, because there cannot be another transaction in the original block.
-	if HasConfigTx(bd) {
-		return nil
-	}
+	// Config blocks may carry an unsigned envelope (the genesis block),
+	// but every entry must still be canonical to keep the data hash unambiguous.
+	isConfigBlock := HasConfigTx(bd)
 
 	for i, rawTx := range bd.GetData() {
 		env := &cb.Envelope{}
@@ -334,7 +332,7 @@ func VerifyTransactionsAreWellFormed(bd *cb.BlockData) error {
 			return fmt.Errorf("transaction %d has no payload", i)
 		}
 
-		if len(env.GetSignature()) == 0 {
+		if len(env.GetSignature()) == 0 && !isConfigBlock {
 			return fmt.Errorf("transaction %d has no signature", i)
 		}
 
