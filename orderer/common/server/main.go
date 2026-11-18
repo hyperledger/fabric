@@ -374,12 +374,13 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 	}
 
 	serverConf := comm.ServerConfig{
-		StreamInterceptors: generalConf.StreamInterceptors,
-		UnaryInterceptors:  generalConf.UnaryInterceptors,
-		ConnectionTimeout:  generalConf.ConnectionTimeout,
-		ServerStatsHandler: generalConf.ServerStatsHandler,
-		Logger:             generalConf.Logger,
-		KaOpts:             generalConf.KaOpts,
+		StreamInterceptors:   generalConf.StreamInterceptors,
+		UnaryInterceptors:    generalConf.UnaryInterceptors,
+		ConnectionTimeout:    generalConf.ConnectionTimeout,
+		ServerStatsHandler:   generalConf.ServerStatsHandler,
+		Logger:               generalConf.Logger,
+		KaOpts:               generalConf.KaOpts,
+		MaxConcurrentStreams: generalConf.MaxConcurrentStreams,
 		SecOpts: comm.SecureOptions{
 			TimeShift:         conf.General.Cluster.TLSHandshakeTimeShift,
 			CipherSuites:      comm.DefaultTLSCipherSuites,
@@ -539,16 +540,26 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		metricsProvider = &disabled.Provider{}
 	}
 
+	streamInterceptors := []grpc.StreamServerInterceptor{
+		grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
+		grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+	}
+	if semaphores := initGrpcSemaphores(conf); len(semaphores) != 0 {
+		streamInterceptors = append(streamInterceptors, streamGrpcLimiter(semaphores))
+	}
+
+	if b := conf.General.Limits.Concurrency.BroadcastService; uint64(conf.General.MaxConcurrentStreams) < uint64(b) {
+		logger.Warnf("General.MaxConcurrentStreams (%d) is below the broadcast concurrency limit (%d); the transport cap will throttle first",
+			conf.General.MaxConcurrentStreams, b)
+	}
+
 	return comm.ServerConfig{
 		SecOpts:            secureOpts,
 		KaOpts:             kaOpts,
 		Logger:             commLogger,
 		ServerStatsHandler: comm.NewServerStatsHandler(metricsProvider),
 		ConnectionTimeout:  conf.General.ConnectionTimeout,
-		StreamInterceptors: []grpc.StreamServerInterceptor{
-			grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
-			grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
-		},
+		StreamInterceptors: streamInterceptors,
 		UnaryInterceptors: []grpc.UnaryServerInterceptor{
 			grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
 			grpclogging.UnaryServerInterceptor(

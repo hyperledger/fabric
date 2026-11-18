@@ -26,6 +26,7 @@ func TestLoadGoodConfig(t *testing.T) {
 	require.NotNil(t, cfg, "Could not load config")
 	require.NoError(t, err, "Load good config returned unexpected error")
 	require.Equal(t, comm.DefaultMaxConcurrentStreams, cfg.General.MaxConcurrentStreams)
+	require.Equal(t, Defaults.General.Limits.Concurrency.BroadcastService, cfg.General.Limits.Concurrency.BroadcastService)
 }
 
 func TestMissingConfigValueOverridden(t *testing.T) {
