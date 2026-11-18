@@ -1295,3 +1295,111 @@ func TestMain(m *testing.M) {
 
 	os.Exit(m.Run())
 }
+
+// A transaction that is rejected by the committer's structural checks before
+// plugin dispatch still has its metadata-write dependencies recorded by the
+// state-based validator of any later transaction in the block, but never
+// produces a plugin validation result. The dependent transaction must not
+// wait for that result forever.
+func TestPreDispatchRejectedTxDoesNotBlockDependents(t *testing.T) {
+	v, mockQE, _, _ := setupValidator()
+	mockQE.On("GetState", "lscc", "mycc").Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
+		Name:    "mycc",
+		Version: ccVersion,
+		Vscc:    "vscc",
+		Policy:  signedByAnyMember([]string{"SampleOrg"}),
+	}), nil)
+	mockQE.On("GetStateMetadata", "mycc", "key").Return(nil, nil)
+
+	// tx0 writes the validation parameter of key "key", but its proposal
+	// payload is tampered with after endorsement, so the proposal hash no
+	// longer matches; the envelope is re-signed so ordering admission accepts it
+	rwsetBuilder0 := rwsetutil.NewRWSetBuilder()
+	rwsetBuilder0.AddToMetadataWriteSet("mycc", "key", map[string][]byte{"VALIDATION_PARAMETER": []byte("policy")})
+	simRes0, err := rwsetBuilder0.GetTxSimulationResults()
+	require.NoError(t, err)
+	rwsetBytes0, err := simRes0.GetPubSimulationBytes()
+	require.NoError(t, err)
+	env0 := getEnv("mycc", nil, rwsetBytes0, t)
+
+	payl, err := protoutil.UnmarshalPayload(env0.GetPayload())
+	require.NoError(t, err)
+	txx, err := protoutil.UnmarshalTransaction(payl.GetData())
+	require.NoError(t, err)
+	capl, err := protoutil.UnmarshalChaincodeActionPayload(txx.GetActions()[0].GetPayload())
+	require.NoError(t, err)
+	capl.ChaincodeProposalPayload = append(capl.ChaincodeProposalPayload, 0x00)
+	txx.Actions[0].Payload = protoutil.MarshalOrPanic(capl)
+	payl.Data = protoutil.MarshalOrPanic(txx)
+	env0.Payload = protoutil.MarshalOrPanic(payl)
+	env0.Signature, err = signer.Sign(env0.GetPayload())
+	require.NoError(t, err)
+
+	// tx1 validly writes the same key, so its key-level validation depends on
+	// the validation outcome of tx0
+	env1 := getEnv("mycc", nil, createRWset(t, "mycc"), t)
+
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(env0), protoutil.MarshalOrPanic(env1)}},
+		Header: &common.BlockHeader{Number: 2},
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- v.Validate(b) }()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("Validate did not complete: tx1 waits forever on the validation result of the rejected tx0")
+	}
+
+	txsFilter := txflags.ValidationFlags(b.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	require.True(t, txsFilter.IsSetTo(0, peer.TxValidationCode_INVALID_ENDORSER_TRANSACTION))
+	require.False(t, txsFilter.IsInvalid(1))
+}
+
+// Variant of the above where the rejected transaction's action payload cannot
+// be parsed at all, so dependency extraction for it yields nothing.
+func TestUnparseableActionPayloadDoesNotBlockDependents(t *testing.T) {
+	v, mockQE, _, _ := setupValidator()
+	mockQE.On("GetState", "lscc", "mycc").Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
+		Name:    "mycc",
+		Version: ccVersion,
+		Vscc:    "vscc",
+		Policy:  signedByAnyMember([]string{"SampleOrg"}),
+	}), nil)
+	mockQE.On("GetStateMetadata", "mycc", "key").Return(nil, nil)
+
+	env0 := getEnv("mycc", nil, createRWset(t, "mycc"), t)
+	payl, err := protoutil.UnmarshalPayload(env0.GetPayload())
+	require.NoError(t, err)
+	txx, err := protoutil.UnmarshalTransaction(payl.GetData())
+	require.NoError(t, err)
+	txx.Actions[0].Payload = []byte("not-a-chaincode-action-payload")
+	payl.Data = protoutil.MarshalOrPanic(txx)
+	env0.Payload = protoutil.MarshalOrPanic(payl)
+	env0.Signature, err = signer.Sign(env0.GetPayload())
+	require.NoError(t, err)
+
+	env1 := getEnv("mycc", nil, createRWset(t, "mycc"), t)
+
+	b := &common.Block{
+		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(env0), protoutil.MarshalOrPanic(env1)}},
+		Header: &common.BlockHeader{Number: 2},
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- v.Validate(b) }()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("Validate did not complete: tx1 waits forever on dependency insertion of the rejected tx0")
+	}
+
+	txsFilter := txflags.ValidationFlags(b.GetMetadata().GetMetadata()[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	require.True(t, txsFilter.IsInvalid(0))
+	require.False(t, txsFilter.IsInvalid(1))
+}

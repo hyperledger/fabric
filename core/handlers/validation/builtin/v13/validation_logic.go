@@ -238,3 +238,10 @@ func policyErr(err error) *commonerrors.VSCCEndorsementPolicyError {
 		Err: err,
 	}
 }
+
+// SignalInvalidTx signals that the transaction at the given height was
+// rejected before or during plugin dispatch, releasing transactions waiting
+// on its state-based endorsement dependencies
+func (vscc *Validator) SignalInvalidTx(blockNum, txNum uint64, err error) {
+	vscc.stateBasedValidator.SignalInvalidTx(blockNum, txNum, err)
+}

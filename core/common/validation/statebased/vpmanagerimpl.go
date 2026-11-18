@@ -107,6 +107,20 @@ func (d *txDependency) signalValidationResult(ns string, err error) {
 	d.cond.Broadcast()
 }
 
+// signalValidationResultIfAbsent behaves like signalValidationResult but
+// keeps a result that was already posted for namespace `ns`: a result
+// produced by plugin validation is deterministic and always stands.
+func (d *txDependency) signalValidationResultIfAbsent(ns string, err error) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	if _, ok := d.validationResultMap[ns]; ok {
+		return
+	}
+	d.validationResultMap[ns] = err
+	d.cond.Broadcast()
+}
+
 /**********************************************************************************************************/
 /**********************************************************************************************************/
 
@@ -119,6 +133,10 @@ type validationContext struct {
 	blockHeight          uint64
 	depsByTxnumMap       map[uint64]*txDependency
 	depsByLedgerKeyIDMap map[ledgerKeyID]map[uint64]*txDependency
+	// invalidTxErrs holds results signaled for transactions that were
+	// rejected before plugin validation, so that dependencies recorded
+	// for such a transaction after the signal are answered immediately
+	invalidTxErrs map[uint64]error
 }
 
 func (c *validationContext) forBlock(newHeight uint64) *validationContext {
@@ -140,6 +158,7 @@ func (c *validationContext) forBlock(newHeight uint64) *validationContext {
 			c.blockHeight = newHeight
 			c.depsByLedgerKeyIDMap = map[ledgerKeyID]map[uint64]*txDependency{}
 			c.depsByTxnumMap = map[uint64]*txDependency{}
+			c.invalidTxErrs = map[uint64]error{}
 		}
 	}
 
@@ -157,6 +176,12 @@ func (c *validationContext) addDependency(kid *ledgerKeyID, txnum uint64, dep *t
 	}
 
 	c.depsByLedgerKeyIDMap[*kid][txnum] = dep
+
+	// if the transaction was already signaled as rejected before plugin
+	// validation, answer waiters on this namespace right away
+	if err, invalid := c.invalidTxErrs[txnum]; invalid {
+		dep.signalValidationResultIfAbsent(kid.cc, err)
+	}
 }
 
 func (c *validationContext) dependenciesForTxnum(kid *ledgerKeyID, txnum uint64) []*txDependency {
@@ -230,6 +255,35 @@ func (c *validationContext) waitForValidationResults(kid *ledgerKeyID, blockNum 
 		}
 	}
 	return nil
+}
+
+// signalInvalidTx records the outcome of a transaction that was rejected
+// before plugin validation could produce a result, and releases transactions
+// waiting for its validation result in the namespaces in which it recorded
+// dependencies. Dependencies recorded for this transaction afterwards are
+// answered by addDependency via the invalidTxErrs entry.
+func (c *validationContext) signalInvalidTx(txnum uint64, err error) {
+	c.mutex.Lock()
+	if c.invalidTxErrs == nil {
+		c.invalidTxErrs = map[uint64]error{}
+	}
+	c.invalidTxErrs[txnum] = err
+
+	dep := c.depsByTxnumMap[txnum]
+	namespaces := map[string]struct{}{}
+	for kid, deps := range c.depsByLedgerKeyIDMap {
+		if _, ok := deps[txnum]; ok {
+			namespaces[kid.cc] = struct{}{}
+		}
+	}
+	c.mutex.Unlock()
+
+	if dep == nil {
+		return
+	}
+	for ns := range namespaces {
+		dep.signalValidationResultIfAbsent(ns, err)
+	}
 }
 
 /**********************************************************************************************************/
@@ -363,4 +417,14 @@ func (m *KeyLevelValidationParameterManagerImpl) SetTxValidationResult(ns string
 
 	// signal the validation status of this tx
 	dep.signalValidationResult(ns, err)
+}
+
+// SignalInvalidTx implements the method of the same name of the
+// KeyLevelValidationParameterManager interface. It is used for transactions
+// that were rejected before the validation plugin could produce a result, so
+// that no namespace ever receives one through SetTxValidationResult.
+func (m *KeyLevelValidationParameterManagerImpl) SignalInvalidTx(blockNum, txNum uint64, err error) {
+	vCtx := m.validationCtx.forBlock(blockNum)
+
+	vCtx.signalInvalidTx(txNum, err)
 }
