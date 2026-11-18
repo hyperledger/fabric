@@ -217,6 +217,8 @@ type Concurrency struct {
 	// handler is still waiting for the first seek request. A value of -1
 	// disables the limit.
 	DeliverPreAuth int
+	// BroadcastService limits the number of concurrent broadcast streams.
+	BroadcastService int
 }
 
 // ChannelParticipation provides the channel participation API configuration for the orderer.
@@ -265,6 +267,7 @@ var Defaults = TopLevel{
 				DeliverHeaderService: 1000,
 				ClusterReplication:   -1,
 				DeliverPreAuth:       500,
+				BroadcastService:     2500,
 			},
 			DeliverSeekTimeout: 30 * time.Second,
 		},
@@ -436,6 +439,11 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.MaxConcurrentStreams == 0:
 			logger.Infof("General.MaxConcurrentStreams is unset, setting to %v", Defaults.General.MaxConcurrentStreams)
 			c.General.MaxConcurrentStreams = Defaults.General.MaxConcurrentStreams
+		case c.General.Limits.Concurrency.BroadcastService < 0:
+			logger.Panicf("General.Limits.Concurrency.BroadcastService must be greater than or equal to 0, got %d", c.General.Limits.Concurrency.BroadcastService)
+		case c.General.Limits.Concurrency.BroadcastService == 0:
+			logger.Infof("General.Limits.Concurrency.BroadcastService is unset, setting to %v", Defaults.General.Limits.Concurrency.BroadcastService)
+			c.General.Limits.Concurrency.BroadcastService = Defaults.General.Limits.Concurrency.BroadcastService
 		case c.General.Throttling.InactivityTimeout == 0:
 			logger.Infof("General.Throttling.InactivityTimeout is unset, setting to %v", Defaults.General.Throttling.InactivityTimeout)
 			c.General.Throttling.InactivityTimeout = Defaults.General.Throttling.InactivityTimeout

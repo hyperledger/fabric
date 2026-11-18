@@ -1324,7 +1324,12 @@ func TestMaxConcurrentStreams(t *testing.T) {
 
 	// freeing a slot lets the queued stream proceed
 	require.NoError(t, streams[0].CloseSend())
-	require.NoError(t, <-excessDone)
+	select {
+	case err := <-excessDone:
+		require.NoError(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("queued stream was not served after a slot was freed")
+	}
 }
 
 func TestMaxConcurrentStreamsDefaultConfig(t *testing.T) {

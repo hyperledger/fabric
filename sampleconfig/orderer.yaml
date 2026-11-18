@@ -67,7 +67,8 @@ General:
   # Max message size in bytes the GRPC server and client can send
   MaxSendMsgSize: 104857600
   # Max concurrent streams per GRPC connection; excess streams are refused
-  # before any message is decoded
+  # before any message is decoded. When the property is missing or the value
+  # is 0, the default of 2500 is applied.
   MaxConcurrentStreams: 2500
   # Throttling prevents clients from sending too many transactions
   # per second to the broadcast API of this node.
@@ -88,6 +89,7 @@ General:
 
   # Limits defines resource limits for the services exposed by the orderer.
   Limits:
+<<<<<<< HEAD
     # DeliverSeekTimeout is the maximum time the orderer waits for a seek
     # request on a deliver stream before closing it - both before the
     # first seek and between completed deliveries - so idle streams cannot
@@ -190,6 +192,13 @@ General:
       # consenter - note that a Byzantine consenter is out of scope
       # regardless, since it can halt consensus directly.
       ClusterReplication: -1
+      # BroadcastService limits the number of concurrent broadcast streams.
+      # Each admitted stream may decode one in-flight message of up to
+      # MaxRecvMsgSize bytes before any authentication check runs, so the
+      # worst-case pre-auth memory is BroadcastService x MaxRecvMsgSize;
+      # lower one or both on memory-constrained nodes. When the property is
+      # missing or the value is 0, the default of 2500 is applied.
+      BroadcastService: 2500
 
   # Cluster settings for ordering service nodes that communicate with other ordering service nodes
   # such as Raft based ordering service.

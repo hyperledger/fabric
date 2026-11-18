@@ -847,7 +847,7 @@ func TestConfigureClusterListener(t *testing.T) {
 		},
 		{
 			name:        "green path",
-			generalConf: comm.ServerConfig{},
+			generalConf: comm.ServerConfig{MaxConcurrentStreams: 1234},
 			conf: &localconfig.TopLevel{
 				General: localconfig.General{
 					Cluster: localconfig.Cluster{
@@ -875,7 +875,9 @@ func TestConfigureClusterListener(t *testing.T) {
 				}
 				require.Contains(t, panicMsg(f), testCase.expectedPanic)
 			} else {
-				configureClusterListener(testCase.conf, testCase.generalConf, loadPEM)
+				conf, _ := configureClusterListener(testCase.conf, testCase.generalConf, loadPEM)
+				require.Equal(t, testCase.generalConf.MaxConcurrentStreams, conf.MaxConcurrentStreams,
+					"cluster listener must inherit the transport stream cap")
 			}
 			// Ensure logged messages that are expected were all logged
 			var loggedMessages []string

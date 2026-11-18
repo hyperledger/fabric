@@ -85,8 +85,8 @@ type ServerConfig struct {
 	MaxRecvMsgSize int
 	// Maximum message size the server can send
 	MaxSendMsgSize int
-	// Maximum concurrent streams per connection; 0 selects
-	// DefaultMaxConcurrentStreams
+	// Maximum concurrent streams per connection. 0 selects
+	// DefaultMaxConcurrentStreams; a very large value effectively disables it.
 	MaxConcurrentStreams uint32
 }
 

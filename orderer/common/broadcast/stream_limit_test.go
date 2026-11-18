@@ -66,8 +66,9 @@ func startBroadcastServer(t *testing.T, serverConfig comm.ServerConfig, registra
 }
 
 // With a concurrent-stream limit configured, streams beyond the limit are
-// refused by the transport before the server decodes any message bytes.
-func TestBroadcastExcessStreamRejectedPreDecode(t *testing.T) {
+// queued client-side (HTTP/2 SETTINGS / REFUSED_STREAM retry), so the server
+// never decodes their messages while every slot is occupied.
+func TestBroadcastExcessStreamQueuedBeforeDecode(t *testing.T) {
 	const maxStreams = 4
 
 	release := make(chan struct{})
@@ -102,12 +103,13 @@ func TestBroadcastExcessStreamRejectedPreDecode(t *testing.T) {
 	require.Eventually(t, func() bool { return gateMessages.Load() == maxStreams },
 		10*time.Second, 10*time.Millisecond, "expected all %d streams to reach the message gate", maxStreams)
 
-	// the excess stream is refused at the transport: it stays queued
-	// client-side and its message must not be decoded server-side while
-	// every slot is occupied
+	// the excess stream is queued at the transport while every slot is
+	// occupied; its message must not be decoded server-side
+	excessCtx, excessCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer excessCancel()
 	excessDone := make(chan error, 1)
 	go func() {
-		stream, err := client.Broadcast(context.Background())
+		stream, err := client.Broadcast(excessCtx)
 		if err == nil {
 			if err = stream.Send(env); err == nil {
 				var resp *ab.BroadcastResponse
@@ -126,7 +128,7 @@ func TestBroadcastExcessStreamRejectedPreDecode(t *testing.T) {
 	require.EqualValues(t, maxStreams, gateMessages.Load(),
 		"excess stream message reached the decode/auth gate")
 	require.Equal(t, maxStreams*int64(len(env.GetPayload())), gateBytes.Load())
-	t.Logf("maxConcurrentStreams=%d: excess stream refused pre-decode; decoded at gate: %d messages, %d bytes",
+	t.Logf("maxConcurrentStreams=%d: excess stream queued pre-decode; decoded at gate: %d messages, %d bytes",
 		maxStreams, gateMessages.Load(), gateBytes.Load())
 
 	// drain the held streams: each gets the post-decode rejection
@@ -139,21 +141,31 @@ func TestBroadcastExcessStreamRejectedPreDecode(t *testing.T) {
 	}
 
 	// with a slot freed, the queued stream is served: decoded, then rejected
-	require.NoError(t, <-excessDone)
+	select {
+	case err := <-excessDone:
+		require.NoError(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("queued stream was not served after a slot was freed")
+	}
 	require.EqualValues(t, maxStreams+1, gateMessages.Load())
 	t.Logf("after draining a slot: queued stream decoded and rejected; decoded at gate: %d messages", gateMessages.Load())
 }
 
 // With the default configuration a burst of concurrent broadcast streams is
-// served normally: every unauthenticated message is still decoded and then
-// rejected by the auth gate.
+// served normally: all streams are admitted simultaneously, and every
+// unauthenticated message is decoded and then rejected by the auth gate.
 func TestBroadcastDefaultConfigConcurrentStreams(t *testing.T) {
 	const concurrency = 16
 
+	allAdmitted := make(chan struct{})
+	release := make(chan struct{})
 	var gateMessages atomic.Int64
 	registrar := &mock.ChannelSupportRegistrar{}
 	registrar.BroadcastChannelSupportStub = func(env *cb.Envelope) (*cb.ChannelHeader, bool, broadcast.ChannelSupport, error) {
-		gateMessages.Add(1)
+		if gateMessages.Add(1) == concurrency {
+			close(allAdmitted)
+		}
+		<-release // hold the slot so all streams must be admitted concurrently
 		return nil, false, nil, errors.New("invalid signature")
 	}
 
@@ -191,6 +203,15 @@ func TestBroadcastDefaultConfigConcurrentStreams(t *testing.T) {
 			errCh <- nil
 		}()
 	}
+
+	// every stream must hold a slot at once; a smaller default cap would
+	// queue some of them client-side and the gate would never fill
+	select {
+	case <-allAdmitted:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("only %d of %d streams were admitted concurrently", gateMessages.Load(), concurrency)
+	}
+	close(release)
 	for range concurrency {
 		require.NoError(t, <-errCh)
 	}
