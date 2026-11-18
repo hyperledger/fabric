@@ -734,3 +734,58 @@ func produceSamplePvtdataOrPanic(txNum uint64, nsColls []string) *ledger.TxPvtDa
 	}
 	return &ledger.TxPvtData{SeqInBlock: txNum, WriteSet: simRes.PvtSimulationResults}
 }
+
+// recover() only works when called directly by the deferred function; a
+// recover nested in a synchronously-invoked closure returns nil and the panic
+// kills the process, since the gRPC server has no recovery interceptor.
+func TestDumpStacktraceOnPanicRecovers(t *testing.T) {
+	require.NotPanics(t, func() {
+		defer dumpStacktraceOnPanic()
+		panic("simulated deliver handler panic")
+	})
+}
+
+// A panic on the handler goroutine (e.g. from policy evaluation) must be
+// recovered by the deferred dumpStacktraceOnPanic instead of crashing the
+// peer process.
+func TestDeliverFilteredRecoversPanickingPolicyChecker(t *testing.T) {
+	chain := &mockChainSupport{}
+	chain.On("Sequence").Return(uint64(0))
+	chainManager := &mockChainManager{}
+	chainManager.On("GetChain", "testChannelID").Return(chain, true)
+
+	deliverServer := &mockDeliverServer{}
+	deliverServer.On("Context").Return(peer2.NewContext(context.TODO(), &peer2.Peer{}))
+	deliverServer.On("Recv").Return(&common.Envelope{
+		Payload: protoutil.MarshalOrPanic(&common.Payload{
+			Header: &common.Header{
+				ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
+					ChannelId: "testChannelID",
+					Timestamp: util.CreateUtcTimestamp(),
+				}),
+				SignatureHeader: protoutil.MarshalOrPanic(&common.SignatureHeader{}),
+			},
+			Data: protoutil.MarshalOrPanic(&orderer.SeekInfo{
+				Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: 0}}},
+				Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Newest{Newest: &orderer.SeekNewest{}}},
+				Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+			}),
+		}),
+	}, nil)
+
+	panickingPolicyChecker := func(_ string) deliver.PolicyCheckerFunc {
+		return func(_ *common.Envelope, _ string) error {
+			panic("policy evaluation panic")
+		}
+	}
+
+	server := &DeliverServer{
+		DeliverHandler: deliver.NewHandler(chainManager, time.Second, false,
+			deliver.NewMetrics(&disabled.Provider{}), false),
+		PolicyCheckerProvider: panickingPolicyChecker,
+	}
+
+	require.NotPanics(t, func() {
+		_ = server.DeliverFiltered(deliverServer)
+	})
+}
