@@ -301,7 +301,7 @@ var _ = Describe("ApproverForMyOrg", func() {
 		BeforeEach(func() {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).To(BeNil())
-			approveForMyOrgCmd = chaincode.ApproveForMyOrgCmd(nil, cryptoProvider)
+			approveForMyOrgCmd = chaincode.ApproveForMyOrgCmd(nil, cryptoProvider, true)
 			approveForMyOrgCmd.SilenceErrors = true
 			approveForMyOrgCmd.SilenceUsage = true
 			approveForMyOrgCmd.SetArgs([]string{

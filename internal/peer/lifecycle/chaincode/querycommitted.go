@@ -44,7 +44,7 @@ type CommittedQueryInput struct {
 // QueryCommittedCmd returns the cobra command for
 // querying a committed chaincode definition given
 // the chaincode name
-func QueryCommittedCmd(c *CommittedQuerier, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func QueryCommittedCmd(c *CommittedQuerier, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	chaincodeQueryCommittedCmd := &cobra.Command{
 		Use:   "querycommitted",
 		Short: "Query the committed chaincode definitions by channel on a peer.",
@@ -82,6 +82,11 @@ func QueryCommittedCmd(c *CommittedQuerier, cryptoProvider bccsp.BCCSP) *cobra.C
 			}
 			return c.Query()
 		},
+	}
+
+	if !isNew {
+		chaincodeQueryCommittedCmd.Short = "[DEPRECATED] Query the committed chaincode definitions by channel on a peer (use the \"peercli lifecycle chaincode querycommitted\")."
+		chaincodeQueryCommittedCmd.Long = "[DEPRECATED] Query the committed chaincode definitions by channel on a peer. Optional: provide a chaincode name to query a specific definition. Instead of this command, use \"peercli lifecycle chaincode querycommitted\"."
 	}
 
 	flagList := []string{

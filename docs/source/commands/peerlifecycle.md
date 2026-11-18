@@ -32,13 +32,13 @@ section in this topic.
 
 ## peer lifecycle
 ```
-Perform _lifecycle operations
+[DEPRECATED] Perform _lifecycle operations. Instead of this command, use "peercli lifecycle".
 
 Usage:
   peer lifecycle [command]
 
 Available Commands:
-  chaincode   Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|calculatepackageid|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted
+  chaincode   [DEPRECATED] Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|calculatepackageid|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted (use the "peercli lifecycle chaincode").
 
 Flags:
   -h, --help   help for lifecycle
@@ -49,22 +49,22 @@ Use "peer lifecycle [command] --help" for more information about a command.
 
 ## peer lifecycle chaincode
 ```
-Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|calculatepackageid|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted
+[DEPRECATED] Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|calculatepackageid|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted. Instead of this command, use "peercli lifecycle chaincode".
 
 Usage:
   peer lifecycle chaincode [command]
 
 Available Commands:
-  approveformyorg      Approve the chaincode definition for my org.
-  calculatepackageid   Calculate the package ID for a chaincode.
-  checkcommitreadiness Check whether a chaincode definition is ready to be committed on a channel.
-  commit               Commit the chaincode definition on the channel.
-  getinstalledpackage  Get an installed chaincode package from a peer.
-  install              Install a chaincode.
-  package              Package a chaincode
-  queryapproved        Query org's approved chaincode definitions from its peer.
-  querycommitted       Query the committed chaincode definitions by channel on a peer.
-  queryinstalled       Query the installed chaincodes on a peer.
+  approveformyorg      [DEPRECATED] Approve the chaincode definition for my org (use the "peercli lifecycle chaincode approveformyorg").
+  calculatepackageid   [DEPRECATED] Calculate the package ID for a chaincode (use the "peercli lifecycle chaincode calculatepackageid").
+  checkcommitreadiness [DEPRECATED] Check whether a chaincode definition is ready to be committed on a channel (use the "peercli lifecycle chaincode checkcommitreadiness").
+  commit               [DEPRECATED] Commit the chaincode definition on the channel (use the "peercli lifecycle chaincode commit").
+  getinstalledpackage  [DEPRECATED] Get an installed chaincode package from a peer (use the "peercli lifecycle chaincode getinstalledpackage").
+  install              [DEPRECATED] Install a chaincode (use the "peercli lifecycle chaincode install").
+  package              [DEPRECATED] Package a chaincode (use the "peercli lifecycle chaincode package").
+  queryapproved        [DEPRECATED] Query org's approved chaincode definitions from its peer (use the "peercli lifecycle chaincode queryapproved").
+  querycommitted       [DEPRECATED] Query the committed chaincode definitions by channel on a peer (use the "peercli lifecycle chaincode querycommitted").
+  queryinstalled       [DEPRECATED] Query the installed chaincodes on a peer (use the "peercli lifecycle chaincode queryinstalled").
 
 Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
@@ -84,7 +84,7 @@ Use "peer lifecycle chaincode [command] --help" for more information about a com
 
 ## peer lifecycle chaincode package
 ```
-Package a chaincode and write the package to a file.
+[DEPRECATED] Package a chaincode and write the package to a file. Instead of this command, use "peercli lifecycle chaincode package".
 
 Usage:
   peer lifecycle chaincode package [outputfile] [flags]
@@ -113,7 +113,7 @@ Global Flags:
 
 ## peer lifecycle chaincode install
 ```
-Install a chaincode on a peer.
+[DEPRECATED] Install a chaincode on a peer. Instead of this command, use "peercli lifecycle chaincode install".
 
 Usage:
   peer lifecycle chaincode install [packageFile] [flags]
@@ -140,7 +140,7 @@ Global Flags:
 
 ## peer lifecycle chaincode queryinstalled
 ```
-Query the installed chaincodes on a peer.
+[DEPRECATED] Query the installed chaincodes on a peer. Instead of this command, use "peercli lifecycle chaincode queryinstalled".
 
 Usage:
   peer lifecycle chaincode queryinstalled [flags]
@@ -168,7 +168,7 @@ Global Flags:
 
 ## peer lifecycle chaincode getinstalledpackage
 ```
-Get an installed chaincode package from a peer.
+[DEPRECATED] Get an installed chaincode package from a peer. Instead of this command, use "peercli lifecycle chaincode getinstalledpackage".
 
 Usage:
   peer lifecycle chaincode getinstalledpackage [outputfile] [flags]
@@ -197,7 +197,7 @@ Global Flags:
 
 ## peer lifecycle chaincode calculatepackageid
 ```
-Calculate the package ID for a packaged chaincode.
+[DEPRECATED] Calculate the package ID for a packaged chaincode. Instead of this command, use "peercli lifecycle chaincode calculatepackageid".
 
 Usage:
   peer lifecycle chaincode calculatepackageid [packageFile] [flags]
@@ -224,7 +224,7 @@ Global Flags:
 
 ## peer lifecycle chaincode approveformyorg
 ```
-Approve the chaincode definition for my organization.
+[DEPRECATED] Approve the chaincode definition for my organization. Instead of this command, use "peercli lifecycle chaincode approveformyorg".
 
 Usage:
   peer lifecycle chaincode approveformyorg [flags]
@@ -263,7 +263,7 @@ Global Flags:
 
 ## peer lifecycle chaincode queryapproved
 ```
-Query organization's approved chaincode definitions from its peer.
+[DEPRECATED] Query organization's approved chaincode definitions from its peer. Instead of this command, use "peercli lifecycle chaincode queryapproved".
 
 Usage:
   peer lifecycle chaincode queryapproved [flags]
@@ -293,7 +293,7 @@ Global Flags:
 
 ## peer lifecycle chaincode checkcommitreadiness
 ```
-Check whether a chaincode definition is ready to be committed on a channel.
+[DEPRECATED] Check whether a chaincode definition is ready to be committed on a channel. Instead of this command, use "peercli lifecycle chaincode checkcommitreadiness".
 
 Usage:
   peer lifecycle chaincode checkcommitreadiness [flags]
@@ -331,7 +331,7 @@ Global Flags:
 
 ## peer lifecycle chaincode commit
 ```
-Commit the chaincode definition on the channel.
+[DEPRECATED] Commit the chaincode definition on the channel. Instead of this command, use "peercli lifecycle chaincode commit".
 
 Usage:
   peer lifecycle chaincode commit [flags]
@@ -369,7 +369,7 @@ Global Flags:
 
 ## peer lifecycle chaincode querycommitted
 ```
-Query the committed chaincode definitions by channel on a peer. Optional: provide a chaincode name to query a specific definition.
+[DEPRECATED] Query the committed chaincode definitions by channel on a peer. Optional: provide a chaincode name to query a specific definition. Instead of this command, use "peercli lifecycle chaincode querycommitted".
 
 Usage:
   peer lifecycle chaincode querycommitted [flags]

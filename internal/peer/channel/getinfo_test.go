@@ -45,7 +45,7 @@ func TestGetChannelInfo(t *testing.T) {
 		Signer:           signer,
 	}
 
-	cmd := getinfoCmd(mockCF)
+	cmd := getinfoCmd(mockCF, true)
 	AddFlags(cmd)
 
 	args := []string{"-c", mockChannel}
@@ -67,7 +67,7 @@ func TestGetChannelInfoMissingChannelID(t *testing.T) {
 		Signer: signer,
 	}
 
-	cmd := getinfoCmd(mockCF)
+	cmd := getinfoCmd(mockCF, true)
 
 	AddFlags(cmd)
 

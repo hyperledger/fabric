@@ -316,7 +316,7 @@ var _ = Describe("QueryCommitted", func() {
 		BeforeEach(func() {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).To(BeNil())
-			queryCommittedCmd = chaincode.QueryCommittedCmd(nil, cryptoProvider)
+			queryCommittedCmd = chaincode.QueryCommittedCmd(nil, cryptoProvider, true)
 			queryCommittedCmd.SilenceErrors = true
 			queryCommittedCmd.SilenceUsage = true
 			queryCommittedCmd.SetArgs([]string{

@@ -17,7 +17,7 @@ import (
 )
 
 // submitRequestCmd returns the cobra command for snapshot submitrequest command
-func submitRequestCmd(cl *client, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func submitRequestCmd(cl *client, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	snapshotSubmitRequestCmd := &cobra.Command{
 		Use:   "submitrequest",
 		Short: "Submit a request for a snapshot at the specified block.",
@@ -25,6 +25,11 @@ func submitRequestCmd(cl *client, cryptoProvider bccsp.BCCSP) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return submitRequest(cmd, cl, cryptoProvider)
 		},
+	}
+
+	if !isNew {
+		snapshotSubmitRequestCmd.Short = "[DEPRECATED] Submit a request for a snapshot at the specified block. (use the \"peercli snapshot submitrequest\")."
+		snapshotSubmitRequestCmd.Long = "[DEPRECATED] Submit a request for a snapshot at the specified block. When the blockNumber parameter is set to 0 or not provided, it will submit a request for the last committed block. Instead of this command, use \"peercli snapshot submitrequest\"."
 	}
 
 	flagList := []string{
