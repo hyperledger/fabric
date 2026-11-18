@@ -35,6 +35,10 @@ const (
 	DefConnTimeout   = time.Second * 2
 	DefRecvBuffSize  = 20
 	DefSendBuffSize  = 20
+	// DefMaxRecvBytesInFlight caps the received bytes a single connection may
+	// hold unprocessed; two maximum-size (100MiB) messages absorb legitimate
+	// bursts while bounding what a stalled pipeline can pin.
+	DefMaxRecvBytesInFlight = 200 * 1024 * 1024
 )
 
 var errProbe = errors.New("probe")
@@ -60,32 +64,34 @@ func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore iden
 	commMetrics *metrics.CommMetrics, config CommConfig, dialOpts ...grpc.DialOption,
 ) (Comm, error) {
 	commInst := &commImpl{
-		sa:              sa,
-		pubSub:          util.NewPubSub(),
-		PKIID:           idStore.GetPKIidOfCert(peerIdentity),
-		idMapper:        idStore,
-		logger:          util.GetLogger(util.CommLogger, ""),
-		peerIdentity:    peerIdentity,
-		opts:            dialOpts,
-		secureDialOpts:  secureDialOpts,
-		msgPublisher:    NewChannelDemultiplexer(),
-		lock:            &sync.Mutex{},
-		deadEndpoints:   make(chan common.PKIidType, 100),
-		identityChanges: make(chan common.PKIidType, 1),
-		stopping:        int32(0),
-		exitChan:        make(chan struct{}),
-		subscriptions:   make([]chan protoext.ReceivedMessage, 0),
-		tlsCerts:        certs,
-		metrics:         commMetrics,
-		dialTimeout:     config.DialTimeout,
-		connTimeout:     config.ConnTimeout,
-		recvBuffSize:    config.RecvBuffSize,
-		sendBuffSize:    config.SendBuffSize,
+		sa:                   sa,
+		pubSub:               util.NewPubSub(),
+		PKIID:                idStore.GetPKIidOfCert(peerIdentity),
+		idMapper:             idStore,
+		logger:               util.GetLogger(util.CommLogger, ""),
+		peerIdentity:         peerIdentity,
+		opts:                 dialOpts,
+		secureDialOpts:       secureDialOpts,
+		msgPublisher:         NewChannelDemultiplexer(),
+		lock:                 &sync.Mutex{},
+		deadEndpoints:        make(chan common.PKIidType, 100),
+		identityChanges:      make(chan common.PKIidType, 1),
+		stopping:             int32(0),
+		exitChan:             make(chan struct{}),
+		subscriptions:        make([]chan protoext.ReceivedMessage, 0),
+		tlsCerts:             certs,
+		metrics:              commMetrics,
+		dialTimeout:          config.DialTimeout,
+		connTimeout:          config.ConnTimeout,
+		recvBuffSize:         config.RecvBuffSize,
+		sendBuffSize:         config.SendBuffSize,
+		maxRecvBytesInFlight: config.MaxRecvBytesInFlight,
 	}
 
 	connConfig := ConnConfig{
-		RecvBuffSize: config.RecvBuffSize,
-		SendBuffSize: config.SendBuffSize,
+		RecvBuffSize:         config.RecvBuffSize,
+		SendBuffSize:         config.SendBuffSize,
+		MaxRecvBytesInFlight: config.MaxRecvBytesInFlight,
 	}
 
 	commInst.connStore = newConnStore(commInst, commInst.logger, connConfig)
@@ -101,32 +107,37 @@ type CommConfig struct {
 	ConnTimeout  time.Duration // Connection timeout
 	RecvBuffSize int           // Buffer size of received messages
 	SendBuffSize int           // Buffer size of sending messages
+	// MaxRecvBytesInFlight bounds the bytes of received messages a single
+	// connection may hold unprocessed before the connection is closed.
+	// Non-positive disables the limit.
+	MaxRecvBytesInFlight int
 }
 
 type commImpl struct {
-	sa              api.SecurityAdvisor
-	tlsCerts        *common.TLSCertificates
-	pubSub          *util.PubSub
-	peerIdentity    api.PeerIdentityType
-	idMapper        identity.Mapper
-	logger          util.Logger
-	opts            []grpc.DialOption
-	secureDialOpts  func() []grpc.DialOption
-	connStore       *connectionStore
-	PKIID           []byte
-	deadEndpoints   chan common.PKIidType
-	identityChanges chan common.PKIidType
-	msgPublisher    *ChannelDeMultiplexer
-	lock            *sync.Mutex
-	exitChan        chan struct{}
-	stopWG          sync.WaitGroup
-	subscriptions   []chan protoext.ReceivedMessage
-	stopping        int32
-	metrics         *metrics.CommMetrics
-	dialTimeout     time.Duration
-	connTimeout     time.Duration
-	recvBuffSize    int
-	sendBuffSize    int
+	sa                   api.SecurityAdvisor
+	tlsCerts             *common.TLSCertificates
+	pubSub               *util.PubSub
+	peerIdentity         api.PeerIdentityType
+	idMapper             identity.Mapper
+	logger               util.Logger
+	opts                 []grpc.DialOption
+	secureDialOpts       func() []grpc.DialOption
+	connStore            *connectionStore
+	PKIID                []byte
+	deadEndpoints        chan common.PKIidType
+	identityChanges      chan common.PKIidType
+	msgPublisher         *ChannelDeMultiplexer
+	lock                 *sync.Mutex
+	exitChan             chan struct{}
+	stopWG               sync.WaitGroup
+	subscriptions        []chan protoext.ReceivedMessage
+	stopping             int32
+	metrics              *metrics.CommMetrics
+	dialTimeout          time.Duration
+	connTimeout          time.Duration
+	recvBuffSize         int
+	sendBuffSize         int
+	maxRecvBytesInFlight int
 }
 
 func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidType) (*connection, error) {
@@ -186,8 +197,9 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 				}
 			}
 			connConfig := ConnConfig{
-				RecvBuffSize: c.recvBuffSize,
-				SendBuffSize: c.sendBuffSize,
+				RecvBuffSize:         c.recvBuffSize,
+				SendBuffSize:         c.sendBuffSize,
+				MaxRecvBytesInFlight: c.maxRecvBytesInFlight,
 			}
 			conn := newConnection(cl, cc, stream, c.metrics, connConfig)
 			conn.pkiID = pkiID

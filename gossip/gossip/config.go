@@ -81,6 +81,9 @@ type Config struct {
 	RecvBuffSize int
 	// SendBuffSize is the buffer size of sending message.
 	SendBuffSize int
+	// MaxRecvBytesInFlight is the maximum bytes of received messages a single
+	// connection may hold unprocessed before the connection is closed.
+	MaxRecvBytesInFlight int
 
 	// MsgExpirationTimeout indicate leadership message expiration timeout.
 	MsgExpirationTimeout time.Duration
@@ -141,6 +144,7 @@ func (c *Config) loadConfig(endpoint string, certs *common.TLSCertificates, boot
 	c.ConnTimeout = util.GetDurationOrDefault("peer.gossip.connTimeout", comm.DefConnTimeout)
 	c.RecvBuffSize = util.GetIntOrDefault("peer.gossip.recvBuffSize", comm.DefRecvBuffSize)
 	c.SendBuffSize = util.GetIntOrDefault("peer.gossip.sendBuffSize", comm.DefSendBuffSize)
+	c.MaxRecvBytesInFlight = util.GetIntOrDefault("peer.gossip.maxRecvBytesInFlight", comm.DefMaxRecvBytesInFlight)
 	c.MsgExpirationTimeout = util.GetDurationOrDefault("peer.gossip.election.leaderAliveThreshold", election.DefLeaderAliveThreshold) * 10
 	c.AliveTimeInterval = util.GetDurationOrDefault("peer.gossip.aliveTimeInterval", discovery.DefAliveTimeInterval)
 	c.AliveExpirationTimeout = util.GetDurationOrDefault("peer.gossip.aliveExpirationTimeout", 5*c.AliveTimeInterval)

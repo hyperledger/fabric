@@ -48,6 +48,7 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.gossip.connTimeout", "16s")
 	viper.Set("peer.gossip.recvBuffSize", 17)
 	viper.Set("peer.gossip.sendBuffSize", 18)
+	viper.Set("peer.gossip.maxRecvBytesInFlight", 123456)
 	viper.Set("peer.gossip.election.leaderAliveThreshold", "19s")
 	viper.Set("peer.gossip.aliveTimeInterval", "20s")
 	viper.Set("peer.gossip.aliveExpirationTimeout", "21s")
@@ -89,6 +90,7 @@ func TestGlobalConfig(t *testing.T) {
 		ConnTimeout:                  16 * time.Second,
 		RecvBuffSize:                 17,
 		SendBuffSize:                 18,
+		MaxRecvBytesInFlight:         123456,
 		MsgExpirationTimeout:         19 * time.Second * 10, // LeaderAliveThreshold * 10
 		AliveTimeInterval:            20 * time.Second,
 		AliveExpirationTimeout:       21 * time.Second,
@@ -143,6 +145,7 @@ func TestGlobalConfigDefaults(t *testing.T) {
 		ConnTimeout:                  comm.DefConnTimeout,
 		RecvBuffSize:                 comm.DefRecvBuffSize,
 		SendBuffSize:                 comm.DefSendBuffSize,
+		MaxRecvBytesInFlight:         comm.DefMaxRecvBytesInFlight,
 		MsgExpirationTimeout:         election.DefLeaderAliveThreshold * 10,
 		AliveTimeInterval:            discovery.DefAliveTimeInterval,
 		AliveExpirationTimeout:       5 * discovery.DefAliveTimeInterval,

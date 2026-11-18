@@ -942,7 +942,7 @@ func TestReadFromStream(t *testing.T) {
 	stream.On("Recv").Return(&proto.Envelope{Payload: []byte{1}}, nil).Once()
 	stream.On("Recv").Return(nil, errors.New("stream closed")).Once()
 
-	conn := newConnection(nil, nil, stream, disabledMetrics, ConnConfig{1, 1})
+	conn := newConnection(nil, nil, stream, disabledMetrics, ConnConfig{RecvBuffSize: 1, SendBuffSize: 1})
 	conn.logger = flogging.MustGetLogger("test")
 
 	errChan := make(chan error, 2)

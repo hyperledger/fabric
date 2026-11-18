@@ -119,10 +119,11 @@ func New(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 	}, sa)
 
 	commConfig := comm.CommConfig{
-		DialTimeout:  conf.DialTimeout,
-		ConnTimeout:  conf.ConnTimeout,
-		RecvBuffSize: conf.RecvBuffSize,
-		SendBuffSize: conf.SendBuffSize,
+		DialTimeout:          conf.DialTimeout,
+		ConnTimeout:          conf.ConnTimeout,
+		RecvBuffSize:         conf.RecvBuffSize,
+		SendBuffSize:         conf.SendBuffSize,
+		MaxRecvBytesInFlight: conf.MaxRecvBytesInFlight,
 	}
 	g.comm, err = comm.NewCommInstance(s, conf.TLSCerts, g.idMapper, selfIdentity, secureDialOpts, sa,
 		gossipMetrics.CommMetrics, commConfig)

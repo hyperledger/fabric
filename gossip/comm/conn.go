@@ -9,6 +9,7 @@ package comm
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -17,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	goproto "google.golang.org/protobuf/proto"
 )
 
 type handler func(message *protoext.SignedGossipMessage)
@@ -189,13 +191,14 @@ func (cs *connectionStore) closeConnByPKIid(pkiID common.PKIidType) {
 
 func newConnection(cl proto.GossipClient, c *grpc.ClientConn, s stream, metrics *metrics.CommMetrics, config ConnConfig) *connection {
 	connection := &connection{
-		metrics:      metrics,
-		outBuff:      make(chan *msgSending, config.SendBuffSize),
-		cl:           cl,
-		conn:         c,
-		gossipStream: s,
-		stopChan:     make(chan struct{}, 1),
-		recvBuffSize: config.RecvBuffSize,
+		metrics:              metrics,
+		outBuff:              make(chan *msgSending, config.SendBuffSize),
+		cl:                   cl,
+		conn:                 c,
+		gossipStream:         s,
+		stopChan:             make(chan struct{}, 1),
+		recvBuffSize:         config.RecvBuffSize,
+		maxRecvBytesInFlight: int64(config.MaxRecvBytesInFlight),
 	}
 	return connection
 }
@@ -204,22 +207,30 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, s stream, metrics 
 type ConnConfig struct {
 	RecvBuffSize int
 	SendBuffSize int
+	// MaxRecvBytesInFlight bounds the total bytes of received messages a
+	// connection may hold before they are handed to the handler; exceeding
+	// connections are closed. Non-positive disables the limit.
+	MaxRecvBytesInFlight int
 }
 
 type connection struct {
 	recvBuffSize int
-	metrics      *metrics.CommMetrics
-	cancel       context.CancelFunc
-	info         *protoext.ConnectionInfo
-	outBuff      chan *msgSending
-	logger       util.Logger        // logger
-	pkiID        common.PKIidType   // pkiID of the remote endpoint
-	handler      handler            // function to invoke upon a message reception
-	conn         *grpc.ClientConn   // gRPC connection to remote endpoint
-	cl           proto.GossipClient // gRPC stub of remote endpoint
-	gossipStream stream             // there can only be one
-	stopChan     chan struct{}      // a method to stop the server-side gRPC call from a different go-routine
-	stopOnce     sync.Once          // once to ensure close is called only once
+	// recvBytesInFlight tracks bytes received but not yet handed off, so a
+	// stalled pipeline cannot pin unbounded memory.
+	recvBytesInFlight    atomic.Int64
+	maxRecvBytesInFlight int64
+	metrics              *metrics.CommMetrics
+	cancel               context.CancelFunc
+	info                 *protoext.ConnectionInfo
+	outBuff              chan *msgSending
+	logger               util.Logger        // logger
+	pkiID                common.PKIidType   // pkiID of the remote endpoint
+	handler              handler            // function to invoke upon a message reception
+	conn                 *grpc.ClientConn   // gRPC connection to remote endpoint
+	cl                   proto.GossipClient // gRPC stub of remote endpoint
+	gossipStream         stream             // there can only be one
+	stopChan             chan struct{}      // a method to stop the server-side gRPC call from a different go-routine
+	stopOnce             sync.Once          // once to ensure close is called only once
 }
 
 func (conn *connection) close() {
@@ -281,6 +292,7 @@ func (conn *connection) serviceConnection() error {
 			return err
 		case msg := <-msgChan:
 			conn.handler(msg)
+			conn.releaseReceivedBytes(msg)
 		}
 	}
 }
@@ -317,6 +329,15 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 				return
 			}
 			conn.metrics.ReceivedMessages.Add(1)
+			if !conn.admitReceivedBytes(envelope) {
+				err = errors.Errorf("received bytes in flight exceed the per-connection limit of %d bytes", conn.maxRecvBytesInFlight)
+				conn.logger.Warningf("Dropping connection: %v", err)
+				errChan <- err
+				// serviceConnection may be wedged in the handler, so tear
+				// the connection down proactively instead of waiting for it.
+				conn.close()
+				return
+			}
 			msg, err := protoext.EnvelopeToGossipMessage(envelope)
 			if err != nil {
 				errChan <- err
@@ -329,6 +350,25 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 			}
 		}
 	}
+}
+
+// admitReceivedBytes charges the envelope's wire size against the connection's
+// receive budget; false means the budget is exceeded and the connection must
+// be dropped to bound retained memory.
+func (conn *connection) admitReceivedBytes(envelope *proto.Envelope) bool {
+	if conn.maxRecvBytesInFlight <= 0 {
+		return true
+	}
+	return conn.recvBytesInFlight.Add(int64(goproto.Size(envelope))) <= conn.maxRecvBytesInFlight
+}
+
+// releaseReceivedBytes returns the message's bytes to the budget once the
+// handler has handed it off.
+func (conn *connection) releaseReceivedBytes(msg *protoext.SignedGossipMessage) {
+	if conn.maxRecvBytesInFlight <= 0 {
+		return
+	}
+	conn.recvBytesInFlight.Add(-int64(goproto.Size(msg.Envelope)))
 }
 
 type msgSending struct {
