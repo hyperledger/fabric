@@ -393,6 +393,107 @@ func TestVerifyConsenterSig(t *testing.T) {
 	}
 }
 
+func TestVerifyConsenterSigSubstitutedPayload(t *testing.T) {
+	logger := flogging.MustGetLogger("test")
+
+	lastBlock := makeNonConfigBlock(19, 10)
+	lastConfigBlock := makeConfigBlock(10)
+
+	ledger := &mocks.Ledger{}
+	ledger.On("Height").Return(uint64(20))
+	ledger.On("Block", uint64(19)).Return(lastBlock)
+	ledger.On("Block", uint64(10)).Return(lastConfigBlock)
+
+	sequencer := &mocks.Sequencer{}
+	sequencer.On("Sequence").Return(uint64(12))
+
+	ac := &mocks.AccessController{}
+	ac.On("Evaluate", mock.Anything).Return(nil)
+
+	cv := &mocks.ConsenterVerifier{}
+	cv.On("Evaluate", mock.Anything).Return(nil)
+
+	reqInspector := &smartbft.RequestInspector{
+		ValidateIdentityStructure: func(_ *msp.SerializedIdentity) error {
+			return nil
+		},
+		Logger: logger,
+	}
+
+	rtc := smartbft.RuntimeConfig{
+		ID2Identities:          map[uint64][]byte{3: {0, 2, 4, 6}},
+		LastBlock:              lastBlock,
+		LastConfigBlock:        lastConfigBlock,
+		LastCommittedBlockHash: hex.EncodeToString(protoutil.BlockHeaderHash(lastBlock.GetHeader())),
+	}
+	runtimeConfig := &atomic.Value{}
+	runtimeConfig.Store(rtc)
+
+	v := &smartbft.Verifier{
+		RuntimeConfig:         runtimeConfig,
+		Logger:                logger,
+		Ledger:                ledger,
+		VerificationSequencer: sequencer,
+		AccessController:      ac,
+		ConsenterVerifier:     cv,
+		ReqInspector:          reqInspector,
+	}
+
+	ss := &mocks.SignerSerializer{}
+	ss.On("Sign", mock.Anything).Return([]byte{1, 2, 3}, nil)
+	ss.On("Serialize", mock.Anything).Return([]byte{0, 2, 4, 6}, nil)
+
+	s := &smartbft.Signer{
+		LastConfigBlockNum: func(_ *cb.Block) uint64 {
+			return lastConfigBlock.GetHeader().GetNumber()
+		},
+		SignerSerializer: ss,
+		Logger:           logger,
+		ID:               3,
+	}
+
+	assembler := &smartbft.Assembler{
+		VerificationSeq: func() uint64 { return 12 },
+		Logger:          logger,
+		RuntimeConfig:   runtimeConfig,
+	}
+
+	md := protoutil.MarshalOrPanic(&smartbftprotos.ViewMetadata{LatestSequence: 20, ViewId: 2})
+	proposal := assembler.AssembleProposal(md, [][]byte{nonConfigTx})
+	signature := *s.SignProposal(proposal, nil)
+
+	_, err := v.VerifyConsenterSig(signature, proposal)
+	require.NoError(t, err, "unmodified proposal must pass consenter signature verification")
+
+	// Keep the signed header and metadata, substitute only the payload.
+	tuple := &smartbft.ByteBufferTuple{}
+	require.NoError(t, tuple.FromBytes(proposal.Payload))
+	blockData := &cb.BlockData{}
+	require.NoError(t, proto.Unmarshal(tuple.A, blockData))
+	blockData.Data = append(blockData.GetData(), blockData.GetData()[0])
+	tuple.A = protoutil.MarshalOrPanic(blockData)
+	forgedProposal := types.Proposal{
+		Header:               proposal.Header,
+		Metadata:             proposal.Metadata,
+		Payload:              tuple.ToBytes(),
+		VerificationSequence: proposal.VerificationSequence,
+	}
+
+	forgedBlock, err := smartbft.ProposalToBlock(forgedProposal)
+	require.NoError(t, err)
+	actualDataHash, err := protoutil.BlockDataHash(forgedBlock.GetData())
+	require.NoError(t, err)
+	require.NotEqual(t, forgedBlock.GetHeader().GetDataHash(), actualDataHash)
+
+	_, err = v.VerifyConsenterSig(signature, forgedProposal)
+	require.Error(t, err, "substituted payload must not pass consenter signature verification")
+	require.Contains(t, err.Error(), "data hash")
+
+	_, err = v.VerifyProposal(forgedProposal)
+	require.Error(t, err, "proposal verification must reject the same substituted payload")
+	require.Contains(t, err.Error(), "data hash")
+}
+
 func TestVerifyProposal(t *testing.T) {
 	logger := flogging.MustGetLogger("test")
 	lastBlock := makeNonConfigBlock(19, 10)
