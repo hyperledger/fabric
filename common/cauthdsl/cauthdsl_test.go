@@ -95,6 +95,47 @@ func (md *mockDeserializer) DeserializeIdentity(serializedIdentity []byte) (msp.
 
 var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
 
+// Raw protobuf policies bypass the DSL parser's guard, so compile itself must
+// reject a negative predicate. N=0 (accept-all) and N>len(rules) (reject-all)
+// are documented degenerate policies and must stay legal.
+func TestCompileNOutOfPredicateBounds(t *testing.T) {
+	nOutOf := func(n int32, rules ...*cb.SignaturePolicy) *cb.SignaturePolicy {
+		return &cb.SignaturePolicy{Type: &cb.SignaturePolicy_NOutOf_{
+			NOutOf: &cb.SignaturePolicy_NOutOf{N: n, Rules: rules},
+		}}
+	}
+	member, err := proto.Marshal(&mb.MSPRole{Role: mb.MSPRole_MEMBER, MspIdentifier: "A"})
+	require.NoError(t, err)
+	identities := []*mb.MSPPrincipal{{
+		PrincipalClassification: mb.MSPPrincipal_ROLE,
+		Principal:               member,
+	}}
+	signedBy0 := &cb.SignaturePolicy{Type: &cb.SignaturePolicy_SignedBy{SignedBy: 0}}
+
+	t.Run("negative N rejected", func(t *testing.T) {
+		_, err := compile(nOutOf(-1, signedBy0), identities)
+		require.Error(t, err)
+	})
+
+	t.Run("zero N compiles", func(t *testing.T) {
+		spe, err := compile(nOutOf(0), nil)
+		require.NoError(t, err)
+		require.True(t, spe(nil, nil))
+	})
+
+	t.Run("N equal to rule count compiles", func(t *testing.T) {
+		spe, err := compile(nOutOf(1, signedBy0), identities)
+		require.NoError(t, err)
+		require.False(t, spe(nil, nil))
+	})
+
+	t.Run("N greater than rule count compiles", func(t *testing.T) {
+		spe, err := compile(nOutOf(2, signedBy0), identities)
+		require.NoError(t, err)
+		require.False(t, spe(nil, nil))
+	})
+}
+
 func TestSimpleSignature(t *testing.T) {
 	policy := policydsl.Envelope(policydsl.SignedBy(0), signers)
 
