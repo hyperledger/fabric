@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -1043,7 +1044,7 @@ func createChaincodeServer(coreConfig *peer.Config, ca tlsgen.CA, peerHostname s
 
 	cclistenAddress := coreConfig.ChaincodeListenAddress
 	if cclistenAddress == "" {
-		cclistenAddress = fmt.Sprintf("%s:%d", peerHostname, defaultChaincodePort)
+		cclistenAddress = net.JoinHostPort(peerHostname, strconv.Itoa(defaultChaincodePort))
 		logger.Warningf("%s is not set, using %s", chaincodeListenAddrKey, cclistenAddress)
 		coreConfig.ChaincodeListenAddress = cclistenAddress
 	}
@@ -1142,7 +1143,7 @@ func computeChaincodeEndpoint(chaincodeAddress string, chaincodeListenAddress st
 				logger.Error("ChaincodeAddress is nil while both chaincodeListenAddressIP and peerIP are 0.0.0.0")
 				return "", errors.New("invalid endpoint for chaincode to connect")
 			}
-			ccEndpoint = fmt.Sprintf("%s:%s", peerHostname, port)
+			ccEndpoint = net.JoinHostPort(peerHostname, port)
 		}
 		logger.Infof("Exit with ccEndpoint: %s", ccEndpoint)
 		return ccEndpoint, nil
@@ -1157,7 +1158,7 @@ func computeChaincodeEndpoint(chaincodeAddress string, chaincodeListenAddress st
 	}
 
 	// use peerAddress:defaultChaincodePort
-	ccEndpoint = fmt.Sprintf("%s:%d", peerHostname, defaultChaincodePort)
+	ccEndpoint = net.JoinHostPort(peerHostname, strconv.Itoa(defaultChaincodePort))
 
 	logger.Infof("Exit with ccEndpoint: %s", ccEndpoint)
 	return ccEndpoint, nil
