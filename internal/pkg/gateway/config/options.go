@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-// GatewayOptions is used to configure the gateway settings.
+// Options configures the gateway service and its request timeouts.
 type Options struct {
-	// GatewayEnabled is used to enable the gateway service.
+	// Enabled controls whether the gateway service is enabled.
 	Enabled bool
 	// EndorsementTimeout is used to specify the maximum time to wait for endorsement responses from external peers.
 	EndorsementTimeout time.Duration
@@ -31,7 +31,7 @@ var defaultOptions = Options{
 	DialTimeout:        30 * time.Second,
 }
 
-// DefaultOptions gets the default Gateway configuration Options
+// GetOptions returns the gateway defaults with any settings present in v applied.
 func GetOptions(v *viper.Viper) Options {
 	options := defaultOptions
 	if v.IsSet("peer.gateway.enabled") {
