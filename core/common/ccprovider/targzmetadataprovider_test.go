@@ -96,3 +96,16 @@ func TestMetadataEntryExceedingDecompressionLimit(t *testing.T) {
 	_, err := MetadataAsTarEntries(cds)
 	require.ErrorContains(t, err, "exceeds the maximum decompressed size")
 }
+
+// Many empty statedb entries must not bypass the cap: each one still costs a
+// tar header in the artifacts buffer, so the decompressed stream as a whole
+// is bounded.
+func TestEmptyMetadataEntriesExceedingDecompressionLimit(t *testing.T) {
+	entries := make([]tarEntry, 0, 600000)
+	for range 600000 {
+		entries = append(entries, tarEntry{ccPackageStatedbDir + "/empty", nil})
+	}
+	cds := getCodePackage([]byte("cc code"), entries)
+	_, err := MetadataAsTarEntries(cds)
+	require.ErrorContains(t, err, "exceeds the maximum decompressed size")
+}

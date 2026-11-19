@@ -44,7 +44,10 @@ func MetadataAsTarEntries(code []byte) ([]byte, error) {
 	statedbTarBuffer := bytes.NewBuffer(nil)
 	tw := tar.NewWriter(statedbTarBuffer)
 
-	tr := tar.NewReader(gr)
+	// Bound the whole decompressed stream, not just copied payloads: empty
+	// entries still cost tar headers in the output buffer.
+	limitedReader := &io.LimitedReader{R: gr, N: maxStatedbArtifactsSize + 1}
+	tr := tar.NewReader(limitedReader)
 
 	var artifactsSize int64
 
@@ -57,6 +60,10 @@ func MetadataAsTarEntries(code []byte) ([]byte, error) {
 			break
 		}
 		if err != nil {
+			if limitedReader.N == 0 {
+				ccproviderLogger.Errorf("Code package exceeds the maximum decompressed metadata size of %d bytes", maxStatedbArtifactsSize)
+				return nil, errors.New("statedb metadata exceeds the maximum decompressed size")
+			}
 			return nil, err
 		}
 
@@ -82,6 +89,12 @@ func MetadataAsTarEntries(code []byte) ([]byte, error) {
 		}
 		artifactsSize += written
 		ccproviderLogger.Debug("Wrote file to statedb tar:", header.Name)
+	}
+
+	// A cleanly terminated stream that exhausted the limit was truncated.
+	if limitedReader.N == 0 {
+		ccproviderLogger.Errorf("Code package exceeds the maximum decompressed metadata size of %d bytes", maxStatedbArtifactsSize)
+		return nil, errors.New("statedb metadata exceeds the maximum decompressed size")
 	}
 
 	if err = tw.Close(); err != nil {
