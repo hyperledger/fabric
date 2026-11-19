@@ -122,12 +122,25 @@ type Filtered interface {
 	IsFiltered() bool
 }
 
+// SessionLimiter bounds the number of concurrent block delivery sessions.
+// Acquire is called after a seek request is authenticated and before a
+// ledger iterator is allocated for it, and may be called more than once
+// per stream. Release is called when the stream handler returns and must
+// be a no-op when no permit is held.
+type SessionLimiter interface {
+	Acquire() error
+	Release()
+}
+
 // Server is a polymorphic structure to support generalization of this handler
 // to be able to deliver different type of responses.
 type Server struct {
 	Receiver
 	PolicyChecker
 	ResponseSender
+	// SessionLimiter, when non-nil, admits authenticated seek requests
+	// before ledger resources are allocated for them.
+	SessionLimiter SessionLimiter
 }
 
 // ExtractChannelHeaderCertHash extracts the TLS cert hash from a channel header.
@@ -160,6 +173,9 @@ func (h *Handler) Handle(ctx context.Context, srv *Server) error {
 	logger.Debugf("Starting new deliver loop for %s", addr)
 	h.Metrics.StreamsOpened.Add(1)
 	defer h.Metrics.StreamsClosed.Add(1)
+	if srv.SessionLimiter != nil {
+		defer srv.SessionLimiter.Release()
+	}
 	for {
 		logger.Debugf("Attempting to read seek info message from %s", addr)
 		envelope, err := srv.Recv()
@@ -254,6 +270,13 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	if err := accessControl.Evaluate(); err != nil {
 		logger.Warningf("[channel: %s] Client %s is not authorized: %s", chdr.GetChannelId(), addr, err)
 		return cb.Status_FORBIDDEN, nil
+	}
+
+	if srv.SessionLimiter != nil {
+		if err := srv.SessionLimiter.Acquire(); err != nil {
+			logger.Warningf("[channel: %s] Rejecting deliver request from %s: %s", chdr.GetChannelId(), addr, err)
+			return cb.Status_SERVICE_UNAVAILABLE, err
+		}
 	}
 
 	if seekInfo.GetStart() == nil || seekInfo.GetStop() == nil {

@@ -41,6 +41,21 @@ var (
 	}
 )
 
+type fakeSessionLimiter struct {
+	acquireErr   error
+	acquireCalls int
+	releaseCalls int
+}
+
+func (f *fakeSessionLimiter) Acquire() error {
+	f.acquireCalls++
+	return f.acquireErr
+}
+
+func (f *fakeSessionLimiter) Release() {
+	f.releaseCalls++
+}
+
 var _ = Describe("Deliver", func() {
 	Describe("NewHandler", func() {
 		var fakeChainManager *mock.ChainManager
@@ -299,6 +314,48 @@ var _ = Describe("Deliver", func() {
 			ctx, header := fakeInspector.InspectArgsForCall(0)
 			Expect(ctx).To(Equal(context.Background()))
 			Expect(header).To(ProtoEqual(channelHeader))
+		})
+
+		When("a session limiter is configured", func() {
+			var limiter *fakeSessionLimiter
+
+			BeforeEach(func() {
+				limiter = &fakeSessionLimiter{}
+				server.SessionLimiter = limiter
+			})
+
+			It("acquires the session after the policy check and releases it when the stream ends", func() {
+				err := handler.Handle(context.Background(), server)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(limiter.acquireCalls).To(Equal(1))
+				Expect(limiter.releaseCalls).To(Equal(1))
+			})
+
+			When("the limiter rejects the session", func() {
+				BeforeEach(func() {
+					limiter.acquireErr = errors.New("budget exhausted")
+				})
+
+				It("fails the stream before an iterator is created", func() {
+					err := handler.Handle(context.Background(), server)
+					Expect(err).To(MatchError("budget exhausted"))
+					Expect(fakeBlockReader.IteratorCallCount()).To(Equal(0))
+					Expect(limiter.releaseCalls).To(Equal(1))
+				})
+			})
+
+			When("the policy check fails", func() {
+				BeforeEach(func() {
+					fakePolicyChecker.CheckPolicyReturns(errors.New("no-access-for-you"))
+				})
+
+				It("does not consume the budget", func() {
+					err := handler.Handle(context.Background(), server)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(limiter.acquireCalls).To(Equal(0))
+					Expect(limiter.releaseCalls).To(Equal(1))
+				})
+			})
 		})
 
 		Context("when channel header validation fails", func() {

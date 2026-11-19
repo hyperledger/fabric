@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package server
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math"
@@ -21,7 +22,9 @@ import (
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -75,18 +78,66 @@ func (r *staticReader) RetrieveBlockByNumber(n uint64) (*cb.Block, error) {
 	return nil, nil
 }
 
-// deliverTestService mirrors Deliver in server.go: the policy check passes
-// for every caller and the stream is handed to the shared deliver handler.
+// ordererReadersPolicyManager serves a single policy, /Channel/Orderer/Readers,
+// satisfied only by identities containing "orderer", mirroring how orderer
+// nodes are classified by channel MSP NodeOUs in production.
+type ordererReadersPolicyManager struct{}
+
+func (ordererReadersPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
+	if id != policies.ChannelOrdererReaders {
+		return nil, false
+	}
+	return ordererReadersPolicy{}, true
+}
+
+func (ordererReadersPolicyManager) Manager([]string) (policies.Manager, bool) {
+	return nil, false
+}
+
+type ordererReadersPolicy struct{}
+
+func (ordererReadersPolicy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
+	for _, sd := range signatureSet {
+		if bytes.Contains(sd.Identity, []byte("orderer")) {
+			return nil
+		}
+	}
+	return errors.Errorf("identity is not an orderer")
+}
+
+func (ordererReadersPolicy) EvaluateIdentities([]msp.Identity) error { return nil }
+
+// deliverChainWithOrdererPolicy returns a mock chain whose policy manager
+// resolves /Channel/Orderer/Readers.
+func deliverChainWithOrdererPolicy() *mock.Chain {
+	chain := &mock.Chain{}
+	chain.PolicyManagerReturns(ordererReadersPolicyManager{})
+	return chain
+}
+
+// deliverTestService mirrors Deliver in server.go: the channel readers
+// policy check is mocked to pass for every caller, orderer-to-orderer pulls
+// are exempted, and sessions are admitted by the shared deliver handler
+// through its SessionLimiter hook.
 type deliverTestService struct {
 	ab.UnimplementedAtomicBroadcastServer
-	h *deliver.Handler
+	h       *deliver.Handler
+	limiter *deliverConcurrencyLimiter
+	chain   deliver.Chain
 }
 
 func (s *deliverTestService) Deliver(stream ab.AtomicBroadcast_DeliverServer) error {
+	session := s.limiter.newSession()
 	ds := &deliver.Server{
-		PolicyChecker:  deliver.PolicyCheckerFunc(func(*cb.Envelope, string) error { return nil }),
+		PolicyChecker: deliver.PolicyCheckerFunc(func(env *cb.Envelope, _ string) error {
+			if satisfiesOrdererReadersPolicy(s.chain, env) {
+				session.Exempt()
+			}
+			return nil
+		}),
 		Receiver:       stream,
 		ResponseSender: &deliverResponseSender{stream: stream},
+		SessionLimiter: session,
 	}
 	return s.h.Handle(stream.Context(), ds)
 }
@@ -105,7 +156,7 @@ func (s *deliverResponseSender) SendBlockResponse(b *cb.Block, _ string, _ deliv
 
 func (s *deliverResponseSender) DataType() string { return "block" }
 
-func deliverSeekEnvelope() *cb.Envelope {
+func deliverSeekEnvelope(creator string) *cb.Envelope {
 	seek := &ab.SeekInfo{
 		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}},
 		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
@@ -118,18 +169,23 @@ func deliverSeekEnvelope() *cb.Envelope {
 				ChannelId: "mychannel",
 				Timestamp: timestamppb.Now(),
 			}),
-			SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{Creator: []byte("reader"), Nonce: []byte("n")}),
+			SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{Creator: []byte(creator), Nonce: []byte("n")}),
 		},
 		Data: protoutil.MarshalOrPanic(seek),
 	}
 	return &cb.Envelope{Payload: protoutil.MarshalOrPanic(payload), Signature: []byte("sig")}
 }
 
-// The orderer must bound concurrent deliver streams: the first limit streams
-// are admitted, the next one is rejected before an iterator is created, and
-// closing an admitted stream admits a new one.
-func TestDeliverConcurrencyLimit(t *testing.T) {
-	const limit = 5
+type deliverTestServer struct {
+	client  ab.AtomicBroadcastClient
+	chain   *mock.Chain
+	cleanup func()
+}
+
+// startDeliverTestServer runs a real gRPC server and deliver handler with
+// the given concurrency limit, mirroring the production Deliver path.
+func startDeliverTestServer(t *testing.T, limit int) *deliverTestServer {
+	t.Helper()
 
 	shared := make([]*cb.Block, deliverLimitTestBlocks)
 	for i := range shared {
@@ -138,7 +194,7 @@ func TestDeliverConcurrencyLimit(t *testing.T) {
 			Data:   &cb.BlockData{Data: [][]byte{make([]byte, deliverLimitTestBlkSize)}},
 		}
 	}
-	chain := &mock.Chain{}
+	chain := deliverChainWithOrdererPolicy()
 	chain.ReaderReturns(&staticReader{height: deliverLimitTestBlocks, shared: shared})
 	chain.ErroredReturns(make(chan struct{}))
 	chain.SequenceReturns(1)
@@ -152,66 +208,112 @@ func TestDeliverConcurrencyLimit(t *testing.T) {
 			MaxSendMsgSize: comm.DefaultMaxSendMsgSize,
 		},
 	}
-	conf.General.Limits.Concurrency.DeliverService = limit
 
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	srv, err := comm.NewGRPCServerFromListener(lis, initializeServerConfig(conf, nil))
 	require.NoError(t, err)
-	ab.RegisterAtomicBroadcastServer(srv.Server(), &deliverTestService{h: handler})
+	ab.RegisterAtomicBroadcastServer(srv.Server(), &deliverTestService{
+		h:       handler,
+		limiter: newDeliverConcurrencyLimiter(limit, &disabled.Provider{}),
+		chain:   chain,
+	})
 	go func() { _ = srv.Start() }()
-	defer srv.Stop()
 
 	conn, err := grpc.NewClient(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
-	defer conn.Close()
-	client := ab.NewAtomicBroadcastClient(conn)
+
+	return &deliverTestServer{
+		client: ab.NewAtomicBroadcastClient(conn),
+		chain:  chain,
+		cleanup: func() {
+			conn.Close()
+			srv.Stop()
+		},
+	}
+}
+
+// openDeliver seeks from the oldest block and returns once the first block
+// arrives, proving the stream was admitted.
+func openDeliver(streamCtx context.Context, client ab.AtomicBroadcastClient, creator string) error {
+	stream, err := client.Deliver(streamCtx)
+	if err != nil {
+		return err
+	}
+	if err := stream.Send(deliverSeekEnvelope(creator)); err != nil {
+		return err
+	}
+	resp, err := stream.Recv()
+	if err != nil {
+		return err
+	}
+	if resp.GetBlock() == nil {
+		return errors.Errorf("expected block, got %T", resp.GetType())
+	}
+	return nil
+}
+
+// The orderer bounds concurrent deliver sessions: idle streams consume no
+// budget, the first limit authenticated streams are admitted, the next one
+// is rejected before an iterator is created, orderer-to-orderer pulls are
+// exempt, and closing an admitted stream admits a new one.
+func TestDeliverConcurrencyLimit(t *testing.T) {
+	const limit = 5
+
+	ts := startDeliverTestServer(t, limit)
+	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// openDeliver seeks from the oldest block and returns once the first
-	// block arrives, proving the stream was admitted.
-	openDeliver := func(streamCtx context.Context) error {
-		stream, err := client.Deliver(streamCtx)
-		if err != nil {
-			return err
-		}
-		if err := stream.Send(deliverSeekEnvelope()); err != nil {
-			return err
-		}
-		resp, err := stream.Recv()
-		if err != nil {
-			return err
-		}
-		if resp.GetBlock() == nil {
-			return errors.Errorf("expected block, got %T", resp.GetType())
-		}
-		return nil
+	// idle streams that never send a seek request must not consume the budget
+	idleCtx, idleCancel := context.WithCancel(ctx)
+	defer idleCancel()
+	for range 3 {
+		_, err := ts.client.Deliver(idleCtx)
+		require.NoError(t, err)
 	}
 
-	// fill all permits with long-lived, slowly consumed streams
+	// fill the budget with long-lived, slowly consumed client streams
 	streamCancels := make([]context.CancelFunc, 0, limit)
 	for range limit {
 		streamCtx, streamCancel := context.WithCancel(ctx)
-		require.NoError(t, openDeliver(streamCtx))
+		require.NoError(t, openDeliver(streamCtx, ts.client, "reader"))
 		streamCancels = append(streamCancels, streamCancel)
 	}
-	require.Equal(t, limit, chain.ReaderCallCount())
+	require.Equal(t, limit, ts.chain.ReaderCallCount())
 
-	// the next stream is rejected by the concurrency limiter
-	probe, err := client.Deliver(ctx)
+	// the next client stream is rejected before an iterator is created
+	probe, err := ts.client.Deliver(ctx)
 	require.NoError(t, err)
-	_ = probe.Send(deliverSeekEnvelope())
+	_ = probe.Send(deliverSeekEnvelope("reader"))
 	_, err = probe.Recv()
-	require.ErrorContains(t, err, fmt.Sprintf("too many requests for %s, exceeding concurrency limit (%d)", ab.AtomicBroadcast_Deliver_FullMethodName, limit))
-	require.Equal(t, limit, chain.ReaderCallCount())
+	require.ErrorContains(t, err, fmt.Sprintf("too many deliver requests, exceeding concurrency limit (%d)", limit))
+	require.Equal(t, limit, ts.chain.ReaderCallCount())
+
+	// an orderer-to-orderer block pull is admitted despite the full budget
+	pullCtx, pullCancel := context.WithCancel(ctx)
+	defer pullCancel()
+	require.NoError(t, openDeliver(pullCtx, ts.client, "orderer"))
 
 	// closing an admitted stream releases its permit
 	streamCancels[0]()
 	require.Eventually(t, func() bool {
 		streamCtx, streamCancel := context.WithCancel(ctx)
 		defer streamCancel()
-		return openDeliver(streamCtx) == nil
+		return openDeliver(streamCtx, ts.client, "reader") == nil
 	}, 30*time.Second, 50*time.Millisecond)
+}
+
+func TestDeliverConcurrencyUnlimited(t *testing.T) {
+	ts := startDeliverTestServer(t, -1)
+	defer ts.cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for range 7 {
+		require.NoError(t, openDeliver(ctx, ts.client, "reader"))
+	}
+	require.Equal(t, 7, ts.chain.ReaderCallCount())
 }

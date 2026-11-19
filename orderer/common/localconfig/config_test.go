@@ -216,10 +216,17 @@ func TestDeliverServiceConcurrencyLimit(t *testing.T) {
 		require.Equal(t, 42, uconf.General.Limits.Concurrency.DeliverService)
 	})
 
-	t.Run("negative value panics", func(t *testing.T) {
+	t.Run("minus one means unlimited", func(t *testing.T) {
 		uconf := &TopLevel{}
 		uconf.General.Limits.Concurrency.DeliverService = -1
-		require.PanicsWithValue(t, "General.Limits.Concurrency.DeliverService must be greater than or equal to 0, got -1", func() { uconf.completeInitialization("/dummy/path") })
+		uconf.completeInitialization("/dummy/path")
+		require.Equal(t, -1, uconf.General.Limits.Concurrency.DeliverService)
+	})
+
+	t.Run("other negative values panic", func(t *testing.T) {
+		uconf := &TopLevel{}
+		uconf.General.Limits.Concurrency.DeliverService = -2
+		require.PanicsWithValue(t, "General.Limits.Concurrency.DeliverService must be -1 (unlimited), 0 (default), or a positive integer, got -2", func() { uconf.completeInitialization("/dummy/path") })
 	})
 }
 

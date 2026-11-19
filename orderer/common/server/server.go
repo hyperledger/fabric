@@ -47,9 +47,10 @@ func (ds deliverSupport) GetChain(chainID string) deliver.Chain {
 }
 
 type server struct {
-	bh    *broadcast.Handler
-	dh    *deliver.Handler
-	debug *localconfig.Debug
+	bh             *broadcast.Handler
+	dh             *deliver.Handler
+	debug          *localconfig.Debug
+	deliverLimiter *deliverConcurrencyLimiter
 	*multichannel.Registrar
 }
 
@@ -89,6 +90,7 @@ func NewServer(
 	timeWindow time.Duration,
 	mutualTLS bool,
 	expirationCheckDisabled bool,
+	deliverConcurrencyLimit int,
 ) ab.AtomicBroadcastServer {
 	s := &server{
 		dh: deliver.NewHandler(deliverSupport{Registrar: r}, timeWindow, mutualTLS, deliver.NewMetrics(metricsProvider), expirationCheckDisabled),
@@ -96,8 +98,9 @@ func NewServer(
 			SupportRegistrar: broadcastSupport{Registrar: r},
 			Metrics:          broadcast.NewMetrics(metricsProvider),
 		},
-		debug:     debug,
-		Registrar: r,
+		debug:          debug,
+		deliverLimiter: newDeliverConcurrencyLimiter(deliverConcurrencyLimit, metricsProvider),
+		Registrar:      r,
 	}
 	return s
 }
@@ -190,6 +193,8 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		logger.Debugf("Closing Deliver stream")
 	}()
 
+	session := s.deliverLimiter.newSession()
+
 	policyChecker := func(env *cb.Envelope, channelID string) error {
 		chain := s.GetChain(channelID)
 		if chain == nil {
@@ -198,7 +203,16 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		// In maintenance mode, we typically require the signature of /Channel/Orderer/Readers.
 		// This will block Deliver requests from peers (which normally satisfy /Channel/Readers).
 		sf := msgprocessor.NewSigFilter(policies.ChannelReaders, policies.ChannelOrdererReaders, chain)
-		return sf.Apply(env)
+		if err := sf.Apply(env); err != nil {
+			return err
+		}
+		// Orderer-to-orderer block pulls authenticate with an orderer
+		// identity; exempt them so that client traffic cannot starve
+		// cluster replication.
+		if satisfiesOrdererReadersPolicy(chain, env) {
+			session.Exempt()
+		}
+		return nil
 	}
 	deliverServer := &deliver.Server{
 		PolicyChecker: deliver.PolicyCheckerFunc(policyChecker),
@@ -210,6 +224,7 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		ResponseSender: &responseSender{
 			AtomicBroadcast_DeliverServer: srv,
 		},
+		SessionLimiter: session,
 	}
 	return s.dh.Handle(srv.Context(), deliverServer)
 }

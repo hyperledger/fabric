@@ -195,6 +195,7 @@ type Limits struct {
 // A zero value for a service is replaced by its default limit.
 type Concurrency struct {
 	// DeliverService limits the number of concurrent deliver streams.
+	// A value of -1 disables the limit.
 	DeliverService int
 }
 
@@ -410,8 +411,8 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.Throttling.InactivityTimeout == 0:
 			logger.Infof("General.Throttling.InactivityTimeout is unset, setting to %v", Defaults.General.Throttling.InactivityTimeout)
 			c.General.Throttling.InactivityTimeout = Defaults.General.Throttling.InactivityTimeout
-		case c.General.Limits.Concurrency.DeliverService < 0:
-			logger.Panicf("General.Limits.Concurrency.DeliverService must be greater than or equal to 0, got %d", c.General.Limits.Concurrency.DeliverService)
+		case c.General.Limits.Concurrency.DeliverService < -1:
+			logger.Panicf("General.Limits.Concurrency.DeliverService must be -1 (unlimited), 0 (default), or a positive integer, got %d", c.General.Limits.Concurrency.DeliverService)
 		case c.General.Limits.Concurrency.DeliverService == 0:
 			logger.Infof("General.Limits.Concurrency.DeliverService is unset, setting to %v", Defaults.General.Limits.Concurrency.DeliverService)
 			c.General.Limits.Concurrency.DeliverService = Defaults.General.Limits.Concurrency.DeliverService

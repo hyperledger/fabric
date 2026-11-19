@@ -204,6 +204,7 @@ func Main() {
 		conf.General.Authentication.TimeWindow,
 		mutualTLS,
 		conf.General.Authentication.NoExpirationChecks,
+		conf.General.Limits.Concurrency.DeliverService,
 	)
 
 	logger.Infof("Starting %s", metadata.GetVersionInfo())
@@ -539,21 +540,16 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		metricsProvider = &disabled.Provider{}
 	}
 
-	streamInterceptors := []grpc.StreamServerInterceptor{
-		grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
-		grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
-	}
-	if semaphores := initGrpcSemaphores(conf); len(semaphores) != 0 {
-		streamInterceptors = append(streamInterceptors, streamGrpcLimiter(semaphores))
-	}
-
 	return comm.ServerConfig{
 		SecOpts:            secureOpts,
 		KaOpts:             kaOpts,
 		Logger:             commLogger,
 		ServerStatsHandler: comm.NewServerStatsHandler(metricsProvider),
 		ConnectionTimeout:  conf.General.ConnectionTimeout,
-		StreamInterceptors: streamInterceptors,
+		StreamInterceptors: []grpc.StreamServerInterceptor{
+			grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
+			grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+		},
 		UnaryInterceptors: []grpc.UnaryServerInterceptor{
 			grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
 			grpclogging.UnaryServerInterceptor(

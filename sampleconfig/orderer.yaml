@@ -87,13 +87,22 @@ General:
   Limits:
     # Concurrency limits the number of concurrent requests per service.
     Concurrency:
-      # DeliverService limits the number of concurrent deliver streams.
-      # Each stream holds ledger and memory resources for its lifetime,
-      # so an unbounded number of streams can exhaust orderer memory.
-      # When the property is missing or the value is 0, the default of
-      # 2500 is applied. The limit also covers orderer-to-orderer block
-      # replication streams on this listener when a separate cluster
-      # listener is not configured.
+      # DeliverService limits the number of concurrent authenticated block
+      # delivery sessions. Streams consume the budget only after their
+      # first seek request passes the channel policy check, so idle
+      # connections cannot exhaust it. Orderer-to-orderer block
+      # replication (identities satisfying /Channel/Orderer/Readers) is
+      # exempt. When the property is missing or the value is 0, the
+      # default of 2500 is applied. Set to -1 for no limit.
+      #
+      # Sizing: the limit must cover the expected legitimate fan-out,
+      # roughly (peers x channels) / orderers, with headroom. The limit
+      # counts streams, not bytes: a serving stream holds about 3 MB with
+      # 100 KB blocks and about 25 MB with 10 MB blocks (the configtx
+      # AbsoluteMaxBytes) when consumers are slow. To bound the worst
+      # case to a memory budget, set the limit no higher than
+      # budget / (2.5 x AbsoluteMaxBytes), e.g. about 80 for a 2 GB
+      # budget with 10 MB blocks.
       DeliverService: 2500
 
   # Cluster settings for ordering service nodes that communicate with other ordering service nodes
