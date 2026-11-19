@@ -219,10 +219,7 @@ func (h *DBHandle) deleteAll() error {
 		// replace the last byte 'dbNameKeySep' by 'lastKeyIndicator'
 		eKey[len(eKey)-1] = lastKeyIndicator
 	}
-	dbIter, err := h.db.getRawIterator(sKey, eKey)
-	if err != nil {
-		return err
-	}
+	dbIter := h.db.getRawIterator(sKey, eKey)
 	if err := dbIter.Error(); err != nil {
 		dbIter.Release()
 		return errors.Wrap(err, "internal leveldb error while obtaining db iterator")
@@ -266,10 +263,7 @@ func (h *DBHandle) IsEmpty() (bool, error) {
 		// replace the last byte 'dbNameKeySep' by 'lastKeyIndicator'
 		eKey[len(eKey)-1] = lastKeyIndicator
 	}
-	itr, err := h.db.getRawIterator(sKey, eKey)
-	if err != nil {
-		return false, err
-	}
+	itr := h.db.getRawIterator(sKey, eKey)
 	if err := itr.Error(); err != nil {
 		itr.Release()
 		return false, errors.Wrap(err, "internal leveldb error while obtaining next entry from iterator")
@@ -302,7 +296,7 @@ func (h *DBHandle) WriteBatch(batch db.Batch, sync bool) error {
 // GetIterator gets an handle to iterator. The iterator should be released after the use.
 // The resultset contains all the keys that are present in the db between the startKey (inclusive) and the endKey (exclusive).
 // A nil startKey represents the first available key and a nil endKey represent a logical key after the last available key
-// An error is returned if the startKey is greater than the endKey.
+// A startKey greater than the endKey yields an empty resultset.
 func (h *DBHandle) GetIterator(startKey []byte, endKey []byte) (db.Iterator, error) {
 	sKey := constructLevelKey(h.dbName, startKey)
 	eKey := constructLevelKey(h.dbName, endKey)
@@ -311,10 +305,7 @@ func (h *DBHandle) GetIterator(startKey []byte, endKey []byte) (db.Iterator, err
 		eKey[len(eKey)-1] = lastKeyIndicator
 	}
 	logger.Debugf("Getting iterator for range [%#v] - [%#v]", sKey, eKey)
-	itr, err := h.db.getRawIterator(sKey, eKey)
-	if err != nil {
-		return nil, err
-	}
+	itr := h.db.getRawIterator(sKey, eKey)
 	if err := itr.Error(); err != nil {
 		itr.Release()
 		return nil, errors.Wrapf(err, "internal leveldb error while obtaining db iterator")

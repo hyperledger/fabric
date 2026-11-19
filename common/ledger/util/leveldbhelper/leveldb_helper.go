@@ -161,25 +161,23 @@ func (dbInst *DB) Delete(key []byte, sync bool) error {
 	return nil
 }
 
-func (dbInst *DB) getRawIterator(startKey []byte, endKey []byte) (iterator.Iterator, error) {
-	// goleveldb panics when iterating a reversed range that spans level tables; reject it deterministically
+func (dbInst *DB) getRawIterator(startKey []byte, endKey []byte) iterator.Iterator {
+	// goleveldb panics while creating an iterator for a reversed range when keys live in
+	// SSTables at level 1 or higher; return an empty iterator, matching CouchDB behavior
 	if startKey != nil && endKey != nil && bytes.Compare(startKey, endKey) > 0 {
-		return nil, errors.Errorf("invalid iterator range: startKey [%#v] is greater than endKey [%#v]", startKey, endKey)
+		return iterator.NewEmptyIterator(nil)
 	}
 	dbInst.mutex.RLock()
 	defer dbInst.mutex.RUnlock()
-	return dbInst.db.NewIterator(&goleveldbutil.Range{Start: startKey, Limit: endKey}, dbInst.readOpts), nil
+	return dbInst.db.NewIterator(&goleveldbutil.Range{Start: startKey, Limit: endKey}, dbInst.readOpts)
 }
 
 // GetIterator returns an iterator over key-value store. The iterator should be released after the use.
 // The resultset contains all the keys that are present in the db between the startKey (inclusive) and the endKey (exclusive).
 // A nil startKey represents the first available key and a nil endKey represent a logical key after the last available key
-// An error is returned if the startKey is greater than the endKey.
+// A startKey greater than the endKey yields an empty resultset.
 func (dbInst *DB) GetIterator(startKey []byte, endKey []byte) (db.Iterator, error) {
-	itr, err := dbInst.getRawIterator(startKey, endKey)
-	if err != nil {
-		return nil, err
-	}
+	itr := dbInst.getRawIterator(startKey, endKey)
 	if err := itr.Error(); err != nil {
 		itr.Release()
 		return nil, err

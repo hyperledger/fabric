@@ -173,16 +173,18 @@ func TestDBHandleGetIteratorWithReversedRange(t *testing.T) {
 		require.NoError(t, db1.Put([]byte(k), []byte("value1"), false))
 	}
 
+	// a reversed range yields an empty resultset
 	itr, err := db1.GetIterator([]byte("key3"), []byte("key1"))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid iterator range")
-	require.Nil(t, itr)
+	require.NoError(t, err)
+	require.NotNil(t, itr)
+	defer itr.Release()
+	require.False(t, itr.Next())
 
 	// a valid range over the same keys is unaffected
-	itr, err = db1.GetIterator([]byte("key1"), []byte("key3"))
+	validItr, err := db1.GetIterator([]byte("key1"), []byte("key3"))
 	require.NoError(t, err)
-	defer itr.Release()
-	checkItrResults(t, itr, []string{"key1", "key2"}, []string{"value1", "value1"})
+	defer validItr.Release()
+	checkItrResults(t, validItr, []string{"key1", "key2"}, []string{"value1", "value1"})
 }
 
 func TestBatchedUpdates(t *testing.T) {

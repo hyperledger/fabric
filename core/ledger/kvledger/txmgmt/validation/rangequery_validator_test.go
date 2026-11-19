@@ -27,12 +27,12 @@ func TestRangeQueryBoundaryConditions(t *testing.T) {
 	batch.Put("ns1", "key5", []byte("value5"), version.NewHeight(1, 4))
 
 	testcase1 := "NoResults"
-	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "key7", EndKey: "key9", ItrExhausted: true}
+	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "key7", EndKey: "key10", ItrExhausted: true}
 	rwsetutil.SetRawReads(rqi1, []*kvrwset.KVRead{})
 	testRangeQuery(t, testcase1, batch, version.NewHeight(1, 4), "ns1", rqi1, true)
 
 	testcase2 := "NoResultsDuringValidation"
-	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "key7", EndKey: "key9", ItrExhausted: true}
+	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "key7", EndKey: "key10", ItrExhausted: true}
 	rwsetutil.SetRawReads(rqi2, []*kvrwset.KVRead{rwsetutil.NewKVRead("key8", version.NewHeight(1, 8))})
 	testRangeQuery(t, testcase2, batch, version.NewHeight(1, 4), "ns1", rqi2, false)
 
