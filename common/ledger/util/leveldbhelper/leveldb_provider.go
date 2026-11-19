@@ -296,6 +296,7 @@ func (h *DBHandle) WriteBatch(batch db.Batch, sync bool) error {
 // GetIterator gets an handle to iterator. The iterator should be released after the use.
 // The resultset contains all the keys that are present in the db between the startKey (inclusive) and the endKey (exclusive).
 // A nil startKey represents the first available key and a nil endKey represent a logical key after the last available key
+// A startKey greater than the endKey yields an empty resultset.
 func (h *DBHandle) GetIterator(startKey []byte, endKey []byte) (db.Iterator, error) {
 	sKey := constructLevelKey(h.dbName, startKey)
 	eKey := constructLevelKey(h.dbName, endKey)

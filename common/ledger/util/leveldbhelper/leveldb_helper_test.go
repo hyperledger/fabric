@@ -7,12 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package leveldbhelper
 
 import (
+	cryptorand "crypto/rand"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/syndtr/goleveldb/leveldb"
+	goleveldbutil "github.com/syndtr/goleveldb/leveldb/util"
 )
 
 func TestLevelDBHelperWriteWithoutOpen(t *testing.T) {
@@ -216,4 +220,54 @@ func TestCreateDBInNonEmptyDir(t *testing.T) {
 		}
 	}()
 	db.Open()
+}
+
+func TestGetIteratorWithReversedRange(t *testing.T) {
+	env := newTestDBEnv(t, testDBPath)
+	defer env.cleanup()
+	db := env.db
+	db.Open()
+	defer db.Close()
+
+	// populate with incompressible values and compact so that keys live in multiple
+	// SSTables at level 1, the condition under which goleveldb panics while creating
+	// an iterator for a reversed range
+	for i := range 6000 {
+		val := make([]byte, 1024)
+		_, _ = cryptorand.Read(val)
+		require.NoError(t, db.Put([]byte(fmt.Sprintf("key%04d", i)), val, false))
+	}
+	require.NoError(t, env.db.(*DB).db.CompactRange(goleveldbutil.Range{}))
+	stats, err := env.db.(*DB).db.GetProperty("leveldb.num-files-at-level1")
+	require.NoError(t, err)
+	numFilesAtLevel1, err := strconv.Atoi(stats)
+	require.NoError(t, err)
+	require.Positive(t, numFilesAtLevel1)
+
+	t.Run("reversed range returns an empty iterator", func(t *testing.T) {
+		itr, err := db.GetIterator([]byte("key5999"), []byte("key0000"))
+		require.NoError(t, err)
+		require.NotNil(t, itr)
+		defer itr.Release()
+		require.False(t, itr.Next())
+		require.NoError(t, itr.Error())
+	})
+
+	t.Run("equal bounds return an empty iterator", func(t *testing.T) {
+		itr, err := db.GetIterator([]byte("key0100"), []byte("key0100"))
+		require.NoError(t, err)
+		defer itr.Release()
+		require.False(t, itr.Next())
+	})
+
+	t.Run("valid range is unaffected", func(t *testing.T) {
+		itr, err := db.GetIterator([]byte("key0100"), []byte("key0103"))
+		require.NoError(t, err)
+		defer itr.Release()
+		var keys []string
+		for itr.Next() {
+			keys = append(keys, string(itr.Key()))
+		}
+		require.Equal(t, []string{"key0100", "key0101", "key0102"}, keys)
+	})
 }
