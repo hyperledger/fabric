@@ -134,6 +134,7 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 	// at this point in the code, we created a connection to a remote peer
 	conn = createdConnection
 	cs.pki2Conn[string(createdConnection.pkiID)] = conn
+	conn.evictFromStore = func() { cs.evictConn(conn) }
 
 	go conn.serviceConnection()
 
@@ -177,6 +178,7 @@ func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamSer
 	conn.info = connInfo
 	conn.logger = cs.logger
 	cs.pki2Conn[string(connInfo.ID)] = conn
+	conn.evictFromStore = func() { cs.evictConn(conn) }
 	return conn
 }
 
@@ -189,6 +191,38 @@ func (cs *connectionStore) closeConnByPKIid(pkiID common.PKIidType) {
 	}
 }
 
+// evictConn removes conn from the store only if it is still the current entry
+// for its PKI-ID, so a replaced connection never evicts its successor.
+func (cs *connectionStore) evictConn(conn *connection) {
+	cs.Lock()
+	defer cs.Unlock()
+	if current, exists := cs.pki2Conn[string(conn.pkiID)]; exists && current == conn {
+		conn.close()
+		delete(cs.pki2Conn, string(conn.pkiID))
+	}
+}
+
+// evictLargestConnection drops the connection retaining the most unconsumed
+// received bytes; targeting the largest holder keeps a flooding peer from
+// getting bystander connections dropped when the shared budget is exceeded.
+func (cs *connectionStore) evictLargestConnection() {
+	cs.RLock()
+	var victim *connection
+	var most int64
+	for _, conn := range cs.pki2Conn {
+		if n := conn.recvBytesInFlight.Load(); n > most {
+			most, victim = n, conn
+		}
+	}
+	cs.RUnlock()
+	if victim == nil {
+		return
+	}
+	cs.logger.Warningf("Shared receive byte budget exceeded, dropping connection to %s holding %d unconsumed bytes", victim.pkiID, most)
+	victim.close()
+	cs.evictConn(victim)
+}
+
 func newConnection(cl proto.GossipClient, c *grpc.ClientConn, s stream, metrics *metrics.CommMetrics, config ConnConfig) *connection {
 	connection := &connection{
 		metrics:              metrics,
@@ -199,6 +233,7 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, s stream, metrics 
 		stopChan:             make(chan struct{}, 1),
 		recvBuffSize:         config.RecvBuffSize,
 		maxRecvBytesInFlight: int64(config.MaxRecvBytesInFlight),
+		sharedRecvBudget:     config.sharedRecvBudget,
 	}
 	return connection
 }
@@ -207,30 +242,63 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, s stream, metrics 
 type ConnConfig struct {
 	RecvBuffSize int
 	SendBuffSize int
-	// MaxRecvBytesInFlight bounds the total bytes of received messages a
-	// connection may hold before they are handed to the handler; exceeding
-	// connections are closed. Non-positive disables the limit.
+	// MaxRecvBytesInFlight bounds the wire bytes of received messages a
+	// connection may hold unconsumed before the connection is closed.
+	// Non-positive disables the limit.
 	MaxRecvBytesInFlight int
+	// sharedRecvBudget bounds unconsumed received bytes across all
+	// connections of the comm instance; nil disables it.
+	sharedRecvBudget *sharedRecvBudget
+}
+
+// sharedRecvBudget bounds received-but-unconsumed bytes across connections.
+// On excess, the connection holding the most in-flight bytes is evicted, so
+// bystander connections are never dropped because of another peer's flood.
+type sharedRecvBudget struct {
+	inFlight atomic.Int64
+	max      int64
+	// evict drops the connection with the most in-flight bytes.
+	evict func()
+}
+
+func (b *sharedRecvBudget) admit(size int64) {
+	if b == nil || b.max <= 0 {
+		return
+	}
+	if b.inFlight.Add(size) > b.max && b.evict != nil {
+		b.evict()
+	}
+}
+
+func (b *sharedRecvBudget) release(size int64) {
+	if b == nil || b.max <= 0 {
+		return
+	}
+	b.inFlight.Add(-size)
 }
 
 type connection struct {
 	recvBuffSize int
-	// recvBytesInFlight tracks bytes received but not yet handed off, so a
-	// stalled pipeline cannot pin unbounded memory.
+	// recvBytesInFlight tracks received bytes not yet consumed downstream, so
+	// a stalled pipeline cannot pin unbounded memory.
 	recvBytesInFlight    atomic.Int64
 	maxRecvBytesInFlight int64
-	metrics              *metrics.CommMetrics
-	cancel               context.CancelFunc
-	info                 *protoext.ConnectionInfo
-	outBuff              chan *msgSending
-	logger               util.Logger        // logger
-	pkiID                common.PKIidType   // pkiID of the remote endpoint
-	handler              handler            // function to invoke upon a message reception
-	conn                 *grpc.ClientConn   // gRPC connection to remote endpoint
-	cl                   proto.GossipClient // gRPC stub of remote endpoint
-	gossipStream         stream             // there can only be one
-	stopChan             chan struct{}      // a method to stop the server-side gRPC call from a different go-routine
-	stopOnce             sync.Once          // once to ensure close is called only once
+	sharedRecvBudget     *sharedRecvBudget
+	// evictFromStore removes this connection from the connection store if it
+	// is still the current entry; set once the connection is registered.
+	evictFromStore func()
+	metrics        *metrics.CommMetrics
+	cancel         context.CancelFunc
+	info           *protoext.ConnectionInfo
+	outBuff        chan *msgSending
+	logger         util.Logger        // logger
+	pkiID          common.PKIidType   // pkiID of the remote endpoint
+	handler        handler            // function to invoke upon a message reception
+	conn           *grpc.ClientConn   // gRPC connection to remote endpoint
+	cl             proto.GossipClient // gRPC stub of remote endpoint
+	gossipStream   stream             // there can only be one
+	stopChan       chan struct{}      // a method to stop the server-side gRPC call from a different go-routine
+	stopOnce       sync.Once          // once to ensure close is called only once
 }
 
 func (conn *connection) close() {
@@ -274,6 +342,18 @@ func (conn *connection) send(msg *protoext.SignedGossipMessage, onErr func(error
 func (conn *connection) serviceConnection() error {
 	errChan := make(chan error, 1)
 	msgChan := make(chan *protoext.SignedGossipMessage, conn.recvBuffSize)
+	defer func() {
+		// Release the accounting of messages never handed to the handler, so
+		// a dead connection's share of the shared budget cannot leak.
+		for {
+			select {
+			case msg := <-msgChan:
+				conn.releaseReceivedBytes(msg)
+			default:
+				return
+			}
+		}
+	}()
 	// Call stream.Recv() asynchronously in readFromStream(),
 	// and wait for either the Recv() call to end,
 	// or a signal to close the connection, which exits
@@ -292,7 +372,6 @@ func (conn *connection) serviceConnection() error {
 			return err
 		case msg := <-msgChan:
 			conn.handler(msg)
-			conn.releaseReceivedBytes(msg)
 		}
 	}
 }
@@ -329,46 +408,68 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 				return
 			}
 			conn.metrics.ReceivedMessages.Add(1)
-			if !conn.admitReceivedBytes(envelope) {
-				err = errors.Errorf("received bytes in flight exceed the per-connection limit of %d bytes", conn.maxRecvBytesInFlight)
-				conn.logger.Warningf("Dropping connection: %v", err)
-				errChan <- err
-				// serviceConnection may be wedged in the handler, so tear
-				// the connection down proactively instead of waiting for it.
-				conn.close()
-				return
-			}
 			msg, err := protoext.EnvelopeToGossipMessage(envelope)
 			if err != nil {
 				errChan <- err
 				conn.logger.Warningf("Got error, aborting: %v", err)
 				return
 			}
+			if !conn.admitReceivedBytes(msg) {
+				conn.releaseReceivedBytes(msg) // never delivered
+				err = errors.Errorf("received bytes in flight exceed the per-connection limit of %d bytes", conn.maxRecvBytesInFlight)
+				conn.logger.Warningf("Dropping connection: %v", err)
+				errChan <- err
+				// The handler may be wedged on a stalled subscriber, so tear
+				// the connection down and evict it instead of waiting.
+				conn.close()
+				conn.failQueuedSends(err)
+				if conn.evictFromStore != nil {
+					conn.evictFromStore()
+				}
+				return
+			}
 			select {
 			case <-conn.stopChan:
+				conn.releaseReceivedBytes(msg)
+				return
 			case msgChan <- msg:
 			}
 		}
 	}
 }
 
-// admitReceivedBytes charges the envelope's wire size against the connection's
-// receive budget; false means the budget is exceeded and the connection must
-// be dropped to bound retained memory.
-func (conn *connection) admitReceivedBytes(envelope *proto.Envelope) bool {
+// failQueuedSends fails sends that will never leave, so onErr callbacks
+// (e.g. SendWithAck waiters) are not stuck until their timeout.
+func (conn *connection) failQueuedSends(err error) {
+	for {
+		select {
+		case m := <-conn.outBuff:
+			m.onErr(err)
+		default:
+			return
+		}
+	}
+}
+
+// admitReceivedBytes charges the message's wire size to the shared budget and
+// the connection's receive budget; false means the connection's own budget is
+// exceeded and the connection must be dropped to bound retained memory.
+func (conn *connection) admitReceivedBytes(msg *protoext.SignedGossipMessage) bool {
+	size := int64(goproto.Size(msg.Envelope))
+	inFlight := conn.recvBytesInFlight.Add(size)
+	conn.sharedRecvBudget.admit(size)
 	if conn.maxRecvBytesInFlight <= 0 {
 		return true
 	}
-	return conn.recvBytesInFlight.Add(int64(goproto.Size(envelope))) <= conn.maxRecvBytesInFlight
+	return inFlight <= conn.maxRecvBytesInFlight
 }
 
-// releaseReceivedBytes returns the message's bytes to the budget once the
-// handler has handed it off.
+// releaseReceivedBytes returns the message's wire size to both budgets once
+// the message will not be (or no longer is) retained by the receive path.
 func (conn *connection) releaseReceivedBytes(msg *protoext.SignedGossipMessage) {
-	if conn.maxRecvBytesInFlight <= 0 {
-		return
-	}
-	conn.recvBytesInFlight.Add(-int64(goproto.Size(msg.Envelope)))
+	size := int64(goproto.Size(msg.Envelope))
+	conn.sharedRecvBudget.release(size)
+	conn.recvBytesInFlight.Add(-size)
 }
 
 type msgSending struct {

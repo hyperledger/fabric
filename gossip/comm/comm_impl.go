@@ -35,10 +35,6 @@ const (
 	DefConnTimeout   = time.Second * 2
 	DefRecvBuffSize  = 20
 	DefSendBuffSize  = 20
-	// DefMaxRecvBytesInFlight caps the received bytes a single connection may
-	// hold unprocessed; two maximum-size (100MiB) messages absorb legitimate
-	// bursts while bounding what a stalled pipeline can pin.
-	DefMaxRecvBytesInFlight = 200 * 1024 * 1024
 )
 
 var errProbe = errors.New("probe")
@@ -63,6 +59,7 @@ func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore iden
 	peerIdentity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor,
 	commMetrics *metrics.CommMetrics, config CommConfig, dialOpts ...grpc.DialOption,
 ) (Comm, error) {
+	sharedBudget := &sharedRecvBudget{max: int64(config.MaxRecvBytesTotal)}
 	commInst := &commImpl{
 		sa:                   sa,
 		pubSub:               util.NewPubSub(),
@@ -86,15 +83,18 @@ func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore iden
 		recvBuffSize:         config.RecvBuffSize,
 		sendBuffSize:         config.SendBuffSize,
 		maxRecvBytesInFlight: config.MaxRecvBytesInFlight,
+		sharedRecvBudget:     sharedBudget,
 	}
 
 	connConfig := ConnConfig{
 		RecvBuffSize:         config.RecvBuffSize,
 		SendBuffSize:         config.SendBuffSize,
 		MaxRecvBytesInFlight: config.MaxRecvBytesInFlight,
+		sharedRecvBudget:     sharedBudget,
 	}
 
 	commInst.connStore = newConnStore(commInst, commInst.logger, connConfig)
+	sharedBudget.evict = commInst.connStore.evictLargestConnection
 
 	proto.RegisterGossipServer(s, commInst)
 
@@ -107,10 +107,14 @@ type CommConfig struct {
 	ConnTimeout  time.Duration // Connection timeout
 	RecvBuffSize int           // Buffer size of received messages
 	SendBuffSize int           // Buffer size of sending messages
-	// MaxRecvBytesInFlight bounds the bytes of received messages a single
-	// connection may hold unprocessed before the connection is closed.
+	// MaxRecvBytesInFlight bounds the wire bytes of received messages a single
+	// connection may hold unconsumed before the connection is closed.
 	// Non-positive disables the limit.
 	MaxRecvBytesInFlight int
+	// MaxRecvBytesTotal bounds the wire bytes of received messages held
+	// unconsumed across all connections; on excess the connection holding the
+	// most in-flight bytes is closed. Non-positive disables the limit.
+	MaxRecvBytesTotal int
 }
 
 type commImpl struct {
@@ -138,6 +142,7 @@ type commImpl struct {
 	recvBuffSize         int
 	sendBuffSize         int
 	maxRecvBytesInFlight int
+	sharedRecvBudget     *sharedRecvBudget
 }
 
 func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidType) (*connection, error) {
@@ -200,6 +205,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 				RecvBuffSize:         c.recvBuffSize,
 				SendBuffSize:         c.sendBuffSize,
 				MaxRecvBytesInFlight: c.maxRecvBytesInFlight,
+				sharedRecvBudget:     c.sharedRecvBudget,
 			}
 			conn := newConnection(cl, cc, stream, c.metrics, connConfig)
 			conn.pkiID = pkiID
@@ -207,15 +213,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 			conn.logger = c.logger
 			conn.cancel = cancel
 
-			h := func(m *protoext.SignedGossipMessage) {
-				c.logger.Debug("Got message:", m)
-				c.msgPublisher.DeMultiplex(&ReceivedMessageImpl{
-					conn:                conn,
-					SignedGossipMessage: m,
-					connInfo:            connInfo,
-				})
-			}
-			conn.handler = interceptAcks(h, connInfo.ID, c.pubSub)
+			conn.handler = c.publishingHandler(conn, connInfo)
 			return conn, nil
 		}
 		c.logger.Warningf("Authentication failed: %+v", err)
@@ -570,6 +568,30 @@ func (c *commImpl) SendWithAck(msg *protoext.SignedGossipMessage, timeout time.D
 	return ackOperation.send(msg, minAck, peers...)
 }
 
+// publishingHandler delivers received messages to subscribers. Delivery is
+// abortable via the connection's stop channel so a dropped connection cannot
+// wedge on a stalled subscriber, and each message's receive-path byte
+// accounting is released only after all of its deliveries were consumed.
+func (c *commImpl) publishingHandler(conn *connection, connInfo *protoext.ConnectionInfo) handler {
+	publish := func(m *protoext.SignedGossipMessage) {
+		rmi := &ReceivedMessageImpl{
+			conn:                conn,
+			SignedGossipMessage: m,
+			connInfo:            connInfo,
+		}
+		rmi.onConsumed = func() { conn.releaseReceivedBytes(m) }
+		c.msgPublisher.DeMultiplexAbortable(rmi, conn.stopChan)
+	}
+	intercept := interceptAcks(publish, connInfo.ID, c.pubSub)
+	return func(m *protoext.SignedGossipMessage) {
+		intercept(m)
+		// Acknowledgements never enter the delivery pipeline; release now.
+		if protoext.IsAck(m.GossipMessage) {
+			conn.releaseReceivedBytes(m)
+		}
+	}
+}
+
 func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	if c.isStopping() {
 		return errors.New("shutting down")
@@ -589,15 +611,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 
 	conn := c.connStore.onConnected(stream, connInfo, c.metrics)
 
-	h := func(m *protoext.SignedGossipMessage) {
-		c.msgPublisher.DeMultiplex(&ReceivedMessageImpl{
-			conn:                conn,
-			SignedGossipMessage: m,
-			connInfo:            connInfo,
-		})
-	}
-
-	conn.handler = interceptAcks(h, connInfo.ID, c.pubSub)
+	conn.handler = c.publishingHandler(conn, connInfo)
 
 	defer func() {
 		c.logger.Debug("Client", extractRemoteAddress(stream), " disconnected")

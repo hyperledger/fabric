@@ -303,6 +303,7 @@ func (s *GossipStateProviderImpl) receiveAndDispatchDirectMessages(ch <-chan pro
 	for msg := range ch {
 		s.logger.Debug("Dispatching a message", msg)
 		go func(msg protoext.ReceivedMessage) {
+			defer comm.DisposeMessage(msg)
 			gm := msg.GetGossipMessage()
 			// Check type of the message
 			if protoext.IsRemoteStateMessage(gm.GossipMessage) {
