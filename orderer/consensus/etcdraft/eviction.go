@@ -148,9 +148,11 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 		es.logger.Infof("Pulling block [%d]", seq)
 		block := puller.PullBlock(seq)
 		// PullBlock returns nil on retry exhaustion or stop; the ledger append
-		// path dereferences the block header, so bail out instead.
+		// path dereferences the block header, so bail out instead. The chain
+		// stays halted; recovery is the follower chain started by the halt
+		// callback, not a retried catch-up.
 		if block == nil {
-			es.logger.Warningf("Failed pulling block [%d], the block puller returned nil, aborting eviction catch up", seq)
+			es.logger.Errorf("Failed pulling block [%d], the block puller returned nil, aborting eviction catch up; the chain remains halted and recovers via the follower chain", seq)
 			return
 		}
 		err := es.writeBlock(block)

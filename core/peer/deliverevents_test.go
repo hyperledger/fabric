@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
@@ -739,6 +740,11 @@ func produceSamplePvtdataOrPanic(txNum uint64, nsColls []string) *ledger.TxPvtDa
 // recover nested in a synchronously-invoked closure returns nil and the panic
 // kills the process, since the gRPC server has no recovery interceptor.
 func TestDumpStacktraceOnPanicRecovers(t *testing.T) {
+	// The recovered panic logs a critical stack trace; discard it to keep
+	// the test output readable.
+	restore := flogging.SetWriter(io.Discard)
+	defer flogging.SetWriter(restore)
+
 	require.NotPanics(t, func() {
 		defer dumpStacktraceOnPanic()
 		panic("simulated deliver handler panic")
@@ -749,6 +755,9 @@ func TestDumpStacktraceOnPanicRecovers(t *testing.T) {
 // recovered by the deferred dumpStacktraceOnPanic instead of crashing the
 // peer process.
 func TestDeliverFilteredRecoversPanickingPolicyChecker(t *testing.T) {
+	restore := flogging.SetWriter(io.Discard)
+	defer flogging.SetWriter(restore)
+
 	chain := &mockChainSupport{}
 	chain.On("Sequence").Return(uint64(0))
 	chainManager := &mockChainManager{}
