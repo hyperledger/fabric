@@ -50,25 +50,27 @@ type TopLevel struct {
 
 // General contains config which should be common among all orderer types.
 type General struct {
-	ListenAddress     string
-	ListenPort        uint16
-	TLS               TLS
-	Cluster           Cluster
-	Keepalive         Keepalive
-	Backoff           Backoff
-	ConnectionTimeout time.Duration
-	GenesisMethod     string // Deprecated: For compatibility only, will be replaced by BootstrapMethod
-	GenesisFile       string // Deprecated: For compatibility only, will be replaced by BootstrapFile
-	BootstrapMethod   string // Deprecated: System channel is no longer supported.
-	BootstrapFile     string // Deprecated: System channel is no longer supported.
-	Profile           Profile
-	LocalMSPDir       string
-	LocalMSPID        string
-	BCCSP             *bccsp.FactoryOpts
-	Authentication    Authentication
-	MaxRecvMsgSize    int32
-	MaxSendMsgSize    int32
-	Throttling        Throttling
+	ListenAddress        string
+	ListenPort           uint16
+	TLS                  TLS
+	Cluster              Cluster
+	Keepalive            Keepalive
+	Backoff              Backoff
+	ConnectionTimeout    time.Duration
+	GenesisMethod        string // Deprecated: For compatibility only, will be replaced by BootstrapMethod
+	GenesisFile          string // Deprecated: For compatibility only, will be replaced by BootstrapFile
+	BootstrapMethod      string // Deprecated: System channel is no longer supported.
+	BootstrapFile        string // Deprecated: System channel is no longer supported.
+	Profile              Profile
+	LocalMSPDir          string
+	LocalMSPID           string
+	BCCSP                *bccsp.FactoryOpts
+	Authentication       Authentication
+	MaxRecvMsgSize       int32
+	MaxSendMsgSize       int32
+	MaxConcurrentStreams uint32
+	Throttling           Throttling
+	Limits               Limits
 }
 
 type Cluster struct {
@@ -184,6 +186,19 @@ type Throttling struct {
 	InactivityTimeout time.Duration
 }
 
+// Limits defines resource limits for services exposed by the orderer.
+type Limits struct {
+	// Concurrency limits the number of concurrent requests per service.
+	Concurrency Concurrency
+}
+
+// Concurrency defines concurrency limits for services exposed by the orderer.
+// A zero value for a service is replaced by its default limit.
+type Concurrency struct {
+	// BroadcastService limits the number of concurrent broadcast streams.
+	BroadcastService int
+}
+
 // ChannelParticipation provides the channel participation API configuration for the orderer.
 // Channel participation uses the same ListenAddress and TLS settings of the Operations service.
 type ChannelParticipation struct {
@@ -218,10 +233,16 @@ var Defaults = TopLevel{
 		Authentication: Authentication{
 			TimeWindow: 15 * time.Minute,
 		},
-		MaxRecvMsgSize: comm.DefaultMaxRecvMsgSize,
-		MaxSendMsgSize: comm.DefaultMaxSendMsgSize,
+		MaxRecvMsgSize:       comm.DefaultMaxRecvMsgSize,
+		MaxSendMsgSize:       comm.DefaultMaxSendMsgSize,
+		MaxConcurrentStreams: comm.DefaultMaxConcurrentStreams,
 		Throttling: Throttling{
 			InactivityTimeout: time.Second * 5,
+		},
+		Limits: Limits{
+			Concurrency: Concurrency{
+				BroadcastService: 2500,
+			},
 		},
 	},
 	FileLedger: FileLedger{
@@ -388,6 +409,14 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.MaxSendMsgSize == 0:
 			logger.Infof("General.MaxSendMsgSize is unset, setting to %v", Defaults.General.MaxSendMsgSize)
 			c.General.MaxSendMsgSize = Defaults.General.MaxSendMsgSize
+		case c.General.MaxConcurrentStreams == 0:
+			logger.Infof("General.MaxConcurrentStreams is unset, setting to %v", Defaults.General.MaxConcurrentStreams)
+			c.General.MaxConcurrentStreams = Defaults.General.MaxConcurrentStreams
+		case c.General.Limits.Concurrency.BroadcastService < 0:
+			logger.Panicf("General.Limits.Concurrency.BroadcastService must be greater than or equal to 0, got %d", c.General.Limits.Concurrency.BroadcastService)
+		case c.General.Limits.Concurrency.BroadcastService == 0:
+			logger.Infof("General.Limits.Concurrency.BroadcastService is unset, setting to %v", Defaults.General.Limits.Concurrency.BroadcastService)
+			c.General.Limits.Concurrency.BroadcastService = Defaults.General.Limits.Concurrency.BroadcastService
 		case c.General.Throttling.InactivityTimeout == 0:
 			logger.Infof("General.Throttling.InactivityTimeout is unset, setting to %v", Defaults.General.Throttling.InactivityTimeout)
 			c.General.Throttling.InactivityTimeout = Defaults.General.Throttling.InactivityTimeout

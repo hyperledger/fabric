@@ -160,6 +160,12 @@ func TestGetServerConfig(t *testing.T) {
 	require.Equal(t, 1024, sc.MaxRecvMsgSize, "ServerConfig.MaxRecvMsgSize should be set to custom value 1024")
 	require.Equal(t, 1024, sc.MaxSendMsgSize, "ServerConfig.MaxSendMsgSize should be set to custom value 1024")
 
+	// GRPC max concurrent streams option
+	require.Equal(t, comm.DefaultMaxConcurrentStreams, sc.MaxConcurrentStreams, "ServerConfig.MaxConcurrentStreams should be set to default value %v", comm.DefaultMaxConcurrentStreams)
+	viper.Set("peer.maxConcurrentStreams", 500)
+	sc, _ = GetServerConfig()
+	require.Equal(t, uint32(500), sc.MaxConcurrentStreams, "ServerConfig.MaxConcurrentStreams should be set to custom value 500")
+
 	// bad config with TLS
 	viper.Set("peer.tls.rootcert.file", "non-existent-file.pem")
 	_, err = GetServerConfig()

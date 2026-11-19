@@ -445,12 +445,16 @@ func GetServerConfig() (comm.ServerConfig, error) {
 
 	serverConfig.MaxRecvMsgSize = comm.DefaultMaxRecvMsgSize
 	serverConfig.MaxSendMsgSize = comm.DefaultMaxSendMsgSize
+	serverConfig.MaxConcurrentStreams = comm.DefaultMaxConcurrentStreams
 
 	if viper.IsSet("peer.maxRecvMsgSize") {
 		serverConfig.MaxRecvMsgSize = int(viper.GetInt32("peer.maxRecvMsgSize"))
 	}
 	if viper.IsSet("peer.maxSendMsgSize") {
 		serverConfig.MaxSendMsgSize = int(viper.GetInt32("peer.maxSendMsgSize"))
+	}
+	if viper.IsSet("peer.maxConcurrentStreams") {
+		serverConfig.MaxConcurrentStreams = viper.GetUint32("peer.maxConcurrentStreams")
 	}
 	return serverConfig, nil
 }

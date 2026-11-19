@@ -278,6 +278,18 @@ func serve(args []string) error {
 		serverConfig.StreamInterceptors = append(serverConfig.StreamInterceptors, streamGrpcLimiter(semaphores))
 	}
 
+	// a transport cap below a service budget makes the cap throttle first
+	for name, budget := range map[string]int{
+		"endorserService": coreConfig.LimitsConcurrencyEndorserService,
+		"deliverService":  coreConfig.LimitsConcurrencyDeliverService,
+		"gatewayService":  coreConfig.LimitsConcurrencyGatewayService,
+	} {
+		if uint64(serverConfig.MaxConcurrentStreams) < uint64(budget) {
+			logger.Warnf("peer.maxConcurrentStreams (%d) is below the %s concurrency limit (%d); the transport cap will throttle first",
+				serverConfig.MaxConcurrentStreams, name, budget)
+		}
+	}
+
 	cs := comm.NewCredentialSupport()
 	if serverConfig.SecOpts.UseTLS {
 		logger.Info("Starting peer with TLS enabled")
