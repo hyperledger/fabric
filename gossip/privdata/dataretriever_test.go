@@ -569,6 +569,87 @@ func TestNewDataRetriever_EmptyPvtRWSetInTransientStore(t *testing.T) {
 	}])
 }
 
+/*
+Test checks that when the transient store holds several entries for the same
+txID with different collection configs, only the write sets stored under the
+selected collection config are returned, since the requester's eligibility is
+evaluated against that config alone.
+*/
+func TestNewDataRetriever_TransientStoreEntriesWithDifferentConfigs(t *testing.T) {
+	committer := &mocks.Committer{}
+
+	store := newTransientStore(t)
+	defer store.tearDown()
+
+	namespace := "testChaincodeName1"
+	collectionName := "testCollectionName"
+	txID := "testTxID"
+
+	committer.On("LedgerHeight").Return(uint64(1), nil)
+
+	retriever := NewDataRetriever("testchannel", store.store, committer)
+
+	configWithMaxPeers := func(maxPeers int32) map[string]*peer.CollectionConfigPackage {
+		return map[string]*peer.CollectionConfigPackage{
+			namespace: {
+				Config: []*peer.CollectionConfig{
+					{
+						Payload: &peer.CollectionConfig_StaticCollectionConfig{
+							StaticCollectionConfig: &peer.StaticCollectionConfig{
+								Name:             collectionName,
+								MaximumPeerCount: maxPeers,
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	store.Persist(txID, 2, &transientstore.TxPvtReadWriteSetWithConfigInfo{
+		PvtRwset: &rwset.TxPvtReadWriteSet{
+			DataModel:  rwset.TxReadWriteSet_KV,
+			NsPvtRwset: []*rwset.NsPvtReadWriteSet{pvtReadWriteSet(namespace, collectionName, []byte{1, 2})},
+		},
+		CollectionConfigs: configWithMaxPeers(1),
+	})
+	store.Persist(txID, 2, &transientstore.TxPvtReadWriteSetWithConfigInfo{
+		PvtRwset: &rwset.TxPvtReadWriteSet{
+			DataModel:  rwset.TxReadWriteSet_KV,
+			NsPvtRwset: []*rwset.NsPvtReadWriteSet{pvtReadWriteSet(namespace, collectionName, []byte{3, 4})},
+		},
+		CollectionConfigs: configWithMaxPeers(2),
+	})
+
+	rwSets, _, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{{
+		Namespace:  namespace,
+		Collection: collectionName,
+		BlockSeq:   2,
+		TxId:       txID,
+		SeqInBlock: 1,
+	}}, 2)
+
+	assertion := require.New(t)
+	assertion.NoError(err)
+	dig2pvtRWSet := rwSets[privdatacommon.DigKey{
+		Namespace:  namespace,
+		Collection: collectionName,
+		BlockSeq:   2,
+		TxId:       txID,
+		SeqInBlock: 1,
+	}]
+	assertion.NotNil(dig2pvtRWSet)
+	assertion.Len(dig2pvtRWSet.RWSet, 1)
+
+	// Both entries were stored with EndorsedAt == 0, so either config may be selected,
+	// but the returned write set must be the one stored under the selected config.
+	if dig2pvtRWSet.CollectionConfig.GetStaticCollectionConfig().GetMaximumPeerCount() == 1 {
+		assertion.Equal([]byte{1, 2}, []byte(dig2pvtRWSet.RWSet[0]))
+	} else {
+		assertion.Equal([]byte{3, 4}, []byte(dig2pvtRWSet.RWSet[0]))
+	}
+}
+
 func newCollectionConfig(collectionName string) *ledger.CollectionConfigInfo {
 	return &ledger.CollectionConfigInfo{
 		CollectionConfig: &peer.CollectionConfigPackage{
