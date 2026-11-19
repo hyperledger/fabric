@@ -9,6 +9,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,7 +86,7 @@ func doOutputChannelCreateTx(conf, baseProfile *genesisconfig.Profile, channelID
 
 func doInspectBlock(inspectBlock string) error {
 	logger.Info("Inspecting block")
-	data, err := os.ReadFile(inspectBlock)
+	data, err := readInput(inspectBlock)
 	if err != nil {
 		return fmt.Errorf("could not read block %s", inspectBlock)
 	}
@@ -104,7 +105,7 @@ func doInspectBlock(inspectBlock string) error {
 
 func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 	logger.Info("Inspecting transaction")
-	data, err := os.ReadFile(inspectChannelCreateTx)
+	data, err := readInput(inspectChannelCreateTx)
 	if err != nil {
 		return fmt.Errorf("could not read channel create tx: %w", err)
 	}
@@ -154,7 +155,18 @@ func doPrintOrg(t *genesisconfig.TopLevel, printOrg string) error {
 	return errors.Errorf("organization %s not found", printOrg)
 }
 
+func readInput(path string) ([]byte, error) {
+	if path == "-" {
+		return io.ReadAll(os.Stdin)
+	}
+	return os.ReadFile(path)
+}
+
 func writeFile(filename string, data []byte, perm os.FileMode) error {
+	if filename == "-" {
+		_, err := os.Stdout.Write(data)
+		return err
+	}
 	dirPath := filepath.Dir(filename)
 	exists, err := dirExists(dirPath)
 	if err != nil {
@@ -183,14 +195,14 @@ func dirExists(path string) (bool, error) {
 func main() {
 	var outputBlock, outputChannelCreateTx, channelCreateTxBaseProfile, profile, configPath, channelID, inspectBlock, inspectChannelCreateTx, asOrg, printOrg string
 
-	flag.StringVar(&outputBlock, "outputBlock", "", "The path to write the genesis block to (if set)")
+	flag.StringVar(&outputBlock, "outputBlock", "", "The path to write the genesis block to (if set). '-' writes to stdout")
 	flag.StringVar(&channelID, "channelID", "", "The channel ID to use in the configtx")
-	flag.StringVar(&outputChannelCreateTx, "outputCreateChannelTx", "", "[DEPRECATED] The path to write a channel creation configtx to (if set)")
+	flag.StringVar(&outputChannelCreateTx, "outputCreateChannelTx", "", "[DEPRECATED] The path to write a channel creation configtx to (if set). '-' writes to stdout")
 	flag.StringVar(&channelCreateTxBaseProfile, "channelCreateTxBaseProfile", "", "[DEPRECATED] Specifies a profile to consider as the orderer system channel current state to allow modification of non-application parameters during channel create tx generation. Only valid in conjunction with 'outputCreateChannelTx'.")
 	flag.StringVar(&profile, "profile", "", "The profile from configtx.yaml to use for generation.")
 	flag.StringVar(&configPath, "configPath", "", "The path containing the configuration to use (if set)")
-	flag.StringVar(&inspectBlock, "inspectBlock", "", "Prints the configuration contained in the block at the specified path")
-	flag.StringVar(&inspectChannelCreateTx, "inspectChannelCreateTx", "", "[DEPRECATED] Prints the configuration contained in the transaction at the specified path")
+	flag.StringVar(&inspectBlock, "inspectBlock", "", "Prints the configuration contained in the block at the specified path. '-' reads from stdin")
+	flag.StringVar(&inspectChannelCreateTx, "inspectChannelCreateTx", "", "[DEPRECATED] Prints the configuration contained in the transaction at the specified path. '-' reads from stdin")
 	flag.StringVar(&asOrg, "asOrg", "", "Performs the config generation as a particular organization (by name), only including values in the write set that org (likely) has privilege to set")
 	flag.StringVar(&printOrg, "printOrg", "", "Prints the definition of an organization as JSON. (useful for adding an org to a channel manually)")
 
