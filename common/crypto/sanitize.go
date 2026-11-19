@@ -55,7 +55,15 @@ func SanitizeX509Cert(initialPEM []byte) ([]byte, error) {
 	}
 
 	// We assume that the consenter and the CA use the same signature scheme.
-	curveOrderUsedByCryptoGen := cert.PublicKey.(*ecdsa.PublicKey).Curve.Params().N
+	// The signature above is unmarshaled as ECDSA, but the certificate's own
+	// public key may be of a different type (for example an RSA subject key
+	// signed by an ECDSA CA). Guard the type assertion so a non-ECDSA key
+	// returns an error instead of panicking.
+	ecdsaPubKey, ok := cert.PublicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return nil, errors.Errorf("certificate's public key is of type %T but only ECDSA public keys are supported", cert.PublicKey)
+	}
+	curveOrderUsedByCryptoGen := ecdsaPubKey.Curve.Params().N
 	halfOrder := new(big.Int).Rsh(curveOrderUsedByCryptoGen, 1)
 	// Low S, nothing to do here!
 	if s.Cmp(halfOrder) != 1 {
