@@ -175,7 +175,7 @@ var _ = Describe("CouchDB indexes", func() {
 
 func initMarble(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName, marbleName string) {
 	By("invoking initMarble function of the chaincode")
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+	sess, err := n.CliUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: channel,
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      ccName,
@@ -256,7 +256,7 @@ func verifyColorIndexPresence(n *nwo.Network, channel string, orderer *nwo.Order
 
 func verifyIndexPresence(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string, expectIndexPresent bool, indexQuery string) {
 	By("invoking queryMarbles function with a user constructed query that requires an index due to a sort")
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+	sess, err := n.CliUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID:     channel,
 		Name:          ccName,
 		Ctor:          prepareChaincodeInvokeArgs("queryMarbles", indexQuery),

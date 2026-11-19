@@ -50,12 +50,12 @@ If the hashes are not identical, you can use the [`ledgerutil compare` utility](
 
 ## Taking a snapshot
 
-For the full list of snapshot-related commands, check out [`peer snapshot` commands](./commands/peersnapshot.html#peer-snapshot).
+For the full list of snapshot-related commands, check out [`cli snapshot` commands](./commands/clisnapshot.html#cli-snapshot).
 
 Before taking a snapshot, it is a best practice to confirm the current ledger height by issuing a command similar to:
 
 ```
-peer channel getinfo -c <name of channel>
+cli channel getinfo -c <name of channel>
 ```
 
 You will see a response similar to:
@@ -69,13 +69,13 @@ In this example, the ledger height is `970`.
 A snapshot request can be submitted by issuing a command similar to:
 
 ```
-peer snapshot submitrequest -c <name of channel> -b <ledger height where snapshot will be taken> --peerAddress <address of peer> --tlsRootCertFile <path to root certificate of the TLS CA>
+cli snapshot submitrequest -c <name of channel> -b <ledger height where snapshot will be taken> --peerAddress <address of peer> --tlsRootCertFile <path to root certificate of the TLS CA>
 ```
 
 For example:
 
 ```
-peer snapshot submitrequest -c testchannel -b 1000 --peerAddress 127.0.0.1:22509 --tlsRootCertFile tls/cert.pem
+cli snapshot submitrequest -c testchannel -b 1000 --peerAddress 127.0.0.1:22509 --tlsRootCertFile tls/cert.pem
 ```
 
 **If you give a ledger height of `0`, the snapshot is taken immediately. This is useful for cases when an organization is interested in generating a snapshot that will be used by one of its own peers and does not intend to share the data with another organization. Do not take these "immediate" snapshots in cases when snapshots will be evaluated from multiple peers, as it increases the likelihood that the snapshots will be taken at different ledger heights.**
@@ -85,7 +85,7 @@ If the request is successful, you will see a `Snapshot request submitted success
 You can list the pending snapshots by issuing a command similar to:
 
 ```
-peer snapshot listpending -c testchannel --peerAddress 127.0.0.1:22509 --tlsRootCertFile tls/cert.pem
+cli snapshot listpending -c testchannel --peerAddress 127.0.0.1:22509 --tlsRootCertFile tls/cert.pem
 ```
 
 You will see a response similar to:
@@ -101,7 +101,7 @@ Snapshots will be written to a directory based on the `core.yaml` `ledger.snapsh
 To delete a snapshot request, simply exchange `submitrequest` with `cancelrequest`. For example:
 
 ```
-peer snapshot cancelrequest -c testchannel -b 1000 --peerAddress 127.0.0.1:22509 --tlsRootCertFile tls/cert.pem
+cli snapshot cancelrequest -c testchannel -b 1000 --peerAddress 127.0.0.1:22509 --tlsRootCertFile tls/cert.pem
 ```
 
 If you submit the `listpending` command again, the snapshot should no longer appear.
@@ -141,16 +141,16 @@ Note that the file types explained here is a superset of all of the files that m
 
 ## Joining a channel using a snapshot
 
-When joining a channel using the genesis block, a command similar to `peer channel join --blockpath mychannel.block` is issued. When joining the peer to the channel using a snapshot, issue a command similar to:
+When joining a channel using the genesis block, a command similar to `cli channel join --blockpath mychannel.block` is issued. When joining the peer to the channel using a snapshot, issue a command similar to:
 
 ```
-peer channel joinbysnapshot --snapshotpath <path to snapshot>
+cli channel joinbysnapshot --snapshotpath <path to snapshot>
 ```
 
 To verify that the peer has joined the channel successfully, issue a command similar to:
 
 ```
-peer channel getinfo -c <name of channel joined by snapshot>
+cli channel getinfo -c <name of channel joined by snapshot>
 ```
 
 Additionally, if the peer has not already installed a chaincode being used on the channel, do so, and then issue a query. A successful return of data indicates that the peer has successfully joined using the snapshot. You can then install all of the chaincodes being used on the channel. If the snapshot is used by a new organization, and the channel contains the definitions for the chaincodes that are defined using the [new chaincode lifecycle](./chaincode_lifecycle.html), the new organization will need to approve the definition of these chaincodes before they can be invoked on the peer.
@@ -161,7 +161,7 @@ If you want to try out the ledger snapshotting process, you'll first need a netw
 
 Next, follow the [Adding an Org to a Channel](./channel_update_tutorial.html) to add a new org to your network and application channel. When you reach the section where you are asked to [Join Org3 to the Channel](./channel_update_tutorial.html#join-org3-to-the-channel), select the peer you want to use to take the snapshot and follow the instructions above to take the snapshot. Then locate the snapshot on the peer and copy it somewhere else on your filesystem. Taking the snapshot at this step ensures that the new peer joins the channel using a snapshot taken after a point when its organization has already been joined to the channel.
 
-After you have taken the snapshot and copied it, instead of issuing the `peer channel join -b mychannel.block` command, substitute `peer channel joinbysnapshot --snapshotpath <path to snapshot>` using the path to the snapshot on your filesystem.
+After you have taken the snapshot and copied it, instead of issuing the `cli channel join -b mychannel.block` command, substitute `cli channel joinbysnapshot --snapshotpath <path to snapshot>` using the path to the snapshot on your filesystem.
 
 ## Troubleshooting
 
