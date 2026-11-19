@@ -8,6 +8,7 @@ package node
 
 import (
 	"path/filepath"
+	"strconv"
 	"time"
 
 	coreconfig "github.com/hyperledger/fabric/core/config"
@@ -45,12 +46,15 @@ func ledgerConfig() *ledger.Config {
 	if viper.IsSet("ledger.pvtdataStore.purgedKeyAuditLogging") {
 		purgedKeyAuditLogging = viper.GetBool("ledger.pvtdataStore.purgedKeyAuditLogging")
 	}
-	// default mirrors the 100MB gRPC message size cap, the largest payload a
-	// peer exchanges; a write set beyond that could never leave the peer
-	maxWriteSetSize := 100 * 1024 * 1024
-	if viper.IsSet("ledger.state.maxWriteSetSize") {
-		maxWriteSetSize = viper.GetInt("ledger.state.maxWriteSetSize")
+	// The default equals the default peer.maxSendMsgSize (100MB), the largest
+	// payload a peer emits; it is a memory-safety ceiling per simulation, not
+	// a deliverability guarantee - the proposal response and the ordering
+	// BatchSize limits bound deliverable transactions more tightly.
+	maxRWSetSize := int64(100 * 1024 * 1024)
+	if viper.IsSet("ledger.state.maxRWSetSize") {
+		maxRWSetSize = parseMaxRWSetSize(viper.Get("ledger.state.maxRWSetSize"), maxRWSetSize)
 	}
+	logger.Infof("Transaction simulation read-write set size limit = %d bytes", maxRWSetSize)
 
 	fsPath := coreconfig.GetPath("peer.fileSystemPath")
 	ledgersDataRootDir := filepath.Join(fsPath, "ledgersData")
@@ -90,7 +94,7 @@ func ledgerConfig() *ledger.Config {
 		SnapshotsConfig: &ledger.SnapshotsConfig{
 			RootDir: snapshotsRootDir,
 		},
-		MaxWriteSetSize: maxWriteSetSize,
+		MaxRWSetSize: maxRWSetSize,
 	}
 
 	if conf.StateDBConfig.StateDatabase == ledger.CouchDB {
@@ -110,4 +114,23 @@ func ledgerConfig() *ledger.Config {
 		}
 	}
 	return conf
+}
+
+// parseMaxRWSetSize converts the configured value to bytes; a non-numeric
+// value in a security-relevant setting must not silently disable the limit,
+// so it falls back to the default with a warning
+func parseMaxRWSetSize(value any, defaultValue int64) int64 {
+	switch v := value.(type) {
+	case int:
+		return int64(v)
+	case int64:
+		return v
+	case string:
+		parsed, err := strconv.ParseInt(v, 10, 64)
+		if err == nil {
+			return parsed
+		}
+	}
+	logger.Warningf("Invalid ledger.state.maxRWSetSize value %v, using default %d bytes", value, defaultValue)
+	return defaultValue
 }

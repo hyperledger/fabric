@@ -27,7 +27,7 @@ type txSimulator struct {
 }
 
 func newTxSimulator(txmgr *LockBasedTxMgr, txid string, hashFunc rwsetutil.HashFunc) (*txSimulator, error) {
-	rwsetBuilder := rwsetutil.NewRWSetBuilderWithMaxWriteSetSize(txmgr.maxWriteSetSize)
+	rwsetBuilder := rwsetutil.NewRWSetBuilderWithMaxRWSetSize(txmgr.maxRWSetSize)
 	qe := newQueryExecutor(txmgr, txid, rwsetBuilder, true, hashFunc)
 	logger.Debugf("constructing new tx simulator txid = [%s]", txid)
 	return &txSimulator{qe, rwsetBuilder, false, false, false, false, ledger.WritesetMetadata{}}, nil
@@ -213,6 +213,9 @@ func (s *txSimulator) GetTxSimulationResults() (*ledger.TxSimulationResults, err
 		return nil, s.err
 	}
 	s.addRangeQueryInfo()
+	if s.err != nil {
+		return nil, s.err
+	}
 	simResults, err := s.rwsetBuilder.GetTxSimulationResults()
 	if err != nil {
 		return nil, err

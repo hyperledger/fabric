@@ -61,7 +61,7 @@ func TestLedgerConfig(t *testing.T) {
 				SnapshotsConfig: &ledger.SnapshotsConfig{
 					RootDir: "/peerfs/snapshots",
 				},
-				MaxWriteSetSize: 100 * 1024 * 1024,
+				MaxRWSetSize: 100 * 1024 * 1024,
 			},
 		},
 		{
@@ -94,7 +94,7 @@ func TestLedgerConfig(t *testing.T) {
 				SnapshotsConfig: &ledger.SnapshotsConfig{
 					RootDir: "/peerfs/snapshots",
 				},
-				MaxWriteSetSize: 100 * 1024 * 1024,
+				MaxRWSetSize: 100 * 1024 * 1024,
 			},
 		},
 		{
@@ -144,7 +144,7 @@ func TestLedgerConfig(t *testing.T) {
 				SnapshotsConfig: &ledger.SnapshotsConfig{
 					RootDir: "/peerfs/snapshots",
 				},
-				MaxWriteSetSize: 100 * 1024 * 1024,
+				MaxRWSetSize: 100 * 1024 * 1024,
 			},
 		},
 		{
@@ -169,7 +169,7 @@ func TestLedgerConfig(t *testing.T) {
 				"ledger.pvtdataStore.deprioritizedDataReconcilerInterval": "180m",
 				"ledger.history.enableHistoryDatabase":                    true,
 				"ledger.snapshots.rootDir":                                "/peerfs/customLocationForsnapshots",
-				"ledger.state.maxWriteSetSize":                            12345,
+				"ledger.state.maxRWSetSize":                               12345,
 			},
 			expected: &ledger.Config{
 				RootFSPath:    "/peerfs/ledgersData",
@@ -204,7 +204,7 @@ func TestLedgerConfig(t *testing.T) {
 				SnapshotsConfig: &ledger.SnapshotsConfig{
 					RootDir: "/peerfs/customLocationForsnapshots",
 				},
-				MaxWriteSetSize: 12345,
+				MaxRWSetSize: 12345,
 			},
 		},
 	}
@@ -219,4 +219,23 @@ func TestLedgerConfig(t *testing.T) {
 			require.Equal(t, _test.expected, conf)
 		})
 	}
+}
+
+// A non-numeric value for the read-write set size limit must not silently
+// disable the limit; the default applies instead
+func TestLedgerConfigMaxRWSetSize(t *testing.T) {
+	defer viper.Reset()
+	viper.Set("peer.fileSystemPath", "/peerfs")
+
+	viper.Set("ledger.state.maxRWSetSize", "100MB")
+	require.Equal(t, int64(100*1024*1024), ledgerConfig().MaxRWSetSize)
+
+	viper.Set("ledger.state.maxRWSetSize", "12345678")
+	require.Equal(t, int64(12345678), ledgerConfig().MaxRWSetSize)
+
+	viper.Set("ledger.state.maxRWSetSize", 42000000)
+	require.Equal(t, int64(42000000), ledgerConfig().MaxRWSetSize)
+
+	viper.Set("ledger.state.maxRWSetSize", 0)
+	require.Equal(t, int64(0), ledgerConfig().MaxRWSetSize)
 }

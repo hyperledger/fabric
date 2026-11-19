@@ -1756,21 +1756,76 @@ func testTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T, env testE
 	require.Equal(t, metadata, simRes4.WritesetMetadata)
 }
 
-func TestTxSimulatorWriteSetSizeLimit(t *testing.T) {
+func TestTxSimulatorRWSetSizeLimit(t *testing.T) {
 	env := testEnvsMap[levelDBtestEnvName].(*lockBasedEnv)
-	env.maxWriteSetSize = 100
-	defer func() { env.maxWriteSetSize = 0 }()
-	env.init(t, "testtxsimulatorwritesetsizelimit", nil)
+	env.maxRWSetSize = 2048
+	defer func() { env.maxRWSetSize = 0 }()
+	env.init(t, "testtxsimulatorrwsetsizelimit", nil)
 	defer env.cleanup()
-
-	s, err := env.getTxMgr().NewTxSimulator("test_txid")
-	require.NoError(t, err)
-	// each entry is key(4) + value(46) = 50 bytes; the budget fits two
-	require.NoError(t, s.SetState("ns1", "key1", make([]byte, 46)))
-	require.NoError(t, s.SetState("ns1", "key2", make([]byte, 46)))
-	require.ErrorContains(
+	populateCollConfigForTest(
 		t,
-		s.SetState("ns1", "key3", make([]byte, 46)),
-		"exceeds the maximum allowed size",
+		env.getTxMgr(),
+		[]collConfigkey{{"ns1", "coll1"}},
+		version.NewHeight(1, 1),
 	)
+
+	// each write is metered as a 512 byte per-entry overhead plus key and
+	// value sizes; the seed consumes 916 of the 2048 byte budget
+	t.Run("all write APIs propagate the limit error", func(t *testing.T) {
+		breachingOps := map[string]struct {
+			seedBytes int
+			op        func(s ledger.TxSimulator) error
+		}{
+			"SetState": {
+				400,
+				func(s ledger.TxSimulator) error { return s.SetState("ns1", "key2", make([]byte, 1500)) },
+			},
+			"SetStateMetadata": {
+				400,
+				func(s ledger.TxSimulator) error {
+					return s.SetStateMetadata("ns1", "key2", map[string][]byte{"meta1": make([]byte, 1500)})
+				},
+			},
+			"SetPrivateData": {
+				400,
+				func(s ledger.TxSimulator) error { return s.SetPrivateData("ns1", "coll1", "key2", make([]byte, 1500)) },
+			},
+			"SetPrivateDataMetadata": {
+				400,
+				func(s ledger.TxSimulator) error {
+					return s.SetPrivateDataMetadata("ns1", "coll1", "key2", map[string][]byte{"meta1": make([]byte, 1500)})
+				},
+			},
+			"PurgePrivateData": {
+				1400,
+				func(s ledger.TxSimulator) error { return s.PurgePrivateData("ns1", "coll1", "key2") },
+			},
+		}
+		for name, tc := range breachingOps {
+			t.Run(name, func(t *testing.T) {
+				s, err := env.getTxMgr().NewTxSimulator("test_txid_" + name)
+				require.NoError(t, err)
+				require.NoError(t, s.SetState("ns1", "key1", make([]byte, tc.seedBytes)))
+				require.ErrorContains(t, tc.op(s), "exceeds the maximum allowed size")
+			})
+		}
+	})
+
+	t.Run("a breach poisons the whole simulation", func(t *testing.T) {
+		s, err := env.getTxMgr().NewTxSimulator("test_txid_poison")
+		require.NoError(t, err)
+		require.NoError(t, s.SetState("ns1", "key1", make([]byte, 400)))
+		require.ErrorContains(
+			t,
+			s.SetState("ns1", "key2", make([]byte, 1500)),
+			"exceeds the maximum allowed size",
+		)
+		// a chaincode may ignore the error and continue; further accumulation
+		// and the final results must still fail with the recorded error
+		require.ErrorContains(t, s.SetState("ns1", "key3", make([]byte, 1)), "exceeds the maximum allowed size")
+		_, err = s.GetState("ns1", "key1")
+		require.ErrorContains(t, err, "exceeds the maximum allowed size")
+		_, err = s.GetTxSimulationResults()
+		require.ErrorContains(t, err, "exceeds the maximum allowed size")
+	})
 }
