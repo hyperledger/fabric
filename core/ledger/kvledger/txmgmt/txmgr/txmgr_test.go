@@ -1769,8 +1769,8 @@ func TestTxSimulatorRWSetSizeLimit(t *testing.T) {
 		version.NewHeight(1, 1),
 	)
 
-	// each write is metered as a 512 byte per-entry overhead plus key and
-	// value sizes; the seed consumes 916 of the 2048 byte budget
+	// each write is metered as a 512 byte per-entry overhead plus key, value,
+	// and hash/metadata sizes; the seed consumes 916 of the 2048 byte budget
 	t.Run("all write APIs propagate the limit error", func(t *testing.T) {
 		breachingOps := map[string]struct {
 			seedBytes int
@@ -1828,4 +1828,38 @@ func TestTxSimulatorRWSetSizeLimit(t *testing.T) {
 		_, err = s.GetTxSimulationResults()
 		require.ErrorContains(t, err, "exceeds the maximum allowed size")
 	})
+}
+
+func TestTxSimulatorRWSetSizeLimitCoversStateMetadata(t *testing.T) {
+	env := testEnvsMap[levelDBtestEnvName].(*lockBasedEnv)
+	env.maxRWSetSize = 1500
+	defer func() { env.maxRWSetSize = 0 }()
+	env.init(t, "testtxsimulatorrwsetsizelimitmetadata", nil)
+	defer env.cleanup()
+
+	// commit a 205 byte metadata entry on key1 through the limited txmgr (a
+	// metadata-only write on a valueless key is dropped at commit); the seed
+	// is metered at 1443 bytes and fits the 1500 byte budget
+	txMgrHelper := newTxMgrTestHelper(t, env.getTxMgr())
+	s1, err := env.getTxMgr().NewTxSimulator("seed_tx")
+	require.NoError(t, err)
+	require.NoError(t, s1.SetState("ns1", "key1", []byte("v")))
+	require.NoError(t, s1.SetStateMetadata("ns1", "key1", map[string][]byte{"meta1": make([]byte, 200)}))
+	s1.Done()
+	rws1, err := s1.GetTxSimulationResults()
+	require.NoError(t, err)
+	txMgrHelper.validateAndCommitRWSet(rws1.PubSimulationResults)
+
+	// writing the key retains the committed metadata in the simulation results
+	// for state-based endorsement: an 816 byte write fits the budget on its
+	// own, but the 205 bytes of metadata copy push it over
+	s2, err := env.getTxMgr().NewTxSimulator("test_tx")
+	require.NoError(t, err)
+	require.ErrorContains(
+		t,
+		s2.SetState("ns1", "key1", make([]byte, 800)),
+		"exceeds the maximum allowed size",
+	)
+	_, err = s2.GetTxSimulationResults()
+	require.ErrorContains(t, err, "exceeds the maximum allowed size")
 }

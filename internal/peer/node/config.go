@@ -120,17 +120,27 @@ func ledgerConfig() *ledger.Config {
 // value in a security-relevant setting must not silently disable the limit,
 // so it falls back to the default with a warning
 func parseMaxRWSetSize(value any, defaultValue int64) int64 {
+	var parsed int64
 	switch v := value.(type) {
 	case int:
-		return int64(v)
+		parsed = int64(v)
 	case int64:
-		return v
+		parsed = v
+	case float64:
+		parsed = int64(v)
 	case string:
-		parsed, err := strconv.ParseInt(v, 10, 64)
-		if err == nil {
-			return parsed
+		var err error
+		if parsed, err = strconv.ParseInt(v, 10, 64); err != nil {
+			logger.Warningf("Invalid ledger.state.maxRWSetSize value %v, using default %d bytes", value, defaultValue)
+			return defaultValue
 		}
+	default:
+		logger.Warningf("Invalid ledger.state.maxRWSetSize value %v, using default %d bytes", value, defaultValue)
+		return defaultValue
 	}
-	logger.Warningf("Invalid ledger.state.maxRWSetSize value %v, using default %d bytes", value, defaultValue)
-	return defaultValue
+	if parsed < 0 {
+		// 0 is the documented way to disable; a negative value is likely a typo
+		logger.Warningf("Negative ledger.state.maxRWSetSize value %d disables the limit; set 0 to disable explicitly", parsed)
+	}
+	return parsed
 }

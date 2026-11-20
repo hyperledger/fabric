@@ -60,7 +60,11 @@ type Config struct {
 	// MaxRWSetSize is the maximum total size in bytes of the keys and values
 	// (including private data) that a transaction simulation may accumulate in
 	// its read-write set before the simulation is rejected; a non-positive
-	// value disables the limit.
+	// value disables the limit. The metered size includes a fixed per-entry
+	// overhead (512 bytes per write, 384 per read, 512 per range query) that
+	// accounts for the runtime representation, so the effective cap at the
+	// 100MiB default is roughly 200k write entries or 270k read entries
+	// regardless of key and value sizes.
 	MaxRWSetSize int64
 }
 

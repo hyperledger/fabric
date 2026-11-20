@@ -107,6 +107,27 @@ func NewRWSetBuilderWithMaxRWSetSize(maxRWSetBytes int64) *RWSetBuilder {
 	}
 }
 
+// AddRangeQueryKeys meters a range query's bounds at iterator creation; an
+// open iterator references the bounds until the simulation ends, so the charge
+// cannot wait for the finalized query info
+func (b *RWSetBuilder) AddRangeQueryKeys(startKey, endKey string) error {
+	return b.accountSize(rangeQueryEntryOverhead+int64(len(startKey)+len(endKey)), 0)
+}
+
+// AddRangeQueryResult meters one read accumulated by a range query iterator;
+// results are retained (and serialized for hashing) until the query is added
+// to the read-write set, so the reads are not metered again in AddToRangeQuerySet
+func (b *RWSetBuilder) AddRangeQueryResult(key string) error {
+	return b.accountSize(rangeQueryReadOverhead+int64(len(key)), 0)
+}
+
+// AccountMetadata meters state metadata that the transaction manager retains
+// per written key for state-based endorsement; the metadata content ships with
+// the simulation results and is not covered by the write entry size
+func (b *RWSetBuilder) AccountMetadata(metadata, oldMetadata map[string][]byte) error {
+	return b.accountSize(metadataMapSize(metadata), metadataMapSize(oldMetadata))
+}
+
 // accountSize meters the net growth of the read-write set, crediting
 // overwritten entries, and rejects the addition before any state changes once
 // the maximum would be exceeded
@@ -187,11 +208,10 @@ func (b *RWSetBuilder) AddToRangeQuerySet(ns string, rqi *kvrwset.RangeQueryInfo
 		existing = nsPubRwBuilder
 	}
 	if existing == nil || existing.rangeQueriesMap[key] == nil {
-		// proto.Size covers the start/end keys and the accumulated reads or
-		// merkle summary; the per-read overhead covers their proto headers
-		size := rangeQueryEntryOverhead + int64(proto.Size(rqi)) +
-			rangeQueryReadOverhead*int64(len(rqi.GetRawReads().GetKvReads()))
-		if err := b.accountSize(size, 0); err != nil {
+		// the bounds and raw reads were metered at iterator creation and per
+		// result; only a merkle summary (query results above the hashing
+		// threshold) is first retained here
+		if err := b.accountSize(int64(proto.Size(rqi.GetReadsMerkleHashes())), 0); err != nil {
 			return err
 		}
 	}
@@ -211,7 +231,8 @@ func (b *RWSetBuilder) AddToHashedReadSet(ns string, coll string, key string, ve
 		existing = nsPubRwBuilder.collHashRwBuilder[coll]
 	}
 	if existing == nil || existing.readMap[key] == nil {
-		if err := b.accountSize(readEntryOverhead+int64(len(kvReadHash.GetKeyHash())), 0); err != nil {
+		// the read map is keyed by the original key, so the key is retained too
+		if err := b.accountSize(readEntryOverhead+int64(len(key)+len(kvReadHash.GetKeyHash())), 0); err != nil {
 			return err
 		}
 	}
@@ -222,7 +243,7 @@ func (b *RWSetBuilder) AddToHashedReadSet(ns string, coll string, key string, ve
 // AddToPvtAndHashedWriteSet adds a key and value to the private and hashed write-set
 func (b *RWSetBuilder) AddToPvtAndHashedWriteSet(ns string, coll string, key string, value []byte) error {
 	kvWrite, kvWriteHash := newPvtKVWriteAndHash(key, value)
-	if err := b.accountSize(writeEntryOverhead+pvtWriteSize(kvWrite)+pvtWriteHashSize(kvWriteHash), b.pvtWriteEntrySize(ns, coll, key)); err != nil {
+	if err := b.accountSize(writeEntryOverhead+pvtWriteSize(kvWrite)+pvtWriteHashSize(kvWriteHash)+int64(len(key)), b.pvtWriteEntrySize(ns, coll, key)); err != nil {
 		return err
 	}
 	b.getOrCreateCollPvtRwBuilder(ns, coll).writeMap[key] = kvWrite
@@ -234,7 +255,7 @@ func (b *RWSetBuilder) AddToPvtAndHashedWriteSet(ns string, coll string, key str
 func (b *RWSetBuilder) AddToPvtAndHashedWriteSetForPurge(ns string, coll string, key string) error {
 	kvWrite, kvWriteHash := newPvtKVWriteAndHash(key, nil)
 	kvWriteHash.IsPurge = true
-	if err := b.accountSize(writeEntryOverhead+pvtWriteSize(kvWrite)+pvtWriteHashSize(kvWriteHash), b.pvtWriteEntrySize(ns, coll, key)); err != nil {
+	if err := b.accountSize(writeEntryOverhead+pvtWriteSize(kvWrite)+pvtWriteHashSize(kvWriteHash)+int64(len(key)), b.pvtWriteEntrySize(ns, coll, key)); err != nil {
 		return err
 	}
 	b.getOrCreateCollPvtRwBuilder(ns, coll).writeMap[key] = kvWrite
@@ -252,7 +273,8 @@ func (b *RWSetBuilder) pvtWriteEntrySize(ns, coll, key string) int64 {
 		existed = true
 	}
 	if existing := b.findCollHashRwBuilder(ns, coll); existing != nil && existing.writeMap[key] != nil {
-		size += pvtWriteHashSize(existing.writeMap[key])
+		// the hashed write map is keyed by the original key
+		size += pvtWriteHashSize(existing.writeMap[key]) + int64(len(key))
 		existed = true
 	}
 	if existed {
@@ -275,13 +297,14 @@ func (b *RWSetBuilder) AddToHashedMetadataWriteSet(ns, coll, key string, metadat
 		existed = true
 	}
 	if existing := b.findCollHashRwBuilder(ns, coll); existing != nil && existing.metadataWriteMap[key] != nil {
-		oldBytes += metadataWriteHashSize(existing.metadataWriteMap[key])
+		// the hashed metadata write map is keyed by the original key
+		oldBytes += metadataWriteHashSize(existing.metadataWriteMap[key]) + int64(len(key))
 		existed = true
 	}
 	if existed {
 		oldBytes += writeEntryOverhead
 	}
-	newBytes := writeEntryOverhead + metadataWriteSize(metadataWrite) + metadataWriteHashSize(metadataWriteHash)
+	newBytes := writeEntryOverhead + metadataWriteSize(metadataWrite) + metadataWriteHashSize(metadataWriteHash) + int64(len(key))
 	if err := b.accountSize(newBytes, oldBytes); err != nil {
 		return err
 	}
@@ -334,6 +357,10 @@ func (b *RWSetBuilder) setPvtCollectionHash(ns string, coll string, pvtDataProto
 // GetTxReadWriteSet returns the read-write set
 // TODO make this function private once txmgr starts using new function `GetTxSimulationResults` introduced here
 func (b *RWSetBuilder) GetTxReadWriteSet() *TxRwSet {
+	if b.limitErr != nil {
+		// never hand out a partial read-write set after a limit breach
+		return nil
+	}
 	sortedNsPubBuilders := []*nsPubRwBuilder{}
 	util.GetValuesBySortedKeys(&b.pubRwBuilderMap, &sortedNsPubBuilders)
 
@@ -549,6 +576,14 @@ func mapToMetadataWriteHash(key string, m map[string][]byte) *kvrwset.KVMetadata
 		)
 	}
 	return proto
+}
+
+func metadataMapSize(metadata map[string][]byte) int64 {
+	var size int64
+	for name, value := range metadata {
+		size += int64(len(name) + len(value))
+	}
+	return size
 }
 
 func pvtWriteSize(kvWrite *kvrwset.KVWrite) int64 {

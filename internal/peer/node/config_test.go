@@ -236,6 +236,13 @@ func TestLedgerConfigMaxRWSetSize(t *testing.T) {
 	viper.Set("ledger.state.maxRWSetSize", 42000000)
 	require.Equal(t, int64(42000000), ledgerConfig().MaxRWSetSize)
 
+	viper.Set("ledger.state.maxRWSetSize", 12345678.0)
+	require.Equal(t, int64(12345678), ledgerConfig().MaxRWSetSize)
+
+	// a negative value disables the limit and logs a warning
+	viper.Set("ledger.state.maxRWSetSize", -1)
+	require.Equal(t, int64(-1), ledgerConfig().MaxRWSetSize)
+
 	viper.Set("ledger.state.maxRWSetSize", 0)
 	require.Equal(t, int64(0), ledgerConfig().MaxRWSetSize)
 }

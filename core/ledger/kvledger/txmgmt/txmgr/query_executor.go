@@ -433,8 +433,14 @@ func newResultsItr(ns string, startKey string, endKey string, pageSize int32,
 		itr.endKey = endKey
 		// just set the StartKey... set the EndKey later below in the Next() method.
 		itr.rangeQueryInfo = &kvrwset.RangeQueryInfo{StartKey: startKey}
+		// the iterator references the bounds until the simulation ends
+		if err := rwsetBuilder.AddRangeQueryKeys(startKey, endKey); err != nil {
+			dbItr.Close()
+			return nil, err
+		}
 		resultsHelper, err := rwsetutil.NewRangeQueryResultsHelper(enableHashing, maxDegree, hashFunc)
 		if err != nil {
+			dbItr.Close()
 			return nil, err
 		}
 		itr.rangeQueryResultsHelper = resultsHelper
@@ -495,6 +501,9 @@ func (itr *resultsItr) updateRangeQueryInfo(queryResult *statedb.VersionedKV) er
 		return nil
 	}
 
+	if err := itr.rwSetBuilder.AddRangeQueryResult(queryResult.Key); err != nil {
+		return err
+	}
 	if err := itr.rangeQueryResultsHelper.AddResult(rwsetutil.NewKVRead(queryResult.Key, queryResult.Version)); err != nil {
 		return err
 	}

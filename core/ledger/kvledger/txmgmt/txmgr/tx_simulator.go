@@ -55,8 +55,7 @@ func (s *txSimulator) checkStateMetadata(ns string, key string) error {
 	if err != nil {
 		return err
 	}
-	s.writesetMetadata.Add(ns, "", key, metadata) // empty string represents the public writeset
-	return nil
+	return s.accountWritesetMetadata(ns, "", key, metadata) // empty string represents the public writeset
 }
 
 // If this private collection key has a SBE policy, add that policy to the set
@@ -67,6 +66,20 @@ func (s *txSimulator) checkPrivateStateMetadata(ns string, coll string, key stri
 	}
 	metadata, err := statemetadata.Deserialize(metabytes)
 	if err != nil {
+		return err
+	}
+	return s.accountWritesetMetadata(ns, coll, key, metadata)
+}
+
+// accountWritesetMetadata meters the state metadata retained per written key
+// before storing it; the content ships with the simulation results and can be
+// arbitrarily large
+func (s *txSimulator) accountWritesetMetadata(ns, coll, key string, metadata map[string][]byte) error {
+	var oldMetadata map[string][]byte
+	if collMap, ok := s.writesetMetadata[ns]; ok {
+		oldMetadata = collMap[coll][key]
+	}
+	if err := s.rwsetBuilder.AccountMetadata(metadata, oldMetadata); err != nil {
 		return err
 	}
 	s.writesetMetadata.Add(ns, coll, key, metadata)

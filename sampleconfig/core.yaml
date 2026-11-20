@@ -694,7 +694,13 @@ ledger:
     # a memory-safety ceiling for the peer, not a deliverability guarantee:
     # the proposal response is separately bounded by peer.maxSendMsgSize and
     # an orderable transaction by the channel's BatchSize.AbsoluteMaxBytes.
-    # A value of 0 or less disables the limit.
+    # The metered size includes a fixed per-entry overhead (512 bytes per
+    # write, 384 per read, 512 per range query) for the runtime
+    # representation, so the default below allows roughly 200k write entries
+    # or 270k read entries per transaction regardless of key and value sizes.
+    # The limit is enabled by default; upgrades that run legitimate bulk
+    # simulations above it need to raise the value. A value of 0 or less
+    # disables the limit.
     maxRWSetSize: 104857600
     couchDBConfig:
       # It is recommended to run CouchDB on the same server as the peer, and
