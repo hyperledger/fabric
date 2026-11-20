@@ -30,18 +30,23 @@ const (
 	nonBlockingSend = blockingBehavior(false)
 )
 
+var errConnClosed = errors.New("connection closed")
+
 type connFactory interface {
 	createConnection(endpoint string, pkiID common.PKIidType) (*connection, error)
 }
 
 type connectionStore struct {
-	config           ConnConfig
-	logger           util.Logger            // logger
-	isClosing        bool                   // whether this connection store is shutting down
-	shutdownOnce     sync.Once              // ensure shutdown is only called once per connectionStore
-	connFactory      connFactory            // creates a connection to remote peer
-	sync.RWMutex                            // synchronize access to shared variables
-	pki2Conn         map[string]*connection // mapping between pkiID to connections
+	config       ConnConfig
+	logger       util.Logger            // logger
+	isClosing    bool                   // whether this connection store is shutting down
+	shutdownOnce sync.Once              // ensure shutdown is only called once per connectionStore
+	connFactory  connFactory            // creates a connection to remote peer
+	sync.RWMutex                        // synchronize access to shared variables
+	pki2Conn     map[string]*connection // mapping between pkiID to connections
+	// deadCharged tracks removed connections whose delivered charges are still
+	// counted against the shared budget until consumed downstream.
+	deadCharged      map[*connection]struct{}
 	destinationLocks map[string]*sync.Mutex // mapping between pkiIDs and locks,
 	// used to prevent concurrent connection establishment to the same remote endpoint
 }
@@ -51,9 +56,18 @@ func newConnStore(connFactory connFactory, logger util.Logger, config ConnConfig
 		connFactory:      connFactory,
 		isClosing:        false,
 		pki2Conn:         make(map[string]*connection),
+		deadCharged:      make(map[*connection]struct{}),
 		destinationLocks: make(map[string]*sync.Mutex),
 		logger:           logger,
 		config:           config,
+	}
+}
+
+// retireChargedConn tracks a removed connection while its delivered charges
+// drain; callers must hold cs's write lock.
+func (cs *connectionStore) retireChargedConn(conn *connection) {
+	if conn.recvBytesInFlight.Load() > 0 {
+		cs.deadCharged[conn] = struct{}{}
 	}
 }
 
@@ -171,6 +185,7 @@ func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamSer
 
 	if c, exists := cs.pki2Conn[string(connInfo.ID)]; exists {
 		c.close()
+		cs.retireChargedConn(c)
 	}
 
 	conn := newConnection(nil, nil, serverStream, metrics, cs.config)
@@ -188,6 +203,7 @@ func (cs *connectionStore) closeConnByPKIid(pkiID common.PKIidType) {
 	if conn, exists := cs.pki2Conn[string(pkiID)]; exists {
 		conn.close()
 		delete(cs.pki2Conn, string(pkiID))
+		cs.retireChargedConn(conn)
 	}
 }
 
@@ -196,31 +212,55 @@ func (cs *connectionStore) closeConnByPKIid(pkiID common.PKIidType) {
 func (cs *connectionStore) evictConn(conn *connection) {
 	cs.Lock()
 	defer cs.Unlock()
+	cs.evictConnLocked(conn)
+}
+
+// evictConnLocked is evictConn for callers already holding cs's write lock.
+func (cs *connectionStore) evictConnLocked(conn *connection) {
 	if current, exists := cs.pki2Conn[string(conn.pkiID)]; exists && current == conn {
 		conn.close()
 		delete(cs.pki2Conn, string(conn.pkiID))
+		cs.retireChargedConn(conn)
 	}
 }
 
 // evictLargestConnection drops the connection retaining the most unconsumed
 // received bytes; targeting the largest holder keeps a flooding peer from
 // getting bystander connections dropped when the shared budget is exceeded.
+// Charges already delivered by a removed connection outlive it, so when the
+// largest charge is dead the store overcommits until subscribers drain instead
+// of cascading evictions to bystanders.
 func (cs *connectionStore) evictLargestConnection() {
-	cs.RLock()
+	cs.Lock()
+	defer cs.Unlock()
+
 	var victim *connection
-	var most int64
+	var mostLive, mostDead int64
 	for _, conn := range cs.pki2Conn {
-		if n := conn.recvBytesInFlight.Load(); n > most {
-			most, victim = n, conn
+		if n := conn.recvBytesInFlight.Load(); n > mostLive {
+			mostLive, victim = n, conn
 		}
 	}
-	cs.RUnlock()
-	if victim == nil {
+	for conn := range cs.deadCharged {
+		n := conn.recvBytesInFlight.Load()
+		if n == 0 {
+			delete(cs.deadCharged, conn)
+			continue
+		}
+		if n > mostDead {
+			mostDead = n
+		}
+	}
+
+	if mostDead >= mostLive || victim == nil {
+		if mostDead > 0 {
+			cs.logger.Debugf("Shared receive byte budget is exceeded by %d bytes delivered by removed connections; overcommitting until subscribers drain", mostDead)
+		}
 		return
 	}
-	cs.logger.Warningf("Shared receive byte budget exceeded, dropping connection to %s holding %d unconsumed bytes", victim.pkiID, most)
+	cs.logger.Warningf("Shared receive byte budget exceeded, dropping connection to %s holding %d unconsumed bytes", victim.pkiID, mostLive)
 	victim.close()
-	cs.evictConn(victim)
+	cs.evictConnLocked(victim)
 }
 
 func newConnection(cl proto.GossipClient, c *grpc.ClientConn, s stream, metrics *metrics.CommMetrics, config ConnConfig) *connection {
@@ -287,18 +327,26 @@ type connection struct {
 	// evictFromStore removes this connection from the connection store if it
 	// is still the current entry; set once the connection is registered.
 	evictFromStore func()
-	metrics        *metrics.CommMetrics
-	cancel         context.CancelFunc
-	info           *protoext.ConnectionInfo
-	outBuff        chan *msgSending
-	logger         util.Logger        // logger
-	pkiID          common.PKIidType   // pkiID of the remote endpoint
-	handler        handler            // function to invoke upon a message reception
-	conn           *grpc.ClientConn   // gRPC connection to remote endpoint
-	cl             proto.GossipClient // gRPC stub of remote endpoint
-	gossipStream   stream             // there can only be one
-	stopChan       chan struct{}      // a method to stop the server-side gRPC call from a different go-routine
-	stopOnce       sync.Once          // once to ensure close is called only once
+	// recvMu serializes the readFromStream handoff against the teardown drain;
+	// recvClosed makes the reader release new messages itself after teardown.
+	recvMu     sync.Mutex
+	recvClosed bool
+	// sendMu serializes outBuff handoff against the writeToStream exit drain;
+	// sendClosed makes senders fail new messages instead of enqueueing them.
+	sendMu       sync.Mutex
+	sendClosed   bool
+	metrics      *metrics.CommMetrics
+	cancel       context.CancelFunc
+	info         *protoext.ConnectionInfo
+	outBuff      chan *msgSending
+	logger       util.Logger        // logger
+	pkiID        common.PKIidType   // pkiID of the remote endpoint
+	handler      handler            // function to invoke upon a message reception
+	conn         *grpc.ClientConn   // gRPC connection to remote endpoint
+	cl           proto.GossipClient // gRPC stub of remote endpoint
+	gossipStream stream             // there can only be one
+	stopChan     chan struct{}      // a method to stop the server-side gRPC call from a different go-routine
+	stopOnce     sync.Once          // once to ensure close is called only once
 }
 
 func (conn *connection) close() {
@@ -321,16 +369,25 @@ func (conn *connection) send(msg *protoext.SignedGossipMessage, onErr func(error
 		onErr:    onErr,
 	}
 
+	conn.sendMu.Lock()
+	defer conn.sendMu.Unlock()
+	if conn.sendClosed {
+		conn.logger.Debugf("Aborting send() to %s because connection is closed", conn.info.Endpoint)
+		go m.onErr(errConnClosed)
+		return
+	}
 	select {
 	case conn.outBuff <- m:
 		// room in channel, successfully sent message, nothing to do
 	case <-conn.stopChan:
 		conn.logger.Debugf("Aborting send() to %s because connection is closing", conn.info.Endpoint)
+		go m.onErr(errConnClosed)
 	default: // did not send
 		if shouldBlock {
 			select {
 			case conn.outBuff <- m: // try again, and wait to send
 			case <-conn.stopChan: // stop blocking if the connection is closing
+				go m.onErr(errConnClosed)
 			}
 		} else {
 			conn.metrics.BufferOverflow.Add(1)
@@ -343,13 +400,17 @@ func (conn *connection) serviceConnection() error {
 	errChan := make(chan error, 1)
 	msgChan := make(chan *protoext.SignedGossipMessage, conn.recvBuffSize)
 	defer func() {
-		// Release the accounting of messages never handed to the handler, so
-		// a dead connection's share of the shared budget cannot leak.
+		// Take ownership of msgChan: once recvClosed is set, the reader
+		// releases newly admitted messages itself instead of enqueueing them,
+		// so nothing charged is left behind.
+		conn.recvMu.Lock()
+		conn.recvClosed = true
 		for {
 			select {
 			case msg := <-msgChan:
 				conn.releaseReceivedBytes(msg)
 			default:
+				conn.recvMu.Unlock()
 				return
 			}
 		}
@@ -377,6 +438,21 @@ func (conn *connection) serviceConnection() error {
 }
 
 func (conn *connection) writeToStream() {
+	defer func() {
+		// Become the only owner of outBuff: fail everything still queued so
+		// onErr callbacks (e.g. SendWithAck waiters) are not stuck.
+		conn.sendMu.Lock()
+		conn.sendClosed = true
+		for {
+			select {
+			case m := <-conn.outBuff:
+				go m.onErr(errConnClosed)
+			default:
+				conn.sendMu.Unlock()
+				return
+			}
+		}
+	}()
 	stream := conn.gossipStream
 	for {
 		select {
@@ -422,31 +498,26 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 				// The handler may be wedged on a stalled subscriber, so tear
 				// the connection down and evict it instead of waiting.
 				conn.close()
-				conn.failQueuedSends(err)
 				if conn.evictFromStore != nil {
 					conn.evictFromStore()
 				}
 				return
 			}
+			conn.recvMu.Lock()
+			if conn.recvClosed {
+				// Teardown owns msgChan now; release instead of enqueueing.
+				conn.recvMu.Unlock()
+				conn.releaseReceivedBytes(msg)
+				return
+			}
 			select {
 			case <-conn.stopChan:
+				conn.recvMu.Unlock()
 				conn.releaseReceivedBytes(msg)
 				return
 			case msgChan <- msg:
+				conn.recvMu.Unlock()
 			}
-		}
-	}
-}
-
-// failQueuedSends fails sends that will never leave, so onErr callbacks
-// (e.g. SendWithAck waiters) are not stuck until their timeout.
-func (conn *connection) failQueuedSends(err error) {
-	for {
-		select {
-		case m := <-conn.outBuff:
-			m.onErr(err)
-		default:
-			return
 		}
 	}
 }

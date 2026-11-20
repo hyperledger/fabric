@@ -89,6 +89,8 @@ type Config struct {
 	// MaxRecvBytesTotal is the limit on the wire bytes of received messages
 	// held unconsumed across all connections; on excess the connection holding
 	// the most in-flight bytes is closed. Non-positive disables the limit.
+	// The bound covers the receive pipeline up to message handling; queues
+	// past handling (channel, state transfer) are bounded separately.
 	MaxRecvBytesTotal int
 
 	// MsgExpirationTimeout indicate leadership message expiration timeout.
@@ -159,11 +161,23 @@ func (c *Config) loadConfig(endpoint string, certs *common.TLSCertificates, boot
 	if viper.IsSet("peer.maxRecvMsgSize") {
 		maxRecvMsgSize = int(viper.GetInt32("peer.maxRecvMsgSize"))
 	}
-	c.MaxRecvBytesInFlight = 2*maxRecvMsgSize + maxRecvMsgSize/2
+	// The rest of the peer treats a zero or unparsable maxRecvMsgSize as the
+	// default; don't let it silently disable the budgets.
+	if maxRecvMsgSize <= 0 {
+		maxRecvMsgSize = peercomm.DefaultMaxRecvMsgSize
+	}
+	defaultInFlight := 2*maxRecvMsgSize + maxRecvMsgSize/2
+	c.MaxRecvBytesInFlight = defaultInFlight
 	if viper.IsSet("peer.gossip.maxRecvBytesInFlight") {
 		c.MaxRecvBytesInFlight = viper.GetInt("peer.gossip.maxRecvBytesInFlight")
 	}
-	c.MaxRecvBytesTotal = 4 * c.MaxRecvBytesInFlight
+	// Deriving the total from a non-zero base keeps the node-wide limit on
+	// even when only the per-connection one is disabled.
+	totalBase := c.MaxRecvBytesInFlight
+	if totalBase <= 0 {
+		totalBase = defaultInFlight
+	}
+	c.MaxRecvBytesTotal = 4 * totalBase
 	if viper.IsSet("peer.gossip.maxRecvBytesTotal") {
 		c.MaxRecvBytesTotal = viper.GetInt("peer.gossip.maxRecvBytesTotal")
 	}

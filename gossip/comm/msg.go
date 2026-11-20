@@ -39,8 +39,22 @@ func (m *ReceivedMessageImpl) trackDeliveries(n int) {
 // comm.Accept channels must call it once done with the message, so the
 // receive-path byte accounting of the sending connection is released.
 func (m *ReceivedMessageImpl) Dispose() {
-	if m.pendingDeliveries.Add(-1) == 0 {
-		m.fireConsumed()
+	for {
+		pending := m.pendingDeliveries.Load()
+		if pending <= 0 {
+			// Never goes negative: a double dispose breaks the tracking
+			// contract and must be visible.
+			if m.conn != nil && m.conn.logger != nil {
+				m.conn.logger.Warning("Dispose called with no pending deliveries")
+			}
+			return
+		}
+		if m.pendingDeliveries.CompareAndSwap(pending, pending-1) {
+			if pending == 1 {
+				m.fireConsumed()
+			}
+			return
+		}
 	}
 }
 

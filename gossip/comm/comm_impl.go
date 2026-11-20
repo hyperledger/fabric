@@ -248,8 +248,14 @@ func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *protoext.SignedGossipMe
 	if err == nil {
 		disConnectOnErr := func(err error) {
 			c.logger.Warningf("%v isn't responsive: %v", peer, err)
-			c.disconnect(peer.PKIID)
-			conn.close()
+			select {
+			case c.deadEndpoints <- peer.PKIID:
+			case <-c.exitChan:
+				return
+			}
+			// Remove the failed connection only if it is still the current
+			// one; a replacement must never be torn down by its predecessor.
+			c.connStore.evictConn(conn)
 		}
 		conn.send(msg, disConnectOnErr, shouldBlock)
 		return

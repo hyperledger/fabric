@@ -165,13 +165,14 @@ func TestGlobalConfigDefaults(t *testing.T) {
 func TestGlobalConfigReceiveByteLimits(t *testing.T) {
 	endpoint := "0.0.0.0:7051"
 
-	// Explicit zero disables both limits.
+	// Explicit zero disables the per-connection limit only; the node-wide
+	// default is derived from the non-zero default base and stays on.
 	viper.Reset()
 	viper.Set("peer.gossip.maxRecvBytesInFlight", 0)
 	coreConfig, err := gossip.GlobalConfig(endpoint, nil)
 	require.NoError(t, err)
 	require.Zero(t, coreConfig.MaxRecvBytesInFlight)
-	require.Zero(t, coreConfig.MaxRecvBytesTotal)
+	require.Equal(t, 4*(2*peercomm.DefaultMaxRecvMsgSize+peercomm.DefaultMaxRecvMsgSize/2), coreConfig.MaxRecvBytesTotal)
 
 	// The default scales with an operator-raised peer.maxRecvMsgSize.
 	viper.Reset()
@@ -180,4 +181,15 @@ func TestGlobalConfigReceiveByteLimits(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 5*peercomm.DefaultMaxRecvMsgSize, coreConfig.MaxRecvBytesInFlight)
 	require.Equal(t, 20*peercomm.DefaultMaxRecvMsgSize, coreConfig.MaxRecvBytesTotal)
+
+	// A zero or unparsable peer.maxRecvMsgSize means the default elsewhere
+	// in the peer and must not disable the budgets.
+	for _, value := range []any{0, "not-a-number"} {
+		viper.Reset()
+		viper.Set("peer.maxRecvMsgSize", value)
+		coreConfig, err = gossip.GlobalConfig(endpoint, nil)
+		require.NoError(t, err)
+		require.Equal(t, 2*peercomm.DefaultMaxRecvMsgSize+peercomm.DefaultMaxRecvMsgSize/2, coreConfig.MaxRecvBytesInFlight, "value %v", value)
+		require.Equal(t, 4*(2*peercomm.DefaultMaxRecvMsgSize+peercomm.DefaultMaxRecvMsgSize/2), coreConfig.MaxRecvBytesTotal, "value %v", value)
+	}
 }
