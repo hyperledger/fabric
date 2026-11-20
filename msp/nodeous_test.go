@@ -106,6 +106,24 @@ func TestValidMSPWithNodeOU(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestSetupNodeOUsRejectsDuplicateIdentifiers(t *testing.T) {
+	config := &msp.FabricMSPConfig{
+		FabricNodeOus: &msp.FabricNodeOUs{
+			Enable: true,
+			AdminOuIdentifier: &msp.FabricOUIdentifier{
+				OrganizationalUnitIdentifier: "operator",
+			},
+			OrdererOuIdentifier: &msp.FabricOUIdentifier{
+				OrganizationalUnitIdentifier: "operator",
+			},
+		},
+	}
+
+	thisMSP := &bccspmsp{}
+	err := thisMSP.setupNodeOUsV142(config)
+	require.EqualError(t, err, "NodeOU identifiers must be unique: AdminOU and OrdererOU both use [operator]")
+}
+
 func TestValidMSPWithNodeOUAndOrganizationalUnits(t *testing.T) {
 	// testdata/nodeous6:
 	// the configuration enables NodeOUs and OrganizationalUnits, and admin and signing identity are valid
