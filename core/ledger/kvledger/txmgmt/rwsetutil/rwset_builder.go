@@ -23,14 +23,36 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 var logger = flogging.MustGetLogger("rwsetutil")
+
+// Per-entry metering overheads: len(key)+len(value) alone misses map buckets,
+// proto headers, slice growth, and the per-key WritesetMetadata entry the
+// transaction manager adds for every written key (~300B total measured for a
+// public write with an 8-byte key). The constants err high so the metered
+// size stays a conservative bound on retained memory.
+const (
+	writeEntryOverhead      = 512
+	readEntryOverhead       = 384
+	rangeQueryEntryOverhead = 512
+	rangeQueryReadOverhead  = 128
+)
 
 // RWSetBuilder helps building the read-write set
 type RWSetBuilder struct {
 	pubRwBuilderMap map[string]*nsPubRwBuilder
 	pvtRwBuilderMap map[string]*nsPvtRwBuilder
+	// maxRWSetBytes bounds the cumulative size of the read-write set so that a
+	// single simulation cannot exhaust the endorser's memory
+	maxRWSetBytes int64
+	rwSetBytes    int64
+	// limitErr records the first limit breach; once set, all further additions
+	// and GetTxSimulationResults fail so an oversized simulation can never
+	// produce a partial, valid-looking read-write set
+	limitErr error
 }
 
 type nsPubRwBuilder struct {
@@ -68,76 +90,235 @@ type rangeQueryKey struct {
 	itrExhausted bool
 }
 
-// NewRWSetBuilder constructs a new instance of RWSetBuilder
+// NewRWSetBuilder constructs a new instance of RWSetBuilder with no limit on
+// the read-write set size
 func NewRWSetBuilder() *RWSetBuilder {
-	return &RWSetBuilder{make(map[string]*nsPubRwBuilder), make(map[string]*nsPvtRwBuilder)}
+	return NewRWSetBuilderWithMaxRWSetSize(0)
+}
+
+// NewRWSetBuilderWithMaxRWSetSize constructs a new instance of RWSetBuilder
+// that rejects an addition once the cumulative size of the read-write set
+// would exceed maxRWSetBytes; a non-positive maxRWSetBytes disables the limit
+func NewRWSetBuilderWithMaxRWSetSize(maxRWSetBytes int64) *RWSetBuilder {
+	return &RWSetBuilder{
+		pubRwBuilderMap: make(map[string]*nsPubRwBuilder),
+		pvtRwBuilderMap: make(map[string]*nsPvtRwBuilder),
+		maxRWSetBytes:   maxRWSetBytes,
+	}
+}
+
+// AddRangeQueryKeys meters a range query's bounds at iterator creation; an
+// open iterator references the bounds until the simulation ends, so the charge
+// cannot wait for the finalized query info
+func (b *RWSetBuilder) AddRangeQueryKeys(startKey, endKey string) error {
+	return b.accountSize(rangeQueryEntryOverhead+int64(len(startKey)+len(endKey)), 0)
+}
+
+// AddRangeQueryResult meters one read accumulated by a range query iterator;
+// results are retained (and serialized for hashing) until the query is added
+// to the read-write set, so the reads are not metered again in AddToRangeQuerySet
+func (b *RWSetBuilder) AddRangeQueryResult(key string) error {
+	return b.accountSize(rangeQueryReadOverhead+int64(len(key)), 0)
+}
+
+// AccountMetadata meters state metadata that the transaction manager retains
+// per written key for state-based endorsement; the metadata content ships with
+// the simulation results and is not covered by the write entry size
+func (b *RWSetBuilder) AccountMetadata(metadata, oldMetadata map[string][]byte) error {
+	return b.accountSize(metadataMapSize(metadata), metadataMapSize(oldMetadata))
+}
+
+// accountSize meters the net growth of the read-write set, crediting
+// overwritten entries, and rejects the addition before any state changes once
+// the maximum would be exceeded
+func (b *RWSetBuilder) accountSize(newBytes, oldBytes int64) error {
+	if b.limitErr != nil {
+		return b.limitErr
+	}
+	if b.maxRWSetBytes <= 0 {
+		return nil
+	}
+	updated := b.rwSetBytes - oldBytes + newBytes
+	if updated > b.maxRWSetBytes {
+		b.limitErr = errors.Errorf(
+			"transaction read-write set size %d exceeds the maximum allowed size %d",
+			updated, b.maxRWSetBytes,
+		)
+		// a breach is a likely bulk-write/read abuse; surface it to the operator
+		logger.Warningf("rejecting oversized transaction simulation: %s", b.limitErr)
+		return b.limitErr
+	}
+	b.rwSetBytes = updated
+	return nil
 }
 
 // AddToReadSet adds a key and corresponding version to the read-set
-func (b *RWSetBuilder) AddToReadSet(ns string, key string, version *version.Height) {
-	nsPubRwBuilder := b.getOrCreateNsPubRwBuilder(ns)
-	nsPubRwBuilder.readMap[key] = NewKVRead(key, version)
+func (b *RWSetBuilder) AddToReadSet(ns string, key string, version *version.Height) error {
+	var existing *nsPubRwBuilder
+	if nsPubRwBuilder, ok := b.pubRwBuilderMap[ns]; ok {
+		existing = nsPubRwBuilder
+	}
+	// a re-read of an already tracked key only replaces the version
+	if existing == nil || existing.readMap[key] == nil {
+		if err := b.accountSize(readEntryOverhead+int64(len(key)), 0); err != nil {
+			return err
+		}
+	}
+	b.getOrCreateNsPubRwBuilder(ns).readMap[key] = NewKVRead(key, version)
+	return nil
 }
 
 // AddToWriteSet adds a key and value to the write-set
-func (b *RWSetBuilder) AddToWriteSet(ns string, key string, value []byte) {
-	nsPubRwBuilder := b.getOrCreateNsPubRwBuilder(ns)
-	nsPubRwBuilder.writeMap[key] = newKVWrite(key, value)
+func (b *RWSetBuilder) AddToWriteSet(ns string, key string, value []byte) error {
+	var oldBytes int64
+	if nsPubRwBuilder, ok := b.pubRwBuilderMap[ns]; ok {
+		if existing := nsPubRwBuilder.writeMap[key]; existing != nil {
+			oldBytes = writeEntryOverhead + int64(len(key)+len(existing.GetValue()))
+		}
+	}
+	if err := b.accountSize(writeEntryOverhead+int64(len(key)+len(value)), oldBytes); err != nil {
+		return err
+	}
+	b.getOrCreateNsPubRwBuilder(ns).writeMap[key] = newKVWrite(key, value)
+	return nil
 }
 
 // AddToMetadataWriteSet adds a metadata to a key in the write-set
 // A nil/empty-map for 'metadata' parameter indicates the delete of the metadata
-func (b *RWSetBuilder) AddToMetadataWriteSet(ns, key string, metadata map[string][]byte) {
-	b.getOrCreateNsPubRwBuilder(ns).
-		metadataWriteMap[key] = mapToMetadataWrite(key, metadata)
+func (b *RWSetBuilder) AddToMetadataWriteSet(ns, key string, metadata map[string][]byte) error {
+	metadataWrite := mapToMetadataWrite(key, metadata)
+	var oldBytes int64
+	if nsPubRwBuilder, ok := b.pubRwBuilderMap[ns]; ok {
+		if existing := nsPubRwBuilder.metadataWriteMap[key]; existing != nil {
+			oldBytes = writeEntryOverhead + metadataWriteSize(existing)
+		}
+	}
+	if err := b.accountSize(writeEntryOverhead+metadataWriteSize(metadataWrite), oldBytes); err != nil {
+		return err
+	}
+	b.getOrCreateNsPubRwBuilder(ns).metadataWriteMap[key] = metadataWrite
+	return nil
 }
 
 // AddToRangeQuerySet adds a range query info for performing phantom read validation
-func (b *RWSetBuilder) AddToRangeQuerySet(ns string, rqi *kvrwset.RangeQueryInfo) {
-	nsPubRwBuilder := b.getOrCreateNsPubRwBuilder(ns)
+func (b *RWSetBuilder) AddToRangeQuerySet(ns string, rqi *kvrwset.RangeQueryInfo) error {
 	key := rangeQueryKey{rqi.GetStartKey(), rqi.GetEndKey(), rqi.GetItrExhausted()}
-	_, ok := nsPubRwBuilder.rangeQueriesMap[key]
-	if !ok {
+	var existing *nsPubRwBuilder
+	if nsPubRwBuilder, ok := b.pubRwBuilderMap[ns]; ok {
+		existing = nsPubRwBuilder
+	}
+	if existing == nil || existing.rangeQueriesMap[key] == nil {
+		// the bounds and raw reads were metered at iterator creation and per
+		// result; only a merkle summary (query results above the hashing
+		// threshold) is first retained here
+		if err := b.accountSize(int64(proto.Size(rqi.GetReadsMerkleHashes())), 0); err != nil {
+			return err
+		}
+	}
+	nsPubRwBuilder := b.getOrCreateNsPubRwBuilder(ns)
+	if _, ok := nsPubRwBuilder.rangeQueriesMap[key]; !ok {
 		nsPubRwBuilder.rangeQueriesMap[key] = rqi
 		nsPubRwBuilder.rangeQueriesKeys = append(nsPubRwBuilder.rangeQueriesKeys, key)
 	}
+	return nil
 }
 
 // AddToHashedReadSet adds a key and corresponding version to the hashed read-set
-func (b *RWSetBuilder) AddToHashedReadSet(ns string, coll string, key string, version *version.Height) {
+func (b *RWSetBuilder) AddToHashedReadSet(ns string, coll string, key string, version *version.Height) error {
 	kvReadHash := newPvtKVReadHash(key, version)
+	var existing *collHashRwBuilder
+	if nsPubRwBuilder, ok := b.pubRwBuilderMap[ns]; ok {
+		existing = nsPubRwBuilder.collHashRwBuilder[coll]
+	}
+	if existing == nil || existing.readMap[key] == nil {
+		// the read map is keyed by the original key, so the key is retained too
+		if err := b.accountSize(readEntryOverhead+int64(len(key)+len(kvReadHash.GetKeyHash())), 0); err != nil {
+			return err
+		}
+	}
 	b.getOrCreateCollHashedRwBuilder(ns, coll).readMap[key] = kvReadHash
+	return nil
 }
 
 // AddToPvtAndHashedWriteSet adds a key and value to the private and hashed write-set
-func (b *RWSetBuilder) AddToPvtAndHashedWriteSet(ns string, coll string, key string, value []byte) {
+func (b *RWSetBuilder) AddToPvtAndHashedWriteSet(ns string, coll string, key string, value []byte) error {
 	kvWrite, kvWriteHash := newPvtKVWriteAndHash(key, value)
+	if err := b.accountSize(writeEntryOverhead+pvtWriteSize(kvWrite)+pvtWriteHashSize(kvWriteHash)+int64(len(key)), b.pvtWriteEntrySize(ns, coll, key)); err != nil {
+		return err
+	}
 	b.getOrCreateCollPvtRwBuilder(ns, coll).writeMap[key] = kvWrite
 	b.getOrCreateCollHashedRwBuilder(ns, coll).writeMap[key] = kvWriteHash
+	return nil
 }
 
 // AddToPvtAndHashedWriteSetForPurge adds a purge key to the hashed write-set
-func (b *RWSetBuilder) AddToPvtAndHashedWriteSetForPurge(ns string, coll string, key string) {
+func (b *RWSetBuilder) AddToPvtAndHashedWriteSetForPurge(ns string, coll string, key string) error {
 	kvWrite, kvWriteHash := newPvtKVWriteAndHash(key, nil)
 	kvWriteHash.IsPurge = true
+	if err := b.accountSize(writeEntryOverhead+pvtWriteSize(kvWrite)+pvtWriteHashSize(kvWriteHash)+int64(len(key)), b.pvtWriteEntrySize(ns, coll, key)); err != nil {
+		return err
+	}
 	b.getOrCreateCollPvtRwBuilder(ns, coll).writeMap[key] = kvWrite
 	b.getOrCreateCollHashedRwBuilder(ns, coll).writeMap[key] = kvWriteHash
+	return nil
+}
+
+// pvtWriteEntrySize returns the metered size of the private and hashed write
+// entries for a key, or 0 when the key is not tracked yet
+func (b *RWSetBuilder) pvtWriteEntrySize(ns, coll, key string) int64 {
+	var size int64
+	existed := false
+	if existing := b.findCollPvtRwBuilder(ns, coll); existing != nil && existing.writeMap[key] != nil {
+		size += pvtWriteSize(existing.writeMap[key])
+		existed = true
+	}
+	if existing := b.findCollHashRwBuilder(ns, coll); existing != nil && existing.writeMap[key] != nil {
+		// the hashed write map is keyed by the original key
+		size += pvtWriteHashSize(existing.writeMap[key]) + int64(len(key))
+		existed = true
+	}
+	if existed {
+		size += writeEntryOverhead
+	}
+	return size
 }
 
 // AddToHashedMetadataWriteSet adds a metadata to a key in the hashed write-set
-func (b *RWSetBuilder) AddToHashedMetadataWriteSet(ns, coll, key string, metadata map[string][]byte) {
+func (b *RWSetBuilder) AddToHashedMetadataWriteSet(ns, coll, key string, metadata map[string][]byte) error {
 	// pvt write set just need the key; not the entire metadata. The metadata is stored only
 	// by the hashed key. Pvt write-set need to know the key for handling a special case where only
 	// metadata is updated so, the version of the key present in the pvt data should be incremented
-	b.getOrCreateCollPvtRwBuilder(ns, coll).
-		metadataWriteMap[key] = &kvrwset.KVMetadataWrite{Key: key, Entries: nil}
-	b.getOrCreateCollHashedRwBuilder(ns, coll).
-		metadataWriteMap[key] = mapToMetadataWriteHash(key, metadata)
+	metadataWrite := &kvrwset.KVMetadataWrite{Key: key, Entries: nil}
+	metadataWriteHash := mapToMetadataWriteHash(key, metadata)
+	var oldBytes int64
+	existed := false
+	if existing := b.findCollPvtRwBuilder(ns, coll); existing != nil && existing.metadataWriteMap[key] != nil {
+		oldBytes += metadataWriteSize(existing.metadataWriteMap[key])
+		existed = true
+	}
+	if existing := b.findCollHashRwBuilder(ns, coll); existing != nil && existing.metadataWriteMap[key] != nil {
+		// the hashed metadata write map is keyed by the original key
+		oldBytes += metadataWriteHashSize(existing.metadataWriteMap[key]) + int64(len(key))
+		existed = true
+	}
+	if existed {
+		oldBytes += writeEntryOverhead
+	}
+	newBytes := writeEntryOverhead + metadataWriteSize(metadataWrite) + metadataWriteHashSize(metadataWriteHash) + int64(len(key))
+	if err := b.accountSize(newBytes, oldBytes); err != nil {
+		return err
+	}
+	b.getOrCreateCollPvtRwBuilder(ns, coll).metadataWriteMap[key] = metadataWrite
+	b.getOrCreateCollHashedRwBuilder(ns, coll).metadataWriteMap[key] = metadataWriteHash
+	return nil
 }
 
 // GetTxSimulationResults returns the proto bytes of public rwset
 // (public data + hashes of private data) and the private rwset for the transaction
 func (b *RWSetBuilder) GetTxSimulationResults() (*ledger.TxSimulationResults, error) {
+	if b.limitErr != nil {
+		return nil, b.limitErr
+	}
 	pvtData := b.getTxPvtReadWriteSet()
 	var err error
 
@@ -176,6 +357,10 @@ func (b *RWSetBuilder) setPvtCollectionHash(ns string, coll string, pvtDataProto
 // GetTxReadWriteSet returns the read-write set
 // TODO make this function private once txmgr starts using new function `GetTxSimulationResults` introduced here
 func (b *RWSetBuilder) GetTxReadWriteSet() *TxRwSet {
+	if b.limitErr != nil {
+		// never hand out a partial read-write set after a limit breach
+		return nil
+	}
 	sortedNsPubBuilders := []*nsPubRwBuilder{}
 	util.GetValuesBySortedKeys(&b.pubRwBuilderMap, &sortedNsPubBuilders)
 
@@ -309,6 +494,22 @@ func (b *RWSetBuilder) getOrCreateCollHashedRwBuilder(ns string, coll string) *c
 	return collHashRwBuilder
 }
 
+// findCollPvtRwBuilder returns the builder for a collection without creating it
+func (b *RWSetBuilder) findCollPvtRwBuilder(ns, coll string) *collPvtRwBuilder {
+	if nsPvtRwBuilder, ok := b.pvtRwBuilderMap[ns]; ok {
+		return nsPvtRwBuilder.collPvtRwBuilders[coll]
+	}
+	return nil
+}
+
+// findCollHashRwBuilder returns the builder for a collection without creating it
+func (b *RWSetBuilder) findCollHashRwBuilder(ns, coll string) *collHashRwBuilder {
+	if nsPubRwBuilder, ok := b.pubRwBuilderMap[ns]; ok {
+		return nsPubRwBuilder.collHashRwBuilder[coll]
+	}
+	return nil
+}
+
 func (b *RWSetBuilder) getOrCreateCollPvtRwBuilder(ns string, coll string) *collPvtRwBuilder {
 	nsPvtRwBuilder := b.getOrCreateNsPvtRwBuilder(ns)
 	collPvtRwBuilder, ok := nsPvtRwBuilder.collPvtRwBuilders[coll]
@@ -375,4 +576,42 @@ func mapToMetadataWriteHash(key string, m map[string][]byte) *kvrwset.KVMetadata
 		)
 	}
 	return proto
+}
+
+func metadataMapSize(metadata map[string][]byte) int64 {
+	var size int64
+	for name, value := range metadata {
+		size += int64(len(name) + len(value))
+	}
+	return size
+}
+
+func pvtWriteSize(kvWrite *kvrwset.KVWrite) int64 {
+	if kvWrite == nil {
+		return 0
+	}
+	return int64(len(kvWrite.GetKey()) + len(kvWrite.GetValue()))
+}
+
+func pvtWriteHashSize(kvWriteHash *kvrwset.KVWriteHash) int64 {
+	if kvWriteHash == nil {
+		return 0
+	}
+	return int64(len(kvWriteHash.GetKeyHash()) + len(kvWriteHash.GetValueHash()))
+}
+
+func metadataWriteSize(metadataWrite *kvrwset.KVMetadataWrite) int64 {
+	size := int64(len(metadataWrite.GetKey()))
+	for _, entry := range metadataWrite.GetEntries() {
+		size += int64(len(entry.GetName()) + len(entry.GetValue()))
+	}
+	return size
+}
+
+func metadataWriteHashSize(metadataWriteHash *kvrwset.KVMetadataWriteHash) int64 {
+	size := int64(len(metadataWriteHash.GetKeyHash()))
+	for _, entry := range metadataWriteHash.GetEntries() {
+		size += int64(len(entry.GetName()) + len(entry.GetValue()))
+	}
+	return size
 }

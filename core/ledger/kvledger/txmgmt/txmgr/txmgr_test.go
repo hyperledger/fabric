@@ -1755,3 +1755,111 @@ func testTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T, env testE
 	metadata.Add(ns, coll, "key1", sbe2)
 	require.Equal(t, metadata, simRes4.WritesetMetadata)
 }
+
+func TestTxSimulatorRWSetSizeLimit(t *testing.T) {
+	env := testEnvsMap[levelDBtestEnvName].(*lockBasedEnv)
+	env.maxRWSetSize = 2048
+	defer func() { env.maxRWSetSize = 0 }()
+	env.init(t, "testtxsimulatorrwsetsizelimit", nil)
+	defer env.cleanup()
+	populateCollConfigForTest(
+		t,
+		env.getTxMgr(),
+		[]collConfigkey{{"ns1", "coll1"}},
+		version.NewHeight(1, 1),
+	)
+
+	// each write is metered as a 512 byte per-entry overhead plus key, value,
+	// and hash/metadata sizes; the seed consumes 916 of the 2048 byte budget
+	t.Run("all write APIs propagate the limit error", func(t *testing.T) {
+		breachingOps := map[string]struct {
+			seedBytes int
+			op        func(s ledger.TxSimulator) error
+		}{
+			"SetState": {
+				400,
+				func(s ledger.TxSimulator) error { return s.SetState("ns1", "key2", make([]byte, 1500)) },
+			},
+			"SetStateMetadata": {
+				400,
+				func(s ledger.TxSimulator) error {
+					return s.SetStateMetadata("ns1", "key2", map[string][]byte{"meta1": make([]byte, 1500)})
+				},
+			},
+			"SetPrivateData": {
+				400,
+				func(s ledger.TxSimulator) error { return s.SetPrivateData("ns1", "coll1", "key2", make([]byte, 1500)) },
+			},
+			"SetPrivateDataMetadata": {
+				400,
+				func(s ledger.TxSimulator) error {
+					return s.SetPrivateDataMetadata("ns1", "coll1", "key2", map[string][]byte{"meta1": make([]byte, 1500)})
+				},
+			},
+			"PurgePrivateData": {
+				1400,
+				func(s ledger.TxSimulator) error { return s.PurgePrivateData("ns1", "coll1", "key2") },
+			},
+		}
+		for name, tc := range breachingOps {
+			t.Run(name, func(t *testing.T) {
+				s, err := env.getTxMgr().NewTxSimulator("test_txid_" + name)
+				require.NoError(t, err)
+				require.NoError(t, s.SetState("ns1", "key1", make([]byte, tc.seedBytes)))
+				require.ErrorContains(t, tc.op(s), "exceeds the maximum allowed size")
+			})
+		}
+	})
+
+	t.Run("a breach poisons the whole simulation", func(t *testing.T) {
+		s, err := env.getTxMgr().NewTxSimulator("test_txid_poison")
+		require.NoError(t, err)
+		require.NoError(t, s.SetState("ns1", "key1", make([]byte, 400)))
+		require.ErrorContains(
+			t,
+			s.SetState("ns1", "key2", make([]byte, 1500)),
+			"exceeds the maximum allowed size",
+		)
+		// a chaincode may ignore the error and continue; further accumulation
+		// and the final results must still fail with the recorded error
+		require.ErrorContains(t, s.SetState("ns1", "key3", make([]byte, 1)), "exceeds the maximum allowed size")
+		_, err = s.GetState("ns1", "key1")
+		require.ErrorContains(t, err, "exceeds the maximum allowed size")
+		_, err = s.GetTxSimulationResults()
+		require.ErrorContains(t, err, "exceeds the maximum allowed size")
+	})
+}
+
+func TestTxSimulatorRWSetSizeLimitCoversStateMetadata(t *testing.T) {
+	env := testEnvsMap[levelDBtestEnvName].(*lockBasedEnv)
+	env.maxRWSetSize = 1500
+	defer func() { env.maxRWSetSize = 0 }()
+	env.init(t, "testtxsimulatorrwsetsizelimitmetadata", nil)
+	defer env.cleanup()
+
+	// commit a 205 byte metadata entry on key1 through the limited txmgr (a
+	// metadata-only write on a valueless key is dropped at commit); the seed
+	// is metered at 1443 bytes and fits the 1500 byte budget
+	txMgrHelper := newTxMgrTestHelper(t, env.getTxMgr())
+	s1, err := env.getTxMgr().NewTxSimulator("seed_tx")
+	require.NoError(t, err)
+	require.NoError(t, s1.SetState("ns1", "key1", []byte("v")))
+	require.NoError(t, s1.SetStateMetadata("ns1", "key1", map[string][]byte{"meta1": make([]byte, 200)}))
+	s1.Done()
+	rws1, err := s1.GetTxSimulationResults()
+	require.NoError(t, err)
+	txMgrHelper.validateAndCommitRWSet(rws1.PubSimulationResults)
+
+	// writing the key retains the committed metadata in the simulation results
+	// for state-based endorsement: an 816 byte write fits the budget on its
+	// own, but the 205 bytes of metadata copy push it over
+	s2, err := env.getTxMgr().NewTxSimulator("test_tx")
+	require.NoError(t, err)
+	require.ErrorContains(
+		t,
+		s2.SetState("ns1", "key1", make([]byte, 800)),
+		"exceeds the maximum allowed size",
+	)
+	_, err = s2.GetTxSimulationResults()
+	require.ErrorContains(t, err, "exceeds the maximum allowed size")
+}

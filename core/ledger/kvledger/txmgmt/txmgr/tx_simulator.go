@@ -27,7 +27,7 @@ type txSimulator struct {
 }
 
 func newTxSimulator(txmgr *LockBasedTxMgr, txid string, hashFunc rwsetutil.HashFunc) (*txSimulator, error) {
-	rwsetBuilder := rwsetutil.NewRWSetBuilder()
+	rwsetBuilder := rwsetutil.NewRWSetBuilderWithMaxRWSetSize(txmgr.maxRWSetSize)
 	qe := newQueryExecutor(txmgr, txid, rwsetBuilder, true, hashFunc)
 	logger.Debugf("constructing new tx simulator txid = [%s]", txid)
 	return &txSimulator{qe, rwsetBuilder, false, false, false, false, ledger.WritesetMetadata{}}, nil
@@ -38,7 +38,9 @@ func (s *txSimulator) SetState(ns string, key string, value []byte) error {
 	if err := s.checkWritePrecondition(key, value); err != nil {
 		return err
 	}
-	s.rwsetBuilder.AddToWriteSet(ns, key, value)
+	if err := s.rwsetBuilder.AddToWriteSet(ns, key, value); err != nil {
+		return err
+	}
 	// if this has a key level signature policy, add it to the interest
 	return s.checkStateMetadata(ns, key)
 }
@@ -53,8 +55,7 @@ func (s *txSimulator) checkStateMetadata(ns string, key string) error {
 	if err != nil {
 		return err
 	}
-	s.writesetMetadata.Add(ns, "", key, metadata) // empty string represents the public writeset
-	return nil
+	return s.accountWritesetMetadata(ns, "", key, metadata) // empty string represents the public writeset
 }
 
 // If this private collection key has a SBE policy, add that policy to the set
@@ -65,6 +66,20 @@ func (s *txSimulator) checkPrivateStateMetadata(ns string, coll string, key stri
 	}
 	metadata, err := statemetadata.Deserialize(metabytes)
 	if err != nil {
+		return err
+	}
+	return s.accountWritesetMetadata(ns, coll, key, metadata)
+}
+
+// accountWritesetMetadata meters the state metadata retained per written key
+// before storing it; the content ships with the simulation results and can be
+// arbitrarily large
+func (s *txSimulator) accountWritesetMetadata(ns, coll, key string, metadata map[string][]byte) error {
+	var oldMetadata map[string][]byte
+	if collMap, ok := s.writesetMetadata[ns]; ok {
+		oldMetadata = collMap[coll][key]
+	}
+	if err := s.rwsetBuilder.AccountMetadata(metadata, oldMetadata); err != nil {
 		return err
 	}
 	s.writesetMetadata.Add(ns, coll, key, metadata)
@@ -91,7 +106,9 @@ func (s *txSimulator) SetStateMetadata(namespace, key string, metadata map[strin
 	if err := s.checkWritePrecondition(key, nil); err != nil {
 		return err
 	}
-	s.rwsetBuilder.AddToMetadataWriteSet(namespace, key, metadata)
+	if err := s.rwsetBuilder.AddToMetadataWriteSet(namespace, key, metadata); err != nil {
+		return err
+	}
 	return s.checkStateMetadata(namespace, key)
 }
 
@@ -109,7 +126,9 @@ func (s *txSimulator) SetPrivateData(ns, coll, key string, value []byte) error {
 		return err
 	}
 	s.writePerformed = true
-	s.rwsetBuilder.AddToPvtAndHashedWriteSet(ns, coll, key, value)
+	if err := s.rwsetBuilder.AddToPvtAndHashedWriteSet(ns, coll, key, value); err != nil {
+		return err
+	}
 	return s.checkPrivateStateMetadata(ns, coll, key)
 }
 
@@ -127,7 +146,9 @@ func (s *txSimulator) PurgePrivateData(ns, coll, key string) error {
 		return err
 	}
 	s.writePerformed = true
-	s.rwsetBuilder.AddToPvtAndHashedWriteSetForPurge(ns, coll, key)
+	if err := s.rwsetBuilder.AddToPvtAndHashedWriteSetForPurge(ns, coll, key); err != nil {
+		return err
+	}
 	return s.checkPrivateStateMetadata(ns, coll, key)
 }
 
@@ -157,7 +178,9 @@ func (s *txSimulator) SetPrivateDataMetadata(namespace, collection, key string, 
 	if err := s.checkWritePrecondition(key, nil); err != nil {
 		return err
 	}
-	s.rwsetBuilder.AddToHashedMetadataWriteSet(namespace, collection, key, metadata)
+	if err := s.rwsetBuilder.AddToHashedMetadataWriteSet(namespace, collection, key, metadata); err != nil {
+		return err
+	}
 	return s.checkPrivateStateMetadata(namespace, collection, key)
 }
 
@@ -203,6 +226,9 @@ func (s *txSimulator) GetTxSimulationResults() (*ledger.TxSimulationResults, err
 		return nil, s.err
 	}
 	s.addRangeQueryInfo()
+	if s.err != nil {
+		return nil, s.err
+	}
 	simResults, err := s.rwsetBuilder.GetTxSimulationResults()
 	if err != nil {
 		return nil, err
