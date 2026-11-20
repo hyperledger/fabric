@@ -16,13 +16,11 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/deliver"
-	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -90,7 +88,7 @@ func NewServer(
 	timeWindow time.Duration,
 	mutualTLS bool,
 	expirationCheckDisabled bool,
-	deliverConcurrencyLimit int,
+	limits localconfig.Concurrency,
 ) ab.AtomicBroadcastServer {
 	s := &server{
 		dh: deliver.NewHandler(deliverSupport{Registrar: r}, timeWindow, mutualTLS, deliver.NewMetrics(metricsProvider), expirationCheckDisabled),
@@ -99,7 +97,7 @@ func NewServer(
 			Metrics:          broadcast.NewMetrics(metricsProvider),
 		},
 		debug:          debug,
-		deliverLimiter: newDeliverConcurrencyLimiter(deliverConcurrencyLimit, metricsProvider),
+		deliverLimiter: newDeliverConcurrencyLimiter(limits.DeliverService, limits.ClusterReplication, metricsProvider),
 		Registrar:      r,
 	}
 	return s
@@ -193,29 +191,16 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		logger.Debugf("Closing Deliver stream")
 	}()
 
-	session := s.deliverLimiter.newSession()
+	session := newDeliverSession(s.deliverLimiter)
 
-	policyChecker := func(env *cb.Envelope, channelID string) error {
-		chain := s.GetChain(channelID)
-		if chain == nil {
-			return errors.Errorf("channel %s not found", channelID)
-		}
-		// In maintenance mode, we typically require the signature of /Channel/Orderer/Readers.
-		// This will block Deliver requests from peers (which normally satisfy /Channel/Readers).
-		sf := msgprocessor.NewSigFilter(policies.ChannelReaders, policies.ChannelOrdererReaders, chain)
-		if err := sf.Apply(env); err != nil {
-			return err
-		}
-		// Orderer-to-orderer block pulls authenticate with an orderer
-		// identity; exempt them so that client traffic cannot starve
-		// cluster replication.
-		if satisfiesOrdererReadersPolicy(chain, env) {
-			session.Exempt()
+	policyChecker := newDeliverPolicyChecker(func(channelID string) msgprocessor.SigFilterSupport {
+		if chain := s.GetChain(channelID); chain != nil {
+			return chain
 		}
 		return nil
-	}
+	}, session)
 	deliverServer := &deliver.Server{
-		PolicyChecker: deliver.PolicyCheckerFunc(policyChecker),
+		PolicyChecker: policyChecker,
 		Receiver: &deliverMsgTracer{
 			Receiver: srv,
 			debug:    s.debug,

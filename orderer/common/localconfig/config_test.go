@@ -206,27 +206,46 @@ func TestDeliverServiceConcurrencyLimit(t *testing.T) {
 		uconf := &TopLevel{}
 		uconf.completeInitialization("/dummy/path")
 		require.Equal(t, Defaults.General.Limits.Concurrency.DeliverService, uconf.General.Limits.Concurrency.DeliverService)
-		require.Equal(t, 2500, uconf.General.Limits.Concurrency.DeliverService)
+		require.Equal(t, Defaults.General.Limits.Concurrency.ClusterReplication, uconf.General.Limits.Concurrency.ClusterReplication)
+		require.Equal(t, 80, uconf.General.Limits.Concurrency.DeliverService)
+		require.Equal(t, 20, uconf.General.Limits.Concurrency.ClusterReplication)
+		// The default bounds the client budget to roughly a 2 GiB memory
+		// budget at the 10 MiB sample AbsoluteMaxBytes; measurements show
+		// about 25 MiB retained per slow-drained stream at that block size.
+		const bytesPerStream = 25 << 20
+		require.LessOrEqual(t, int64(Defaults.General.Limits.Concurrency.DeliverService)*bytesPerStream, int64(2)<<30)
+		// The replication budget is small enough that both budgets
+		// together retain at most roughly 2.5 GiB in the worst case.
+		total := Defaults.General.Limits.Concurrency.DeliverService + Defaults.General.Limits.Concurrency.ClusterReplication
+		require.LessOrEqual(t, int64(total)*bytesPerStream, int64(2560)<<20)
 	})
 
 	t.Run("explicit value is preserved", func(t *testing.T) {
 		uconf := &TopLevel{}
 		uconf.General.Limits.Concurrency.DeliverService = 42
+		uconf.General.Limits.Concurrency.ClusterReplication = 7
 		uconf.completeInitialization("/dummy/path")
 		require.Equal(t, 42, uconf.General.Limits.Concurrency.DeliverService)
+		require.Equal(t, 7, uconf.General.Limits.Concurrency.ClusterReplication)
 	})
 
 	t.Run("minus one means unlimited", func(t *testing.T) {
 		uconf := &TopLevel{}
 		uconf.General.Limits.Concurrency.DeliverService = -1
+		uconf.General.Limits.Concurrency.ClusterReplication = -1
 		uconf.completeInitialization("/dummy/path")
 		require.Equal(t, -1, uconf.General.Limits.Concurrency.DeliverService)
+		require.Equal(t, -1, uconf.General.Limits.Concurrency.ClusterReplication)
 	})
 
 	t.Run("other negative values panic", func(t *testing.T) {
 		uconf := &TopLevel{}
 		uconf.General.Limits.Concurrency.DeliverService = -2
 		require.PanicsWithValue(t, "General.Limits.Concurrency.DeliverService must be -1 (unlimited), 0 (default), or a positive integer, got -2", func() { uconf.completeInitialization("/dummy/path") })
+
+		uconf = &TopLevel{}
+		uconf.General.Limits.Concurrency.ClusterReplication = -2
+		require.PanicsWithValue(t, "General.Limits.Concurrency.ClusterReplication must be -1 (unlimited), 0 (default), or a positive integer, got -2", func() { uconf.completeInitialization("/dummy/path") })
 	})
 }
 

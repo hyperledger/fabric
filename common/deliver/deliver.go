@@ -125,8 +125,9 @@ type Filtered interface {
 // SessionLimiter bounds the number of concurrent block delivery sessions.
 // Acquire is called after a seek request is authenticated and before a
 // ledger iterator is allocated for it, and may be called more than once
-// per stream. Release is called when the stream handler returns and must
-// be a no-op when no permit is held.
+// per stream. Release is called when a delivery completes and when the
+// stream handler returns; it must be idempotent and a no-op when no
+// permit is held.
 type SessionLimiter interface {
 	Acquire() error
 	Release()
@@ -202,6 +203,12 @@ func (h *Handler) Handle(ctx context.Context, srv *Server) error {
 			return err
 		}
 
+		// The delivery completed; the permit is free until the next seek
+		// request arrives, so an idle stream cannot hold the budget.
+		if srv.SessionLimiter != nil {
+			srv.SessionLimiter.Release()
+		}
+
 		logger.Debugf("Waiting for new SeekInfo from %s", addr)
 	}
 }
@@ -274,8 +281,10 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 
 	if srv.SessionLimiter != nil {
 		if err := srv.SessionLimiter.Acquire(); err != nil {
-			logger.Warningf("[channel: %s] Rejecting deliver request from %s: %s", chdr.GetChannelId(), addr, err)
-			return cb.Status_SERVICE_UNAVAILABLE, err
+			// The limiter counts and logs rejections; the client receives
+			// a retryable status.
+			logger.Debugf("[channel: %s] Rejecting deliver request from %s: %s", chdr.GetChannelId(), addr, err)
+			return cb.Status_SERVICE_UNAVAILABLE, nil
 		}
 	}
 

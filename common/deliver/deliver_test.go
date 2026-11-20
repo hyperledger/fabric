@@ -324,11 +324,21 @@ var _ = Describe("Deliver", func() {
 				server.SessionLimiter = limiter
 			})
 
-			It("acquires the session after the policy check and releases it when the stream ends", func() {
+			It("acquires the session after the policy check and releases it when the delivery completes and when the stream ends", func() {
 				err := handler.Handle(context.Background(), server)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(limiter.acquireCalls).To(Equal(1))
-				Expect(limiter.releaseCalls).To(Equal(1))
+				Expect(limiter.releaseCalls).To(Equal(2))
+			})
+
+			It("re-acquires per seek and releases after each completed delivery", func() {
+				fakeReceiver.RecvReturnsOnCall(1, envelope, nil)
+				fakeReceiver.RecvReturnsOnCall(2, nil, io.EOF)
+
+				err := handler.Handle(context.Background(), server)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(limiter.acquireCalls).To(Equal(2))
+				Expect(limiter.releaseCalls).To(Equal(3))
 			})
 
 			When("the limiter rejects the session", func() {
@@ -336,10 +346,12 @@ var _ = Describe("Deliver", func() {
 					limiter.acquireErr = errors.New("budget exhausted")
 				})
 
-				It("fails the stream before an iterator is created", func() {
+				It("sends a service unavailable status before an iterator is created", func() {
 					err := handler.Handle(context.Background(), server)
-					Expect(err).To(MatchError("budget exhausted"))
+					Expect(err).NotTo(HaveOccurred())
 					Expect(fakeBlockReader.IteratorCallCount()).To(Equal(0))
+					Expect(fakeResponseSender.SendStatusResponseCallCount()).To(Equal(1))
+					Expect(fakeResponseSender.SendStatusResponseArgsForCall(0)).To(Equal(cb.Status_SERVICE_UNAVAILABLE))
 					Expect(limiter.releaseCalls).To(Equal(1))
 				})
 			})

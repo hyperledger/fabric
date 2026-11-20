@@ -9,7 +9,7 @@ package server
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"io"
 	"math"
 	"net"
 	"sync"
@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
@@ -26,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -78,63 +80,88 @@ func (r *staticReader) RetrieveBlockByNumber(n uint64) (*cb.Block, error) {
 	return nil, nil
 }
 
-// ordererReadersPolicyManager serves a single policy, /Channel/Orderer/Readers,
-// satisfied only by identities containing "orderer", mirroring how orderer
-// nodes are classified by channel MSP NodeOUs in production.
-type ordererReadersPolicyManager struct{}
+// identitiesContaining is a policies.Policy satisfied when any signing
+// identity contains one of the given substrings, mirroring how sample
+// channel policies classify member and orderer identities.
+type identitiesContaining []string
 
-func (ordererReadersPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
-	if id != policies.ChannelOrdererReaders {
-		return nil, false
+func (substrs identitiesContaining) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
+	for _, sd := range signatureSet {
+		for _, substr := range substrs {
+			if bytes.Contains(sd.Identity, []byte(substr)) {
+				return nil
+			}
+		}
 	}
-	return ordererReadersPolicy{}, true
+	return errors.Errorf("no identity of %v found", []string(substrs))
 }
 
-func (ordererReadersPolicyManager) Manager([]string) (policies.Manager, bool) {
+func (identitiesContaining) EvaluateIdentities([]msp.Identity) error { return nil }
+
+// testDeliverPolicyManager resolves /Channel/Readers, satisfied by reader
+// and orderer identities, and /Channel/Orderer/Readers, satisfied only by
+// orderer identities.
+type testDeliverPolicyManager struct{}
+
+func (testDeliverPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
+	switch id {
+	case policies.ChannelReaders:
+		return identitiesContaining{"reader", "orderer"}, true
+	case policies.ChannelOrdererReaders:
+		return identitiesContaining{"orderer"}, true
+	default:
+		return nil, false
+	}
+}
+
+func (testDeliverPolicyManager) Manager([]string) (policies.Manager, bool) {
 	return nil, false
 }
 
-type ordererReadersPolicy struct{}
-
-func (ordererReadersPolicy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
-	for _, sd := range signatureSet {
-		if bytes.Contains(sd.Identity, []byte("orderer")) {
-			return nil
-		}
-	}
-	return errors.Errorf("identity is not an orderer")
+type stubOrdererConfig struct {
+	state ab.ConsensusType_State
 }
 
-func (ordererReadersPolicy) EvaluateIdentities([]msp.Identity) error { return nil }
+func (s stubOrdererConfig) ConsensusType() string                  { return "BFT" }
+func (s stubOrdererConfig) ConsensusMetadata() []byte              { return nil }
+func (s stubOrdererConfig) ConsensusState() ab.ConsensusType_State { return s.state }
+func (s stubOrdererConfig) BatchSize() *ab.BatchSize               { return nil }
+func (s stubOrdererConfig) BatchTimeout() time.Duration            { return 0 }
+func (s stubOrdererConfig) MaxChannelsCount() uint64               { return 0 }
+func (s stubOrdererConfig) Consenters() []*cb.Consenter            { return nil }
+func (s stubOrdererConfig) Organizations() map[string]channelconfig.OrdererOrg {
+	return nil
+}
+func (s stubOrdererConfig) Capabilities() channelconfig.OrdererCapabilities { return nil }
 
-// deliverChainWithOrdererPolicy returns a mock chain whose policy manager
-// resolves /Channel/Orderer/Readers.
-func deliverChainWithOrdererPolicy() *mock.Chain {
-	chain := &mock.Chain{}
-	chain.PolicyManagerReturns(ordererReadersPolicyManager{})
-	return chain
+// deliverTestChainSupport implements msgprocessor.SigFilterSupport for the
+// deliver policy checker.
+type deliverTestChainSupport struct {
+	policyManager policies.Manager
+	ordererConfig channelconfig.Orderer
 }
 
-// deliverTestService mirrors Deliver in server.go: the channel readers
-// policy check is mocked to pass for every caller, orderer-to-orderer pulls
-// are exempted, and sessions are admitted by the shared deliver handler
-// through its SessionLimiter hook.
+func (s deliverTestChainSupport) PolicyManager() policies.Manager { return s.policyManager }
+
+func (s deliverTestChainSupport) OrdererConfig() (channelconfig.Orderer, bool) {
+	return s.ordererConfig, true
+}
+
+// deliverTestService mirrors Deliver in server.go, using the production
+// policy checker and session limiter wiring.
 type deliverTestService struct {
 	ab.UnimplementedAtomicBroadcastServer
 	h       *deliver.Handler
 	limiter *deliverConcurrencyLimiter
-	chain   deliver.Chain
+	support msgprocessor.SigFilterSupport
 }
 
 func (s *deliverTestService) Deliver(stream ab.AtomicBroadcast_DeliverServer) error {
-	session := s.limiter.newSession()
+	session := newDeliverSession(s.limiter)
 	ds := &deliver.Server{
-		PolicyChecker: deliver.PolicyCheckerFunc(func(env *cb.Envelope, _ string) error {
-			if satisfiesOrdererReadersPolicy(s.chain, env) {
-				session.Exempt()
-			}
-			return nil
-		}),
+		PolicyChecker: newDeliverPolicyChecker(func(string) msgprocessor.SigFilterSupport {
+			return s.support
+		}, session),
 		Receiver:       stream,
 		ResponseSender: &deliverResponseSender{stream: stream},
 		SessionLimiter: session,
@@ -157,9 +184,13 @@ func (s *deliverResponseSender) SendBlockResponse(b *cb.Block, _ string, _ deliv
 func (s *deliverResponseSender) DataType() string { return "block" }
 
 func deliverSeekEnvelope(creator string) *cb.Envelope {
+	return deliverSeekEnvelopeTo(creator, math.MaxUint64)
+}
+
+func deliverSeekEnvelopeTo(creator string, stop uint64) *cb.Envelope {
 	seek := &ab.SeekInfo{
 		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}},
-		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
+		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: stop}}},
 		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
 	}
 	payload := &cb.Payload{
@@ -183,8 +214,8 @@ type deliverTestServer struct {
 }
 
 // startDeliverTestServer runs a real gRPC server and deliver handler with
-// the given concurrency limit, mirroring the production Deliver path.
-func startDeliverTestServer(t *testing.T, limit int) *deliverTestServer {
+// the given concurrency limits, mirroring the production Deliver path.
+func startDeliverTestServer(t *testing.T, deliverLimit, replicationLimit int) *deliverTestServer {
 	t.Helper()
 
 	shared := make([]*cb.Block, deliverLimitTestBlocks)
@@ -194,7 +225,7 @@ func startDeliverTestServer(t *testing.T, limit int) *deliverTestServer {
 			Data:   &cb.BlockData{Data: [][]byte{make([]byte, deliverLimitTestBlkSize)}},
 		}
 	}
-	chain := deliverChainWithOrdererPolicy()
+	chain := &mock.Chain{}
 	chain.ReaderReturns(&staticReader{height: deliverLimitTestBlocks, shared: shared})
 	chain.ErroredReturns(make(chan struct{}))
 	chain.SequenceReturns(1)
@@ -215,8 +246,11 @@ func startDeliverTestServer(t *testing.T, limit int) *deliverTestServer {
 	require.NoError(t, err)
 	ab.RegisterAtomicBroadcastServer(srv.Server(), &deliverTestService{
 		h:       handler,
-		limiter: newDeliverConcurrencyLimiter(limit, &disabled.Provider{}),
-		chain:   chain,
+		limiter: newDeliverConcurrencyLimiter(deliverLimit, replicationLimit, &disabled.Provider{}),
+		support: deliverTestChainSupport{
+			policyManager: testDeliverPolicyManager{},
+			ordererConfig: stubOrdererConfig{state: ab.ConsensusType_STATE_NORMAL},
+		},
 	})
 	go func() { _ = srv.Start() }()
 
@@ -253,14 +287,32 @@ func openDeliver(streamCtx context.Context, client ab.AtomicBroadcastClient, cre
 	return nil
 }
 
+// requireRejectedUnavailable asserts that a stream is rejected with a
+// retryable service unavailable status.
+func requireRejectedUnavailable(t *testing.T, client ab.AtomicBroadcastClient, creator string) {
+	t.Helper()
+	probe, err := client.Deliver(context.Background())
+	require.NoError(t, err)
+	require.NoError(t, probe.Send(deliverSeekEnvelope(creator)))
+	resp, err := probe.Recv()
+	require.NoError(t, err)
+	require.Equal(t, cb.Status_SERVICE_UNAVAILABLE, resp.GetStatus())
+	_, err = probe.Recv()
+	require.ErrorIs(t, err, io.EOF)
+}
+
 // The orderer bounds concurrent deliver sessions: idle streams consume no
 // budget, the first limit authenticated streams are admitted, the next one
-// is rejected before an iterator is created, orderer-to-orderer pulls are
-// exempt, and closing an admitted stream admits a new one.
+// is rejected before an iterator is created, orderer-to-orderer pulls draw
+// from their own finite budget, and closing an admitted stream admits a
+// new one.
 func TestDeliverConcurrencyLimit(t *testing.T) {
-	const limit = 5
+	const (
+		clientLimit      = 5
+		replicationLimit = 2
+	)
 
-	ts := startDeliverTestServer(t, limit)
+	ts := startDeliverTestServer(t, clientLimit, replicationLimit)
 	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -274,27 +326,31 @@ func TestDeliverConcurrencyLimit(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// fill the budget with long-lived, slowly consumed client streams
-	streamCancels := make([]context.CancelFunc, 0, limit)
-	for range limit {
+	// fill the client budget with long-lived, slowly consumed streams
+	streamCancels := make([]context.CancelFunc, 0, clientLimit)
+	for range clientLimit {
 		streamCtx, streamCancel := context.WithCancel(ctx)
 		require.NoError(t, openDeliver(streamCtx, ts.client, "reader"))
 		streamCancels = append(streamCancels, streamCancel)
 	}
-	require.Equal(t, limit, ts.chain.ReaderCallCount())
+	require.Equal(t, clientLimit, ts.chain.ReaderCallCount())
 
 	// the next client stream is rejected before an iterator is created
-	probe, err := ts.client.Deliver(ctx)
-	require.NoError(t, err)
-	_ = probe.Send(deliverSeekEnvelope("reader"))
-	_, err = probe.Recv()
-	require.ErrorContains(t, err, fmt.Sprintf("too many deliver requests, exceeding concurrency limit (%d)", limit))
-	require.Equal(t, limit, ts.chain.ReaderCallCount())
+	requireRejectedUnavailable(t, ts.client, "reader")
+	require.Equal(t, clientLimit, ts.chain.ReaderCallCount())
 
-	// an orderer-to-orderer block pull is admitted despite the full budget
+	// orderer-to-orderer pulls draw from their own budget while the client
+	// budget is full
 	pullCtx, pullCancel := context.WithCancel(ctx)
 	defer pullCancel()
-	require.NoError(t, openDeliver(pullCtx, ts.client, "orderer"))
+	for range replicationLimit {
+		require.NoError(t, openDeliver(pullCtx, ts.client, "orderer"))
+	}
+	require.Equal(t, clientLimit+replicationLimit, ts.chain.ReaderCallCount())
+
+	// an orderer identity opening more than the replication budget is rejected
+	requireRejectedUnavailable(t, ts.client, "orderer")
+	require.Equal(t, clientLimit+replicationLimit, ts.chain.ReaderCallCount())
 
 	// closing an admitted stream releases its permit
 	streamCancels[0]()
@@ -305,8 +361,34 @@ func TestDeliverConcurrencyLimit(t *testing.T) {
 	}, 30*time.Second, 50*time.Millisecond)
 }
 
+// A completed delivery releases the permit, so a stream idling after a
+// finished seek does not hold the budget.
+func TestDeliverConcurrencyPermitReleasedAfterCompletedDelivery(t *testing.T) {
+	ts := startDeliverTestServer(t, 1, -1)
+	defer ts.cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// stream A seeks a finite range and then idles on the open stream
+	streamA, err := ts.client.Deliver(ctx)
+	require.NoError(t, err)
+	require.NoError(t, streamA.Send(deliverSeekEnvelopeTo("reader", deliverLimitTestBlocks-1)))
+	for {
+		resp, err := streamA.Recv()
+		require.NoError(t, err)
+		if _, isStatus := resp.GetType().(*ab.DeliverResponse_Status); isStatus {
+			require.Equal(t, cb.Status_SUCCESS, resp.GetStatus())
+			break
+		}
+	}
+
+	// stream B is admitted because A's permit was released on completion
+	require.NoError(t, openDeliver(ctx, ts.client, "reader"))
+}
+
 func TestDeliverConcurrencyUnlimited(t *testing.T) {
-	ts := startDeliverTestServer(t, -1)
+	ts := startDeliverTestServer(t, -1, -1)
 	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())

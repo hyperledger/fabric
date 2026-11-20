@@ -197,6 +197,10 @@ type Concurrency struct {
 	// DeliverService limits the number of concurrent deliver streams.
 	// A value of -1 disables the limit.
 	DeliverService int
+	// ClusterReplication limits the number of concurrent deliver streams
+	// used by orderer-to-orderer block replication, identified by the
+	// /Channel/Orderer/Readers policy. A value of -1 disables the limit.
+	ClusterReplication int
 }
 
 // ChannelParticipation provides the channel participation API configuration for the orderer.
@@ -240,7 +244,8 @@ var Defaults = TopLevel{
 		},
 		Limits: Limits{
 			Concurrency: Concurrency{
-				DeliverService: 2500,
+				DeliverService:     80,
+				ClusterReplication: 20,
 			},
 		},
 	},
@@ -416,6 +421,11 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.Limits.Concurrency.DeliverService == 0:
 			logger.Infof("General.Limits.Concurrency.DeliverService is unset, setting to %v", Defaults.General.Limits.Concurrency.DeliverService)
 			c.General.Limits.Concurrency.DeliverService = Defaults.General.Limits.Concurrency.DeliverService
+		case c.General.Limits.Concurrency.ClusterReplication < -1:
+			logger.Panicf("General.Limits.Concurrency.ClusterReplication must be -1 (unlimited), 0 (default), or a positive integer, got %d", c.General.Limits.Concurrency.ClusterReplication)
+		case c.General.Limits.Concurrency.ClusterReplication == 0:
+			logger.Infof("General.Limits.Concurrency.ClusterReplication is unset, setting to %v", Defaults.General.Limits.Concurrency.ClusterReplication)
+			c.General.Limits.Concurrency.ClusterReplication = Defaults.General.Limits.Concurrency.ClusterReplication
 		case c.FileLedger.StateDatabase == "":
 			c.FileLedger.StateDatabase = Defaults.FileLedger.StateDatabase
 		default:
