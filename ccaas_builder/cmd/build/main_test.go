@@ -111,6 +111,58 @@ func TestGoodPath(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 }
 
+func TestDialTimeoutNotSpecified(t *testing.T) {
+	gt := NewWithT(t)
+
+	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/ccaas_builder/cmd/build")
+	gt.Expect(err).NotTo(HaveOccurred())
+	defer gexec.CleanupBuildArtifacts()
+
+	testPath := t.TempDir()
+
+	// create a basic structure of a chaincode
+	err = os.MkdirAll(path.Join(testPath, "in-builder-dir"), 0o755)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	err = os.MkdirAll(path.Join(testPath, "in-metadata-dir"), 0o755)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	err = os.MkdirAll(path.Join(testPath, "out-release-dir"), 0o755)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	connectionJson := path.Join(testPath, "in-builder-dir", "connection.json")
+	err = os.WriteFile(connectionJson, []byte(`{
+		"address": "audit-trail-ccaas:9999",
+		"tls_required": false
+	  }`), 0o644)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	metadataJson := path.Join(testPath, "in-metadata-dir", "metadata.json")
+	err = os.WriteFile(metadataJson, []byte(`{
+		  "type":"ccaas"
+		}`), 0o644)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	args := []string{path.Join(testPath, "in-builder-dir"), path.Join(testPath, "in-metadata-dir"), path.Join(testPath, "out-release-dir")}
+	cmd := exec.Command(releaseCmd, args...)
+	session, err := gexec.Start(cmd, nil, nil)
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Eventually(session, 5*time.Second).Should(gexec.Exit(0))
+
+	// dial_timeout must stay unset so that the peer applies its default,
+	// an empty string is not a valid duration
+	connectionFileContents, err := os.ReadFile(path.Join(testPath, "out-release-dir", "connection.json"))
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(connectionFileContents).To(MatchJSON(`{
+		"address": "audit-trail-ccaas:9999",
+		"tls_required": false,
+		"client_auth_required": false,
+		"root_cert": "",
+		"client_key": "",
+		"client_cert": ""
+	}`))
+}
+
 func TestTemplating(t *testing.T) {
 	gt := NewWithT(t)
 

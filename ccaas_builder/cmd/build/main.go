@@ -32,7 +32,7 @@ type chaincodeMetadata struct {
 type connection struct {
 	Address     string `json:"address"`
 	Domain      string `json:"domain,omitempty"`
-	DialTimeout string `json:"dial_timeout"`
+	DialTimeout string `json:"dial_timeout,omitempty"`
 	TLS         bool   `json:"tls_required"`
 	ClientAuth  bool   `json:"client_auth_required"`
 	RootCert    string `json:"root_cert"`
