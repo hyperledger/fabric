@@ -83,6 +83,43 @@ General:
     # when allocating the budget for throttling per client.
     InactivityTimeout: 5s
 
+  # Limits defines resource limits for the services exposed by the orderer.
+  Limits:
+    # Concurrency limits the number of concurrent requests per service.
+    Concurrency:
+      # DeliverService limits the number of concurrent block delivery
+      # sessions that serve client (channel reader) requests. A stream
+      # consumes the budget only after its seek request passes the
+      # channel policy check and only while the seek is being served, so
+      # idle connections cannot exhaust it. Streams that have not sent a
+      # seek request yet are not bounded here; they cost a goroutine and
+      # connection state and are bounded separately at the transport
+      # level. When the property is missing or the value is 0, the
+      # default of 80 is applied. Set to -1 for no limit.
+      #
+      # Sizing: the limit counts streams, not bytes. A serving stream
+      # retains about 3 MB with 100 KB blocks and about 25 MB with 10 MB
+      # blocks (the sample configtx AbsoluteMaxBytes) when consumers are
+      # slow. The default of 80 keeps slow-drained clients within roughly
+      # a 2 GiB budget at AbsoluteMaxBytes (80 x 25 MB). The limit must
+      # also cover the expected legitimate fan-out, roughly
+      # (peers x channels) / orderers, with headroom; if that exceeds
+      # what the memory budget allows, raise the orderer memory limit or
+      # add orderers.
+      DeliverService: 80
+      # ClusterReplication limits the number of concurrent block delivery
+      # sessions whose requests satisfy /Channel/Orderer/Readers, the
+      # budget orderer-to-orderer block pulls draw from so that client
+      # floods cannot starve replication. Note that the policy identifies
+      # an identity class, not a cluster connection: any member of an
+      # orderer org matches, so this budget stays finite. A Byzantine
+      # consenter is out of scope - it can halt consensus directly. Size
+      # for (orderers - 1) x channels served; both budgets retain memory
+      # at the same per-stream cost as DeliverService. When the property
+      # is missing or the value is 0, the default of 20 is applied. Set
+      # to -1 for no limit.
+      ClusterReplication: 20
+
   # Cluster settings for ordering service nodes that communicate with other ordering service nodes
   # such as Raft based ordering service.
   Cluster:

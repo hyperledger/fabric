@@ -69,6 +69,7 @@ type General struct {
 	MaxRecvMsgSize    int32
 	MaxSendMsgSize    int32
 	Throttling        Throttling
+	Limits            Limits
 }
 
 type Cluster struct {
@@ -184,6 +185,24 @@ type Throttling struct {
 	InactivityTimeout time.Duration
 }
 
+// Limits defines resource limits for services exposed by the orderer.
+type Limits struct {
+	// Concurrency limits the number of concurrent requests per service.
+	Concurrency Concurrency
+}
+
+// Concurrency defines concurrency limits for services exposed by the orderer.
+// A zero value for a service is replaced by its default limit.
+type Concurrency struct {
+	// DeliverService limits the number of concurrent deliver streams.
+	// A value of -1 disables the limit.
+	DeliverService int
+	// ClusterReplication limits the number of concurrent deliver streams
+	// used by orderer-to-orderer block replication, identified by the
+	// /Channel/Orderer/Readers policy. A value of -1 disables the limit.
+	ClusterReplication int
+}
+
 // ChannelParticipation provides the channel participation API configuration for the orderer.
 // Channel participation uses the same ListenAddress and TLS settings of the Operations service.
 type ChannelParticipation struct {
@@ -222,6 +241,12 @@ var Defaults = TopLevel{
 		MaxSendMsgSize: comm.DefaultMaxSendMsgSize,
 		Throttling: Throttling{
 			InactivityTimeout: time.Second * 5,
+		},
+		Limits: Limits{
+			Concurrency: Concurrency{
+				DeliverService:     80,
+				ClusterReplication: 20,
+			},
 		},
 	},
 	FileLedger: FileLedger{
@@ -391,6 +416,16 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.Throttling.InactivityTimeout == 0:
 			logger.Infof("General.Throttling.InactivityTimeout is unset, setting to %v", Defaults.General.Throttling.InactivityTimeout)
 			c.General.Throttling.InactivityTimeout = Defaults.General.Throttling.InactivityTimeout
+		case c.General.Limits.Concurrency.DeliverService < -1:
+			logger.Panicf("General.Limits.Concurrency.DeliverService must be -1 (unlimited), 0 (default), or a positive integer, got %d", c.General.Limits.Concurrency.DeliverService)
+		case c.General.Limits.Concurrency.DeliverService == 0:
+			logger.Infof("General.Limits.Concurrency.DeliverService is unset, setting to %v", Defaults.General.Limits.Concurrency.DeliverService)
+			c.General.Limits.Concurrency.DeliverService = Defaults.General.Limits.Concurrency.DeliverService
+		case c.General.Limits.Concurrency.ClusterReplication < -1:
+			logger.Panicf("General.Limits.Concurrency.ClusterReplication must be -1 (unlimited), 0 (default), or a positive integer, got %d", c.General.Limits.Concurrency.ClusterReplication)
+		case c.General.Limits.Concurrency.ClusterReplication == 0:
+			logger.Infof("General.Limits.Concurrency.ClusterReplication is unset, setting to %v", Defaults.General.Limits.Concurrency.ClusterReplication)
+			c.General.Limits.Concurrency.ClusterReplication = Defaults.General.Limits.Concurrency.ClusterReplication
 		case c.FileLedger.StateDatabase == "":
 			c.FileLedger.StateDatabase = Defaults.FileLedger.StateDatabase
 		default:

@@ -16,13 +16,11 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/deliver"
-	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -47,9 +45,10 @@ func (ds deliverSupport) GetChain(chainID string) deliver.Chain {
 }
 
 type server struct {
-	bh    *broadcast.Handler
-	dh    *deliver.Handler
-	debug *localconfig.Debug
+	bh             *broadcast.Handler
+	dh             *deliver.Handler
+	debug          *localconfig.Debug
+	deliverLimiter *deliverConcurrencyLimiter
 	*multichannel.Registrar
 }
 
@@ -89,6 +88,7 @@ func NewServer(
 	timeWindow time.Duration,
 	mutualTLS bool,
 	expirationCheckDisabled bool,
+	limits localconfig.Concurrency,
 ) ab.AtomicBroadcastServer {
 	s := &server{
 		dh: deliver.NewHandler(deliverSupport{Registrar: r}, timeWindow, mutualTLS, deliver.NewMetrics(metricsProvider), expirationCheckDisabled),
@@ -96,8 +96,9 @@ func NewServer(
 			SupportRegistrar: broadcastSupport{Registrar: r},
 			Metrics:          broadcast.NewMetrics(metricsProvider),
 		},
-		debug:     debug,
-		Registrar: r,
+		debug:          debug,
+		deliverLimiter: newDeliverConcurrencyLimiter(limits.DeliverService, limits.ClusterReplication, metricsProvider),
+		Registrar:      r,
 	}
 	return s
 }
@@ -190,18 +191,16 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		logger.Debugf("Closing Deliver stream")
 	}()
 
-	policyChecker := func(env *cb.Envelope, channelID string) error {
-		chain := s.GetChain(channelID)
-		if chain == nil {
-			return errors.Errorf("channel %s not found", channelID)
+	session := newDeliverSession(s.deliverLimiter)
+
+	policyChecker := newDeliverPolicyChecker(func(channelID string) msgprocessor.SigFilterSupport {
+		if chain := s.GetChain(channelID); chain != nil {
+			return chain
 		}
-		// In maintenance mode, we typically require the signature of /Channel/Orderer/Readers.
-		// This will block Deliver requests from peers (which normally satisfy /Channel/Readers).
-		sf := msgprocessor.NewSigFilter(policies.ChannelReaders, policies.ChannelOrdererReaders, chain)
-		return sf.Apply(env)
-	}
+		return nil
+	}, session)
 	deliverServer := &deliver.Server{
-		PolicyChecker: deliver.PolicyCheckerFunc(policyChecker),
+		PolicyChecker: policyChecker,
 		Receiver: &deliverMsgTracer{
 			Receiver: srv,
 			debug:    s.debug,
@@ -210,6 +209,7 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		ResponseSender: &responseSender{
 			AtomicBroadcast_DeliverServer: srv,
 		},
+		SessionLimiter: session,
 	}
 	return s.dh.Handle(srv.Context(), deliverServer)
 }
