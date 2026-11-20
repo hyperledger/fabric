@@ -118,6 +118,20 @@ func testLedgerProvider(t *testing.T, enableHistoryDB bool) {
 	require.EqualError(t, err, "cannot open ledger [ledger_000010], ledger does not exist")
 }
 
+func TestCreateFromGenesisBlockInvalidLedgerID(t *testing.T) {
+	conf := testConfig(t)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+	defer provider.Close()
+
+	for _, ledgerID := range []string{".", "..", "../outside", "a/b"} {
+		genesisBlock, err := configtxtest.MakeGenesisBlock(ledgerID)
+		require.NoError(t, err)
+		_, err = provider.CreateFromGenesisBlock(genesisBlock)
+		require.EqualError(t, err, fmt.Sprintf("invalid ledger ID [%s]", ledgerID))
+	}
+	require.NoDirExists(t, filepath.Join(conf.RootFSPath, "chains", "outside"))
+}
+
 func TestGetLedger(t *testing.T) {
 	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
