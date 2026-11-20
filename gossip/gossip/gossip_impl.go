@@ -119,10 +119,12 @@ func New(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 	}, sa)
 
 	commConfig := comm.CommConfig{
-		DialTimeout:  conf.DialTimeout,
-		ConnTimeout:  conf.ConnTimeout,
-		RecvBuffSize: conf.RecvBuffSize,
-		SendBuffSize: conf.SendBuffSize,
+		DialTimeout:          conf.DialTimeout,
+		ConnTimeout:          conf.ConnTimeout,
+		RecvBuffSize:         conf.RecvBuffSize,
+		SendBuffSize:         conf.SendBuffSize,
+		MaxRecvBytesInFlight: conf.MaxRecvBytesInFlight,
+		MaxRecvBytesTotal:    conf.MaxRecvBytesTotal,
 	}
 	g.comm, err = comm.NewCommInstance(s, conf.TLSCerts, g.idMapper, selfIdentity, secureDialOpts, sa,
 		gossipMetrics.CommMetrics, commConfig)
@@ -341,6 +343,7 @@ func (g *Node) acceptMessages(incMsgs <-chan protoext.ReceivedMessage) {
 			return
 		case msg := <-incMsgs:
 			g.handleMessage(msg)
+			comm.DisposeMessage(msg)
 		}
 	}
 }

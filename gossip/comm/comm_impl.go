@@ -59,36 +59,42 @@ func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore iden
 	peerIdentity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor,
 	commMetrics *metrics.CommMetrics, config CommConfig, dialOpts ...grpc.DialOption,
 ) (Comm, error) {
+	sharedBudget := &sharedRecvBudget{max: int64(config.MaxRecvBytesTotal)}
 	commInst := &commImpl{
-		sa:              sa,
-		pubSub:          util.NewPubSub(),
-		PKIID:           idStore.GetPKIidOfCert(peerIdentity),
-		idMapper:        idStore,
-		logger:          util.GetLogger(util.CommLogger, ""),
-		peerIdentity:    peerIdentity,
-		opts:            dialOpts,
-		secureDialOpts:  secureDialOpts,
-		msgPublisher:    NewChannelDemultiplexer(),
-		lock:            &sync.Mutex{},
-		deadEndpoints:   make(chan common.PKIidType, 100),
-		identityChanges: make(chan common.PKIidType, 1),
-		stopping:        int32(0),
-		exitChan:        make(chan struct{}),
-		subscriptions:   make([]chan protoext.ReceivedMessage, 0),
-		tlsCerts:        certs,
-		metrics:         commMetrics,
-		dialTimeout:     config.DialTimeout,
-		connTimeout:     config.ConnTimeout,
-		recvBuffSize:    config.RecvBuffSize,
-		sendBuffSize:    config.SendBuffSize,
+		sa:                   sa,
+		pubSub:               util.NewPubSub(),
+		PKIID:                idStore.GetPKIidOfCert(peerIdentity),
+		idMapper:             idStore,
+		logger:               util.GetLogger(util.CommLogger, ""),
+		peerIdentity:         peerIdentity,
+		opts:                 dialOpts,
+		secureDialOpts:       secureDialOpts,
+		msgPublisher:         NewChannelDemultiplexer(),
+		lock:                 &sync.Mutex{},
+		deadEndpoints:        make(chan common.PKIidType, 100),
+		identityChanges:      make(chan common.PKIidType, 1),
+		stopping:             int32(0),
+		exitChan:             make(chan struct{}),
+		subscriptions:        make([]chan protoext.ReceivedMessage, 0),
+		tlsCerts:             certs,
+		metrics:              commMetrics,
+		dialTimeout:          config.DialTimeout,
+		connTimeout:          config.ConnTimeout,
+		recvBuffSize:         config.RecvBuffSize,
+		sendBuffSize:         config.SendBuffSize,
+		maxRecvBytesInFlight: config.MaxRecvBytesInFlight,
+		sharedRecvBudget:     sharedBudget,
 	}
 
 	connConfig := ConnConfig{
-		RecvBuffSize: config.RecvBuffSize,
-		SendBuffSize: config.SendBuffSize,
+		RecvBuffSize:         config.RecvBuffSize,
+		SendBuffSize:         config.SendBuffSize,
+		MaxRecvBytesInFlight: config.MaxRecvBytesInFlight,
+		sharedRecvBudget:     sharedBudget,
 	}
 
 	commInst.connStore = newConnStore(commInst, commInst.logger, connConfig)
+	sharedBudget.evict = commInst.connStore.evictLargestConnection
 
 	proto.RegisterGossipServer(s, commInst)
 
@@ -101,32 +107,42 @@ type CommConfig struct {
 	ConnTimeout  time.Duration // Connection timeout
 	RecvBuffSize int           // Buffer size of received messages
 	SendBuffSize int           // Buffer size of sending messages
+	// MaxRecvBytesInFlight bounds the wire bytes of received messages a single
+	// connection may hold unconsumed before the connection is closed.
+	// Non-positive disables the limit.
+	MaxRecvBytesInFlight int
+	// MaxRecvBytesTotal bounds the wire bytes of received messages held
+	// unconsumed across all connections; on excess the connection holding the
+	// most in-flight bytes is closed. Non-positive disables the limit.
+	MaxRecvBytesTotal int
 }
 
 type commImpl struct {
-	sa              api.SecurityAdvisor
-	tlsCerts        *common.TLSCertificates
-	pubSub          *util.PubSub
-	peerIdentity    api.PeerIdentityType
-	idMapper        identity.Mapper
-	logger          util.Logger
-	opts            []grpc.DialOption
-	secureDialOpts  func() []grpc.DialOption
-	connStore       *connectionStore
-	PKIID           []byte
-	deadEndpoints   chan common.PKIidType
-	identityChanges chan common.PKIidType
-	msgPublisher    *ChannelDeMultiplexer
-	lock            *sync.Mutex
-	exitChan        chan struct{}
-	stopWG          sync.WaitGroup
-	subscriptions   []chan protoext.ReceivedMessage
-	stopping        int32
-	metrics         *metrics.CommMetrics
-	dialTimeout     time.Duration
-	connTimeout     time.Duration
-	recvBuffSize    int
-	sendBuffSize    int
+	sa                   api.SecurityAdvisor
+	tlsCerts             *common.TLSCertificates
+	pubSub               *util.PubSub
+	peerIdentity         api.PeerIdentityType
+	idMapper             identity.Mapper
+	logger               util.Logger
+	opts                 []grpc.DialOption
+	secureDialOpts       func() []grpc.DialOption
+	connStore            *connectionStore
+	PKIID                []byte
+	deadEndpoints        chan common.PKIidType
+	identityChanges      chan common.PKIidType
+	msgPublisher         *ChannelDeMultiplexer
+	lock                 *sync.Mutex
+	exitChan             chan struct{}
+	stopWG               sync.WaitGroup
+	subscriptions        []chan protoext.ReceivedMessage
+	stopping             int32
+	metrics              *metrics.CommMetrics
+	dialTimeout          time.Duration
+	connTimeout          time.Duration
+	recvBuffSize         int
+	sendBuffSize         int
+	maxRecvBytesInFlight int
+	sharedRecvBudget     *sharedRecvBudget
 }
 
 func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidType) (*connection, error) {
@@ -186,8 +202,10 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 				}
 			}
 			connConfig := ConnConfig{
-				RecvBuffSize: c.recvBuffSize,
-				SendBuffSize: c.sendBuffSize,
+				RecvBuffSize:         c.recvBuffSize,
+				SendBuffSize:         c.sendBuffSize,
+				MaxRecvBytesInFlight: c.maxRecvBytesInFlight,
+				sharedRecvBudget:     c.sharedRecvBudget,
 			}
 			conn := newConnection(cl, cc, stream, c.metrics, connConfig)
 			conn.pkiID = pkiID
@@ -195,15 +213,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 			conn.logger = c.logger
 			conn.cancel = cancel
 
-			h := func(m *protoext.SignedGossipMessage) {
-				c.logger.Debug("Got message:", m)
-				c.msgPublisher.DeMultiplex(&ReceivedMessageImpl{
-					conn:                conn,
-					SignedGossipMessage: m,
-					connInfo:            connInfo,
-				})
-			}
-			conn.handler = interceptAcks(h, connInfo.ID, c.pubSub)
+			conn.handler = c.publishingHandler(conn, connInfo)
 			return conn, nil
 		}
 		c.logger.Warningf("Authentication failed: %+v", err)
@@ -238,8 +248,14 @@ func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *protoext.SignedGossipMe
 	if err == nil {
 		disConnectOnErr := func(err error) {
 			c.logger.Warningf("%v isn't responsive: %v", peer, err)
-			c.disconnect(peer.PKIID)
-			conn.close()
+			select {
+			case c.deadEndpoints <- peer.PKIID:
+			case <-c.exitChan:
+				return
+			}
+			// Remove the failed connection only if it is still the current
+			// one; a replacement must never be torn down by its predecessor.
+			c.connStore.evictConn(conn)
 		}
 		conn.send(msg, disConnectOnErr, shouldBlock)
 		return
@@ -558,6 +574,30 @@ func (c *commImpl) SendWithAck(msg *protoext.SignedGossipMessage, timeout time.D
 	return ackOperation.send(msg, minAck, peers...)
 }
 
+// publishingHandler delivers received messages to subscribers. Delivery is
+// abortable via the connection's stop channel so a dropped connection cannot
+// wedge on a stalled subscriber, and each message's receive-path byte
+// accounting is released only after all of its deliveries were consumed.
+func (c *commImpl) publishingHandler(conn *connection, connInfo *protoext.ConnectionInfo) handler {
+	publish := func(m *protoext.SignedGossipMessage) {
+		rmi := &ReceivedMessageImpl{
+			conn:                conn,
+			SignedGossipMessage: m,
+			connInfo:            connInfo,
+		}
+		rmi.onConsumed = func() { conn.releaseReceivedBytes(m) }
+		c.msgPublisher.DeMultiplexAbortable(rmi, conn.stopChan)
+	}
+	intercept := interceptAcks(publish, connInfo.ID, c.pubSub)
+	return func(m *protoext.SignedGossipMessage) {
+		intercept(m)
+		// Acknowledgements never enter the delivery pipeline; release now.
+		if protoext.IsAck(m.GossipMessage) {
+			conn.releaseReceivedBytes(m)
+		}
+	}
+}
+
 func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	if c.isStopping() {
 		return errors.New("shutting down")
@@ -577,15 +617,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 
 	conn := c.connStore.onConnected(stream, connInfo, c.metrics)
 
-	h := func(m *protoext.SignedGossipMessage) {
-		c.msgPublisher.DeMultiplex(&ReceivedMessageImpl{
-			conn:                conn,
-			SignedGossipMessage: m,
-			connInfo:            connInfo,
-		})
-	}
-
-	conn.handler = interceptAcks(h, connInfo.ID, c.pubSub)
+	conn.handler = c.publishingHandler(conn, connInfo)
 
 	defer func() {
 		c.logger.Debug("Client", extractRemoteAddress(stream), " disconnected")

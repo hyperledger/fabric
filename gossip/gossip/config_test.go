@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
+	peercomm "github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -48,6 +49,8 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.gossip.connTimeout", "16s")
 	viper.Set("peer.gossip.recvBuffSize", 17)
 	viper.Set("peer.gossip.sendBuffSize", 18)
+	viper.Set("peer.gossip.maxRecvBytesInFlight", 123456)
+	viper.Set("peer.gossip.maxRecvBytesTotal", 654321)
 	viper.Set("peer.gossip.election.leaderAliveThreshold", "19s")
 	viper.Set("peer.gossip.aliveTimeInterval", "20s")
 	viper.Set("peer.gossip.aliveExpirationTimeout", "21s")
@@ -89,6 +92,8 @@ func TestGlobalConfig(t *testing.T) {
 		ConnTimeout:                  16 * time.Second,
 		RecvBuffSize:                 17,
 		SendBuffSize:                 18,
+		MaxRecvBytesInFlight:         123456,
+		MaxRecvBytesTotal:            654321,
 		MsgExpirationTimeout:         19 * time.Second * 10, // LeaderAliveThreshold * 10
 		AliveTimeInterval:            20 * time.Second,
 		AliveExpirationTimeout:       21 * time.Second,
@@ -143,6 +148,8 @@ func TestGlobalConfigDefaults(t *testing.T) {
 		ConnTimeout:                  comm.DefConnTimeout,
 		RecvBuffSize:                 comm.DefRecvBuffSize,
 		SendBuffSize:                 comm.DefSendBuffSize,
+		MaxRecvBytesInFlight:         2*peercomm.DefaultMaxRecvMsgSize + peercomm.DefaultMaxRecvMsgSize/2,
+		MaxRecvBytesTotal:            4 * (2*peercomm.DefaultMaxRecvMsgSize + peercomm.DefaultMaxRecvMsgSize/2),
 		MsgExpirationTimeout:         election.DefLeaderAliveThreshold * 10,
 		AliveTimeInterval:            discovery.DefAliveTimeInterval,
 		AliveExpirationTimeout:       5 * discovery.DefAliveTimeInterval,
@@ -153,4 +160,36 @@ func TestGlobalConfigDefaults(t *testing.T) {
 	}
 
 	require.Equal(t, expectedConfig, coreConfig)
+}
+
+func TestGlobalConfigReceiveByteLimits(t *testing.T) {
+	endpoint := "0.0.0.0:7051"
+
+	// Explicit zero disables the per-connection limit only; the node-wide
+	// default is derived from the non-zero default base and stays on.
+	viper.Reset()
+	viper.Set("peer.gossip.maxRecvBytesInFlight", 0)
+	coreConfig, err := gossip.GlobalConfig(endpoint, nil)
+	require.NoError(t, err)
+	require.Zero(t, coreConfig.MaxRecvBytesInFlight)
+	require.Equal(t, 4*(2*peercomm.DefaultMaxRecvMsgSize+peercomm.DefaultMaxRecvMsgSize/2), coreConfig.MaxRecvBytesTotal)
+
+	// The default scales with an operator-raised peer.maxRecvMsgSize.
+	viper.Reset()
+	viper.Set("peer.maxRecvMsgSize", 2*peercomm.DefaultMaxRecvMsgSize)
+	coreConfig, err = gossip.GlobalConfig(endpoint, nil)
+	require.NoError(t, err)
+	require.Equal(t, 5*peercomm.DefaultMaxRecvMsgSize, coreConfig.MaxRecvBytesInFlight)
+	require.Equal(t, 20*peercomm.DefaultMaxRecvMsgSize, coreConfig.MaxRecvBytesTotal)
+
+	// A zero or unparsable peer.maxRecvMsgSize means the default elsewhere
+	// in the peer and must not disable the budgets.
+	for _, value := range []any{0, "not-a-number"} {
+		viper.Reset()
+		viper.Set("peer.maxRecvMsgSize", value)
+		coreConfig, err = gossip.GlobalConfig(endpoint, nil)
+		require.NoError(t, err)
+		require.Equal(t, 2*peercomm.DefaultMaxRecvMsgSize+peercomm.DefaultMaxRecvMsgSize/2, coreConfig.MaxRecvBytesInFlight, "value %v", value)
+		require.Equal(t, 4*(2*peercomm.DefaultMaxRecvMsgSize+peercomm.DefaultMaxRecvMsgSize/2), coreConfig.MaxRecvBytesTotal, "value %v", value)
+	}
 }

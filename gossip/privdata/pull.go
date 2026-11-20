@@ -128,6 +128,7 @@ func (p *puller) listen() {
 			if msg.GetGossipMessage().GetPrivateReq() != nil {
 				p.handleRequest(msg)
 			}
+			comm.DisposeMessage(msg)
 		}
 	}
 }
