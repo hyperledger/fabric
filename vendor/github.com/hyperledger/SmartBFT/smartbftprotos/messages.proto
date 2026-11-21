@@ -24,6 +24,8 @@ message Message {
         StateTransferRequest state_transfer_request = 9;
         StateTransferResponse state_transfer_response = 10;
     }
+    // version is the version of the consensus protocol of the sender. A message without it has version 0.
+    uint64 version = 11;
 }
 
 message PrePrepare {

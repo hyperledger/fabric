@@ -34,3 +34,8 @@ func (_m *Dispatcher) Dispatch(seq int, payload *common.Payload, envBytes []byte
 
 	return r0, r1
 }
+
+// SignalInvalidTx provides a mock function with given fields: channel, blockNum, txNum, err
+func (_m *Dispatcher) SignalInvalidTx(channel string, blockNum uint64, txNum int, err error) {
+	_m.Called(channel, blockNum, txNum, err)
+}

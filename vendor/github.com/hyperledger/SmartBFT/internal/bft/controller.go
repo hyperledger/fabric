@@ -17,22 +17,16 @@ import (
 )
 
 // Decider delivers the proposal with signatures to the application
-//
-//go:generate mockery -dir . -name Decider -case underscore -output ./mocks/
 type Decider interface {
 	Decide(proposal types.Proposal, signatures []types.Signature, requests []types.RequestInfo)
 }
 
 // FailureDetector initiates a view change when there is a complaint
-//
-//go:generate mockery -dir . -name FailureDetector -case underscore -output ./mocks/
 type FailureDetector interface {
 	Complain(viewNum uint64, stopView bool)
 }
 
 // Batcher batches requests to eventually become a new proposal
-//
-//go:generate mockery -dir . -name Batcher -case underscore -output ./mocks/
 type Batcher interface {
 	NextBatch() [][]byte
 	Close()
@@ -41,8 +35,6 @@ type Batcher interface {
 }
 
 // RequestPool is a pool of client's requests
-//
-//go:generate mockery -dir . -name RequestPool -case underscore -output ./mocks/
 type RequestPool interface {
 	Prune(predicate func([]byte) error)
 	Submit(request []byte) error
@@ -55,8 +47,6 @@ type RequestPool interface {
 }
 
 // LeaderMonitor monitors the heartbeat from the current leader
-//
-//go:generate mockery -dir . -name LeaderMonitor -case underscore -output ./mocks/
 type LeaderMonitor interface {
 	ChangeRole(role Role, view uint64, leaderID uint64)
 	ProcessMsg(sender uint64, msg *protos.Message)
@@ -71,6 +61,7 @@ type Proposer interface {
 	Propose(proposal types.Proposal)
 	Start()
 	Abort()
+	AbortWithCancel(cancel <-chan struct{})
 	Stopped() bool
 	AbortChan() <-chan struct{}
 	GetLeaderID() uint64
@@ -79,8 +70,6 @@ type Proposer interface {
 }
 
 // ProposerBuilder builds a new Proposer
-//
-//go:generate mockery -dir . -name ProposerBuilder -case underscore -output ./mocks/
 type ProposerBuilder interface {
 	NewProposer(leader, proposalSequence, viewNum, decisionsInView uint64, quorumSize int) (Proposer, Phase)
 }
@@ -121,18 +110,26 @@ type Controller struct {
 	currViewLock   sync.RWMutex
 	currViewNumber uint64
 
+	// viewTransitionLock serializes aborting a view with starting or stopping
+	// one. A view changer can hold it from AbortViewAndHold until
+	// ReleaseViewWrite, so no view appends a record while the view changer
+	// writes its own. AbortView must not return while changeView is between
+	// aborting the old view and starting the new one: the abort would hit the
+	// already stopped old view and the new view would keep running. The lock
+	// also keeps the view number and the view consistent, since changeView
+	// sets them in separate steps.
+	viewTransitionLock sync.Mutex
+
 	currDecisionsInViewLock sync.RWMutex
 	currDecisionsInView     uint64
 
-	viewChange    chan viewInfo
-	abortViewChan chan uint64
+	viewChange chan viewInfo
 
 	stopOnce sync.Once
 	stopChan chan struct{}
 
 	syncChan             chan struct{}
 	decisionChan         chan decision
-	deliverChan          chan struct{}
 	leaderToken          chan struct{}
 	verificationSequence atomic.Uint64
 
@@ -142,26 +139,35 @@ type Controller struct {
 
 	StartedWG *sync.WaitGroup
 	syncLock  sync.Mutex
+
+	// unsupportedVersions holds the senders and versions of messages that were ignored for their protocol version,
+	// so that each is warned about once.
+	unsupportedVersions sync.Map
+}
+
+type senderVersion struct {
+	sender  uint64
+	version uint64
 }
 
 func (c *Controller) blacklist() []uint64 {
 	prop, _ := c.Checkpoint.Get()
 	md := &protos.ViewMetadata{}
-	if err := proto.Unmarshal(prop.Metadata, md); err != nil {
+	if err := proto.Unmarshal(prop.GetMetadata(), md); err != nil {
 		c.Logger.Panicf("Failed unmarshalling metadata: %v", err)
 	}
 
-	return md.BlackList
+	return md.GetBlackList()
 }
 
 func (c *Controller) latestSeq() uint64 {
 	prop, _ := c.Checkpoint.Get()
 	md := &protos.ViewMetadata{}
-	if err := proto.Unmarshal(prop.Metadata, md); err != nil {
+	if err := proto.Unmarshal(prop.GetMetadata(), md); err != nil {
 		c.Logger.Panicf("Failed unmarshalling metadata: %v", err)
 	}
 
-	return md.LatestSequence
+	return md.GetLatestSequence()
 }
 
 func (c *Controller) currentViewStopped() bool {
@@ -170,14 +176,6 @@ func (c *Controller) currentViewStopped() bool {
 	c.currViewLock.RUnlock()
 
 	return view.Stopped()
-}
-
-func (c *Controller) currentViewAbortChan() <-chan struct{} {
-	c.currViewLock.RLock()
-	view := c.currView
-	c.currViewLock.RUnlock()
-
-	return view.AbortChan()
 }
 
 func (c *Controller) currentViewLeader() uint64 {
@@ -282,7 +280,7 @@ func (c *Controller) OnRequestTimeout(request []byte, info types.RequestInfo) {
 	}
 
 	c.Logger.Infof("Request %s timeout expired, forwarding request to leader: %d", info, leaderID)
-	c.Comm.SendTransaction(leaderID, request)
+	c.SendTransaction(leaderID, request)
 }
 
 // OnLeaderFwdRequestTimeout is called when the leader-forward timeout expires, and complains about the leader.
@@ -329,6 +327,17 @@ func (c *Controller) OnHeartbeatTimeout(view uint64, leaderID uint64) {
 // ProcessMessages dispatches the incoming message to the required component
 func (c *Controller) ProcessMessages(sender uint64, m *protos.Message) {
 	c.Logger.Debugf("%d got message from %d: %s", c.ID, sender, MsgToString(m))
+	if !types.SupportedProtocolVersion(m.GetVersion()) {
+		// another version of the protocol is not compatible with this one, so its messages are not processed
+		if _, warned := c.unsupportedVersions.LoadOrStore(senderVersion{sender: sender, version: m.GetVersion()}, struct{}{}); !warned {
+			c.Logger.Warnf("%d got message from %d of protocol version %d, but supports versions %d to %d, ignoring its messages; "+
+				"nodes of different protocol versions must not run in the same cluster",
+				c.ID, sender, m.GetVersion(), types.MinSupportedProtocolVersion, types.ProtocolVersion)
+		} else {
+			c.Logger.Debugf("%d ignored message from %d of protocol version %d", c.ID, sender, m.GetVersion())
+		}
+		return
+	}
 	switch m.GetContent().(type) {
 	case *protos.Message_PrePrepare, *protos.Message_Prepare, *protos.Message_Commit:
 		c.currViewLock.RLock()
@@ -365,7 +374,7 @@ func (c *Controller) respondToStateTransferRequest(sender uint64) {
 			},
 		},
 	}
-	c.Comm.SendConsensus(sender, msg)
+	c.SendConsensus(sender, msg)
 }
 
 func (c *Controller) convertViewMessageToHeartbeat(m *protos.Message) *protos.Message {
@@ -405,6 +414,9 @@ func (c *Controller) startView(proposalSequence uint64) {
 }
 
 func (c *Controller) changeView(newViewNumber uint64, newProposalSequence uint64, newDecisionsInView uint64) {
+	c.viewTransitionLock.Lock()
+	defer c.viewTransitionLock.Unlock()
+
 	latestView := c.getCurrentViewNumber()
 	if latestView > newViewNumber {
 		c.Logger.Debugf("Got view change to %d but already at %d", newViewNumber, latestView)
@@ -420,7 +432,7 @@ func (c *Controller) changeView(newViewNumber uint64, newProposalSequence uint64
 		return
 	}
 
-	if !c.abortView(latestView) {
+	if !c.abortView(latestView, nil) {
 		return
 	}
 
@@ -434,12 +446,23 @@ func (c *Controller) changeView(newViewNumber uint64, newProposalSequence uint64
 	}
 }
 
-func (c *Controller) abortView(view uint64) bool {
-	currView := c.getCurrentViewNumber()
-	c.Logger.Debugf("view for abort %d, current view %d", view, currView)
+// abortView stops the current view. The caller must hold viewTransitionLock.
+// If cancel is closed before the view stops, abortView stops waiting for it.
+func (c *Controller) abortView(view uint64, cancel <-chan struct{}) bool {
+	currViewNum := c.getCurrentViewNumber()
+	c.Logger.Debugf("view for abort %d, current view %d", view, currViewNum)
 
-	if view < currView {
-		c.Logger.Debugf("Was asked to abort view %d but the current view with number %d", view, currView)
+	if view < currViewNum {
+		c.Logger.Debugf("Was asked to abort view %d but the current view with number %d", view, currViewNum)
+		return false
+	}
+
+	c.currViewLock.RLock()
+	currView := c.currView
+	c.currViewLock.RUnlock()
+
+	if currView == nil {
+		c.Logger.Debugf("Was asked to abort view %d but no view was started", view)
 		return false
 	}
 
@@ -448,10 +471,17 @@ func (c *Controller) abortView(view uint64) bool {
 	c.relinquishLeaderToken()
 
 	// Kill current view
-	c.Logger.Debugf("Aborting current view with number %d", c.currViewNumber)
-	c.currView.Abort()
+	c.Logger.Debugf("Aborting current view with number %d", currViewNum)
+	currView.AbortWithCancel(cancel)
 
 	return true
+}
+
+// abortCurrentView stops the current view and waits for it to finish. The
+// caller must hold viewTransitionLock, which keeps the stop and the following
+// record write from being overtaken by a new view.
+func (c *Controller) abortCurrentView() {
+	c.abortView(c.getCurrentViewNumber(), nil)
 }
 
 // Sync initiates a synchronization
@@ -462,13 +492,59 @@ func (c *Controller) Sync() {
 	c.grabSyncToken()
 }
 
-// AbortView makes the controller abort the current view
-func (c *Controller) AbortView(view uint64) {
-	c.Logger.Debugf("AbortView, the current view num is %d", c.getCurrentViewNumber())
+// AbortView aborts the current view, unless the given view is older than it,
+// and waits until the view has stopped. Waiting is what makes it safe to
+// persist state that must not be overtaken by a record written by the view,
+// such as a new view record. It does not wait for the controller loop, which
+// may be busy with a long sync or an application delivery, but it does wait
+// for a changeView that already started.
+//
+// If cancel is closed before the view stops, AbortView stops waiting for it.
+// The view changer passes its stop channel, so that stopping the view changer
+// does not hang on a view that waits for a lock held by a reconfiguration.
+func (c *Controller) AbortView(view uint64, cancel <-chan struct{}) {
+	if !c.AbortViewAndHold(view, cancel) {
+		return
+	}
+
+	c.ReleaseViewWrite()
+}
+
+// AbortViewAndHold aborts the current view like AbortView and, on success,
+// keeps viewTransitionLock held, so no other view can be started or stopped
+// until ReleaseViewWrite. The sync path restarts views, so without the lock it
+// could restart the view between the abort and the record the view changer
+// writes next.
+//
+// The caller must call ReleaseViewWrite after writing the record that had to
+// follow the abort.
+func (c *Controller) AbortViewAndHold(view uint64, cancel <-chan struct{}) bool {
+	c.Logger.Debugf("AbortViewAndHold, the current view num is %d", c.getCurrentViewNumber())
 
 	c.Batcher.Close()
 
-	c.abortViewChan <- view
+	c.viewTransitionLock.Lock()
+
+	if c.stopped() {
+		c.viewTransitionLock.Unlock()
+
+		return false
+	}
+
+	if !c.abortView(view, cancel) {
+		c.viewTransitionLock.Unlock()
+
+		return false
+	}
+
+	return true
+}
+
+// ReleaseViewWrite lets the controller start or stop views again, once the view
+// changer has written the record that had to follow AbortViewAndHold. The
+// caller must have called AbortViewAndHold successfully.
+func (c *Controller) ReleaseViewWrite() {
+	c.viewTransitionLock.Unlock()
 }
 
 // ViewChanged makes the controller abort the current view and start a new one with the given numbers
@@ -510,8 +586,6 @@ func (c *Controller) run() {
 		case newView := <-c.viewChange:
 			c.Logger.Debugf("get newView from viewChange")
 			c.changeView(newView.viewNumber, newView.proposalSeq, 0)
-		case view := <-c.abortViewChan:
-			c.abortView(view)
 		case <-c.stopChan:
 			return
 		case <-c.leaderToken:
@@ -542,21 +616,44 @@ func (c *Controller) decide(d decision) {
 	}
 	c.Logger.Debugf("Node %d delivered proposal", c.ID)
 	c.removeDeliveredFromPool(d)
-	select {
-	case c.deliverChan <- struct{}{}:
-	case <-c.stopChan:
+	close(d.delivered)
+	if c.stopped() {
+		return
+	}
+
+	c.currViewLock.RLock()
+	currView := c.currView
+	c.currViewLock.RUnlock()
+
+	if d.view != currView {
+		// The view that decided was replaced while the decision was waiting to be delivered,
+		// and the decisions in the view were set when the current view started,
+		// so the decision must not be accounted to the current view.
+		c.Logger.Debugf("Node %d delivered a decision from a view that was replaced, skipping view bookkeeping", c.ID)
+		c.MaybePruneRevokedRequests()
 		return
 	}
 	c.incrementCurrentDecisionsInView()
+
+	if d.view.Stopped() {
+		// The view that decided was aborted but not replaced, so the decision still counts in this view,
+		// in case the view is restarted with the same number after a sync.
+		// However, rotating the leader would restart the aborted view, and an aborted view cannot propose,
+		// so do not rotate and do not acquire the leader token.
+		// Whichever view starts next acquires the leader token in startView if this node leads it.
+		c.Logger.Debugf("Node %d delivered a decision from a view that was aborted, skipping leader rotation", c.ID)
+		c.MaybePruneRevokedRequests()
+		return
+	}
 
 	md := &protos.ViewMetadata{}
 	if err := proto.Unmarshal(d.proposal.Metadata, md); err != nil {
 		c.Logger.Panicf("Failed to unmarshal proposal metadata, error: %v", err)
 	}
 
-	if c.checkIfRotate(md.BlackList) {
+	if c.checkIfRotate(md.GetBlackList()) {
 		c.Logger.Debugf("Restarting view to rotate the leader")
-		c.changeView(c.getCurrentViewNumber(), md.LatestSequence+1, c.getCurrentDecisionsInView())
+		c.changeView(c.getCurrentViewNumber(), md.GetLatestSequence()+1, c.getCurrentDecisionsInView())
 		c.Logger.Debugf("Restarting timers in request pool due to leader rotation")
 		c.RequestPool.RestartTimers()
 	}
@@ -620,9 +717,9 @@ func (c *Controller) sync() (viewNum uint64, seq uint64, decisions uint64) {
 		if err := proto.Unmarshal(latestDecision.Proposal.Metadata, md); err != nil {
 			c.Logger.Panicf("Controller was unable to unmarshal the proposal metadata returned by the Synchronizer")
 		}
-		latestDecisionSeq = md.LatestSequence
-		latestDecisionViewNum = md.ViewId
-		latestDecisionDecisions = md.DecisionsInView
+		latestDecisionSeq = md.GetLatestSequence()
+		latestDecisionViewNum = md.GetViewId()
+		latestDecisionDecisions = md.GetDecisionsInView()
 		latestDecisionMetadata = md
 	}
 
@@ -655,30 +752,50 @@ func (c *Controller) sync() (viewNum uint64, seq uint64, decisions uint64) {
 			// And the synchronizer did not return a new view
 			return 0, 0, 0
 		}
-	} else {
-		if response.View <= controllerViewNum && latestDecisionViewNum < controllerViewNum {
-			return 0, 0, 0 // no new view to report
-		}
-		if response.View > newViewNum && response.Seq == latestDecisionSeq+1 {
-			c.Logger.Infof("Node %d collected state with view %d and sequence %d", c.ID, response.View, response.Seq)
-			newViewToSave := &protos.SavedMessage{
-				Content: &protos.SavedMessage_NewView{
-					NewView: &protos.ViewMetadata{
-						ViewId:          response.View,
-						LatestSequence:  latestDecisionSeq,
-						DecisionsInView: 0,
-					},
-				},
-			}
-			if err := c.State.Save(newViewToSave); err != nil {
-				c.Logger.Panicf("Failed to save message to state, error: %v", err)
-			}
-			newViewNum = response.View
-			newDecisionsInView = 0
-		}
+	} else if response.View <= controllerViewNum && latestDecisionViewNum < controllerViewNum {
+		return 0, 0, 0 // no new view to report
 	}
 
-	if latestDecisionMetadata != nil {
+	saveNewView := response != nil && response.View > newViewNum && response.Seq == latestDecisionSeq+1
+	if saveNewView {
+		c.Logger.Infof("Node %d collected state with view %d and sequence %d", c.ID, response.View, response.Seq)
+
+		// The record of the new view replaces the state of the current view, so the
+		// view has to be stopped first, and no other view may start until the record
+		// is written. Otherwise a view could append a commit after that record and
+		// leave a sequence that recovery rejects.
+		c.viewTransitionLock.Lock()
+		c.abortCurrentView()
+
+		// The fate of the in-flight proposal has to be decided before the record of the
+		// new view is written: the checkpoint alone does not say the in-flight proposal is
+		// no longer needed, maybePruneInFlight does.
+		if latestDecisionMetadata != nil {
+			c.maybePruneInFlight(latestDecisionMetadata)
+		}
+
+		newViewToSave := &protos.SavedMessage{
+			Content: &protos.SavedMessage_NewView{
+				NewView: &protos.ViewMetadata{
+					ViewId:          response.View,
+					LatestSequence:  latestDecisionSeq,
+					DecisionsInView: 0,
+				},
+			},
+		}
+		// A sync new view record is not a truncation point: the in-flight
+		// proposal, if there is one, must stay recoverable.
+		if err := c.State.Save(newViewToSave, false); err != nil {
+			c.Logger.Panicf("Failed to save message to state, error: %v", err)
+		}
+		c.viewTransitionLock.Unlock()
+
+		newViewNum = response.View
+		newDecisionsInView = 0
+	} else if latestDecisionMetadata != nil {
+		// It has to be decided on every sync, not only when a new view record is saved,
+		// otherwise a stale proposal stays in flight and makes the node's view data
+		// invalid for the rest of the cluster.
 		c.maybePruneInFlight(latestDecisionMetadata)
 	}
 
@@ -700,18 +817,18 @@ func (c *Controller) maybePruneInFlight(syncResultViewMD *protos.ViewMetadata) {
 	if err := proto.Unmarshal(inFlight.Metadata, inFlightMD); err != nil {
 		c.Logger.Panicf("In-flight proposal was malformed: %v", err)
 	}
-	c.Logger.Debugf("In-flight proposal: view: %d, seq: %d", inFlightMD.ViewId, inFlightMD.LatestSequence)
-	c.Logger.Debugf("Sync result: view: %d, seq: %d", syncResultViewMD.ViewId, syncResultViewMD.LatestSequence)
+	c.Logger.Debugf("In-flight proposal: view: %d, seq: %d", inFlightMD.GetViewId(), inFlightMD.GetLatestSequence())
+	c.Logger.Debugf("Sync result: view: %d, seq: %d", syncResultViewMD.GetViewId(), syncResultViewMD.GetLatestSequence())
 
 	// If in-flight sequence is higher than latest committed sequence then in-flight might still be relevant
-	if syncResultViewMD.LatestSequence < inFlightMD.LatestSequence {
-		c.Logger.Infof("In-flight sequence is %d but latest committed sequence is %d, will not delete in-flight", inFlightMD.LatestSequence, syncResultViewMD.LatestSequence)
+	if syncResultViewMD.GetLatestSequence() < inFlightMD.GetLatestSequence() {
+		c.Logger.Infof("In-flight sequence is %d but latest committed sequence is %d, will not delete in-flight", inFlightMD.GetLatestSequence(), syncResultViewMD.GetLatestSequence())
 		return
 	}
 	// Else we have replicated the in-flight proposal from another node or have committed it in the past,
 	// so we whenever we participate in a view change there will be no need to present this in-flight
 	// as we have corresponding signatures on the proposal.
-	c.Logger.Infof("Synced to sequence %d, deleting in-flight as it is stale", syncResultViewMD.LatestSequence)
+	c.Logger.Infof("Synced to sequence %d, deleting in-flight as it is stale", syncResultViewMD.GetLatestSequence())
 	c.InFlight.clear()
 }
 
@@ -788,8 +905,10 @@ func (c *Controller) syncOnStart(startViewNumber uint64, startProposalSequence u
 	return viewNum, seq, decisions
 }
 
-// Start the controller
-func (c *Controller) Start(startViewNumber uint64, startProposalSequence uint64, startDecisionsInView uint64, syncOnStart bool) {
+// Start the controller.
+// The verificationSequence is the one the requests in the pool were last pruned against,
+// so that a later change of the Verifier's sequence prunes the pool again.
+func (c *Controller) Start(startViewNumber uint64, startProposalSequence uint64, startDecisionsInView uint64, verificationSequence uint64, syncOnStart bool) {
 	c.Logger.Debugf("Starting controller with view %d, sequence %d, and decisions %d", startViewNumber, startProposalSequence, startDecisionsInView)
 	c.controllerDone.Add(1)
 	c.stopOnce = sync.Once{}
@@ -797,15 +916,13 @@ func (c *Controller) Start(startViewNumber uint64, startProposalSequence uint64,
 	c.stopChan = make(chan struct{})
 	c.leaderToken = make(chan struct{}, 1)
 	c.decisionChan = make(chan decision, 1)
-	c.deliverChan = make(chan struct{})
 	c.viewChange = make(chan viewInfo, 1)
-	c.abortViewChan = make(chan uint64, 1)
 
 	Q, F := computeQuorum(c.N)
 	c.Logger.Debugf("The number of nodes (N) is %d, F is %d, and the quorum size is %d", c.N, F, Q)
 	c.quorum = Q
 
-	c.verificationSequence.Store(c.Verifier.VerificationSequence())
+	c.verificationSequence.Store(verificationSequence)
 
 	if syncOnStart {
 		startViewNumber, startProposalSequence, startDecisionsInView = c.syncOnStart(startViewNumber, startProposalSequence, startDecisionsInView)
@@ -882,22 +999,50 @@ func (c *Controller) stopped() bool {
 
 // Decide delivers the decision to the application
 func (c *Controller) Decide(proposal types.Proposal, signatures []types.Signature, requests []types.RequestInfo) {
-	select {
-	case c.decisionChan <- decision{
+	c.currViewLock.RLock()
+	view := c.currView
+	c.currViewLock.RUnlock()
+
+	delivered := make(chan struct{})
+	d := decision{
 		proposal:   proposal,
 		requests:   requests,
 		signatures: signatures,
-	}:
+		view:       view,
+		delivered:  delivered,
+	}
+	select {
+	case c.decisionChan <- d:
 	case <-c.stopChan:
 		// In case we are in the middle of shutting down,
 		// abort deciding.
 		return
+	case <-view.AbortChan():
+		// The controller loop is aborting this view and waits for it to stop. Do
+		// not block the view, or the abort and the decision would wait for each
+		// other, but do not drop the decision either: hand it to the controller
+		// in the background.
+		go c.enqueueDecision(d)
+		return
 	}
 
 	select {
-	case <-c.deliverChan: // wait for the delivery of the decision to the application
+	case <-delivered: // wait for the delivery of the decision to the application
 	case <-c.stopChan: // If we stopped the controller, abort delivery
-	case <-c.currentViewAbortChan(): // If we stopped the view, abort delivery
+	case <-view.AbortChan(): // If we stopped the view, abort delivery
+	}
+}
+
+// enqueueDecision hands a decision to the controller when the view that decided it is
+// already stopping. The decision was accepted by a quorum, so it must not be lost:
+// the controller delivers it once it is no longer busy. If the view changer has
+// already delivered the same proposal, MutuallyExclusiveDeliver skips delivering it
+// again by comparing the checkpoint sequence, so the application does not receive it
+// twice.
+func (c *Controller) enqueueDecision(d decision) {
+	select {
+	case c.decisionChan <- d:
+	case <-c.stopChan:
 	}
 }
 
@@ -918,16 +1063,24 @@ type decision struct {
 	proposal   types.Proposal
 	signatures []types.Signature
 	requests   []types.RequestInfo
+	view       Proposer      // the view that decided
+	delivered  chan struct{} // closed once the decision was delivered to the application
+}
+
+// SendConsensus sends a consensus message to the given node, with this node's protocol version.
+func (c *Controller) SendConsensus(targetID uint64, m *protos.Message) {
+	c.Comm.SendConsensus(targetID, withProtocolVersion(m))
 }
 
 // BroadcastConsensus broadcasts the message and informs the heartbeat monitor if necessary
 func (c *Controller) BroadcastConsensus(m *protos.Message) {
+	versioned := withProtocolVersion(m) // once for all the nodes
 	for _, node := range c.NodesList {
 		// Do not send to yourself
 		if c.ID == node {
 			continue
 		}
-		c.Comm.SendConsensus(node, m)
+		c.Comm.SendConsensus(node, versioned)
 	}
 
 	if m.GetPrePrepare() != nil || m.GetPrepare() != nil || m.GetCommit() != nil {
@@ -935,6 +1088,12 @@ func (c *Controller) BroadcastConsensus(m *protos.Message) {
 			c.LeaderMonitor.HeartbeatWasSent()
 		}
 	}
+}
+
+// withProtocolVersion returns the message with this node's protocol version.
+// Only the envelope is new, the content is shared with the given message, which is not modified.
+func withProtocolVersion(m *protos.Message) *protos.Message {
+	return &protos.Message{Content: m.GetContent(), Version: types.ProtocolVersion}
 }
 
 type MutuallyExclusiveDeliver struct {
@@ -954,9 +1113,9 @@ func (med *MutuallyExclusiveDeliver) Deliver(proposal types.Proposal, signature 
 	// do not proceed to commit the proposal, but instead invoke a sync and update the checkpoint once more
 	// to match the sync result.
 	latest := med.C.latestSeq()
-	if latest != 0 && latest >= pendingProposalMetadata.LatestSequence {
+	if latest != 0 && latest >= pendingProposalMetadata.GetLatestSequence() {
 		med.C.Logger.Infof("Attempted to deliver block %d via view change but meanwhile view change already synced to seq %d, "+
-			"returning result from sync", pendingProposalMetadata.LatestSequence, latest)
+			"returning result from sync", pendingProposalMetadata.GetLatestSequence(), latest)
 		syncResult := med.C.Synchronizer.Sync()
 		med.C.Checkpoint.Set(syncResult.Latest.Proposal, syncResult.Latest.Signatures)
 		return types.Reconfig{

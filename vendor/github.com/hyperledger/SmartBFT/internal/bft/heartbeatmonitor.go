@@ -20,8 +20,6 @@ const (
 	Follower Role = true
 )
 
-//go:generate mockery -dir . -name HeartbeatEventHandler -case underscore -output ./mocks/
-
 // HeartbeatEventHandler defines who to call when a heartbeat timeout expires or a Sync needs to be triggered.
 // This is implemented by the Controller.
 type HeartbeatEventHandler interface {
@@ -214,8 +212,8 @@ func (hm *HeartbeatMonitor) handleArtificialHeartBeat(sender uint64, hb *smartbf
 }
 
 func (hm *HeartbeatMonitor) handleHeartBeat(sender uint64, hb *smartbftprotos.HeartBeat, artificial bool) {
-	if hb.View < hm.view {
-		hm.logger.Debugf("Heartbeat view is lower than expected, sending response; expected-view=%d, received-view: %d", hm.view, hb.View)
+	if hb.GetView() < hm.view {
+		hm.logger.Debugf("Heartbeat view is lower than expected, sending response; expected-view=%d, received-view: %d", hm.view, hb.GetView())
 		hm.sendHeartBeatResponse(sender)
 		return
 	}
@@ -225,22 +223,22 @@ func (hm *HeartbeatMonitor) handleHeartBeat(sender uint64, hb *smartbftprotos.He
 		return
 	}
 
-	if hb.View > hm.view {
-		hm.logger.Debugf("Heartbeat view is bigger than expected, syncing and ignoring; expected-view=%d, received-view: %d", hm.view, hb.View)
+	if hb.GetView() > hm.view {
+		hm.logger.Debugf("Heartbeat view is bigger than expected, syncing and ignoring; expected-view=%d, received-view: %d", hm.view, hb.GetView())
 		hm.handler.Sync()
 		return
 	}
 
 	active, ourSeq := hm.viewActive(hb)
 	if active && !artificial {
-		if ourSeq+1 < hb.Seq {
-			hm.logger.Debugf("Heartbeat sequence is bigger than expected, leader's sequence is %d and ours is %d, syncing and ignoring", hb.Seq, ourSeq)
+		if ourSeq+1 < hb.GetSeq() {
+			hm.logger.Debugf("Heartbeat sequence is bigger than expected, leader's sequence is %d and ours is %d, syncing and ignoring", hb.GetSeq(), ourSeq)
 			hm.handler.Sync()
 			return
 		}
-		if ourSeq+1 == hb.Seq {
+		if ourSeq+1 == hb.GetSeq() {
 			hm.followerBehind = true
-			hm.logger.Debugf("Our sequence is behind the heartbeat sequence, leader's sequence is %d and ours is %d", hb.Seq, ourSeq)
+			hm.logger.Debugf("Our sequence is behind the heartbeat sequence, leader's sequence is %d and ours is %d", hb.GetSeq(), ourSeq)
 			if ourSeq > hm.behindSeq {
 				hm.behindSeq = ourSeq
 				hm.behindCounter = 0
@@ -268,18 +266,18 @@ func (hm *HeartbeatMonitor) handleHeartBeatResponse(sender uint64, hbr *smartbft
 		return
 	}
 
-	if hm.view >= hbr.View {
+	if hm.view >= hbr.GetView() {
 		hm.logger.Debugf("Monitor view: %d >= HeartBeatResponse, ignoring; sender: %d, msg: %v", hm.view, sender, hbr)
 		return
 	}
 
 	hm.logger.Debugf("Received HeartBeatResponse, msg: %v; from %d", hbr, sender)
-	hm.hbRespCollector[sender] = hbr.View
+	hm.hbRespCollector[sender] = hbr.GetView()
 
 	// check if we have f+1 votes
 	_, f := computeQuorum(hm.numberOfNodes)
 	if len(hm.hbRespCollector) >= f+1 {
-		hm.logger.Infof("Received HeartBeatResponse triggered a call to HeartBeatEventHandler Sync, view: %d", hbr.View)
+		hm.logger.Infof("Received HeartBeatResponse triggered a call to HeartBeatEventHandler Sync, view: %d", hbr.GetView())
 		hm.handler.Sync()
 		hm.syncReq = true
 	}
@@ -297,7 +295,7 @@ func (hm *HeartbeatMonitor) sendHeartBeatResponse(target uint64) {
 	hm.logger.Debugf("Sent HeartBeatResponse view: %d; to %d", hm.view, target)
 }
 
-func (hm *HeartbeatMonitor) viewActive(hbMsg *smartbftprotos.HeartBeat) (bool, uint64) {
+func (hm *HeartbeatMonitor) viewActive(_ *smartbftprotos.HeartBeat) (bool, uint64) {
 	vs := hm.viewSequences.Load()
 	// View isn't initialized
 	if vs == nil {

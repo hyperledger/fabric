@@ -56,7 +56,7 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 	for response == nil {
 		gs.logger.Debugw("Sending to peer:", "channel", channel, "chaincode", chaincodeID, "txID", request.GetTransactionId(), "MSPID", endorser.mspid, "endpoint", endorser.address)
 
-		done := make(chan error)
+		done := make(chan error, 1) // buffered so the goroutine can exit if the caller has already returned on timeout
 		go func() {
 			defer close(done)
 			ctx, cancel := context.WithTimeout(ctx, gs.options.EndorsementTimeout)

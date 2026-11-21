@@ -35,4 +35,9 @@ type StateBasedValidator interface {
 	// PostValidate sets the internal data structures of the validator needed after the validation
 	// code was determined for a transaction on the specified channel at the specified height
 	PostValidate(cc string, blockNum, txNum uint64, err error)
+
+	// SignalInvalidTx sets the internal data structures of the validator for a transaction
+	// that was rejected before or during plugin dispatch, so that no validation
+	// code for it is ever determined by PostValidate
+	SignalInvalidTx(blockNum, txNum uint64, err error)
 }

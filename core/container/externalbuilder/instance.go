@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilder
 
 import (
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	errors2 "errors"
 	"os"
@@ -37,21 +38,25 @@ type Instance struct {
 // Duration used for the DialTimeout property
 type Duration time.Duration
 
-func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Duration(d).String())
+func (d Duration) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return enc.WriteToken(jsontext.String(time.Duration(d).String()))
 }
 
-func (d *Duration) UnmarshalJSON(b []byte) error {
-	var v any
-	if err := json.Unmarshal(b, &v); err != nil {
+func (d *Duration) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	tok, err := dec.ReadToken()
+	if err != nil {
 		return err
 	}
 
-	switch value := v.(type) {
-	case float64:
+	switch tok.Kind() {
+	case jsontext.KindNumber:
+		value, err := tok.Float()
+		if err != nil {
+			return err
+		}
 		*d = Duration(time.Duration(value))
-	case string:
-		dur, err := time.ParseDuration(value)
+	case jsontext.KindString:
+		dur, err := time.ParseDuration(tok.String())
 		if err != nil {
 			return err
 		}

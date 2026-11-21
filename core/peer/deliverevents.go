@@ -391,12 +391,12 @@ func (ta transactionActions) toFilteredActions() (*peer.FilteredTransaction_Tran
 }
 
 func dumpStacktraceOnPanic() {
-	func() {
-		if r := recover(); r != nil {
-			logger.Criticalf("Deliver client triggered panic: %s\n%s", r, debug.Stack())
-		}
-		logger.Debugf("Closing Deliver stream")
-	}()
+	// recover must be called directly by the deferred function; nesting it in
+	// a closure returns nil and lets the panic crash the process.
+	if r := recover(); r != nil {
+		logger.Criticalf("Deliver client triggered panic: %s\n%s", r, debug.Stack())
+	}
+	logger.Debugf("Closing Deliver stream")
 }
 
 type seqAndDataModel struct {
