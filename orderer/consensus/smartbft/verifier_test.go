@@ -494,6 +494,93 @@ func TestVerifyConsenterSigSubstitutedPayload(t *testing.T) {
 	require.Contains(t, err.Error(), "data hash")
 }
 
+func TestVerifyConsenterSigDataHashComputedOncePerProposal(t *testing.T) {
+	logger := flogging.MustGetLogger("test")
+
+	lastBlock := makeNonConfigBlock(19, 10)
+	lastConfigBlock := makeConfigBlock(10)
+
+	ledger := &mocks.Ledger{}
+	ledger.On("Height").Return(uint64(20))
+	ledger.On("Block", uint64(19)).Return(lastBlock)
+	ledger.On("Block", uint64(10)).Return(lastConfigBlock)
+
+	sequencer := &mocks.Sequencer{}
+	sequencer.On("Sequence").Return(uint64(12))
+
+	ac := &mocks.AccessController{}
+	ac.On("Evaluate", mock.Anything).Return(nil)
+
+	cv := &mocks.ConsenterVerifier{}
+	cv.On("Evaluate", mock.Anything).Return(nil)
+
+	reqInspector := &smartbft.RequestInspector{
+		ValidateIdentityStructure: func(_ *msp.SerializedIdentity) error {
+			return nil
+		},
+		Logger: logger,
+	}
+
+	rtc := smartbft.RuntimeConfig{
+		ID2Identities:          map[uint64][]byte{3: {0, 2, 4, 6}, 4: {0, 2, 4, 8}, 5: {0, 2, 4, 10}},
+		LastBlock:              lastBlock,
+		LastConfigBlock:        lastConfigBlock,
+		LastCommittedBlockHash: hex.EncodeToString(protoutil.BlockHeaderHash(lastBlock.GetHeader())),
+	}
+	runtimeConfig := &atomic.Value{}
+	runtimeConfig.Store(rtc)
+
+	var dataHashComputations atomic.Int32
+	v := &smartbft.Verifier{
+		RuntimeConfig:         runtimeConfig,
+		Logger:                logger,
+		Ledger:                ledger,
+		VerificationSequencer: sequencer,
+		AccessController:      ac,
+		ConsenterVerifier:     cv,
+		ReqInspector:          reqInspector,
+		BlockDataHash: func(blockData *cb.BlockData) ([]byte, error) {
+			dataHashComputations.Add(1)
+			return protoutil.BlockDataHash(blockData)
+		},
+	}
+
+	assembler := &smartbft.Assembler{
+		VerificationSeq: func() uint64 { return 12 },
+		Logger:          logger,
+		RuntimeConfig:   runtimeConfig,
+	}
+
+	md := protoutil.MarshalOrPanic(&smartbftprotos.ViewMetadata{LatestSequence: 20, ViewId: 2})
+	proposal := assembler.AssembleProposal(md, [][]byte{nonConfigTx})
+
+	// A quorum of consenters signs the same proposal, as in a commit certificate.
+	signatures := make([]types.Signature, 0, 3)
+	for _, id := range []uint64{3, 4, 5} {
+		ss := &mocks.SignerSerializer{}
+		ss.On("Sign", mock.Anything).Return([]byte{1, 2, 3}, nil)
+		ss.On("Serialize", mock.Anything).Return([]byte{0, 2, 4, byte(2 * id)}, nil)
+
+		s := &smartbft.Signer{
+			LastConfigBlockNum: func(_ *cb.Block) uint64 {
+				return lastConfigBlock.GetHeader().GetNumber()
+			},
+			SignerSerializer: ss,
+			Logger:           logger,
+			ID:               id,
+		}
+		signatures = append(signatures, *s.SignProposal(proposal, nil))
+	}
+
+	for _, signature := range signatures {
+		_, err := v.VerifyConsenterSig(signature, proposal)
+		require.NoError(t, err)
+	}
+
+	require.Equal(t, int32(1), dataHashComputations.Load(),
+		"block data hash must be computed once per proposal, not once per consenter signature")
+}
+
 func TestVerifyProposal(t *testing.T) {
 	logger := flogging.MustGetLogger("test")
 	lastBlock := makeNonConfigBlock(19, 10)

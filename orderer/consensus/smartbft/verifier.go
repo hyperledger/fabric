@@ -83,6 +83,13 @@ type Verifier struct {
 	Ledger                Ledger
 	Logger                *flogging.FabricLogger
 	ConfigValidator       ConfigValidator
+	// BlockDataHash hashes the block data; if nil, protoutil.BlockDataHash is used.
+	BlockDataHash func(blockData *cb.BlockData) ([]byte, error)
+
+	dataHashLock        sync.Mutex
+	lastDataHashPayload []byte
+	lastDataHash        []byte
+	lastDataHashErr     error
 }
 
 // AuxiliaryData unmarshals and returns auxiliary data from signature
@@ -256,6 +263,33 @@ func verifyDataHash(block *cb.Block) error {
 	if err != nil {
 		return err
 	}
+	return checkDataHash(block, dataHash)
+}
+
+// verifyConsenterDataHash is verifyDataHash memoized on the proposal payload, since
+// VerifyConsenterSig runs once per consenter signature over the same proposal.
+func (v *Verifier) verifyConsenterDataHash(block *cb.Block, payload []byte) error {
+	v.dataHashLock.Lock()
+	defer v.dataHashLock.Unlock()
+
+	if !bytes.Equal(v.lastDataHashPayload, payload) {
+		v.lastDataHash, v.lastDataHashErr = v.blockDataHash(block.GetData())
+		v.lastDataHashPayload = payload
+	}
+	if v.lastDataHashErr != nil {
+		return v.lastDataHashErr
+	}
+	return checkDataHash(block, v.lastDataHash)
+}
+
+func (v *Verifier) blockDataHash(blockData *cb.BlockData) ([]byte, error) {
+	if v.BlockDataHash != nil {
+		return v.BlockDataHash(blockData)
+	}
+	return protoutil.BlockDataHash(blockData)
+}
+
+func checkDataHash(block *cb.Block, dataHash []byte) error {
 	dataHashString := hex.EncodeToString(block.GetHeader().GetDataHash())
 
 	actualHashOfData := hex.EncodeToString(dataHash)
@@ -422,7 +456,7 @@ func (v *Verifier) verifySignatureIsBoundToProposal(sig *Signature, identityID u
 	}
 
 	// The signature only binds to the header, so the payload must match the header's data hash.
-	if err := verifyDataHash(block); err != nil {
+	if err := v.verifyConsenterDataHash(block, prop.Payload); err != nil {
 		return err
 	}
 
