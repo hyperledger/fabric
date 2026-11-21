@@ -16,6 +16,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/deliver"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
@@ -97,7 +98,7 @@ func NewServer(
 			Metrics:          broadcast.NewMetrics(metricsProvider),
 		},
 		debug:          debug,
-		deliverLimiter: newDeliverConcurrencyLimiter(limits.DeliverService, limits.ClusterReplication, metricsProvider),
+		deliverLimiter: newDeliverConcurrencyLimiter(limits.DeliverService, limits.DeliverHeaderService, limits.ClusterReplication, metricsProvider),
 		Registrar:      r,
 	}
 	return s
@@ -191,19 +192,28 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		logger.Debugf("Closing Deliver stream")
 	}()
 
-	session := newDeliverSession(s.deliverLimiter)
+	return s.dh.Handle(srv.Context(), newDeliverServer(srv, s.chainSupport, s.deliverLimiter, s.debug))
+}
 
-	policyChecker := newDeliverPolicyChecker(func(channelID string) msgprocessor.SigFilterSupport {
-		if chain := s.GetChain(channelID); chain != nil {
-			return chain
-		}
-		return nil
-	}, session)
-	deliverServer := &deliver.Server{
-		PolicyChecker: policyChecker,
+// chainSupport adapts the registrar to the signature the deliver policy
+// checker expects, translating a missing channel to a nil interface.
+func (s *server) chainSupport(channelID string) msgprocessor.SigFilterSupport {
+	if chain := s.GetChain(channelID); chain != nil {
+		return chain
+	}
+	return nil
+}
+
+// newDeliverServer builds the deliver server for a stream: the policy
+// checker classifies each seek request into a concurrency budget and the
+// session limiter admits it after authentication.
+func newDeliverServer(srv ab.AtomicBroadcast_DeliverServer, getChain func(string) msgprocessor.SigFilterSupport, limiter *deliverConcurrencyLimiter, dbg *localconfig.Debug) *deliver.Server {
+	session := newDeliverSession(limiter)
+	return &deliver.Server{
+		PolicyChecker: newDeliverPolicyChecker(getChain, util.ExtractCertificateFromContext(srv.Context()), session),
 		Receiver: &deliverMsgTracer{
 			Receiver: srv,
-			debug:    s.debug,
+			debug:    dbg,
 			function: "Deliver",
 		},
 		ResponseSender: &responseSender{
@@ -211,5 +221,4 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		},
 		SessionLimiter: session,
 	}
-	return s.dh.Handle(srv.Context(), deliverServer)
 }

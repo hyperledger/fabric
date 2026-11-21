@@ -194,12 +194,17 @@ type Limits struct {
 // Concurrency defines concurrency limits for services exposed by the orderer.
 // A zero value for a service is replaced by its default limit.
 type Concurrency struct {
-	// DeliverService limits the number of concurrent deliver streams.
-	// A value of -1 disables the limit.
+	// DeliverService limits the number of concurrent deliver streams
+	// serving full blocks. A value of -1 disables the limit.
 	DeliverService int
+	// DeliverHeaderService limits the number of concurrent deliver streams
+	// serving only block headers (SeekInfo HEADER_WITH_SIG, used by the
+	// BFT censorship monitor). A value of -1 disables the limit.
+	DeliverHeaderService int
 	// ClusterReplication limits the number of concurrent deliver streams
 	// used by orderer-to-orderer block replication, identified by the
-	// /Channel/Orderer/Readers policy. A value of -1 disables the limit.
+	// /Channel/Orderer/Readers policy and the consenter client TLS
+	// certificate. A value of -1 disables the limit.
 	ClusterReplication int
 }
 
@@ -244,8 +249,9 @@ var Defaults = TopLevel{
 		},
 		Limits: Limits{
 			Concurrency: Concurrency{
-				DeliverService:     80,
-				ClusterReplication: 20,
+				DeliverService:       80,
+				DeliverHeaderService: 500,
+				ClusterReplication:   -1,
 			},
 		},
 	},
@@ -421,6 +427,11 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.Limits.Concurrency.DeliverService == 0:
 			logger.Infof("General.Limits.Concurrency.DeliverService is unset, setting to %v", Defaults.General.Limits.Concurrency.DeliverService)
 			c.General.Limits.Concurrency.DeliverService = Defaults.General.Limits.Concurrency.DeliverService
+		case c.General.Limits.Concurrency.DeliverHeaderService < -1:
+			logger.Panicf("General.Limits.Concurrency.DeliverHeaderService must be -1 (unlimited), 0 (default), or a positive integer, got %d", c.General.Limits.Concurrency.DeliverHeaderService)
+		case c.General.Limits.Concurrency.DeliverHeaderService == 0:
+			logger.Infof("General.Limits.Concurrency.DeliverHeaderService is unset, setting to %v", Defaults.General.Limits.Concurrency.DeliverHeaderService)
+			c.General.Limits.Concurrency.DeliverHeaderService = Defaults.General.Limits.Concurrency.DeliverHeaderService
 		case c.General.Limits.Concurrency.ClusterReplication < -1:
 			logger.Panicf("General.Limits.Concurrency.ClusterReplication must be -1 (unlimited), 0 (default), or a positive integer, got %d", c.General.Limits.Concurrency.ClusterReplication)
 		case c.General.Limits.Concurrency.ClusterReplication == 0:
