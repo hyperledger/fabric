@@ -552,8 +552,8 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
 		grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
 	}
-	if semaphores := initGrpcSemaphores(conf); len(semaphores) != 0 {
-		streamInterceptors = append(streamInterceptors, streamGrpcLimiter(semaphores))
+	if limiter := initBroadcastConcurrencyLimiter(conf); limiter != nil {
+		streamInterceptors = append(streamInterceptors, limiter.interceptor())
 	}
 
 	if b := conf.General.Limits.Concurrency.BroadcastService; uint64(conf.General.MaxConcurrentStreams) < uint64(b) {

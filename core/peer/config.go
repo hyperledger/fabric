@@ -454,7 +454,10 @@ func GetServerConfig() (comm.ServerConfig, error) {
 		serverConfig.MaxSendMsgSize = int(viper.GetInt32("peer.maxSendMsgSize"))
 	}
 	if viper.IsSet("peer.maxConcurrentStreams") {
-		serverConfig.MaxConcurrentStreams = viper.GetUint32("peer.maxConcurrentStreams")
+		// 0 selects the default, matching comm.NewGRPCServerFromListener
+		if v := viper.GetUint32("peer.maxConcurrentStreams"); v != 0 {
+			serverConfig.MaxConcurrentStreams = v
+		}
 	}
 	return serverConfig, nil
 }

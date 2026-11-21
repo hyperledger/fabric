@@ -165,6 +165,9 @@ func TestGetServerConfig(t *testing.T) {
 	viper.Set("peer.maxConcurrentStreams", 500)
 	sc, _ = GetServerConfig()
 	require.Equal(t, uint32(500), sc.MaxConcurrentStreams, "ServerConfig.MaxConcurrentStreams should be set to custom value 500")
+	viper.Set("peer.maxConcurrentStreams", 0)
+	sc, _ = GetServerConfig()
+	require.Equal(t, comm.DefaultMaxConcurrentStreams, sc.MaxConcurrentStreams, "explicit 0 should select the default so startup budget checks compare the effective cap")
 
 	// bad config with TLS
 	viper.Set("peer.tls.rootcert.file", "non-existent-file.pem")
