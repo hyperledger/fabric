@@ -114,11 +114,16 @@ func (b *RWSetBuilder) AddRangeQueryKeys(startKey, endKey string) error {
 	return b.accountSize(rangeQueryEntryOverhead+int64(len(startKey)+len(endKey)), 0)
 }
 
-// AddRangeQueryResult meters one read accumulated by a range query iterator;
-// results are retained (and serialized for hashing) until the query is added
-// to the read-write set, so the reads are not metered again in AddToRangeQuerySet
-func (b *RWSetBuilder) AddRangeQueryResult(key string) error {
+// chargeRangeQueryResult meters one read retained by a range query results
+// helper; the charge is released via creditBytes when the helper compacts the
+// results into the merkle summary
+func (b *RWSetBuilder) chargeRangeQueryResult(key string) error {
 	return b.accountSize(rangeQueryReadOverhead+int64(len(key)), 0)
+}
+
+// creditBytes releases metered bytes that are no longer retained
+func (b *RWSetBuilder) creditBytes(credited int64) error {
+	return b.accountSize(0, credited)
 }
 
 // AccountMetadata meters state metadata that the transaction manager retains
@@ -154,15 +159,13 @@ func (b *RWSetBuilder) accountSize(newBytes, oldBytes int64) error {
 
 // AddToReadSet adds a key and corresponding version to the read-set
 func (b *RWSetBuilder) AddToReadSet(ns string, key string, version *version.Height) error {
-	var existing *nsPubRwBuilder
-	if nsPubRwBuilder, ok := b.pubRwBuilderMap[ns]; ok {
-		existing = nsPubRwBuilder
+	var charge int64
+	if existing, ok := b.pubRwBuilderMap[ns]; !ok || existing.readMap[key] == nil {
+		// a re-read of an already tracked key only replaces the version
+		charge = readEntryOverhead + int64(len(key))
 	}
-	// a re-read of an already tracked key only replaces the version
-	if existing == nil || existing.readMap[key] == nil {
-		if err := b.accountSize(readEntryOverhead+int64(len(key)), 0); err != nil {
-			return err
-		}
+	if err := b.accountSize(charge, 0); err != nil {
+		return err
 	}
 	b.getOrCreateNsPubRwBuilder(ns).readMap[key] = NewKVRead(key, version)
 	return nil
@@ -207,13 +210,15 @@ func (b *RWSetBuilder) AddToRangeQuerySet(ns string, rqi *kvrwset.RangeQueryInfo
 	if nsPubRwBuilder, ok := b.pubRwBuilderMap[ns]; ok {
 		existing = nsPubRwBuilder
 	}
+	var charge int64
 	if existing == nil || existing.rangeQueriesMap[key] == nil {
 		// the bounds and raw reads were metered at iterator creation and per
 		// result; only a merkle summary (query results above the hashing
 		// threshold) is first retained here
-		if err := b.accountSize(int64(proto.Size(rqi.GetReadsMerkleHashes())), 0); err != nil {
-			return err
-		}
+		charge = int64(proto.Size(rqi.GetReadsMerkleHashes()))
+	}
+	if err := b.accountSize(charge, 0); err != nil {
+		return err
 	}
 	nsPubRwBuilder := b.getOrCreateNsPubRwBuilder(ns)
 	if _, ok := nsPubRwBuilder.rangeQueriesMap[key]; !ok {
@@ -226,15 +231,17 @@ func (b *RWSetBuilder) AddToRangeQuerySet(ns string, rqi *kvrwset.RangeQueryInfo
 // AddToHashedReadSet adds a key and corresponding version to the hashed read-set
 func (b *RWSetBuilder) AddToHashedReadSet(ns string, coll string, key string, version *version.Height) error {
 	kvReadHash := newPvtKVReadHash(key, version)
+	var charge int64
 	var existing *collHashRwBuilder
 	if nsPubRwBuilder, ok := b.pubRwBuilderMap[ns]; ok {
 		existing = nsPubRwBuilder.collHashRwBuilder[coll]
 	}
 	if existing == nil || existing.readMap[key] == nil {
 		// the read map is keyed by the original key, so the key is retained too
-		if err := b.accountSize(readEntryOverhead+int64(len(key)+len(kvReadHash.GetKeyHash())), 0); err != nil {
-			return err
-		}
+		charge = readEntryOverhead + int64(len(key)+len(kvReadHash.GetKeyHash()))
+	}
+	if err := b.accountSize(charge, 0); err != nil {
+		return err
 	}
 	b.getOrCreateCollHashedRwBuilder(ns, coll).readMap[key] = kvReadHash
 	return nil

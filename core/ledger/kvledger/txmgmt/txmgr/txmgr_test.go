@@ -1828,6 +1828,24 @@ func TestTxSimulatorRWSetSizeLimit(t *testing.T) {
 		_, err = s.GetTxSimulationResults()
 		require.ErrorContains(t, err, "exceeds the maximum allowed size")
 	})
+
+	t.Run("re-reading a tracked key does not bypass a recorded breach", func(t *testing.T) {
+		s, err := env.getTxMgr().NewTxSimulator("test_txid_poison_reread")
+		require.NoError(t, err)
+		// track the key in the read set, then breach via writes
+		_, err = s.GetState("ns1", "key1")
+		require.NoError(t, err)
+		require.NoError(t, s.SetState("ns1", "key1", make([]byte, 400)))
+		require.ErrorContains(
+			t,
+			s.SetState("ns1", "key2", make([]byte, 700)),
+			"exceeds the maximum allowed size",
+		)
+		_, err = s.GetState("ns1", "key1")
+		require.ErrorContains(t, err, "exceeds the maximum allowed size")
+		_, err = s.GetTxSimulationResults()
+		require.ErrorContains(t, err, "exceeds the maximum allowed size")
+	})
 }
 
 func TestTxSimulatorRWSetSizeLimitCoversStateMetadata(t *testing.T) {

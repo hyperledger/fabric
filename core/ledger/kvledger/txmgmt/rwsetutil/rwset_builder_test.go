@@ -564,31 +564,69 @@ func TestRWSetSizeLimit(t *testing.T) {
 		require.Empty(t, b4.pubRwBuilderMap)
 	})
 
-	t.Run("range query bounds and results are metered incrementally", func(t *testing.T) {
-		// the bounds are charged at iterator creation, before any result, so
+	t.Run("range query bounds are metered at iterator creation", func(t *testing.T) {
+		// the bounds are charged when the iterator is created, before any result, so
 		// large bounds held by an open iterator are covered
 		b := NewRWSetBuilderWithMaxRWSetSize(4096)
 		require.Error(t, b.AddRangeQueryKeys(strings.Repeat("s", 3000), strings.Repeat("e", 3000)))
 		require.Empty(t, b.pubRwBuilderMap)
+	})
 
-		// each accumulated result is overhead(128) + key(4) = 132 bytes
-		b2 := NewRWSetBuilderWithMaxRWSetSize(512)
-		require.NoError(t, b2.AddRangeQueryResult("key1"))
-		require.NoError(t, b2.AddRangeQueryResult("key2"))
-		require.NoError(t, b2.AddRangeQueryResult("key3"))
-		require.Error(t, b2.AddRangeQueryResult("key4"))
+	t.Run("compacted range query results release their charge", func(t *testing.T) {
+		// a scan whose results exceed the budget in sum fits in peak: only one
+		// maxDegree batch is retained at a time
+		b := NewRWSetBuilderWithMaxRWSetSize(8192)
+		helper, err := NewRangeQueryResultsHelperWithAccounting(true, 50, testHashFunc, b)
+		require.NoError(t, err)
+		require.NoError(t, b.AddRangeQueryKeys("a", "z")) // 514 bytes
+		// 500 results of overhead(128) + key(6) sum to 67k bytes, far over budget
+		for i := range 500 {
+			require.NoError(t, helper.AddResult(NewKVRead(fmt.Sprintf("key%03d", i), version.NewHeight(1, 2))))
+		}
+		// only the leftover batch of 41 results is still retained and charged
+		require.Equal(t, int64(514+41*(128+6)), b.rwSetBytes)
+		results, summary, err := helper.Done()
+		require.NoError(t, err)
+		require.Nil(t, results)
+		require.NotNil(t, summary)
+		// the final batch is released once compacted into the summary
+		require.Equal(t, int64(514), b.rwSetBytes)
 
-		// only the merkle summary of a large result set is charged when the
-		// finalized query info is added; a duplicate is not charged again
-		b3 := NewRWSetBuilderWithMaxRWSetSize(256)
+		// a scan whose single retained batch exceeds the budget breaches mid-scan
+		b2 := NewRWSetBuilderWithMaxRWSetSize(1024)
+		helper2, err := NewRangeQueryResultsHelperWithAccounting(true, 50, testHashFunc, b2)
+		require.NoError(t, err)
+		require.NoError(t, b2.AddRangeQueryKeys("a", "z"))
+		for i := range 3 {
+			require.NoError(t, helper2.AddResult(NewKVRead(fmt.Sprintf("key%d", i), version.NewHeight(1, 2))))
+		}
+		require.Error(t, helper2.AddResult(NewKVRead("key9", version.NewHeight(1, 2))))
+
+		// results kept as raw reads stay charged
+		b3 := NewRWSetBuilderWithMaxRWSetSize(4096)
+		helper3, err := NewRangeQueryResultsHelperWithAccounting(true, 50, testHashFunc, b3)
+		require.NoError(t, err)
+		require.NoError(t, b3.AddRangeQueryKeys("a", "z"))
+		for i := range 10 {
+			require.NoError(t, helper3.AddResult(NewKVRead(fmt.Sprintf("key%d", i), version.NewHeight(1, 2))))
+		}
+		results3, summary3, err := helper3.Done()
+		require.NoError(t, err)
+		require.Len(t, results3, 10)
+		require.Nil(t, summary3)
+		require.Equal(t, int64(514+10*(128+4)), b3.rwSetBytes)
+	})
+
+	t.Run("only the merkle summary is charged when the finalized query info is added", func(t *testing.T) {
 		summary := &kvrwset.QueryReadsMerkleSummary{MaxDegree: 1, MaxLevel: 1, MaxLevelHashes: [][]byte{make([]byte, 128)}}
 		rqi := &kvrwset.RangeQueryInfo{StartKey: "a", EndKey: "z", ItrExhausted: true}
 		SetMerkelSummary(rqi, summary)
-		require.NoError(t, b3.AddToRangeQuerySet("ns1", rqi))
-		require.NoError(t, b3.AddToRangeQuerySet("ns1", rqi))
-		b4 := NewRWSetBuilderWithMaxRWSetSize(64)
-		require.Error(t, b4.AddToRangeQuerySet("ns1", rqi))
-		require.Empty(t, b4.pubRwBuilderMap)
+		b := NewRWSetBuilderWithMaxRWSetSize(256)
+		require.NoError(t, b.AddToRangeQuerySet("ns1", rqi))
+		require.NoError(t, b.AddToRangeQuerySet("ns1", rqi))
+		b2 := NewRWSetBuilderWithMaxRWSetSize(64)
+		require.Error(t, b2.AddToRangeQuerySet("ns1", rqi))
+		require.Empty(t, b2.pubRwBuilderMap)
 	})
 
 	t.Run("a rejected first addition leaves no builders behind", func(t *testing.T) {
@@ -625,6 +663,21 @@ func TestRWSetSizeLimit(t *testing.T) {
 		require.Error(t, b.AddToHashedMetadataWriteSet("ns1", "coll1", "key1", map[string][]byte{"m": {}}))
 		require.Empty(t, b.pubRwBuilderMap)
 		require.Empty(t, b.pvtRwBuilderMap)
+	})
+
+	t.Run("every addition path enforces a recorded breach", func(t *testing.T) {
+		// read(388) + hashed read(420) + range query(0) = 808 bytes
+		b := NewRWSetBuilderWithMaxRWSetSize(808)
+		require.NoError(t, b.AddToReadSet("ns1", "key1", version.NewHeight(1, 1)))
+		require.NoError(t, b.AddToHashedReadSet("ns1", "coll1", "key1", version.NewHeight(1, 1)))
+		rqi := &kvrwset.RangeQueryInfo{StartKey: "a", EndKey: "z", ItrExhausted: true}
+		require.NoError(t, b.AddToRangeQuerySet("ns1", rqi))
+		err := b.AddToReadSet("ns1", "key3", version.NewHeight(1, 1)) // breach
+		require.Error(t, err)
+		// re-adding already tracked entries must not bypass the recorded breach
+		require.Equal(t, err, b.AddToReadSet("ns1", "key1", version.NewHeight(1, 1)))
+		require.Equal(t, err, b.AddToHashedReadSet("ns1", "coll1", "key1", version.NewHeight(1, 1)))
+		require.Equal(t, err, b.AddToRangeQuerySet("ns1", rqi))
 	})
 
 	t.Run("tiny keys with empty values are bounded by the per-entry overhead", func(t *testing.T) {

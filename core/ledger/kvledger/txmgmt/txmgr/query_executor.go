@@ -438,7 +438,7 @@ func newResultsItr(ns string, startKey string, endKey string, pageSize int32,
 			dbItr.Close()
 			return nil, err
 		}
-		resultsHelper, err := rwsetutil.NewRangeQueryResultsHelper(enableHashing, maxDegree, hashFunc)
+		resultsHelper, err := rwsetutil.NewRangeQueryResultsHelperWithAccounting(enableHashing, maxDegree, hashFunc, rwsetBuilder)
 		if err != nil {
 			dbItr.Close()
 			return nil, err
@@ -501,9 +501,7 @@ func (itr *resultsItr) updateRangeQueryInfo(queryResult *statedb.VersionedKV) er
 		return nil
 	}
 
-	if err := itr.rwSetBuilder.AddRangeQueryResult(queryResult.Key); err != nil {
-		return err
-	}
+	// the helper meters the retained results and releases the charge on compaction
 	if err := itr.rangeQueryResultsHelper.AddResult(rwsetutil.NewKVRead(queryResult.Key, queryResult.Version)); err != nil {
 		return err
 	}

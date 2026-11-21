@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package node
 
 import (
+	"math"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -127,6 +128,11 @@ func parseMaxRWSetSize(value any, defaultValue int64) int64 {
 	case int64:
 		parsed = v
 	case float64:
+		if v != math.Trunc(v) || v >= float64(math.MaxInt64) {
+			// a truncated fractional value could silently disable the limit
+			logger.Warningf("Invalid ledger.state.maxRWSetSize value %v, using default %d bytes", value, defaultValue)
+			return defaultValue
+		}
 		parsed = int64(v)
 	case string:
 		var err error
