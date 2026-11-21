@@ -726,7 +726,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 	// Get the media type from the Content-Type header
 	mediaType, params, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 	if err != nil {
-		return nil, "", errors.Wrap(err, "error parsing response Content-Type")
+		return nil, "", errors.Wrapf(err, "error parsing response Content-Type %q", resp.Header.Get("Content-Type"))
 	}
 
 	// Get the revision from header

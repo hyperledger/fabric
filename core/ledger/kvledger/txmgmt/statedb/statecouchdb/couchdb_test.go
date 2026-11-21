@@ -212,7 +212,7 @@ func TestReadDocInvalidContentType(t *testing.T) {
 	}
 
 	_, _, err := db.readDoc("1")
-	require.ErrorContains(t, err, "error parsing response Content-Type")
+	require.ErrorContains(t, err, `error parsing response Content-Type "application/"`)
 }
 
 func TestDBCreateSaveWithoutRevision(t *testing.T) {
