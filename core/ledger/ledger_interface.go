@@ -57,6 +57,19 @@ type Config struct {
 	HistoryDBConfig *HistoryDBConfig
 	// SnapshotsConfig holds the configuration parameters for the snapshots.
 	SnapshotsConfig *SnapshotsConfig
+	// MaxRWSetSize is the maximum total size in bytes of the keys and values
+	// (including private data) that a transaction simulation may accumulate in
+	// its read-write set before the simulation is rejected; a non-positive
+	// value disables the limit. The metered size combines the actual key,
+	// value, hash, and state-metadata bytes with fixed per-entry overheads
+	// for the runtime representation: 512 bytes per write, 384 per read,
+	// 512 per range query, and 128 per range query result while it is
+	// retained (released once results are hashed into the merkle summary).
+	// The per-transaction entry cap is the limit divided by the per-entry
+	// charge - e.g. MaxRWSetSize / (512 + len(key) + len(value)) for writes -
+	// so the 100MiB default allows at most ~200k writes or ~270k reads per
+	// transaction, and fewer as keys and values grow.
+	MaxRWSetSize int64
 }
 
 // StateDBConfig is a structure used to configure the state parameters for the ledger.

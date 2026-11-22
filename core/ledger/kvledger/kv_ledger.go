@@ -134,6 +134,7 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 		CCInfoProvider:      initializer.ccInfoProvider,
 		CustomTxProcessors:  initializer.customTxProcessors,
 		HashFunc:            rwsetHashFunc,
+		MaxRWSetSize:        initializer.config.MaxRWSetSize,
 	}
 	if err := l.initTxMgr(txmgrInitializer); err != nil {
 		return nil, err

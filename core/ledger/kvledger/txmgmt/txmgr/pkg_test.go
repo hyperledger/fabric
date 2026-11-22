@@ -77,6 +77,7 @@ type lockBasedEnv struct {
 	testDB             *privacyenabledstate.DB
 	testDBEnv          privacyenabledstate.TestEnv
 	txmgr              *LockBasedTxMgr
+	maxRWSetSize       int64
 }
 
 func (env *lockBasedEnv) getName() string {
@@ -108,6 +109,7 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtda
 		CCInfoProvider:      &mock.DeployedChaincodeInfoProvider{},
 		CustomTxProcessors:  nil,
 		HashFunc:            testHashFunc,
+		MaxRWSetSize:        env.maxRWSetSize,
 	}
 	env.txmgr, err = NewLockBasedTxMgr(txmgrInitializer)
 	require.NoError(t, err)

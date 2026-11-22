@@ -1564,3 +1564,30 @@ type bcSummary struct {
 	historyKey         string
 	historyVals        []string
 }
+
+// TestKVLedgerMaxRWSetSize verifies the MaxRWSetSize ledger config reaches the
+// transaction manager: simulations exceeding it are rejected end to end
+func TestKVLedgerMaxRWSetSize(t *testing.T) {
+	conf := testConfig(t)
+	conf.MaxRWSetSize = 2048
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+	defer provider.Close()
+
+	_, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+	lgr, err := provider.CreateFromGenesisBlock(gb)
+	require.NoError(t, err)
+	defer lgr.Close()
+
+	simulator, err := lgr.NewTxSimulator("test_txid")
+	require.NoError(t, err)
+	// a 512 byte per-entry overhead plus key and value: 916 bytes fit, adding
+	// a 2016 byte second write breaches the 2048 byte budget
+	require.NoError(t, simulator.SetState("ns1", "key1", make([]byte, 400)))
+	require.ErrorContains(
+		t,
+		simulator.SetState("ns1", "key2", make([]byte, 1500)),
+		"exceeds the maximum allowed size",
+	)
+	_, err = simulator.GetTxSimulationResults()
+	require.ErrorContains(t, err, "exceeds the maximum allowed size")
+}
