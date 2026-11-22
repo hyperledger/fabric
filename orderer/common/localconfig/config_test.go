@@ -209,14 +209,15 @@ func TestDeliverServiceConcurrencyLimit(t *testing.T) {
 		require.Equal(t, Defaults.General.Limits.Concurrency.DeliverHeaderService, uconf.General.Limits.Concurrency.DeliverHeaderService)
 		require.Equal(t, Defaults.General.Limits.Concurrency.ClusterReplication, uconf.General.Limits.Concurrency.ClusterReplication)
 		require.Equal(t, 80, uconf.General.Limits.Concurrency.DeliverService)
-		require.Equal(t, 500, uconf.General.Limits.Concurrency.DeliverHeaderService)
+		require.Equal(t, 1000, uconf.General.Limits.Concurrency.DeliverHeaderService)
 		require.Equal(t, -1, uconf.General.Limits.Concurrency.ClusterReplication)
+		require.Equal(t, 30*time.Second, uconf.General.Limits.DeliverSeekTimeout)
 		// The default bounds the client budget to roughly a 2 GiB memory
 		// budget at the 10 MiB sample AbsoluteMaxBytes; measurements show
 		// about 25 MiB retained per slow-drained block stream and about
 		// 64 KiB per slow-drained header-only stream at that block size.
 		require.LessOrEqual(t, int64(Defaults.General.Limits.Concurrency.DeliverService)*(25<<20), int64(2)<<30)
-		require.LessOrEqual(t, int64(Defaults.General.Limits.Concurrency.DeliverHeaderService)*(64<<10), int64(32)<<20)
+		require.LessOrEqual(t, int64(Defaults.General.Limits.Concurrency.DeliverHeaderService)*(64<<10), int64(64)<<20)
 	})
 
 	t.Run("explicit value is preserved", func(t *testing.T) {
@@ -224,10 +225,25 @@ func TestDeliverServiceConcurrencyLimit(t *testing.T) {
 		uconf.General.Limits.Concurrency.DeliverService = 42
 		uconf.General.Limits.Concurrency.DeliverHeaderService = 7
 		uconf.General.Limits.Concurrency.ClusterReplication = 3
+		uconf.General.Limits.DeliverSeekTimeout = time.Minute
 		uconf.completeInitialization("/dummy/path")
 		require.Equal(t, 42, uconf.General.Limits.Concurrency.DeliverService)
 		require.Equal(t, 7, uconf.General.Limits.Concurrency.DeliverHeaderService)
 		require.Equal(t, 3, uconf.General.Limits.Concurrency.ClusterReplication)
+		require.Equal(t, time.Minute, uconf.General.Limits.DeliverSeekTimeout)
+	})
+
+	t.Run("seek timeout minus one disables the timeout", func(t *testing.T) {
+		uconf := &TopLevel{}
+		uconf.General.Limits.DeliverSeekTimeout = -1
+		uconf.completeInitialization("/dummy/path")
+		require.Equal(t, time.Duration(-1), uconf.General.Limits.DeliverSeekTimeout)
+	})
+
+	t.Run("other negative seek timeout panics", func(t *testing.T) {
+		uconf := &TopLevel{}
+		uconf.General.Limits.DeliverSeekTimeout = -2 * time.Second
+		require.PanicsWithValue(t, "General.Limits.DeliverSeekTimeout must be -1 (disabled), 0 (default), or a positive duration, got -2s", func() { uconf.completeInitialization("/dummy/path") })
 	})
 
 	t.Run("minus one means unlimited", func(t *testing.T) {

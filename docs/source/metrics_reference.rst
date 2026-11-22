@@ -168,7 +168,9 @@ The following orderer metrics are exported for consumption by Prometheus.
 |                                                      |           |                                                            +-----------+--------------------------------------------------------------------+
 |                                                      |           |                                                            | data_type |                                                                    |
 +------------------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
-| deliver_sessions_rejected                            | counter   | The number of deliver sessions rejected because the        |           |                                                                    |
+| deliver_sessions_held                                | gauge     | The number of deliver session permits currently held.      | pool      |                                                                    |
++------------------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| deliver_sessions_rejected                            | counter   | The number of deliver sessions rejected because the        | pool      |                                                                    |
 |                                                      |           | deliver concurrency limit was reached.                     |           |                                                                    |
 +------------------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | deliver_streams_closed                               | counter   | The number of GRPC streams that have been closed for the   |           |                                                                    |
@@ -373,7 +375,9 @@ associated with the metric.
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | deliver.requests_received.%{channel}.%{filtered}.%{data_type}             | counter   | The number of deliver requests that have been received.    |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| deliver.sessions_rejected                                                 | counter   | The number of deliver sessions rejected because the        |
+| deliver.sessions_held.%{pool}                                             | gauge     | The number of deliver session permits currently held.      |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| deliver.sessions_rejected.%{pool}                                         | counter   | The number of deliver sessions rejected because the        |
 |                                                                           |           | deliver concurrency limit was reached.                     |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | deliver.streams_closed                                                    | counter   | The number of GRPC streams that have been closed for the   |

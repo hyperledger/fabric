@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
@@ -19,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -26,9 +28,19 @@ import (
 )
 
 var deliverSessionsRejected = metrics.CounterOpts{
-	Namespace: "deliver",
-	Name:      "sessions_rejected",
-	Help:      "The number of deliver sessions rejected because the deliver concurrency limit was reached.",
+	Namespace:    "deliver",
+	Name:         "sessions_rejected",
+	Help:         "The number of deliver sessions rejected because the deliver concurrency limit was reached.",
+	LabelNames:   []string{"pool"},
+	StatsdFormat: "%{#fqname}.%{pool}",
+}
+
+var deliverSessionsHeld = metrics.GaugeOpts{
+	Namespace:    "deliver",
+	Name:         "sessions_held",
+	Help:         "The number of deliver session permits currently held.",
+	LabelNames:   []string{"pool"},
+	StatsdFormat: "%{#fqname}.%{pool}",
 }
 
 // deliverPool identifies which concurrency budget a seek request draws from.
@@ -39,12 +51,16 @@ const (
 	// memory-critical budget.
 	deliverPoolBlock deliverPool = iota
 	// deliverPoolHeader serves header-only requests (BFT censorship
-	// monitor); retained memory per stream is small.
+	// monitor); retained memory per stream is small except when config
+	// blocks are served, which escalate to the block budget.
 	deliverPoolHeader
 	// deliverPoolReplication serves orderer-to-orderer block pulls,
 	// identified by the consenter client TLS certificate.
 	deliverPoolReplication
 )
+
+// deliverPoolCount is the number of budgets.
+const deliverPoolCount = 3
 
 // deliverConcurrencyLimiter bounds the number of concurrent authenticated
 // deliver sessions, split into independent finite budgets per request
@@ -55,18 +71,33 @@ type deliverConcurrencyLimiter struct {
 	headerSema      semaphore.Semaphore // nil = unlimited
 	replicationSema semaphore.Semaphore // nil = unlimited
 	rejected        metrics.Counter
-	throttle        *rateLimitedLogger
+	held            metrics.Gauge
+	throttles       [deliverPoolCount]*rateLimitedLogger
 }
 
 // newDeliverConcurrencyLimiter returns nil when all limits are not
-// positive (unlimited).
+// positive (unlimited). A zero value selects the configuration default,
+// mirroring localconfig normalization.
 func newDeliverConcurrencyLimiter(deliverLimit, headerLimit, replicationLimit int, metricsProvider metrics.Provider) *deliverConcurrencyLimiter {
+	defaults := localconfig.Defaults.General.Limits.Concurrency
+	if deliverLimit == 0 {
+		deliverLimit = defaults.DeliverService
+	}
+	if headerLimit == 0 {
+		headerLimit = defaults.DeliverHeaderService
+	}
+	if replicationLimit == 0 {
+		replicationLimit = defaults.ClusterReplication
+	}
 	if deliverLimit <= 0 && headerLimit <= 0 && replicationLimit <= 0 {
 		return nil
 	}
 	limiter := &deliverConcurrencyLimiter{
 		rejected: metricsProvider.NewCounter(deliverSessionsRejected),
-		throttle: &rateLimitedLogger{interval: time.Minute, logf: logger.Errorf},
+		held:     metricsProvider.NewGauge(deliverSessionsHeld),
+	}
+	for pool := range deliverPoolCount {
+		limiter.throttles[pool] = &rateLimitedLogger{interval: time.Minute, logf: logger.Errorf}
 	}
 	if deliverLimit > 0 {
 		limiter.clientSema = semaphore.New(deliverLimit)
@@ -80,19 +111,50 @@ func newDeliverConcurrencyLimiter(deliverLimit, headerLimit, replicationLimit in
 	return limiter
 }
 
+func (l *deliverConcurrencyLimiter) budget(pool deliverPool) (semaphore.Semaphore, string) {
+	switch pool {
+	case deliverPoolHeader:
+		return l.headerSema, "header"
+	case deliverPoolReplication:
+		return l.replicationSema, "replication"
+	default:
+		return l.clientSema, "block"
+	}
+}
+
+// admit takes one permit from sema, or counts and logs a rejection before
+// returning an error. A nil semaphore is an unlimited budget.
+func (l *deliverConcurrencyLimiter) admit(sema semaphore.Semaphore, pool deliverPool, poolName string) error {
+	if sema == nil {
+		return nil
+	}
+	if sema.TryAcquire() {
+		l.held.With("pool", poolName).Add(1)
+		return nil
+	}
+	l.rejected.With("pool", poolName).Add(1)
+	l.throttles[pool].errorf("Too many %s requests, exceeding concurrency limit (%d)", poolName, cap(sema))
+	return errors.Errorf("too many %s requests, exceeding concurrency limit (%d)", poolName, cap(sema))
+}
+
 // newDeliverSession returns a session bound to the limiter; a nil limiter
 // yields a session whose Acquire always succeeds.
 func newDeliverSession(limiter *deliverConcurrencyLimiter) *deliverSession {
 	return &deliverSession{limiter: limiter}
 }
 
-// deliverSession tracks a single stream's permit, acquired when a seek
+// deliverSession tracks a single stream's permits, acquired when a seek
 // request starts being served and released when the delivery completes or
 // the stream ends.
 type deliverSession struct {
 	limiter *deliverConcurrencyLimiter
 	pool    deliverPool
-	sema    semaphore.Semaphore
+
+	sema     semaphore.Semaphore
+	semaPool string
+	// configSema holds a block-budget permit taken by a header session
+	// that is serving config blocks, which are sent in full.
+	configSema semaphore.Semaphore
 }
 
 // classify selects the budget for the next admission decision. It is
@@ -108,33 +170,49 @@ func (s *deliverSession) Acquire() error {
 	if s.limiter == nil || s.sema != nil {
 		return nil
 	}
-	sema := s.limiter.clientSema
-	pool := "deliver"
-	switch s.pool {
-	case deliverPoolHeader:
-		sema = s.limiter.headerSema
-		pool = "deliver header"
-	case deliverPoolReplication:
-		sema = s.limiter.replicationSema
-		pool = "replication"
+	sema, poolName := s.limiter.budget(s.pool)
+	if err := s.limiter.admit(sema, s.pool, poolName); err != nil {
+		return err
 	}
-	if sema == nil {
-		return nil
-	}
-	if sema.TryAcquire() {
-		s.sema = sema
-		return nil
-	}
-	s.limiter.rejected.Add(1)
-	s.limiter.throttle.errorf("Too many %s requests, exceeding concurrency limit (%d)", pool, cap(sema))
-	return errors.Errorf("too many %s requests, exceeding concurrency limit (%d)", pool, cap(sema))
+	s.sema = sema
+	s.semaPool = poolName
+	return nil
 }
 
-// Release returns the permit, and is a no-op when none is held.
+// AcquireForBlock escalates a header session that is about to send a config
+// block to the block budget: config blocks are delivered in full even to
+// header-only streams (the censorship monitor tracks configuration with
+// them), so they cost as much memory as a full-block stream.
+func (s *deliverSession) AcquireForBlock(block *cb.Block) error {
+	if s.limiter == nil || s.pool != deliverPoolHeader || s.configSema != nil {
+		return nil
+	}
+	if !protoutil.IsConfigBlock(block) {
+		return nil
+	}
+	sema, poolName := s.limiter.budget(deliverPoolBlock)
+	if err := s.limiter.admit(sema, deliverPoolBlock, poolName); err != nil {
+		return err
+	}
+	s.configSema = sema
+	return nil
+}
+
+// Release returns the permits, and is a no-op when none are held.
 func (s *deliverSession) Release() {
+	if s.limiter == nil {
+		return
+	}
 	if s.sema != nil {
+		s.limiter.held.With("pool", s.semaPool).Add(-1)
 		s.sema.Release()
 		s.sema = nil
+	}
+	if s.configSema != nil {
+		_, poolName := s.limiter.budget(deliverPoolBlock)
+		s.limiter.held.With("pool", poolName).Add(-1)
+		s.configSema.Release()
+		s.configSema = nil
 	}
 }
 
@@ -171,8 +249,10 @@ func newDeliverPolicyChecker(getChain func(string) msgprocessor.SigFilterSupport
 // channel. The policy check alone proves only an identity class - in
 // overlapping MSPs (orderer and application orgs sharing one) any member
 // satisfies it, so without the transport binding every orderer-org peer
-// would draw from the replication budget. Without mutual TLS there is no
-// client certificate and the request falls back to the client budget.
+// would draw from the replication budget. The TLS server requests client
+// certificates whenever TLS is enabled, so the binding works whenever the
+// client presents a certificate; without TLS the request falls back to the
+// client budgets.
 func isClusterReplication(chain msgprocessor.SigFilterSupport, clientCert *x509.Certificate, env *cb.Envelope) bool {
 	if clientCert == nil {
 		return false
@@ -226,6 +306,40 @@ func seekContentType(env *cb.Envelope) ab.SeekInfo_SeekContentType {
 		return ab.SeekInfo_BLOCK
 	}
 	return seekInfo.GetContentType()
+}
+
+// firstMessageTimeoutReceiver fails the stream when the first message does
+// not arrive within the timeout, so clients cannot hold handler goroutines
+// with streams that never send a seek request.
+type firstMessageTimeoutReceiver struct {
+	deliver.Receiver
+	timeout  time.Duration
+	received atomic.Bool
+}
+
+func (r *firstMessageTimeoutReceiver) Recv() (*cb.Envelope, error) {
+	if r.timeout <= 0 || r.received.Load() {
+		return r.Receiver.Recv()
+	}
+	type recvResult struct {
+		env *cb.Envelope
+		err error
+	}
+	// the inner Recv unblocks when the stream is torn down after the error
+	resultCh := make(chan recvResult, 1)
+	go func() {
+		env, err := r.Receiver.Recv()
+		resultCh <- recvResult{env: env, err: err}
+	}()
+	timer := time.NewTimer(r.timeout)
+	defer timer.Stop()
+	select {
+	case result := <-resultCh:
+		r.received.Store(true)
+		return result.env, result.err
+	case <-timer.C:
+		return nil, errors.Errorf("no message received within %v", r.timeout)
+	}
 }
 
 // rateLimitedLogger logs at most one message per interval; rejections are

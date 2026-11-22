@@ -42,14 +42,21 @@ var (
 )
 
 type fakeSessionLimiter struct {
-	acquireErr   error
-	acquireCalls int
-	releaseCalls int
+	acquireErr           error
+	acquireCalls         int
+	acquireForBlockErr   error
+	acquireForBlockCalls int
+	releaseCalls         int
 }
 
 func (f *fakeSessionLimiter) Acquire() error {
 	f.acquireCalls++
 	return f.acquireErr
+}
+
+func (f *fakeSessionLimiter) AcquireForBlock(*cb.Block) error {
+	f.acquireForBlockCalls++
+	return f.acquireForBlockErr
 }
 
 func (f *fakeSessionLimiter) Release() {
@@ -329,6 +336,26 @@ var _ = Describe("Deliver", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(limiter.acquireCalls).To(Equal(1))
 				Expect(limiter.releaseCalls).To(Equal(2))
+			})
+
+			It("consults the limiter before sending each block", func() {
+				err := handler.Handle(context.Background(), server)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(limiter.acquireForBlockCalls).To(Equal(1))
+			})
+
+			When("the limiter rejects a block", func() {
+				BeforeEach(func() {
+					limiter.acquireForBlockErr = errors.New("block budget exhausted")
+				})
+
+				It("sends a service unavailable status without sending the block", func() {
+					err := handler.Handle(context.Background(), server)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(0))
+					Expect(fakeResponseSender.SendStatusResponseCallCount()).To(Equal(1))
+					Expect(fakeResponseSender.SendStatusResponseArgsForCall(0)).To(Equal(cb.Status_SERVICE_UNAVAILABLE))
+				})
 			})
 
 			It("re-acquires per seek and releases after each completed delivery", func() {

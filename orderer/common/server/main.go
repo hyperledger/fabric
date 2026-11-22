@@ -197,6 +197,10 @@ func Main() {
 
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 
+	if conf.General.Limits.Concurrency.ClusterReplication > 0 && !conf.General.TLS.Enabled {
+		logger.Warn("General.Limits.Concurrency.ClusterReplication has no effect without TLS: orderer-to-orderer pulls cannot be identified and are charged to the client deliver budgets")
+	}
+
 	server := NewServer(
 		manager,
 		metricsProvider,
@@ -204,7 +208,7 @@ func Main() {
 		conf.General.Authentication.TimeWindow,
 		mutualTLS,
 		conf.General.Authentication.NoExpirationChecks,
-		conf.General.Limits.Concurrency,
+		conf.General.Limits,
 	)
 
 	logger.Infof("Starting %s", metadata.GetVersionInfo())

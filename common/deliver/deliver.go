@@ -125,11 +125,13 @@ type Filtered interface {
 // SessionLimiter bounds the number of concurrent block delivery sessions.
 // Acquire is called after a seek request is authenticated and before a
 // ledger iterator is allocated for it, and may be called more than once
-// per stream. Release is called when a delivery completes and when the
-// stream handler returns; it must be idempotent and a no-op when no
-// permit is held.
+// per stream. AcquireForBlock is called before each block is sent, and
+// may escalate the session to a costlier budget depending on the block.
+// Release is called when a delivery completes and when the stream handler
+// returns; it must be idempotent and a no-op when no permit is held.
 type SessionLimiter interface {
 	Acquire() error
+	AcquireForBlock(block *cb.Block) error
 	Release()
 }
 
@@ -371,6 +373,13 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 			block2send = &cb.Block{
 				Header:   block.GetHeader(),
 				Metadata: block.GetMetadata(),
+			}
+		}
+
+		if srv.SessionLimiter != nil {
+			if err := srv.SessionLimiter.AcquireForBlock(block); err != nil {
+				logger.Debugf("[channel: %s] Rejecting deliver request from %s: %s", chdr.GetChannelId(), addr, err)
+				return cb.Status_SERVICE_UNAVAILABLE, nil
 			}
 		}
 

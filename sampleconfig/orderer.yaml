@@ -85,48 +85,69 @@ General:
 
   # Limits defines resource limits for the services exposed by the orderer.
   Limits:
+    # DeliverSeekTimeout is the maximum time the orderer waits for the
+    # first message on a deliver stream before closing it, so clients
+    # cannot hold handler goroutines with streams that never send a seek
+    # request. When the property is missing or the value is 0, the
+    # default of 30s is applied. Set to -1 to disable the timeout.
+    DeliverSeekTimeout: 30s
     # Concurrency limits the number of concurrent requests per service.
     # Each budget is independent and finite unless set to -1 (unlimited).
     # A stream consumes a budget only after its seek request passes the
     # channel policy check and only while the seek is being served, so
     # idle connections cannot exhaust it. Streams that have not sent a
-    # seek request yet are not bounded here; they still cost a goroutine
-    # and connection state. When a property is missing or the value is 0,
-    # the documented default is applied. The client-facing budgets are
-    # global: one authorized reader can occupy all of its budget's slots.
+    # seek request yet are bounded only by DeliverSeekTimeout; they still
+    # cost a goroutine and connection state. When a property is missing
+    # or the value is 0, the documented default is applied. The budgets
+    # are global with no per-identity or per-channel fairness: one
+    # authorized reader can occupy all of a budget's slots. Operators
+    # should alert on the deliver_sessions_rejected metric (labeled by
+    # budget) and size up or isolate heavy tenants accordingly.
     Concurrency:
       # DeliverService limits concurrent deliver sessions serving full
       # blocks to channel readers; this is the memory-critical budget.
       # A serving stream retains about 3 MB with 100 KB blocks and about
       # 25 MB with 10 MB blocks (the sample configtx AbsoluteMaxBytes)
-      # when consumers are slow. The default of 80 keeps slow-drained
-      # clients within roughly a 2 GiB budget at AbsoluteMaxBytes
-      # (80 x 25 MB). The limit must also cover the expected legitimate
-      # full-block fan-out, roughly (peers x channels) / orderers, with
-      # headroom; if that exceeds what the memory budget allows, raise
-      # the orderer memory limit or add orderers. Set to -1 for no limit.
+      # when consumers are slow. Two constraints pull in opposite
+      # directions and must BOTH be satisfied:
+      #   memory:  limit x 2.5 x AbsoluteMaxBytes <= memory budget.
+      #            The default of 80 keeps slow-drained clients within
+      #            roughly 2 GiB at the 10 MiB sample AbsoluteMaxBytes.
+      #   fan-out: limit >= (peers x channels) / orderers, with headroom.
+      #            Example: 50 peers x 10 channels on 5 orderers needs
+      #            100, which exceeds the default and would require
+      #            roughly 2.5 GiB of worst-case retention - raise the
+      #            limit and the memory budget together, or add orderers.
+      # Set to -1 for no limit.
       DeliverService: 80
       # DeliverHeaderService limits concurrent deliver sessions serving
       # only block headers (SeekInfo HEADER_WITH_SIG), which the BFT
       # censorship monitor opens at one long-lived stream per channel to
-      # every orderer but its block source. Header streams retain only
-      # about 64 KB each even with 10 MB blocks, so this budget can be
-      # generous: size it for the full peers x channels fan-out with
-      # headroom (the default of 500 retains about 32 MB worst case).
-      # Set to -1 for no limit.
-      DeliverHeaderService: 500
+      # every orderer but its block source, so the legitimate fan-out is
+      # the full peers x channels, not divided by orderers. Header
+      # streams retain only about 64 KB each, so this budget can be
+      # generous; the default of 1000 covers a 50 x 10 deployment with
+      # 2x headroom for reconnects and retains about 64 MB worst case.
+      # Exception: config blocks are delivered in full even to header
+      # streams (the censorship monitor tracks configuration with them),
+      # and a stream parked on a config block is charged to the
+      # DeliverService budget instead, so large config blocks cannot
+      # bypass the memory bound. Set to -1 for no limit.
+      DeliverHeaderService: 1000
       # ClusterReplication limits concurrent deliver sessions serving
       # orderer-to-orderer block replication, identified by the channel's
       # consenter client TLS certificate (and the /Channel/Orderer/Readers
       # policy). This budget is reserved: client floods can never draw
       # from it, so replication stays alive even when the client budgets
-      # are exhausted. Replication classification requires mutual TLS;
-      # without it, orderer pulls fall back to the client budgets.
-      # The default of -1 (no limit) keeps existing deployments
-      # unaffected; set it to (orderers - 1) x channels served, plus
-      # headroom for concurrent catch-up probes, to bound a compromised
-      # consenter (a Byzantine consenter is otherwise out of scope - it
-      # can halt consensus directly).
+      # are exhausted. Replication classification works whenever the
+      # client presents a consenter TLS certificate (the TLS server
+      # requests client certificates whenever TLS is enabled); without
+      # TLS, orderer pulls fall back to the client budgets. The default
+      # of -1 (no limit) keeps existing deployments unaffected; set it
+      # to (orderers - 1) x channels served, plus headroom for concurrent
+      # catch-up probes, to bound a compromised consenter - note that a
+      # Byzantine consenter is out of scope regardless, since it can halt
+      # consensus directly.
       ClusterReplication: -1
 
   # Cluster settings for ordering service nodes that communicate with other ordering service nodes

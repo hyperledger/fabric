@@ -189,6 +189,12 @@ type Throttling struct {
 type Limits struct {
 	// Concurrency limits the number of concurrent requests per service.
 	Concurrency Concurrency
+	// DeliverSeekTimeout is the maximum time the orderer waits for the
+	// first message on a deliver stream before closing it, so
+	// unauthenticated clients cannot hold goroutines with idle streams.
+	// A zero value is replaced by the default. A value of -1 disables the
+	// timeout.
+	DeliverSeekTimeout time.Duration
 }
 
 // Concurrency defines concurrency limits for services exposed by the orderer.
@@ -250,9 +256,10 @@ var Defaults = TopLevel{
 		Limits: Limits{
 			Concurrency: Concurrency{
 				DeliverService:       80,
-				DeliverHeaderService: 500,
+				DeliverHeaderService: 1000,
 				ClusterReplication:   -1,
 			},
+			DeliverSeekTimeout: 30 * time.Second,
 		},
 	},
 	FileLedger: FileLedger{
@@ -437,6 +444,11 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.Limits.Concurrency.ClusterReplication == 0:
 			logger.Infof("General.Limits.Concurrency.ClusterReplication is unset, setting to %v", Defaults.General.Limits.Concurrency.ClusterReplication)
 			c.General.Limits.Concurrency.ClusterReplication = Defaults.General.Limits.Concurrency.ClusterReplication
+		case c.General.Limits.DeliverSeekTimeout < -1:
+			logger.Panicf("General.Limits.DeliverSeekTimeout must be -1 (disabled), 0 (default), or a positive duration, got %v", c.General.Limits.DeliverSeekTimeout)
+		case c.General.Limits.DeliverSeekTimeout == 0:
+			logger.Infof("General.Limits.DeliverSeekTimeout is unset, setting to %v", Defaults.General.Limits.DeliverSeekTimeout)
+			c.General.Limits.DeliverSeekTimeout = Defaults.General.Limits.DeliverSeekTimeout
 		case c.FileLedger.StateDatabase == "":
 			c.FileLedger.StateDatabase = Defaults.FileLedger.StateDatabase
 		default:

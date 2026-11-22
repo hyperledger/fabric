@@ -34,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -161,15 +162,16 @@ func (s deliverTestChainSupport) OrdererConfig() (channelconfig.Orderer, bool) {
 // from server.go.
 type deliverTestService struct {
 	ab.UnimplementedAtomicBroadcastServer
-	h       *deliver.Handler
-	limiter *deliverConcurrencyLimiter
-	support msgprocessor.SigFilterSupport
+	h           *deliver.Handler
+	limiter     *deliverConcurrencyLimiter
+	support     msgprocessor.SigFilterSupport
+	seekTimeout time.Duration
 }
 
 func (s *deliverTestService) Deliver(stream ab.AtomicBroadcast_DeliverServer) error {
 	return s.h.Handle(stream.Context(), newDeliverServer(stream, func(string) msgprocessor.SigFilterSupport {
 		return s.support
-	}, s.limiter, &localconfig.Debug{}))
+	}, s.limiter, s.seekTimeout, &localconfig.Debug{}))
 }
 
 func deliverSeekEnvelope(creator string) *cb.Envelope {
@@ -215,16 +217,24 @@ type deliverTestServer struct {
 	cleanup func()
 }
 
-func deliverLimitTestChain() *mock.Chain {
-	shared := make([]*cb.Block, deliverLimitTestBlocks)
-	for i := range shared {
-		shared[i] = &cb.Block{
-			Header: &cb.BlockHeader{Number: uint64(i)},
-			Data:   &cb.BlockData{Data: [][]byte{make([]byte, deliverLimitTestBlkSize)}},
-		}
+func makeBlock(num uint64, size int) *cb.Block {
+	return &cb.Block{
+		Header: &cb.BlockHeader{Number: num},
+		Data:   &cb.BlockData{Data: [][]byte{make([]byte, size)}},
 	}
+}
+
+func deliverLimitTestChain() *mock.Chain {
+	blocks := make([]*cb.Block, deliverLimitTestBlocks)
+	for i := range blocks {
+		blocks[i] = makeBlock(uint64(i), deliverLimitTestBlkSize)
+	}
+	return deliverLimitTestChainWithBlocks(blocks)
+}
+
+func deliverLimitTestChainWithBlocks(blocks []*cb.Block) *mock.Chain {
 	chain := &mock.Chain{}
-	chain.ReaderReturns(&staticReader{height: deliverLimitTestBlocks, shared: shared})
+	chain.ReaderReturns(&staticReader{height: uint64(len(blocks)), shared: blocks})
 	chain.ErroredReturns(make(chan struct{}))
 	chain.SequenceReturns(1)
 	return chain
@@ -233,10 +243,14 @@ func deliverLimitTestChain() *mock.Chain {
 // startDeliverTestServer runs a real gRPC server and deliver handler with
 // the given concurrency limits over an insecure connection, mirroring the
 // production Deliver path.
-func startDeliverTestServer(t *testing.T, deliverLimit, headerLimit, replicationLimit int) *deliverTestServer {
+func startDeliverTestServer(t *testing.T, deliverLimit, headerLimit, replicationLimit int, seekTimeout time.Duration) *deliverTestServer {
+	t.Helper()
+	return startDeliverTestServerWithChain(t, deliverLimitTestChain(), deliverLimit, headerLimit, replicationLimit, seekTimeout)
+}
+
+func startDeliverTestServerWithChain(t *testing.T, chain *mock.Chain, deliverLimit, headerLimit, replicationLimit int, seekTimeout time.Duration) *deliverTestServer {
 	t.Helper()
 
-	chain := deliverLimitTestChain()
 	chainManager := &mock.ChainManager{}
 	chainManager.GetChainReturns(chain)
 	handler := deliver.NewHandler(chainManager, time.Hour, false, deliver.NewMetrics(&disabled.Provider{}), true)
@@ -253,8 +267,9 @@ func startDeliverTestServer(t *testing.T, deliverLimit, headerLimit, replication
 	srv, err := comm.NewGRPCServerFromListener(lis, initializeServerConfig(conf, nil))
 	require.NoError(t, err)
 	ab.RegisterAtomicBroadcastServer(srv.Server(), &deliverTestService{
-		h:       handler,
-		limiter: newDeliverConcurrencyLimiter(deliverLimit, headerLimit, replicationLimit, &disabled.Provider{}),
+		h:           handler,
+		limiter:     newDeliverConcurrencyLimiter(deliverLimit, headerLimit, replicationLimit, &disabled.Provider{}),
+		seekTimeout: seekTimeout,
 		support: deliverTestChainSupport{
 			policyManager: testDeliverPolicyManager{},
 			ordererConfig: stubOrdererConfig{state: ab.ConsensusType_STATE_NORMAL},
@@ -286,10 +301,12 @@ type deliverTLSTestServer struct {
 	cleanup       func()
 }
 
-// startDeliverTestServerTLS runs a mutual-TLS deliver server whose channel
+// startDeliverTestServerTLS runs a TLS deliver server whose channel
 // consenter set contains the orderer client's certificate, mirroring how
-// cluster replication authenticates in production.
-func startDeliverTestServerTLS(t *testing.T, deliverLimit, replicationLimit int) *deliverTLSTestServer {
+// cluster replication authenticates in production. When requireClientCert
+// is false the server requests but does not require client certificates,
+// as in production with ClientAuthRequired disabled.
+func startDeliverTestServerTLS(t *testing.T, deliverLimit, replicationLimit int, requireClientCert bool) *deliverTLSTestServer {
 	t.Helper()
 
 	ca, err := tlsgen.NewCA()
@@ -311,13 +328,13 @@ func startDeliverTestServerTLS(t *testing.T, deliverLimit, replicationLimit int)
 	chain := deliverLimitTestChain()
 	chainManager := &mock.ChainManager{}
 	chainManager.GetChainReturns(chain)
-	handler := deliver.NewHandler(chainManager, time.Hour, true, deliver.NewMetrics(&disabled.Provider{}), true)
+	handler := deliver.NewHandler(chainManager, time.Hour, requireClientCert, deliver.NewMetrics(&disabled.Provider{}), true)
 
 	conf := &localconfig.TopLevel{
 		General: localconfig.General{
 			TLS: localconfig.TLS{
 				Enabled:            true,
-				ClientAuthRequired: true,
+				ClientAuthRequired: requireClientCert,
 				Certificate:        writeFile("server-cert.pem", serverKp.Cert),
 				PrivateKey:         writeFile("server-key.pem", serverKp.Key),
 				ClientRootCAs:      []string{writeFile("ca.pem", ca.CertBytes())},
@@ -424,7 +441,7 @@ func TestDeliverConcurrencyLimit(t *testing.T) {
 		headerLimit = 2
 	)
 
-	ts := startDeliverTestServer(t, clientLimit, headerLimit, -1)
+	ts := startDeliverTestServer(t, clientLimit, headerLimit, -1, -1)
 	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -485,7 +502,7 @@ func TestDeliverConcurrencyBFTHeaderFanout(t *testing.T) {
 		headerLimit = 100
 	)
 
-	ts := startDeliverTestServer(t, clientLimit, headerLimit, -1)
+	ts := startDeliverTestServer(t, clientLimit, headerLimit, -1, -1)
 	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -508,7 +525,7 @@ func TestDeliverConcurrencyBFTHeaderFanout(t *testing.T) {
 // A completed delivery releases the permit, so a stream idling after a
 // finished seek does not hold the budget.
 func TestDeliverConcurrencyPermitReleasedAfterCompletedDelivery(t *testing.T) {
-	ts := startDeliverTestServer(t, 1, -1, -1)
+	ts := startDeliverTestServer(t, 1, -1, -1, -1)
 	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -537,7 +554,7 @@ func TestDeliverConcurrencyPermitReleasedAfterCompletedDelivery(t *testing.T) {
 }
 
 func TestDeliverConcurrencyUnlimited(t *testing.T) {
-	ts := startDeliverTestServer(t, -1, -1, -1)
+	ts := startDeliverTestServer(t, -1, -1, -1, -1)
 	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -559,7 +576,7 @@ func TestDeliverConcurrencyReplicationRequiresConsenterCertificate(t *testing.T)
 		replicationLimit = 2
 	)
 
-	ts := startDeliverTestServerTLS(t, clientLimit, replicationLimit)
+	ts := startDeliverTestServerTLS(t, clientLimit, replicationLimit, true)
 	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -600,7 +617,7 @@ func TestDeliverConcurrencyReplicationBoundary(t *testing.T) {
 		boundary = (orderers - 1) * channels
 	)
 
-	ts := startDeliverTestServerTLS(t, -1, boundary)
+	ts := startDeliverTestServerTLS(t, -1, boundary, true)
 	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -614,4 +631,151 @@ func TestDeliverConcurrencyReplicationBoundary(t *testing.T) {
 
 	requireRejectedUnavailable(t, ts.ordererClient, ordererEnv)
 	require.Equal(t, boundary, ts.chain.ReaderCallCount())
+}
+
+// Config blocks are sent in full even to header-only streams (the
+// censorship monitor tracks configuration with them), so they escalate to
+// the block budget instead of counting against the cheap header budget.
+func TestDeliverConcurrencyHeaderConfigBlockEscalation(t *testing.T) {
+	const (
+		clientLimit = 1
+		headerLimit = 10
+	)
+
+	blocks := []*cb.Block{makeConfigBlock(0, 128<<10)}
+	for i := 1; i < deliverLimitTestBlocks; i++ {
+		blocks = append(blocks, makeBlock(uint64(i), deliverLimitTestBlkSize))
+	}
+	ts := startDeliverTestServerWithChain(t, deliverLimitTestChainWithBlocks(blocks), clientLimit, headerLimit, -1, -1)
+	defer ts.cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// fill the block budget with a slowly consumed block stream
+	require.NoError(t, openDeliver(ctx, ts.client, "reader"))
+
+	// a header stream parked on the config block is rejected from the full
+	// block budget instead of retaining the full config block for free
+	requireRejectedUnavailable(t, ts.client, deliverHeaderSeekEnvelope("reader"))
+}
+
+// A header stream that finds room in the block budget receives config
+// blocks in full.
+func TestDeliverConcurrencyHeaderConfigBlockDelivered(t *testing.T) {
+	blocks := []*cb.Block{makeConfigBlock(0, 128<<10)}
+	for i := 1; i < deliverLimitTestBlocks; i++ {
+		blocks = append(blocks, makeBlock(uint64(i), deliverLimitTestBlkSize))
+	}
+	ts := startDeliverTestServerWithChain(t, deliverLimitTestChainWithBlocks(blocks), 1, 10, -1, -1)
+	defer ts.cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	stream, err := ts.client.Deliver(ctx)
+	require.NoError(t, err)
+	require.NoError(t, stream.Send(deliverHeaderSeekEnvelope("reader")))
+	resp, err := stream.Recv()
+	require.NoError(t, err)
+	require.True(t, protoutil.IsConfigBlock(resp.GetBlock()))
+	require.Len(t, resp.GetBlock().GetData().GetData(), 1)
+}
+
+// A stream that never sends a seek request is closed after the configured
+// seek timeout instead of holding a handler goroutine forever.
+func TestDeliverSeekTimeout(t *testing.T) {
+	ts := startDeliverTestServer(t, -1, -1, -1, 100*time.Millisecond)
+	defer ts.cleanup()
+
+	stream, err := ts.client.Deliver(context.Background())
+	require.NoError(t, err)
+	_, err = stream.Recv()
+	require.ErrorContains(t, err, "no message received within 100ms")
+}
+
+// With TLS enabled but ClientAuthRequired disabled (the sample default),
+// the server still requests client certificates, so replication
+// classification works for pulls that present a consenter certificate.
+func TestDeliverConcurrencyReplicationWithOptionalClientCert(t *testing.T) {
+	const (
+		clientLimit      = 1
+		replicationLimit = 1
+	)
+
+	ts := startDeliverTestServerTLS(t, clientLimit, replicationLimit, false)
+	defer ts.cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// without mutual TLS binding, envelopes carry no TLS cert hash
+	ordererEnv := deliverSeekEnvelopeWith("orderer", math.MaxUint64, ab.SeekInfo_BLOCK, nil)
+	peerReaderEnv := deliverSeekEnvelopeWith("reader", math.MaxUint64, ab.SeekInfo_BLOCK, nil)
+
+	// fill the client budget with an ordinary peer stream
+	require.NoError(t, openDeliverEnvelope(ctx, ts.peerClient, peerReaderEnv))
+	require.Equal(t, clientLimit, ts.chain.ReaderCallCount())
+
+	// a consenter pull is still classified into its own budget
+	require.NoError(t, openDeliverEnvelope(ctx, ts.ordererClient, ordererEnv))
+	require.Equal(t, clientLimit+replicationLimit, ts.chain.ReaderCallCount())
+
+	// and both budgets reject past their limits
+	requireRejectedUnavailable(t, ts.peerClient, peerReaderEnv)
+	requireRejectedUnavailable(t, ts.ordererClient, ordererEnv)
+}
+
+// fakeDeliverServerStream implements ab.AtomicBroadcast_DeliverServer over
+// channels, to drive the production server.Deliver directly.
+type fakeDeliverServerStream struct {
+	grpc.ServerStream
+	ctx    context.Context
+	recvCh chan deliverRecvResult
+	sendCh chan *ab.DeliverResponse
+}
+
+type deliverRecvResult struct {
+	env *cb.Envelope
+	err error
+}
+
+func (f *fakeDeliverServerStream) Context() context.Context { return f.ctx }
+
+func (f *fakeDeliverServerStream) Recv() (*cb.Envelope, error) {
+	result := <-f.recvCh
+	return result.env, result.err
+}
+
+func (f *fakeDeliverServerStream) Send(resp *ab.DeliverResponse) error {
+	f.sendCh <- resp
+	return nil
+}
+
+// The production server.Deliver wires the deliver handler with the policy
+// checker and session limiter; a seek on an unknown channel travels the
+// whole path and is answered with a status response.
+func TestServerDeliverWiring(t *testing.T) {
+	chainManager := &mock.ChainManager{}
+	handler := deliver.NewHandler(chainManager, time.Hour, false, deliver.NewMetrics(&disabled.Provider{}), true)
+	s := &server{
+		dh:                 handler,
+		debug:              &localconfig.Debug{},
+		deliverLimiter:     newDeliverConcurrencyLimiter(1, 1, 1, &disabled.Provider{}),
+		deliverSeekTimeout: -1,
+		Registrar:          &multichannel.Registrar{},
+	}
+
+	stream := &fakeDeliverServerStream{
+		ctx:    context.Background(),
+		recvCh: make(chan deliverRecvResult, 1),
+		sendCh: make(chan *ab.DeliverResponse, 1),
+	}
+	done := make(chan error, 1)
+	go func() { done <- s.Deliver(stream) }()
+
+	stream.recvCh <- deliverRecvResult{env: deliverSeekEnvelope("reader")}
+	resp := <-stream.sendCh
+	require.Equal(t, cb.Status_NOT_FOUND, resp.GetStatus())
+	require.NoError(t, <-done)
 }
