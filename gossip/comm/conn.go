@@ -64,11 +64,27 @@ func newConnStore(connFactory connFactory, logger util.Logger, config ConnConfig
 }
 
 // retireChargedConn tracks a removed connection while its delivered charges
-// drain; callers must hold cs's write lock.
+// drain; callers must hold cs's write lock. The flag is set before the counter
+// check so a concurrent final release cannot slip past the insertion.
 func (cs *connectionStore) retireChargedConn(conn *connection) {
-	if conn.recvBytesInFlight.Load() > 0 {
-		cs.deadCharged[conn] = struct{}{}
+	conn.retiredCharged.Store(true)
+	if conn.recvBytesInFlight.Load() == 0 {
+		conn.retiredCharged.Store(false)
+		return
 	}
+	cs.deadCharged[conn] = struct{}{}
+}
+
+// removeDrainedConn drops conn from deadCharged once its charge drains to
+// zero, so retired connections are not referenced forever.
+func (cs *connectionStore) removeDrainedConn(conn *connection) {
+	cs.Lock()
+	defer cs.Unlock()
+	if conn.recvBytesInFlight.Load() != 0 {
+		return
+	}
+	delete(cs.deadCharged, conn)
+	conn.retiredCharged.Store(false)
 }
 
 func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) {
@@ -143,12 +159,14 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 	// our old connection anyway once it sensed this connection handshake.
 	if conn, exists := cs.pki2Conn[string(createdConnection.pkiID)]; exists {
 		conn.close()
+		cs.retireChargedConn(conn)
 	}
 
 	// at this point in the code, we created a connection to a remote peer
 	conn = createdConnection
 	cs.pki2Conn[string(createdConnection.pkiID)] = conn
 	conn.evictFromStore = func() { cs.evictConn(conn) }
+	conn.store = cs
 
 	go conn.serviceConnection()
 
@@ -194,6 +212,7 @@ func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamSer
 	conn.logger = cs.logger
 	cs.pki2Conn[string(connInfo.ID)] = conn
 	conn.evictFromStore = func() { cs.evictConn(conn) }
+	conn.store = cs
 	return conn
 }
 
@@ -209,35 +228,40 @@ func (cs *connectionStore) closeConnByPKIid(pkiID common.PKIidType) {
 
 // evictConn removes conn from the store only if it is still the current entry
 // for its PKI-ID, so a replaced connection never evicts its successor.
-func (cs *connectionStore) evictConn(conn *connection) {
+// It reports whether conn was still the current entry.
+func (cs *connectionStore) evictConn(conn *connection) bool {
 	cs.Lock()
 	defer cs.Unlock()
-	cs.evictConnLocked(conn)
+	return cs.evictConnLocked(conn)
 }
 
 // evictConnLocked is evictConn for callers already holding cs's write lock.
-func (cs *connectionStore) evictConnLocked(conn *connection) {
+func (cs *connectionStore) evictConnLocked(conn *connection) bool {
 	if current, exists := cs.pki2Conn[string(conn.pkiID)]; exists && current == conn {
 		conn.close()
 		delete(cs.pki2Conn, string(conn.pkiID))
 		cs.retireChargedConn(conn)
+		return true
 	}
+	return false
 }
 
 // evictLargestConnection drops the connection retaining the most unconsumed
-// received bytes; targeting the largest holder keeps a flooding peer from
-// getting bystander connections dropped when the shared budget is exceeded.
-// Charges already delivered by a removed connection outlive it, so when the
-// largest charge is dead the store overcommits until subscribers drain instead
-// of cascading evictions to bystanders.
-func (cs *connectionStore) evictLargestConnection() {
+// received bytes, but only while the aggregate in-flight bytes of live
+// connections alone exceed max: charges already delivered by removed
+// connections outlive them until consumed, so live connections overcommit
+// while the overage is retired debt instead of cascading evictions
+// to bystanders.
+func (cs *connectionStore) evictLargestConnection(max int64) {
 	cs.Lock()
 	defer cs.Unlock()
 
 	var victim *connection
-	var mostLive, mostDead int64
+	var liveTotal, deadTotal, mostLive int64
 	for _, conn := range cs.pki2Conn {
-		if n := conn.recvBytesInFlight.Load(); n > mostLive {
+		n := conn.recvBytesInFlight.Load()
+		liveTotal += n
+		if n > mostLive {
 			mostLive, victim = n, conn
 		}
 	}
@@ -245,16 +269,15 @@ func (cs *connectionStore) evictLargestConnection() {
 		n := conn.recvBytesInFlight.Load()
 		if n == 0 {
 			delete(cs.deadCharged, conn)
+			conn.retiredCharged.Store(false)
 			continue
 		}
-		if n > mostDead {
-			mostDead = n
-		}
+		deadTotal += n
 	}
 
-	if mostDead >= mostLive || victim == nil {
-		if mostDead > 0 {
-			cs.logger.Debugf("Shared receive byte budget is exceeded by %d bytes delivered by removed connections; overcommitting until subscribers drain", mostDead)
+	if max <= 0 || victim == nil || liveTotal <= max {
+		if deadTotal > 0 {
+			cs.logger.Debugf("Shared receive byte budget of %d bytes is exceeded by %d bytes delivered by removed connections; overcommitting until subscribers drain", max, deadTotal)
 		}
 		return
 	}
@@ -275,6 +298,7 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, s stream, metrics 
 		maxRecvBytesInFlight: int64(config.MaxRecvBytesInFlight),
 		sharedRecvBudget:     config.sharedRecvBudget,
 	}
+	connection.sendCond = sync.NewCond(&connection.sendMu)
 	return connection
 }
 
@@ -327,13 +351,20 @@ type connection struct {
 	// evictFromStore removes this connection from the connection store if it
 	// is still the current entry; set once the connection is registered.
 	evictFromStore func()
+	// store owns this connection's entry; used to purge retired entries when
+	// the receive charge drains. Nil for connections without a store.
+	store *connectionStore
+	// retiredCharged marks a removed connection with outstanding charges.
+	retiredCharged atomic.Bool
 	// recvMu serializes the readFromStream handoff against the teardown drain;
 	// recvClosed makes the reader release new messages itself after teardown.
 	recvMu     sync.Mutex
 	recvClosed bool
 	// sendMu serializes outBuff handoff against the writeToStream exit drain;
 	// sendClosed makes senders fail new messages instead of enqueueing them.
+	// sendCond lets blocking senders wait for queue room without holding sendMu.
 	sendMu       sync.Mutex
+	sendCond     *sync.Cond
 	sendClosed   bool
 	metrics      *metrics.CommMetrics
 	cancel       context.CancelFunc
@@ -371,28 +402,30 @@ func (conn *connection) send(msg *protoext.SignedGossipMessage, onErr func(error
 
 	conn.sendMu.Lock()
 	defer conn.sendMu.Unlock()
-	if conn.sendClosed {
-		conn.logger.Debugf("Aborting send() to %s because connection is closed", conn.info.Endpoint)
-		go m.onErr(errConnClosed)
-		return
-	}
-	select {
-	case conn.outBuff <- m:
-		// room in channel, successfully sent message, nothing to do
-	case <-conn.stopChan:
-		conn.logger.Debugf("Aborting send() to %s because connection is closing", conn.info.Endpoint)
-		go m.onErr(errConnClosed)
-	default: // did not send
-		if shouldBlock {
-			select {
-			case conn.outBuff <- m: // try again, and wait to send
-			case <-conn.stopChan: // stop blocking if the connection is closing
-				go m.onErr(errConnClosed)
-			}
-		} else {
+	for {
+		if conn.sendClosed {
+			conn.logger.Debugf("Aborting send() to %s because connection is closed", conn.pkiID)
+			go m.onErr(errConnClosed)
+			return
+		}
+		select {
+		case conn.outBuff <- m:
+			// room in channel, successfully sent message, nothing to do
+			return
+		case <-conn.stopChan:
+			conn.logger.Debugf("Aborting send() to %s because connection is closing", conn.pkiID)
+			go m.onErr(errConnClosed)
+			return
+		default:
+		}
+		if shouldBlock != blockingSend {
 			conn.metrics.BufferOverflow.Add(1)
 			conn.logger.Debugf("Buffer to %s overflowed, dropping message %s", conn.info.Endpoint, msg)
+			return
 		}
+		// Wait for queue room without holding sendMu, so the writer can
+		// always terminate and drain.
+		conn.sendCond.Wait()
 	}
 }
 
@@ -440,9 +473,11 @@ func (conn *connection) serviceConnection() error {
 func (conn *connection) writeToStream() {
 	defer func() {
 		// Become the only owner of outBuff: fail everything still queued so
-		// onErr callbacks (e.g. SendWithAck waiters) are not stuck.
+		// onErr callbacks (e.g. SendWithAck waiters) are not stuck, and wake
+		// blocking senders so they fail instead of waiting.
 		conn.sendMu.Lock()
 		conn.sendClosed = true
+		conn.sendCond.Broadcast()
 		for {
 			select {
 			case m := <-conn.outBuff:
@@ -463,6 +498,11 @@ func (conn *connection) writeToStream() {
 				return
 			}
 			conn.metrics.SentMessages.Add(1)
+			// Wake a sender waiting for queue room; holding sendMu keeps the
+			// signal from landing between a sender's check and its wait.
+			conn.sendMu.Lock()
+			conn.sendCond.Signal()
+			conn.sendMu.Unlock()
 		case <-conn.stopChan:
 			conn.logger.Debug("Closing writing to stream")
 			return
@@ -490,7 +530,15 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 				conn.logger.Warningf("Got error, aborting: %v", err)
 				return
 			}
+			conn.recvMu.Lock()
+			if conn.recvClosed {
+				// Teardown owns msgChan now; a message that can no longer be
+				// delivered must not be charged nor trip an eviction.
+				conn.recvMu.Unlock()
+				return
+			}
 			if !conn.admitReceivedBytes(msg) {
+				conn.recvMu.Unlock()
 				conn.releaseReceivedBytes(msg) // never delivered
 				err = errors.Errorf("received bytes in flight exceed the per-connection limit of %d bytes", conn.maxRecvBytesInFlight)
 				conn.logger.Warningf("Dropping connection: %v", err)
@@ -501,13 +549,6 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 				if conn.evictFromStore != nil {
 					conn.evictFromStore()
 				}
-				return
-			}
-			conn.recvMu.Lock()
-			if conn.recvClosed {
-				// Teardown owns msgChan now; release instead of enqueueing.
-				conn.recvMu.Unlock()
-				conn.releaseReceivedBytes(msg)
 				return
 			}
 			select {
@@ -540,7 +581,9 @@ func (conn *connection) admitReceivedBytes(msg *protoext.SignedGossipMessage) bo
 func (conn *connection) releaseReceivedBytes(msg *protoext.SignedGossipMessage) {
 	size := int64(goproto.Size(msg.Envelope))
 	conn.sharedRecvBudget.release(size)
-	conn.recvBytesInFlight.Add(-size)
+	if conn.recvBytesInFlight.Add(-size) == 0 && conn.retiredCharged.Load() && conn.store != nil {
+		conn.store.removeDrainedConn(conn)
+	}
 }
 
 type msgSending struct {

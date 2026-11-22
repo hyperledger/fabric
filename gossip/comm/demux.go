@@ -117,6 +117,22 @@ func (m *ChannelDeMultiplexer) deMultiplex(msg any, abort <-chan struct{}, track
 	m.lock.Unlock()
 	defer m.deMuxInProgress.Done()
 
+	if !track {
+		// Single pass on the untracked hot path; no delivery count is needed.
+		for _, ch := range channels {
+			if ch.pred(msg) {
+				select {
+				case <-m.stopCh:
+					return // stopping
+				case <-abort:
+					return // aborted
+				case ch.ch <- msg:
+				}
+			}
+		}
+		return
+	}
+
 	// The delivery count must be known before the first delivery, as consumers
 	// may release the message while later deliveries are still in progress.
 	var matched []*channel
@@ -126,10 +142,8 @@ func (m *ChannelDeMultiplexer) deMultiplex(msg any, abort <-chan struct{}, track
 		}
 	}
 	tracker, tracked := msg.(consumptionTracker)
-	if tracked && track {
+	if tracked {
 		tracker.trackDeliveries(len(matched))
-	} else {
-		tracked = false
 	}
 
 	for i, ch := range matched {

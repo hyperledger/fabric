@@ -94,7 +94,7 @@ func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore iden
 	}
 
 	commInst.connStore = newConnStore(commInst, commInst.logger, connConfig)
-	sharedBudget.evict = commInst.connStore.evictLargestConnection
+	sharedBudget.evict = func() { commInst.connStore.evictLargestConnection(sharedBudget.max) }
 
 	proto.RegisterGossipServer(s, commInst)
 
@@ -248,14 +248,16 @@ func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *protoext.SignedGossipMe
 	if err == nil {
 		disConnectOnErr := func(err error) {
 			c.logger.Warningf("%v isn't responsive: %v", peer, err)
+			// Report peer death only when the failed connection is still the
+			// current one; a replaced connection must fail its send waiters
+			// silently and never mark the peer (and its successor) dead.
+			if !c.connStore.evictConn(conn) {
+				return
+			}
 			select {
 			case c.deadEndpoints <- peer.PKIID:
 			case <-c.exitChan:
-				return
 			}
-			// Remove the failed connection only if it is still the current
-			// one; a replacement must never be torn down by its predecessor.
-			c.connStore.evictConn(conn)
 		}
 		conn.send(msg, disConnectOnErr, shouldBlock)
 		return
