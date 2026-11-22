@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package node
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -242,6 +243,17 @@ func TestLedgerConfigMaxRWSetSize(t *testing.T) {
 	// a fractional value must not be truncated into silently disabling the limit
 	viper.Set("ledger.state.maxRWSetSize", 0.5)
 	require.Equal(t, int64(100*1024*1024), ledgerConfig().MaxRWSetSize)
+
+	// non-finite values must not convert into an arbitrary limit
+	viper.Set("ledger.state.maxRWSetSize", math.NaN())
+	require.Equal(t, int64(100*1024*1024), ledgerConfig().MaxRWSetSize)
+	viper.Set("ledger.state.maxRWSetSize", math.Inf(1))
+	require.Equal(t, int64(100*1024*1024), ledgerConfig().MaxRWSetSize)
+	viper.Set("ledger.state.maxRWSetSize", math.Inf(-1))
+	require.Equal(t, int64(100*1024*1024), ledgerConfig().MaxRWSetSize)
+
+	viper.Set("ledger.state.maxRWSetSize", uint64(42000000))
+	require.Equal(t, int64(42000000), ledgerConfig().MaxRWSetSize)
 
 	// a negative value disables the limit and logs a warning
 	viper.Set("ledger.state.maxRWSetSize", -1)

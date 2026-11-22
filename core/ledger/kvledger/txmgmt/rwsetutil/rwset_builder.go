@@ -33,7 +33,10 @@ var logger = flogging.MustGetLogger("rwsetutil")
 // proto headers, slice growth, and the per-key WritesetMetadata entry the
 // transaction manager adds for every written key (~300B total measured for a
 // public write with an 8-byte key). The constants err high so the metered
-// size stays a conservative bound on retained memory.
+// size stays a conservative bound on retained memory. Range query results are
+// charged per retained pending result and released when the results helper
+// compacts them into the merkle summary, so the charge tracks peak retention,
+// not the sum of a scan.
 const (
 	writeEntryOverhead      = 512
 	readEntryOverhead       = 384
@@ -361,7 +364,8 @@ func (b *RWSetBuilder) setPvtCollectionHash(ns string, coll string, pvtDataProto
 	collHashedBuilder.pvtDataHash = util.ComputeHash(pvtDataProto)
 }
 
-// GetTxReadWriteSet returns the read-write set
+// GetTxReadWriteSet returns the read-write set, or nil once the size limit
+// has been breached so that no partial read-write set can be obtained
 // TODO make this function private once txmgr starts using new function `GetTxSimulationResults` introduced here
 func (b *RWSetBuilder) GetTxReadWriteSet() *TxRwSet {
 	if b.limitErr != nil {

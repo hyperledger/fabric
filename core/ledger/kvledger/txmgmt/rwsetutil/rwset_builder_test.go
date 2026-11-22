@@ -623,7 +623,9 @@ func TestRWSetSizeLimit(t *testing.T) {
 		SetMerkelSummary(rqi, summary)
 		b := NewRWSetBuilderWithMaxRWSetSize(256)
 		require.NoError(t, b.AddToRangeQuerySet("ns1", rqi))
+		require.Equal(t, int64(proto.Size(summary)), b.rwSetBytes)
 		require.NoError(t, b.AddToRangeQuerySet("ns1", rqi))
+		require.Equal(t, int64(proto.Size(summary)), b.rwSetBytes)
 		b2 := NewRWSetBuilderWithMaxRWSetSize(64)
 		require.Error(t, b2.AddToRangeQuerySet("ns1", rqi))
 		require.Empty(t, b2.pubRwBuilderMap)
@@ -700,6 +702,37 @@ func TestRWSetSizeLimit(t *testing.T) {
 			require.NoError(t, b.AddToReadSet("ns1", key, version.NewHeight(1, 1)))
 		}
 	})
+
+	t.Run("recorded breach is returned on re-read of a tracked key", func(t *testing.T) {
+		// limit 1000: two 386-byte reads fit, the third trips
+		b := NewRWSetBuilderWithMaxRWSetSize(1000)
+		require.NoError(t, b.AddToReadSet("ns1", "k1", version.NewHeight(1, 1)))
+		require.NoError(t, b.AddToReadSet("ns1", "k2", version.NewHeight(1, 1)))
+		err := b.AddToReadSet("ns1", "k3", version.NewHeight(1, 1))
+		require.Error(t, err)
+		require.Equal(t, err, b.AddToReadSet("ns1", "k1", version.NewHeight(2, 1)))
+	})
+}
+
+// TestRWSetSizeLimitBulkScan verifies that a long range scan whose results far
+// exceed the budget in sum is not rejected while its peak retention stays
+// below it
+func TestRWSetSizeLimitBulkScan(t *testing.T) {
+	b := NewRWSetBuilderWithMaxRWSetSize(100 * 1024 * 1024)
+	helper, err := NewRangeQueryResultsHelperWithAccounting(true, 50, testHashFunc, b)
+	require.NoError(t, err)
+	require.NoError(t, b.AddRangeQueryKeys("a", "z"))
+	// 771k results of overhead(128) + key(7-9) sum to over 100MiB, but only
+	// one maxDegree batch is retained at a time
+	for i := range 771_000 {
+		require.NoError(t, helper.AddResult(NewKVRead(fmt.Sprintf("key%04d", i), version.NewHeight(1, 2))))
+	}
+	require.Less(t, b.rwSetBytes, int64(514+51*(128+9)))
+	results, summary, err := helper.Done()
+	require.NoError(t, err)
+	require.Nil(t, results)
+	require.NotNil(t, summary)
+	require.Equal(t, int64(514), b.rwSetBytes)
 }
 
 // TestRWSetSizeLimitBulkWrites drives the bulk-write pattern of a chaincode

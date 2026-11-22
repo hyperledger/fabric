@@ -1848,6 +1848,82 @@ func TestTxSimulatorRWSetSizeLimit(t *testing.T) {
 	})
 }
 
+func TestTxSimulatorRWSetSizeLimitReadPaths(t *testing.T) {
+	env := testEnvsMap[levelDBtestEnvName].(*lockBasedEnv)
+	env.maxRWSetSize = 2048
+	defer func() { env.maxRWSetSize = 0 }()
+	env.init(t, "testtxsimulatorrwsetsizelimitreads", nil)
+	defer env.cleanup()
+	populateCollConfigForTest(
+		t,
+		env.getTxMgr(),
+		[]collConfigkey{{"ns1", "coll1"}},
+		version.NewHeight(1, 1),
+	)
+
+	t.Run("GetState with an oversized key", func(t *testing.T) {
+		s, err := env.getTxMgr().NewTxSimulator("tx_large_key")
+		require.NoError(t, err)
+		_, err = s.GetState("ns1", strings.Repeat("k", 4096))
+		require.ErrorContains(t, err, "exceeds the maximum allowed size")
+		s.Done()
+	})
+
+	t.Run("range query with oversized bounds fails at iterator creation", func(t *testing.T) {
+		s, err := env.getTxMgr().NewTxSimulator("tx_large_bounds")
+		require.NoError(t, err)
+		_, err = s.GetStateRangeScanIterator("ns1", strings.Repeat("s", 3000), strings.Repeat("e", 3000))
+		require.ErrorContains(t, err, "exceeds the maximum allowed size")
+		s.Done()
+	})
+
+	t.Run("range scan accumulating beyond the budget fails mid-scan", func(t *testing.T) {
+		// seed 15 keys of 6 bytes through committed transactions that each fit
+		txMgrHelper := newTxMgrTestHelper(t, env.getTxMgr())
+		for batch := range 5 {
+			s, err := env.getTxMgr().NewTxSimulator(fmt.Sprintf("seed_tx_%d", batch))
+			require.NoError(t, err)
+			for i := range 3 {
+				require.NoError(t, s.SetState("ns1", fmt.Sprintf("ks%04d", batch*3+i), []byte("v")))
+			}
+			rws, err := s.GetTxSimulationResults()
+			require.NoError(t, err)
+			s.Done()
+			txMgrHelper.validateAndCommitRWSet(rws.PubSimulationResults)
+		}
+
+		s, err := env.getTxMgr().NewTxSimulator("tx_scan")
+		require.NoError(t, err)
+		itr, err := s.GetStateRangeScanIterator("ns1", "", "")
+		require.NoError(t, err) // creation charges only the bounds
+		defer itr.Close()
+		var scanErr error
+		for {
+			res, nextErr := itr.Next()
+			if nextErr != nil {
+				scanErr = nextErr
+				break
+			}
+			if res == nil {
+				break
+			}
+		}
+		// the 12th of the 6-byte results pushes the retained batch over budget
+		require.ErrorContains(t, scanErr, "exceeds the maximum allowed size")
+		_, err = s.GetTxSimulationResults()
+		require.ErrorContains(t, err, "exceeds the maximum allowed size")
+		s.Done()
+	})
+
+	t.Run("GetPrivateDataHash with an oversized key", func(t *testing.T) {
+		s, err := env.getTxMgr().NewTxSimulator("tx_pvt_hash")
+		require.NoError(t, err)
+		_, err = s.GetPrivateDataHash("ns1", "coll1", strings.Repeat("k", 4096))
+		require.ErrorContains(t, err, "exceeds the maximum allowed size")
+		s.Done()
+	})
+}
+
 func TestTxSimulatorRWSetSizeLimitCoversStateMetadata(t *testing.T) {
 	env := testEnvsMap[levelDBtestEnvName].(*lockBasedEnv)
 	env.maxRWSetSize = 1500
@@ -1863,9 +1939,9 @@ func TestTxSimulatorRWSetSizeLimitCoversStateMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, s1.SetState("ns1", "key1", []byte("v")))
 	require.NoError(t, s1.SetStateMetadata("ns1", "key1", map[string][]byte{"meta1": make([]byte, 200)}))
-	s1.Done()
 	rws1, err := s1.GetTxSimulationResults()
 	require.NoError(t, err)
+	s1.Done()
 	txMgrHelper.validateAndCommitRWSet(rws1.PubSimulationResults)
 
 	// writing the key retains the committed metadata in the simulation results

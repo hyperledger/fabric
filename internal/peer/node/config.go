@@ -55,7 +55,11 @@ func ledgerConfig() *ledger.Config {
 	if viper.IsSet("ledger.state.maxRWSetSize") {
 		maxRWSetSize = parseMaxRWSetSize(viper.Get("ledger.state.maxRWSetSize"), maxRWSetSize)
 	}
-	logger.Infof("Transaction simulation read-write set size limit = %d bytes", maxRWSetSize)
+	if maxRWSetSize > 0 {
+		logger.Infof("Transaction simulation read-write set size limit = %d bytes", maxRWSetSize)
+	} else {
+		logger.Info("Transaction simulation read-write set size limit is disabled")
+	}
 
 	fsPath := coreconfig.GetPath("peer.fileSystemPath")
 	ledgersDataRootDir := filepath.Join(fsPath, "ledgersData")
@@ -128,8 +132,15 @@ func parseMaxRWSetSize(value any, defaultValue int64) int64 {
 	case int64:
 		parsed = v
 	case float64:
-		if v != math.Trunc(v) || v >= float64(math.MaxInt64) {
-			// a truncated fractional value could silently disable the limit
+		// non-finite or fractional values would convert to an arbitrary or
+		// zero limit and could silently disable it
+		if math.IsNaN(v) || math.IsInf(v, 0) || v != math.Trunc(v) || v >= float64(math.MaxInt64) {
+			logger.Warningf("Invalid ledger.state.maxRWSetSize value %v, using default %d bytes", value, defaultValue)
+			return defaultValue
+		}
+		parsed = int64(v)
+	case uint64:
+		if v > uint64(math.MaxInt64) {
 			logger.Warningf("Invalid ledger.state.maxRWSetSize value %v, using default %d bytes", value, defaultValue)
 			return defaultValue
 		}
