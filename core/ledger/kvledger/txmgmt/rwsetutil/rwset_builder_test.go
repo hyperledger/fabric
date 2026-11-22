@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
@@ -513,8 +514,8 @@ func TestRWSetSizeLimit(t *testing.T) {
 	})
 
 	t.Run("metadata writes are metered", func(t *testing.T) {
-		// each entry is overhead(512) + key(4) + name(5) + value(16) = 537 bytes
-		b := NewRWSetBuilderWithMaxRWSetSize(1100)
+		// each entry is overhead(512) + key(4) + entry(128) + name(5) + value(16) = 665 bytes
+		b := NewRWSetBuilderWithMaxRWSetSize(1346)
 		metadata := map[string][]byte{"meta1": make([]byte, 16)}
 		require.NoError(t, b.AddToMetadataWriteSet("ns1", "key1", metadata))
 		// deleting metadata frees budget
@@ -534,9 +535,9 @@ func TestRWSetSizeLimit(t *testing.T) {
 	})
 
 	t.Run("hashed metadata writes are metered", func(t *testing.T) {
-		// each entry is overhead(512) + key(4) + keyHash(32) + name(5) + value(8)
-		// + the original key(4) retained by the hashed metadata map = 565 bytes
-		b := NewRWSetBuilderWithMaxRWSetSize(565)
+		// each entry is overhead(512) + key(4) + keyHash(32) + entry(128) + name(5) + value(8)
+		// + the original key(4) retained by the hashed metadata map = 693 bytes
+		b := NewRWSetBuilderWithMaxRWSetSize(693)
 		metadata := map[string][]byte{"meta1": make([]byte, 8)}
 		require.NoError(t, b.AddToHashedMetadataWriteSet("ns1", "coll1", "key1", metadata))
 		require.Error(t, b.AddToHashedMetadataWriteSet("ns1", "coll1", "key2", metadata))
@@ -601,6 +602,8 @@ func TestRWSetSizeLimit(t *testing.T) {
 			require.NoError(t, helper2.AddResult(NewKVRead(fmt.Sprintf("key%d", i), version.NewHeight(1, 2))))
 		}
 		require.Error(t, helper2.AddResult(NewKVRead("key9", version.NewHeight(1, 2))))
+		// the rejected result is not retained
+		require.Len(t, helper2.pendingResults, 3)
 
 		// results kept as raw reads stay charged
 		b3 := NewRWSetBuilderWithMaxRWSetSize(4096)
@@ -682,6 +685,18 @@ func TestRWSetSizeLimit(t *testing.T) {
 		require.Equal(t, err, b.AddToRangeQuerySet("ns1", rqi))
 	})
 
+	t.Run("tiny metadata entries are bounded by the per-entry overhead", func(t *testing.T) {
+		// 1000 entries of name(4)+value(4) with overhead(128) each = 136k bytes
+		b := NewRWSetBuilderWithMaxRWSetSize(100_000)
+		metadata := make(map[string][]byte, 1000)
+		for i := range 1000 {
+			metadata[fmt.Sprintf("m%03d", i)] = make([]byte, 4)
+		}
+		require.ErrorContains(t, b.AddToMetadataWriteSet("ns1", "key1", metadata), "exceeds the maximum allowed size")
+		// a rejected metadata write is not retained
+		require.Empty(t, b.pubRwBuilderMap)
+	})
+
 	t.Run("tiny keys with empty values are bounded by the per-entry overhead", func(t *testing.T) {
 		// 8-byte keys with nil values retain map entries and metadata, so the
 		// limit must trip on entry count, not just value bytes
@@ -712,6 +727,16 @@ func TestRWSetSizeLimit(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, err, b.AddToReadSet("ns1", "k1", version.NewHeight(2, 1)))
 	})
+}
+
+func TestBreachWarningRateLimited(t *testing.T) {
+	l := newRateLimitedLogger(time.Hour)
+	l.warn("first")
+	require.Zero(t, l.suppressed)
+	l.warn("second")
+	require.Equal(t, uint64(1), l.suppressed)
+	l.warn("third")
+	require.Equal(t, uint64(2), l.suppressed)
 }
 
 // TestRWSetSizeLimitBulkScan verifies that a long range scan whose results far

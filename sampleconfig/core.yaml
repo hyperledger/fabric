@@ -697,9 +697,11 @@ ledger:
     # The metered size combines the actual key, value, hash, and
     # state-metadata bytes with fixed per-entry overheads for the runtime
     # representation (512 bytes per write, 384 per read, 512 per range
-    # query, and 128 per range query result while retained), so the default
-    # below allows at most roughly 200k write or 270k read entries per
-    # transaction, and fewer as keys and values grow. The limit is enabled
+    # query, and 128 per range query result while retained), so a
+    # transaction's entry cap is the limit divided by the per-entry charge
+    # (e.g. maxRWSetSize / (512 + len(key) + len(value)) for writes): the
+    # default below allows at most roughly 200k write or 270k read entries
+    # per transaction, and fewer as keys and values grow. The limit is enabled
     # by default; upgrades that run legitimate bulk simulations above it
     # need to raise the value. A value of 0 or less disables the limit.
     maxRWSetSize: 104857600

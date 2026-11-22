@@ -65,8 +65,10 @@ type Config struct {
 	// for the runtime representation: 512 bytes per write, 384 per read,
 	// 512 per range query, and 128 per range query result while it is
 	// retained (released once results are hashed into the merkle summary).
-	// The 100MiB default therefore allows at most ~200k writes or ~270k reads
-	// per transaction, and fewer as keys and values grow.
+	// The per-transaction entry cap is the limit divided by the per-entry
+	// charge - e.g. MaxRWSetSize / (512 + len(key) + len(value)) for writes -
+	// so the 100MiB default allows at most ~200k writes or ~270k reads per
+	// transaction, and fewer as keys and values grow.
 	MaxRWSetSize int64
 }
 

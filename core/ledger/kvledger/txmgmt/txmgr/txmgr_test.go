@@ -1931,22 +1931,23 @@ func TestTxSimulatorRWSetSizeLimitCoversStateMetadata(t *testing.T) {
 	env.init(t, "testtxsimulatorrwsetsizelimitmetadata", nil)
 	defer env.cleanup()
 
-	// commit a 205 byte metadata entry on key1 through the limited txmgr (a
-	// metadata-only write on a valueless key is dropped at commit); the seed
-	// is metered at 1443 bytes and fits the 1500 byte budget
+	// commit a 233 byte metadata entry on key1 through the limited txmgr (a
+	// metadata-only write on a valueless key is dropped at commit); the seed is
+	// metered at 517 (SetState) + 749 (metadata write entry) + 233 (retained
+	// metadata copy) = 1499 bytes and fits the 1500 byte budget
 	txMgrHelper := newTxMgrTestHelper(t, env.getTxMgr())
 	s1, err := env.getTxMgr().NewTxSimulator("seed_tx")
 	require.NoError(t, err)
 	require.NoError(t, s1.SetState("ns1", "key1", []byte("v")))
-	require.NoError(t, s1.SetStateMetadata("ns1", "key1", map[string][]byte{"meta1": make([]byte, 200)}))
+	require.NoError(t, s1.SetStateMetadata("ns1", "key1", map[string][]byte{"meta1": make([]byte, 100)}))
 	rws1, err := s1.GetTxSimulationResults()
 	require.NoError(t, err)
 	s1.Done()
 	txMgrHelper.validateAndCommitRWSet(rws1.PubSimulationResults)
 
 	// writing the key retains the committed metadata in the simulation results
-	// for state-based endorsement: an 816 byte write fits the budget on its
-	// own, but the 205 bytes of metadata copy push it over
+	// for state-based endorsement: the write is metered at 1316 bytes and fits
+	// the budget on its own, but the 233 bytes of metadata copy push it over
 	s2, err := env.getTxMgr().NewTxSimulator("test_tx")
 	require.NoError(t, err)
 	require.ErrorContains(

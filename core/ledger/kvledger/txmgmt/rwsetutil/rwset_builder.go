@@ -17,6 +17,9 @@ limitations under the License.
 package rwsetutil
 
 import (
+	"sync"
+	"time"
+
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
@@ -42,7 +45,45 @@ const (
 	readEntryOverhead       = 384
 	rangeQueryEntryOverhead = 512
 	rangeQueryReadOverhead  = 128
+	// metadataEntryOverhead covers the map entry, string headers, and the
+	// KVMetadataEntry proto of every metadata entry (measured ~120B for a
+	// tiny entry), so many tiny metadata entries cannot bypass the budget
+	metadataEntryOverhead = 128
 )
+
+// breachLogger throttles the per-breach warning: a client spamming oversized
+// proposals must not be able to flood the peer log
+var breachLogger = newRateLimitedLogger(time.Minute)
+
+type rateLimitedLogger struct {
+	mu         sync.Mutex
+	interval   time.Duration
+	lastLog    time.Time
+	suppressed uint64
+}
+
+func newRateLimitedLogger(interval time.Duration) *rateLimitedLogger {
+	return &rateLimitedLogger{interval: interval}
+}
+
+// warn logs at most one warning per interval; suppressed warnings are counted
+// and reported with the next emitted one
+func (l *rateLimitedLogger) warn(msg string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if time.Since(l.lastLog) < l.interval {
+		l.suppressed++
+		return
+	}
+	l.lastLog = time.Now()
+	suppressed := l.suppressed
+	l.suppressed = 0
+	if suppressed > 0 {
+		logger.Warningf("%s (and %d similar warnings suppressed)", msg, suppressed)
+		return
+	}
+	logger.Warning(msg)
+}
 
 // RWSetBuilder helps building the read-write set
 type RWSetBuilder struct {
@@ -152,8 +193,8 @@ func (b *RWSetBuilder) accountSize(newBytes, oldBytes int64) error {
 			"transaction read-write set size %d exceeds the maximum allowed size %d",
 			updated, b.maxRWSetBytes,
 		)
-		// a breach is a likely bulk-write/read abuse; surface it to the operator
-		logger.Warningf("rejecting oversized transaction simulation: %s", b.limitErr)
+		// throttled: a client spamming oversized proposals must not flood the log
+		breachLogger.warn("rejecting oversized transaction simulation: " + b.limitErr.Error())
 		return b.limitErr
 	}
 	b.rwSetBytes = updated
@@ -192,17 +233,18 @@ func (b *RWSetBuilder) AddToWriteSet(ns string, key string, value []byte) error 
 // AddToMetadataWriteSet adds a metadata to a key in the write-set
 // A nil/empty-map for 'metadata' parameter indicates the delete of the metadata
 func (b *RWSetBuilder) AddToMetadataWriteSet(ns, key string, metadata map[string][]byte) error {
-	metadataWrite := mapToMetadataWrite(key, metadata)
 	var oldBytes int64
 	if nsPubRwBuilder, ok := b.pubRwBuilderMap[ns]; ok {
 		if existing := nsPubRwBuilder.metadataWriteMap[key]; existing != nil {
 			oldBytes = writeEntryOverhead + metadataWriteSize(existing)
 		}
 	}
-	if err := b.accountSize(writeEntryOverhead+metadataWriteSize(metadataWrite), oldBytes); err != nil {
+	// charge from the raw map so a rejected write never builds the proto
+	newBytes := writeEntryOverhead + int64(len(key)) + metadataMapSize(metadata)
+	if err := b.accountSize(newBytes, oldBytes); err != nil {
 		return err
 	}
-	b.getOrCreateNsPubRwBuilder(ns).metadataWriteMap[key] = metadataWrite
+	b.getOrCreateNsPubRwBuilder(ns).metadataWriteMap[key] = mapToMetadataWrite(key, metadata)
 	return nil
 }
 
@@ -298,8 +340,6 @@ func (b *RWSetBuilder) AddToHashedMetadataWriteSet(ns, coll, key string, metadat
 	// pvt write set just need the key; not the entire metadata. The metadata is stored only
 	// by the hashed key. Pvt write-set need to know the key for handling a special case where only
 	// metadata is updated so, the version of the key present in the pvt data should be incremented
-	metadataWrite := &kvrwset.KVMetadataWrite{Key: key, Entries: nil}
-	metadataWriteHash := mapToMetadataWriteHash(key, metadata)
 	var oldBytes int64
 	existed := false
 	if existing := b.findCollPvtRwBuilder(ns, coll); existing != nil && existing.metadataWriteMap[key] != nil {
@@ -314,12 +354,15 @@ func (b *RWSetBuilder) AddToHashedMetadataWriteSet(ns, coll, key string, metadat
 	if existed {
 		oldBytes += writeEntryOverhead
 	}
-	newBytes := writeEntryOverhead + metadataWriteSize(metadataWrite) + metadataWriteHashSize(metadataWriteHash) + int64(len(key))
+	// charge from the raw map so a rejected write never builds the protos;
+	// the hashed metadata map is keyed by the original key
+	newBytes := writeEntryOverhead + int64(len(key)) + int64(len(key)) +
+		int64(len(util.ComputeStringHash(key))) + metadataMapSize(metadata)
 	if err := b.accountSize(newBytes, oldBytes); err != nil {
 		return err
 	}
-	b.getOrCreateCollPvtRwBuilder(ns, coll).metadataWriteMap[key] = metadataWrite
-	b.getOrCreateCollHashedRwBuilder(ns, coll).metadataWriteMap[key] = metadataWriteHash
+	b.getOrCreateCollPvtRwBuilder(ns, coll).metadataWriteMap[key] = &kvrwset.KVMetadataWrite{Key: key, Entries: nil}
+	b.getOrCreateCollHashedRwBuilder(ns, coll).metadataWriteMap[key] = mapToMetadataWriteHash(key, metadata)
 	return nil
 }
 
@@ -589,10 +632,18 @@ func mapToMetadataWriteHash(key string, m map[string][]byte) *kvrwset.KVMetadata
 	return proto
 }
 
+func metadataEntriesSize(entries []*kvrwset.KVMetadataEntry) int64 {
+	var size int64
+	for _, entry := range entries {
+		size += metadataEntryOverhead + int64(len(entry.GetName())+len(entry.GetValue()))
+	}
+	return size
+}
+
 func metadataMapSize(metadata map[string][]byte) int64 {
 	var size int64
 	for name, value := range metadata {
-		size += int64(len(name) + len(value))
+		size += metadataEntryOverhead + int64(len(name)+len(value))
 	}
 	return size
 }
@@ -612,17 +663,9 @@ func pvtWriteHashSize(kvWriteHash *kvrwset.KVWriteHash) int64 {
 }
 
 func metadataWriteSize(metadataWrite *kvrwset.KVMetadataWrite) int64 {
-	size := int64(len(metadataWrite.GetKey()))
-	for _, entry := range metadataWrite.GetEntries() {
-		size += int64(len(entry.GetName()) + len(entry.GetValue()))
-	}
-	return size
+	return int64(len(metadataWrite.GetKey())) + metadataEntriesSize(metadataWrite.GetEntries())
 }
 
 func metadataWriteHashSize(metadataWriteHash *kvrwset.KVMetadataWriteHash) int64 {
-	size := int64(len(metadataWriteHash.GetKeyHash()))
-	for _, entry := range metadataWriteHash.GetEntries() {
-		size += int64(len(entry.GetName()) + len(entry.GetValue()))
-	}
-	return size
+	return int64(len(metadataWriteHash.GetKeyHash())) + metadataEntriesSize(metadataWriteHash.GetEntries())
 }

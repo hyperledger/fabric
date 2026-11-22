@@ -93,11 +93,14 @@ func NewRangeQueryResultsHelperWithAccounting(enableHashing bool, maxDegree uint
 // consume the results for incrementally update the merkle tree
 func (helper *RangeQueryResultsHelper) AddResult(kvRead *kvrwset.KVRead) error {
 	logger.Debug("Adding a result")
-	helper.pendingResults = append(helper.pendingResults, kvRead)
 	if helper.accounting != nil {
+		// charge before retaining so a rejected result is never kept
 		if err := helper.accounting.chargeRangeQueryResult(kvRead.GetKey()); err != nil {
 			return err
 		}
+	}
+	helper.pendingResults = append(helper.pendingResults, kvRead)
+	if helper.accounting != nil {
 		helper.accountedBytes += rangeQueryReadOverhead + int64(len(kvRead.GetKey()))
 	}
 	if helper.hashingEnabled && uint32(len(helper.pendingResults)) > helper.maxDegree {
