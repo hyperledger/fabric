@@ -143,6 +143,12 @@ var _ = Describe("externalbuilder", func() {
 				Expect(filepath.Join(durablePath, "fake-package-id", "bld")).To(BeADirectory())
 				Expect(filepath.Join(durablePath, "fake-package-id", "release")).To(BeADirectory())
 				Expect(filepath.Join(durablePath, "fake-package-id", "build-info.json")).To(BeARegularFile())
+
+				// The staging directory the build was copied into has been moved into place
+				entries, err := os.ReadDir(durablePath)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(entries).To(HaveLen(1))
+				Expect(entries[0].Name()).To(Equal("fake-package-id"))
 			})
 
 			Context("when the durable path cannot be created", func() {
@@ -152,7 +158,8 @@ var _ = Describe("externalbuilder", func() {
 
 				It("wraps and returns the error", func() {
 					_, err := detector.Build("fake-package-id", md, codePackage)
-					Expect(err).To(MatchError("could not create dir 'path/to/nowhere/fake-package-id' to persist build output: mkdir path/to/nowhere/fake-package-id: no such file or directory"))
+					Expect(err).To(MatchError(ContainSubstring("could not create dir for 'path/to/nowhere/fake-package-id' to persist build output")))
+					Expect(err).To(MatchError(ContainSubstring("no such file or directory")))
 				})
 			})
 
@@ -167,6 +174,11 @@ var _ = Describe("externalbuilder", func() {
 					_, err := detector.Build("fake-package-id", md, codePackage)
 					Expect(err).To(MatchError(ContainSubstring("could not move or copy build context bld to persistent location")))
 					Expect(filepath.Join(durablePath, "fake-package-id")).NotTo(BeAnExistingFile())
+
+					// Neither the build nor its staging directory is left behind
+					entries, err := os.ReadDir(durablePath)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(entries).To(BeEmpty())
 
 					Expect(codePackage.Close()).To(Succeed())
 					codePackage, err = os.Open("testdata/normal_archive.tar.gz")
