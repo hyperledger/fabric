@@ -386,6 +386,12 @@ Issue the [peer lifecycle chaincode install](commands/peerlifecycle.html#peer-li
 peer lifecycle chaincode install basic.tar.gz
 ```
 
+If the install fails with a `chaincode install failed with status: 500` error that includes
+`could not build chaincode`, verify the Docker Engine server version with `docker version`.
+Docker Engine v29 introduced a compatibility issue that caused broken-pipe failures during
+peer-side chaincode builds in older Fabric releases. Upgrade to a Fabric release that includes
+the Docker Engine v29+ fix, such as Fabric v3.1.4 or a current v2.5.x patch release.
+
 If the command is successful, the peer will generate and return the package identifier. This package ID will be used to approve the chaincode in the next step. You should see output similar to the following:
 
 ```
