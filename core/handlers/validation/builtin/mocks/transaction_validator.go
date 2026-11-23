@@ -14,6 +14,11 @@ type TransactionValidator struct {
 	mock.Mock
 }
 
+// SignalInvalidTx provides a mock function with given fields: blockNum, txNum, err
+func (_m *TransactionValidator) SignalInvalidTx(blockNum uint64, txNum uint64, err error) {
+	_m.Called(blockNum, txNum, err)
+}
+
 // Validate provides a mock function with given fields: block, namespace, txPosition, actionPosition, policy
 func (_m *TransactionValidator) Validate(block *common.Block, namespace string, txPosition int, actionPosition int, policy []byte) errors.TxValidationError {
 	ret := _m.Called(block, namespace, txPosition, actionPosition, policy)

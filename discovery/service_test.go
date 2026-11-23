@@ -13,8 +13,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/discovery"
 	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/gossip/api"
 	gcommon "github.com/hyperledger/fabric/gossip/common"
@@ -432,6 +434,57 @@ func TestValidateCCQuery(t *testing.T) {
 		},
 	})
 	require.Equal(t, "chaincode interest is nil", err.Error())
+}
+
+// Client-supplied key policies are raw protobufs that bypass the DSL parser;
+// malformed ones must be rejected before they reach policy inquiry.
+func TestValidateCCQueryKeyPolicies(t *testing.T) {
+	signedBy := func(i int32) *common.SignaturePolicy {
+		return &common.SignaturePolicy{Type: &common.SignaturePolicy_SignedBy{SignedBy: i}}
+	}
+	nOutOf := func(n int32, rules ...*common.SignaturePolicy) *common.SignaturePolicy {
+		return &common.SignaturePolicy{Type: &common.SignaturePolicy_NOutOf_{
+			NOutOf: &common.SignaturePolicy_NOutOf{N: n, Rules: rules},
+		}}
+	}
+	queryWithPolicy := func(rule *common.SignaturePolicy, numIdentities int) *discovery.ChaincodeQuery {
+		return &discovery.ChaincodeQuery{
+			Interests: []*peer.ChaincodeInterest{{
+				Chaincodes: []*peer.ChaincodeCall{{
+					Name: "mycc",
+					KeyPolicies: []*common.SignaturePolicyEnvelope{{
+						Rule:       rule,
+						Identities: make([]*msp.MSPPrincipal, numIdentities),
+					}},
+				}},
+			}},
+		}
+	}
+
+	for _, testCase := range []struct {
+		name        string
+		rule        *common.SignaturePolicy
+		identities  int
+		expectedErr string
+	}{
+		{name: "negative threshold", rule: nOutOf(-1, signedBy(0)), identities: 1, expectedErr: "threshold -1 is negative"},
+		{name: "nested negative threshold", rule: nOutOf(1, nOutOf(-2, signedBy(0))), identities: 1, expectedErr: "threshold -2 is negative"},
+		{name: "negative principal index", rule: signedBy(-1), identities: 1, expectedErr: "index -1 out of range"},
+		{name: "principal index out of range", rule: signedBy(1), identities: 1, expectedErr: "index 1 out of range"},
+		{name: "empty rule", rule: &common.SignaturePolicy{}, identities: 1, expectedErr: "rule is empty"},
+		{name: "nil rule", rule: nil, identities: 1, expectedErr: "rule is empty"},
+		{name: "valid policy", rule: nOutOf(1, signedBy(0)), identities: 1},
+		{name: "zero threshold is legal", rule: nOutOf(0), identities: 1},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			err := validateCCQuery(queryWithPolicy(testCase.rule, testCase.identities))
+			if testCase.expectedErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, testCase.expectedErr)
+			}
+		})
+	}
 }
 
 func wrapResult(responses ...any) *discovery.Response {

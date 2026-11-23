@@ -41,3 +41,8 @@ func (_m *KeyLevelValidationParameterManager) GetValidationParameterForKey(cc st
 func (_m *KeyLevelValidationParameterManager) SetTxValidationResult(cc string, blockNum uint64, txNum uint64, err error) {
 	_m.Called(cc, blockNum, txNum, err)
 }
+
+// SignalInvalidTx provides a mock function with given fields: blockNum, txNum, err
+func (_m *KeyLevelValidationParameterManager) SignalInvalidTx(blockNum uint64, txNum uint64, err error) {
+	_m.Called(blockNum, txNum, err)
+}

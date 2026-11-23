@@ -38,6 +38,8 @@ func (v *mockDispatcher) Dispatch(seq int, payload *common.Payload, envBytes []b
 	return v.DispatchRv, v.DispatchErr
 }
 
+func (v *mockDispatcher) SignalInvalidTx(channel string, blockNum uint64, txNum int, err error) {}
+
 func testValidationWithNTXes(t *testing.T, nBlocks int) {
 	rwsb := rwsetutil.NewRWSetBuilder()
 	rwsb.AddToWriteSet("ns1", "key1", []byte("value1"))

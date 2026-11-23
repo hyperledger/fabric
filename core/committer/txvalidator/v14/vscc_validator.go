@@ -274,6 +274,14 @@ func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, env
 	return peer.TxValidationCode_VALID, nil
 }
 
+// SignalInvalidTx signals validation plugins serving the given channel that
+// the transaction at the given height was rejected before or during plugin
+// validation, releasing transactions waiting on its state-based endorsement
+// dependencies
+func (v *VsccValidatorImpl) SignalInvalidTx(channel string, blockNum uint64, txNum int, err error) {
+	v.pluginValidator.SignalInvalidTx(channel, blockNum, uint64(txNum), err)
+}
+
 func (v *VsccValidatorImpl) VSCCValidateTxForCC(ctx *Context) error {
 	logger.Debug("Validating", ctx, "with plugin")
 	err := v.pluginValidator.ValidateWithPlugin(ctx)

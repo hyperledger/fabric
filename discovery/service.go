@@ -13,7 +13,9 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/discovery/protoext"
 	common2 "github.com/hyperledger/fabric/gossip/common"
@@ -275,6 +277,44 @@ func validateCCQuery(ccQuery *discovery.ChaincodeQuery) error {
 				return errors.New("chaincode name in interest cannot be empty")
 			}
 		}
+		if err := validateKeyPolicies(interest.GetChaincodes()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateKeyPolicies(chaincodes []*peer.ChaincodeCall) error {
+	for _, cc := range chaincodes {
+		for i, keyPolicy := range cc.GetKeyPolicies() {
+			if err := validateSignaturePolicy(keyPolicy.GetRule(), len(keyPolicy.GetIdentities())); err != nil {
+				return errors.Wrapf(err, "invalid key policy %d of chaincode %s", i, cc.GetName())
+			}
+		}
+	}
+	return nil
+}
+
+// Client-supplied raw protobuf policies bypass the DSL parser's guards; a
+// negative threshold hangs policy inquiry and an out-of-range principal index
+// panics it.
+func validateSignaturePolicy(policy *common.SignaturePolicy, numIdentities int) error {
+	switch t := policy.GetType().(type) {
+	case *common.SignaturePolicy_NOutOf_:
+		if t.NOutOf.GetN() < 0 {
+			return errors.Errorf("NOutOf threshold %d is negative", t.NOutOf.GetN())
+		}
+		for _, rule := range t.NOutOf.GetRules() {
+			if err := validateSignaturePolicy(rule, numIdentities); err != nil {
+				return err
+			}
+		}
+	case *common.SignaturePolicy_SignedBy:
+		if t.SignedBy < 0 || int(t.SignedBy) >= numIdentities {
+			return errors.Errorf("SignedBy index %d out of range of %d principals", t.SignedBy, numIdentities)
+		}
+	default:
+		return errors.New("policy rule is empty or of an unknown type")
 	}
 	return nil
 }

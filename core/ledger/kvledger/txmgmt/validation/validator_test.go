@@ -312,6 +312,43 @@ func TestPhantomValidation(t *testing.T) {
 	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder6, rwsetBuilder7), []int{1})
 }
 
+func TestReversedRangeQueryValidation(t *testing.T) {
+	// a reversed range matches no keys, so the phantom-read comparison alone decides
+	// validity; the outcome must be identical on both state db backends
+	for _, envName := range []string{levelDBtestEnvName, couchDBtestEnvName} {
+		t.Run(envName, func(t *testing.T) {
+			testDBEnv := testEnvs[envName]
+			testDBEnv.Init(t)
+			defer testDBEnv.Cleanup()
+			db := testDBEnv.GetDBHandle("testdb")
+
+			// populate db with initial data
+			batch := privacyenabledstate.NewUpdateBatch()
+			batch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 0))
+			batch.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 1))
+			require.NoError(t, db.ApplyPrivacyAwareUpdates(batch, version.NewHeight(1, 1)))
+
+			testValidator := &validator{db: db, hashFunc: testHashFunc}
+
+			t.Run("empty read set is valid", func(t *testing.T) {
+				rwsetBuilder := rwsetutil.NewRWSetBuilder()
+				rqi := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key1", ItrExhausted: true}
+				rwsetutil.SetRawReads(rqi, []*kvrwset.KVRead{})
+				rwsetBuilder.AddToRangeQuerySet("ns1", rqi)
+				checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder), []int{})
+			})
+
+			t.Run("unmatched read is a phantom read conflict", func(t *testing.T) {
+				rwsetBuilder := rwsetutil.NewRWSetBuilder()
+				rqi := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key1", ItrExhausted: true}
+				rwsetutil.SetRawReads(rqi, []*kvrwset.KVRead{rwsetutil.NewKVRead("key1", version.NewHeight(1, 0))})
+				rwsetBuilder.AddToRangeQuerySet("ns1", rqi)
+				checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder), []int{0})
+			})
+		})
+	}
+}
+
 func TestPhantomHashBasedValidation(t *testing.T) {
 	testDBEnv := testEnvs[levelDBtestEnvName]
 	testDBEnv.Init(t)

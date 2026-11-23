@@ -105,6 +105,10 @@ func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string,
 		return nil, err
 	}
 
+	if len(tx.GetActions()) == 0 {
+		return nil, errors.New("transaction contains no actions")
+	}
+
 	_, respPayload, err := protoutil.GetPayloads(tx.GetActions()[0])
 	if err != nil {
 		return nil, err

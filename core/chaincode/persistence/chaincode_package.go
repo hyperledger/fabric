@@ -36,6 +36,12 @@ const (
 	// CodePackageFile is the expected location of the code package in the
 	// top level of the chaincode package
 	CodePackageFile = "code.tar.gz"
+
+	// MaxDecompressedPackageSize bounds the total bytes decompressed while
+	// parsing a package (entry contents, tar headers, and padding alike), so
+	// a high-expansion-ratio archive cannot exhaust peer memory. Packages
+	// whose decompressed form exceeds the limit are rejected.
+	MaxDecompressedPackageSize = 256 << 20 // 256 MiB
 )
 
 //go:generate counterfeiter -o mock/legacy_cc_package_locator.go --fake-name LegacyCCPackageLocator . LegacyCCPackageLocator
@@ -283,10 +289,15 @@ func ParseChaincodePackage(source []byte) (*ChaincodePackageMetadata, []byte, er
 		return &ChaincodePackageMetadata{}, nil, errors.Wrapf(err, "error reading as gzip stream")
 	}
 
-	tarReader := tar.NewReader(gzReader)
+	// Bound the whole decompressed stream so that decompression work is
+	// capped too, not only the retained entry contents.
+	limitedReader := &io.LimitedReader{R: gzReader, N: MaxDecompressedPackageSize + 1}
+	tarReader := tar.NewReader(limitedReader)
 
 	var codePackage []byte
 	var ccPackageMetadata *ChaincodePackageMetadata
+	var decompressedSize int64
+	var unexpectedEntries int
 	for {
 		header, err := tarReader.Next()
 		if errors.Is(err, io.EOF) {
@@ -294,6 +305,9 @@ func ParseChaincodePackage(source []byte) (*ChaincodePackageMetadata, []byte, er
 		}
 
 		if err != nil {
+			if limitedReader.N == 0 {
+				return ccPackageMetadata, nil, errors.Errorf("chaincode package exceeds the maximum decompressed size of %d bytes", MaxDecompressedPackageSize)
+			}
 			return ccPackageMetadata, nil, errors.Wrapf(err, "error inspecting next tar header")
 		}
 
@@ -301,10 +315,17 @@ func ParseChaincodePackage(source []byte) (*ChaincodePackageMetadata, []byte, er
 			return ccPackageMetadata, nil, errors.Errorf("tar entry %s is not a regular file, type %v", header.Name, header.Typeflag)
 		}
 
+		// tar.Reader reads exactly the declared size, so checking it against
+		// the remaining budget before reading caps total allocation.
+		if header.Size > MaxDecompressedPackageSize-decompressedSize {
+			return ccPackageMetadata, nil, errors.Errorf("tar entry %s of size %d exceeds the maximum decompressed package size", header.Name, header.Size)
+		}
+
 		fileBytes, err := io.ReadAll(tarReader)
 		if err != nil {
 			return ccPackageMetadata, nil, errors.Wrapf(err, "could not read %s from tar", header.Name)
 		}
+		decompressedSize += int64(len(fileBytes))
 
 		switch header.Name {
 		case MetadataFile:
@@ -317,8 +338,21 @@ func ParseChaincodePackage(source []byte) (*ChaincodePackageMetadata, []byte, er
 		case CodePackageFile:
 			codePackage = fileBytes
 		default:
-			logger.Warningf("Encountered unexpected file '%s' in top level of chaincode package", header.Name)
+			// Rate-limit: a bomb of unexpected entries must not flood the log.
+			if unexpectedEntries < 3 {
+				logger.Warningf("Encountered unexpected file '%s' in top level of chaincode package", header.Name)
+			}
+			unexpectedEntries++
 		}
+	}
+
+	// A cleanly terminated stream that exhausted the limit was truncated.
+	if limitedReader.N == 0 {
+		return ccPackageMetadata, nil, errors.Errorf("chaincode package exceeds the maximum decompressed size of %d bytes", MaxDecompressedPackageSize)
+	}
+
+	if unexpectedEntries > 3 {
+		logger.Warningf("Encountered %d unexpected files in top level of chaincode package", unexpectedEntries)
 	}
 
 	if codePackage == nil {

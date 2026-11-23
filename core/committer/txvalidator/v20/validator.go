@@ -74,6 +74,11 @@ type LedgerResources interface {
 type Dispatcher interface {
 	// Dispatch invokes the appropriate validation plugin for the supplied transaction in the block
 	Dispatch(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (peer.TxValidationCode, error)
+
+	// SignalInvalidTx signals validation plugins serving the given channel that the
+	// transaction at txNum in the block at blockNum was rejected without producing
+	// a plugin validation result
+	SignalInvalidTx(channel string, blockNum uint64, txNum int, err error)
 }
 
 //go:generate mockery -dir . -name ChannelResources -case underscore -output mocks/
@@ -158,6 +163,24 @@ func (v *TxValidator) chainExists(chain string) bool {
 	return true
 }
 
+func validateConfigTxIsAlone(block *common.Block) error {
+	if len(block.GetData().GetData()) <= 1 {
+		return nil
+	}
+
+	for i, tx := range block.GetData().GetData() {
+		env, err := protoutil.UnmarshalEnvelope(tx)
+		if err != nil {
+			continue
+		}
+		if protoutil.IsConfigTransaction(env) {
+			return errors.Errorf("config transaction at index %d must be alone in the block", i)
+		}
+	}
+
+	return nil
+}
+
 // Validate performs the validation of a block. The validation
 // of each transaction in the block is performed in parallel.
 // The approach is as follows: the committer thread starts the
@@ -179,6 +202,10 @@ func (v *TxValidator) chainExists(chain string) bool {
 //     guaranteed to be alone in the block. If/when this assumption
 //     is violated, this code must be changed.
 func (v *TxValidator) Validate(block *common.Block) error {
+	if err := validateConfigTxIsAlone(block); err != nil {
+		return err
+	}
+
 	var err error
 	var errPos int
 
@@ -213,6 +240,13 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	// now we read responses in the order in which they come back
 	for range len(block.GetData().GetData()) {
 		res := <-results
+
+		// a transaction rejected before or during plugin dispatch recorded its
+		// state-based endorsement dependencies without ever producing a plugin
+		// validation result; release the transactions waiting on it
+		if res.err != nil || res.validationCode != peer.TxValidationCode_VALID {
+			v.signalInvalidTx(block, res)
+		}
 
 		if res.err != nil {
 			// if there is an error, we buffer its value, wait for
@@ -293,6 +327,43 @@ func markTXIdDuplicates(txids []string, txsfltr txflags.ValidationFlags) {
 			txidMap[txid] = struct{}{}
 		}
 	}
+}
+
+// signalInvalidTx releases transactions waiting on the state-based endorsement
+// dependencies of a transaction that was rejected before or during plugin
+// dispatch and therefore never produced a plugin validation result
+func (v *TxValidator) signalInvalidTx(block *common.Block, res *blockValidationResult) {
+	err := res.err
+	if err == nil {
+		err = errors.Errorf("transaction invalidated with validation code %d", res.validationCode)
+	}
+
+	blockNum := block.GetHeader().GetNumber()
+	v.Dispatcher.SignalInvalidTx(v.ChannelID, blockNum, res.tIdx, err)
+
+	// plugin instances are keyed by the channel in the transaction's own
+	// header, which is not necessarily the validator's channel
+	if channel := txChannelID(block, res.tIdx); channel != "" && channel != v.ChannelID {
+		v.Dispatcher.SignalInvalidTx(channel, blockNum, res.tIdx, err)
+	}
+}
+
+// txChannelID extracts the channel ID from the header of the transaction at
+// the given position, returning "" if the transaction cannot be parsed
+func txChannelID(block *common.Block, tIdx int) string {
+	env, err := protoutil.GetEnvelopeFromBlock(block.GetData().GetData()[tIdx])
+	if err != nil {
+		return ""
+	}
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
+	if err != nil {
+		return ""
+	}
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
+	if err != nil {
+		return ""
+	}
+	return chdr.GetChannelId()
 }
 
 func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *blockValidationResult) {

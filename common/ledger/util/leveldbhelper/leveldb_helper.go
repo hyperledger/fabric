@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package leveldbhelper
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 	"syscall"
@@ -161,6 +162,11 @@ func (dbInst *DB) Delete(key []byte, sync bool) error {
 }
 
 func (dbInst *DB) getRawIterator(startKey []byte, endKey []byte) iterator.Iterator {
+	// goleveldb panics while creating an iterator for a reversed range when keys live in
+	// SSTables at level 1 or higher; return an empty iterator, matching CouchDB behavior
+	if startKey != nil && endKey != nil && bytes.Compare(startKey, endKey) > 0 {
+		return iterator.NewEmptyIterator(nil)
+	}
 	dbInst.mutex.RLock()
 	defer dbInst.mutex.RUnlock()
 	return dbInst.db.NewIterator(&goleveldbutil.Range{Start: startKey, Limit: endKey}, dbInst.readOpts)
@@ -169,6 +175,7 @@ func (dbInst *DB) getRawIterator(startKey []byte, endKey []byte) iterator.Iterat
 // GetIterator returns an iterator over key-value store. The iterator should be released after the use.
 // The resultset contains all the keys that are present in the db between the startKey (inclusive) and the endKey (exclusive).
 // A nil startKey represents the first available key and a nil endKey represent a logical key after the last available key
+// A startKey greater than the endKey yields an empty resultset.
 func (dbInst *DB) GetIterator(startKey []byte, endKey []byte) (db.Iterator, error) {
 	itr := dbInst.getRawIterator(startKey, endKey)
 	if err := itr.Error(); err != nil {

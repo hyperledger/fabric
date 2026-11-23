@@ -72,7 +72,7 @@ func ComputeUpdateFromConfigs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
+	w.WriteHeader(http.StatusOK)
 	w.Write(encoded)
 }
