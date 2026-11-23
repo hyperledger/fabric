@@ -632,10 +632,19 @@ func goroutinesInFunction(fn string) int {
 	return count
 }
 
+// waitForNoGoroutinesInFunction waits for goroutines left behind by earlier tests to exit,
+// so they cannot be mistaken for a leak from the current test.
+func waitForNoGoroutinesInFunction(t *testing.T, fn string) {
+	t.Helper()
+	require.Eventually(t, func() bool { return goroutinesInFunction(fn) == 0 }, 2*time.Second, 20*time.Millisecond,
+		"goroutines from an earlier test are still running: %s", fn)
+}
+
 // A remote endorser call that is still in flight when the overall Endorse context expires
 // must not leave a goroutine blocked forever.
 func TestProcessProposalDoesNotLeakGoroutineOnTimeout(t *testing.T) {
 	const fn = "gateway.(*Server).processProposal.func"
+	waitForNoGoroutinesInFunction(t, fn)
 	before := goroutinesInFunction(fn)
 
 	client := &mocks.EndorserClient{}
