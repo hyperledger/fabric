@@ -58,6 +58,16 @@ func (mch *mockChain) WaitReady() error {
 	return nil
 }
 
+func (mch *mockChain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig channelconfig.Orderer, newChannel bool) error {
+	return nil
+}
+
+// chainWithoutMetadataValidator exposes only the consensus.Chain methods of the wrapped chain,
+// so it does not implement consensus.MetadataValidator.
+type chainWithoutMetadataValidator struct {
+	consensus.Chain
+}
+
 func (mch *mockChain) Start() {
 	go func() {
 		defer close(mch.done)

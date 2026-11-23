@@ -44,6 +44,7 @@ type LockBasedTxMgr struct {
 	oldBlockCommit      sync.Mutex
 	currentUpdates      *currentUpdates
 	hashFunc            rwsetutil.HashFunc
+	maxRWSetSize        int64
 }
 
 // pvtdataPurgeMgr wraps the actual purge manager and an additional flag 'usedOnce'
@@ -89,6 +90,10 @@ type Initializer struct {
 	CCInfoProvider      ledger.DeployedChaincodeInfoProvider
 	CustomTxProcessors  map[common.HeaderType]ledger.CustomTxProcessor
 	HashFunc            rwsetutil.HashFunc
+	// MaxRWSetSize bounds the total size in bytes of the keys and values
+	// (including private data) that a transaction simulation may accumulate in
+	// its read-write set; a non-positive value disables the limit
+	MaxRWSetSize int64
 }
 
 // NewLockBasedTxMgr constructs a new instance of NewLockBasedTxMgr
@@ -106,6 +111,7 @@ func NewLockBasedTxMgr(initializer *Initializer) (*LockBasedTxMgr, error) {
 		stateListeners: initializer.StateListeners,
 		ccInfoProvider: initializer.CCInfoProvider,
 		hashFunc:       initializer.HashFunc,
+		maxRWSetSize:   initializer.MaxRWSetSize,
 	}
 	pvtstatePurgeMgr, err := pvtstatepurgemgmt.InstantiatePurgeMgr(
 		initializer.LedgerID,

@@ -89,7 +89,7 @@ func newChainSupport(
 
 	cs.MetadataValidator, ok = cs.Chain.(consensus.MetadataValidator)
 	if !ok {
-		cs.MetadataValidator = consensus.NoOpMetadataValidator{}
+		return nil, errors.Errorf("consenter of type %s for channel %s does not validate consensus metadata", consenterType, cs.ChannelID())
 	}
 
 	cs.StatusReporter, ok = cs.Chain.(consensus.StatusReporter)

@@ -110,6 +110,30 @@ func TestSatisfiedBy(t *testing.T) {
 	}
 }
 
+// Raw protobuf policies bypass the DSL parser's guards; malformed thresholds
+// and indices must terminate inquiry instead of hanging or panicking.
+func TestSatisfiedByMalformedPolicies(t *testing.T) {
+	signedBy := func(i int32) *common.SignaturePolicy {
+		return &common.SignaturePolicy{Type: &common.SignaturePolicy_SignedBy{SignedBy: i}}
+	}
+
+	negativeThreshold := NewInquireableSignaturePolicy(&common.SignaturePolicyEnvelope{
+		Identities: createPrincipals("A"),
+		Rule: &common.SignaturePolicy{Type: &common.SignaturePolicy_NOutOf_{
+			NOutOf: &common.SignaturePolicy_NOutOf{N: -1, Rules: []*common.SignaturePolicy{signedBy(0)}},
+		}},
+	})
+	require.Empty(t, negativeThreshold.SatisfiedBy())
+
+	negativeIndex := NewInquireableSignaturePolicy(&common.SignaturePolicyEnvelope{
+		Identities: createPrincipals("A"),
+		Rule:       signedBy(-1),
+	})
+	require.NotPanics(t, func() {
+		require.Empty(t, negativeIndex.SatisfiedBy())
+	})
+}
+
 func TestSatisfiedByEmptyPolicy(t *testing.T) {
 	backupLogger := logger
 	defer func() {

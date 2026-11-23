@@ -76,4 +76,12 @@ type KeyLevelValidationParameterManager interface {
 	// This is used to determine whether the dependencies set by
 	// ExtractValidationParameterDependency matter or not.
 	SetTxValidationResult(cc string, blockNum, txNum uint64, err error)
+
+	// SignalInvalidTx records the validation outcome of the transaction at
+	// height `blockNum, txNum` that was rejected before the validation plugin
+	// could produce a result for it (e.g. because it failed the committer's
+	// structural checks or was rejected by the dispatcher). It releases
+	// transactions waiting for this transaction's validation result in the
+	// namespaces in which it recorded dependencies.
+	SignalInvalidTx(blockNum, txNum uint64, err error)
 }

@@ -38,6 +38,11 @@ func CombinationsExceed(n, k, threshold int) bool {
 }
 
 func chooseKoutOfN(n, k int) indiceSets {
+	// A negative threshold is malformed; without a guard the recursion in
+	// choose has no base case and never terminates.
+	if k < 0 {
+		return nil
+	}
 	var res indiceSets
 	subGroups := &orderedSet{}
 	choose(n, k, 0, nil, subGroups)

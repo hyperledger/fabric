@@ -13,7 +13,10 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/protoutil"
@@ -267,4 +270,55 @@ func TestEvictionSuspector(t *testing.T) {
 			require.Len(t, committedBlocks, testCase.expectedCommittedBlockCount)
 		})
 	}
+}
+
+// PullBlock may return nil (retry exhaustion or stop signal). The eviction
+// puller must not hand that nil to the ledger append path, which dereferences
+// the block header; a real file-backed ledger is used to mirror the
+// production writeBlock wiring.
+func TestEvictionSuspectorNilBlockFromPuller(t *testing.T) {
+	dir := t.TempDir()
+	flf, err := fileledger.New(dir, ledger.GoLevelDB, &disabled.Provider{})
+	require.NoError(t, err)
+	fl, err := flf.GetOrCreate("mychannel")
+	require.NoError(t, err)
+
+	lastConfigBlock := &common.Block{
+		Header:   &common.BlockHeader{Number: 1},
+		Data:     &common.BlockData{Data: [][]byte{[]byte("foo")}},
+		Metadata: &common.BlockMetadata{Metadata: [][]byte{{}, {}, {}, {}}},
+	}
+	lastConfigBlock.GetMetadata().GetMetadata()[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&common.Metadata{
+		Value: protoutil.MarshalOrPanic(&common.OrdererBlockMetadata{
+			LastConfig: &common.LastConfig{Index: 1},
+		}),
+	})
+
+	puller := &mocks.ChainPuller{}
+	puller.On("Close")
+	puller.On("HeightsByEndpoints").Return(map[string]uint64{"foo": 2}, "", nil)
+	puller.On("PullBlock", uint64(1)).Return(lastConfigBlock)
+	puller.On("PullBlock", uint64(0)).Return((*common.Block)(nil))
+
+	es := &evictionSuspector{
+		halt: func() {},
+		amIInChannel: func(_ *common.Block) error {
+			return cluster.ErrNotInChannel
+		},
+		evictionSuspicionThreshold: 10*time.Minute - time.Second,
+		createPuller: func() (BlockPuller, error) {
+			return puller, nil
+		},
+		writeBlock: fl.Append,
+		height: func() uint64 {
+			return 0
+		},
+		logger:         flogging.MustGetLogger("test"),
+		triggerCatchUp: func(sn *raftpb.Snapshot) {},
+	}
+
+	require.NotPanics(t, func() {
+		es.confirmSuspicion(time.Minute * 10)
+	})
+	require.Equal(t, uint64(0), fl.Height(), "nil block must not reach the ledger")
 }

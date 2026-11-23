@@ -7,8 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package rwsetutil
 
 import (
+	"fmt"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
@@ -476,4 +479,304 @@ func TestNilOrZeroLengthByteArrayValueConvertedToDelete(t *testing.T) {
 			))
 		})
 	})
+}
+
+func TestRWSetSizeLimit(t *testing.T) {
+	t.Run("public writes are metered and excess is rejected", func(t *testing.T) {
+		// each entry is overhead(512) + key(4) + value(46) = 562 bytes
+		b := NewRWSetBuilderWithMaxRWSetSize(1130)
+		require.NoError(t, b.AddToWriteSet("ns1", "key1", make([]byte, 46)))
+		require.NoError(t, b.AddToWriteSet("ns1", "key2", make([]byte, 46)))
+		err := b.AddToWriteSet("ns1", "key3", make([]byte, 46))
+		require.EqualError(
+			t,
+			err,
+			"transaction read-write set size 1686 exceeds the maximum allowed size 1130",
+		)
+		require.NotContains(t, b.pubRwBuilderMap["ns1"].writeMap, "key3")
+		// a rejected first write to a new namespace leaves no empty builder behind
+		require.Error(t, b.AddToWriteSet("ns2", "key1", make([]byte, 46)))
+		require.NotContains(t, b.pubRwBuilderMap, "ns2")
+		// once breached, further additions and the results fail with the recorded error
+		require.Equal(t, err, b.AddToWriteSet("ns1", "key3", nil))
+		_, resErr := b.GetTxSimulationResults()
+		require.Equal(t, err, resErr)
+	})
+
+	t.Run("overwrites are credited", func(t *testing.T) {
+		b := NewRWSetBuilderWithMaxRWSetSize(600)
+		require.NoError(t, b.AddToWriteSet("ns1", "key1", make([]byte, 46)))
+		// rewriting the same key keeps the metered size at 562 bytes
+		require.NoError(t, b.AddToWriteSet("ns1", "key1", make([]byte, 46)))
+		// shrinking the value frees budget
+		require.NoError(t, b.AddToWriteSet("ns1", "key1", nil))
+		require.Error(t, b.AddToWriteSet("ns1", "key2", make([]byte, 80)))
+	})
+
+	t.Run("metadata writes are metered", func(t *testing.T) {
+		// each entry is overhead(512) + key(4) + entry(128) + name(5) + value(16) = 665 bytes
+		b := NewRWSetBuilderWithMaxRWSetSize(1346)
+		metadata := map[string][]byte{"meta1": make([]byte, 16)}
+		require.NoError(t, b.AddToMetadataWriteSet("ns1", "key1", metadata))
+		// deleting metadata frees budget
+		require.NoError(t, b.AddToMetadataWriteSet("ns1", "key1", nil))
+		require.NoError(t, b.AddToMetadataWriteSet("ns1", "key2", metadata))
+		require.Error(t, b.AddToMetadataWriteSet("ns1", "key3", metadata))
+	})
+
+	t.Run("private data writes are metered", func(t *testing.T) {
+		// each entry is overhead(512) + key(4) + value(10) + keyHash(32) + valueHash(32)
+		// + the original key(4) retained by the hashed write map = 594 bytes
+		b := NewRWSetBuilderWithMaxRWSetSize(594)
+		require.NoError(t, b.AddToPvtAndHashedWriteSet("ns1", "coll1", "key1", make([]byte, 10)))
+		// purging the key shrinks the metered size to overhead + key(4) + keyHash(32) + key(4)
+		require.NoError(t, b.AddToPvtAndHashedWriteSetForPurge("ns1", "coll1", "key1"))
+		require.Error(t, b.AddToPvtAndHashedWriteSet("ns1", "coll1", "key2", make([]byte, 1)))
+	})
+
+	t.Run("hashed metadata writes are metered", func(t *testing.T) {
+		// each entry is overhead(512) + key(4) + keyHash(32) + entry(128) + name(5) + value(8)
+		// + the original key(4) retained by the hashed metadata map = 693 bytes
+		b := NewRWSetBuilderWithMaxRWSetSize(693)
+		metadata := map[string][]byte{"meta1": make([]byte, 8)}
+		require.NoError(t, b.AddToHashedMetadataWriteSet("ns1", "coll1", "key1", metadata))
+		require.Error(t, b.AddToHashedMetadataWriteSet("ns1", "coll1", "key2", metadata))
+	})
+
+	t.Run("reads are metered", func(t *testing.T) {
+		// each read entry is overhead(384) + key(4) = 388 bytes
+		b := NewRWSetBuilderWithMaxRWSetSize(776)
+		require.NoError(t, b.AddToReadSet("ns1", "key1", version.NewHeight(1, 1)))
+		require.NoError(t, b.AddToReadSet("ns1", "key2", version.NewHeight(1, 1)))
+		// re-reading a tracked key only replaces the version
+		require.NoError(t, b.AddToReadSet("ns1", "key1", version.NewHeight(2, 1)))
+		require.Error(t, b.AddToReadSet("ns1", "key3", version.NewHeight(1, 1)))
+		// hashed read entries retain the original key plus the 32 byte key hash
+		b2 := NewRWSetBuilderWithMaxRWSetSize(420)
+		require.NoError(t, b2.AddToHashedReadSet("ns1", "coll1", "key1", version.NewHeight(1, 1)))
+		require.Error(t, b2.AddToHashedReadSet("ns1", "coll1", "key2", version.NewHeight(1, 1)))
+		// a single oversized key is rejected before any state changes
+		b3 := NewRWSetBuilderWithMaxRWSetSize(1024)
+		require.Error(t, b3.AddToReadSet("ns1", strings.Repeat("k", 4096), version.NewHeight(1, 1)))
+		require.NotContains(t, b3.pubRwBuilderMap, "ns1")
+		// the hashed read set retains the original key, not just its hash
+		b4 := NewRWSetBuilderWithMaxRWSetSize(1024)
+		require.Error(t, b4.AddToHashedReadSet("ns1", "coll1", strings.Repeat("k", 4096), version.NewHeight(1, 1)))
+		require.Empty(t, b4.pubRwBuilderMap)
+	})
+
+	t.Run("range query bounds are metered at iterator creation", func(t *testing.T) {
+		// the bounds are charged when the iterator is created, before any result, so
+		// large bounds held by an open iterator are covered
+		b := NewRWSetBuilderWithMaxRWSetSize(4096)
+		require.Error(t, b.AddRangeQueryKeys(strings.Repeat("s", 3000), strings.Repeat("e", 3000)))
+		require.Empty(t, b.pubRwBuilderMap)
+	})
+
+	t.Run("compacted range query results release their charge", func(t *testing.T) {
+		// a scan whose results exceed the budget in sum fits in peak: only one
+		// maxDegree batch is retained at a time
+		b := NewRWSetBuilderWithMaxRWSetSize(8192)
+		helper, err := NewRangeQueryResultsHelperWithAccounting(true, 50, testHashFunc, b)
+		require.NoError(t, err)
+		require.NoError(t, b.AddRangeQueryKeys("a", "z")) // 514 bytes
+		// 500 results of overhead(128) + key(6) sum to 67k bytes, far over budget
+		for i := range 500 {
+			require.NoError(t, helper.AddResult(NewKVRead(fmt.Sprintf("key%03d", i), version.NewHeight(1, 2))))
+		}
+		// only the leftover batch of 41 results is still retained and charged
+		require.Equal(t, int64(514+41*(128+6)), b.rwSetBytes)
+		results, summary, err := helper.Done()
+		require.NoError(t, err)
+		require.Nil(t, results)
+		require.NotNil(t, summary)
+		// the final batch is released once compacted into the summary
+		require.Equal(t, int64(514), b.rwSetBytes)
+
+		// a scan whose single retained batch exceeds the budget breaches mid-scan
+		b2 := NewRWSetBuilderWithMaxRWSetSize(1024)
+		helper2, err := NewRangeQueryResultsHelperWithAccounting(true, 50, testHashFunc, b2)
+		require.NoError(t, err)
+		require.NoError(t, b2.AddRangeQueryKeys("a", "z"))
+		for i := range 3 {
+			require.NoError(t, helper2.AddResult(NewKVRead(fmt.Sprintf("key%d", i), version.NewHeight(1, 2))))
+		}
+		require.Error(t, helper2.AddResult(NewKVRead("key9", version.NewHeight(1, 2))))
+		// the rejected result is not retained
+		require.Len(t, helper2.pendingResults, 3)
+
+		// results kept as raw reads stay charged
+		b3 := NewRWSetBuilderWithMaxRWSetSize(4096)
+		helper3, err := NewRangeQueryResultsHelperWithAccounting(true, 50, testHashFunc, b3)
+		require.NoError(t, err)
+		require.NoError(t, b3.AddRangeQueryKeys("a", "z"))
+		for i := range 10 {
+			require.NoError(t, helper3.AddResult(NewKVRead(fmt.Sprintf("key%d", i), version.NewHeight(1, 2))))
+		}
+		results3, summary3, err := helper3.Done()
+		require.NoError(t, err)
+		require.Len(t, results3, 10)
+		require.Nil(t, summary3)
+		require.Equal(t, int64(514+10*(128+4)), b3.rwSetBytes)
+	})
+
+	t.Run("only the merkle summary is charged when the finalized query info is added", func(t *testing.T) {
+		summary := &kvrwset.QueryReadsMerkleSummary{MaxDegree: 1, MaxLevel: 1, MaxLevelHashes: [][]byte{make([]byte, 128)}}
+		rqi := &kvrwset.RangeQueryInfo{StartKey: "a", EndKey: "z", ItrExhausted: true}
+		SetMerkelSummary(rqi, summary)
+		b := NewRWSetBuilderWithMaxRWSetSize(256)
+		require.NoError(t, b.AddToRangeQuerySet("ns1", rqi))
+		require.Equal(t, int64(proto.Size(summary)), b.rwSetBytes)
+		require.NoError(t, b.AddToRangeQuerySet("ns1", rqi))
+		require.Equal(t, int64(proto.Size(summary)), b.rwSetBytes)
+		b2 := NewRWSetBuilderWithMaxRWSetSize(64)
+		require.Error(t, b2.AddToRangeQuerySet("ns1", rqi))
+		require.Empty(t, b2.pubRwBuilderMap)
+	})
+
+	t.Run("a rejected first addition leaves no builders behind", func(t *testing.T) {
+		// each case needs a fresh builder: a breach poisons the builder, so
+		// reusing one would prove nothing about the check order
+		const tinyLimit = 64
+		b := NewRWSetBuilderWithMaxRWSetSize(tinyLimit)
+		require.Error(t, b.AddToWriteSet("ns1", "key1", nil))
+		require.Empty(t, b.pubRwBuilderMap)
+
+		b = NewRWSetBuilderWithMaxRWSetSize(tinyLimit)
+		require.Error(t, b.AddToMetadataWriteSet("ns1", "key1", map[string][]byte{"m": {}}))
+		require.Empty(t, b.pubRwBuilderMap)
+
+		b = NewRWSetBuilderWithMaxRWSetSize(tinyLimit)
+		require.Error(t, b.AddToReadSet("ns1", "key1", version.NewHeight(1, 1)))
+		require.Empty(t, b.pubRwBuilderMap)
+
+		b = NewRWSetBuilderWithMaxRWSetSize(tinyLimit)
+		require.Error(t, b.AddToHashedReadSet("ns1", "coll1", "key1", version.NewHeight(1, 1)))
+		require.Empty(t, b.pubRwBuilderMap)
+
+		b = NewRWSetBuilderWithMaxRWSetSize(tinyLimit)
+		require.Error(t, b.AddToPvtAndHashedWriteSet("ns1", "coll1", "key1", nil))
+		require.Empty(t, b.pubRwBuilderMap)
+		require.Empty(t, b.pvtRwBuilderMap)
+
+		b = NewRWSetBuilderWithMaxRWSetSize(tinyLimit)
+		require.Error(t, b.AddToPvtAndHashedWriteSetForPurge("ns1", "coll1", "key1"))
+		require.Empty(t, b.pubRwBuilderMap)
+		require.Empty(t, b.pvtRwBuilderMap)
+
+		b = NewRWSetBuilderWithMaxRWSetSize(tinyLimit)
+		require.Error(t, b.AddToHashedMetadataWriteSet("ns1", "coll1", "key1", map[string][]byte{"m": {}}))
+		require.Empty(t, b.pubRwBuilderMap)
+		require.Empty(t, b.pvtRwBuilderMap)
+	})
+
+	t.Run("every addition path enforces a recorded breach", func(t *testing.T) {
+		// read(388) + hashed read(420) + range query(0) = 808 bytes
+		b := NewRWSetBuilderWithMaxRWSetSize(808)
+		require.NoError(t, b.AddToReadSet("ns1", "key1", version.NewHeight(1, 1)))
+		require.NoError(t, b.AddToHashedReadSet("ns1", "coll1", "key1", version.NewHeight(1, 1)))
+		rqi := &kvrwset.RangeQueryInfo{StartKey: "a", EndKey: "z", ItrExhausted: true}
+		require.NoError(t, b.AddToRangeQuerySet("ns1", rqi))
+		err := b.AddToReadSet("ns1", "key3", version.NewHeight(1, 1)) // breach
+		require.Error(t, err)
+		// re-adding already tracked entries must not bypass the recorded breach
+		require.Equal(t, err, b.AddToReadSet("ns1", "key1", version.NewHeight(1, 1)))
+		require.Equal(t, err, b.AddToHashedReadSet("ns1", "coll1", "key1", version.NewHeight(1, 1)))
+		require.Equal(t, err, b.AddToRangeQuerySet("ns1", rqi))
+	})
+
+	t.Run("tiny metadata entries are bounded by the per-entry overhead", func(t *testing.T) {
+		// 1000 entries of name(4)+value(4) with overhead(128) each = 136k bytes
+		b := NewRWSetBuilderWithMaxRWSetSize(100_000)
+		metadata := make(map[string][]byte, 1000)
+		for i := range 1000 {
+			metadata[fmt.Sprintf("m%03d", i)] = make([]byte, 4)
+		}
+		require.ErrorContains(t, b.AddToMetadataWriteSet("ns1", "key1", metadata), "exceeds the maximum allowed size")
+		// a rejected metadata write is not retained
+		require.Empty(t, b.pubRwBuilderMap)
+	})
+
+	t.Run("tiny keys with empty values are bounded by the per-entry overhead", func(t *testing.T) {
+		// 8-byte keys with nil values retain map entries and metadata, so the
+		// limit must trip on entry count, not just value bytes
+		b := NewRWSetBuilderWithMaxRWSetSize(64 * 1024)
+		entrySize := int64(writeEntryOverhead + 8)
+		expected := int64(64*1024) / entrySize
+		for i := range expected {
+			require.NoError(t, b.AddToWriteSet("ns1", fmt.Sprintf("k%07d", i), nil))
+		}
+		require.Error(t, b.AddToWriteSet("ns1", "k9999999", nil))
+	})
+
+	t.Run("unlimited builder never rejects", func(t *testing.T) {
+		b := NewRWSetBuilder()
+		for i := range 1000 {
+			key := fmt.Sprintf("key%d", i)
+			require.NoError(t, b.AddToWriteSet("ns1", key, make([]byte, 1024)))
+			require.NoError(t, b.AddToReadSet("ns1", key, version.NewHeight(1, 1)))
+		}
+	})
+
+	t.Run("recorded breach is returned on re-read of a tracked key", func(t *testing.T) {
+		// limit 1000: two 386-byte reads fit, the third trips
+		b := NewRWSetBuilderWithMaxRWSetSize(1000)
+		require.NoError(t, b.AddToReadSet("ns1", "k1", version.NewHeight(1, 1)))
+		require.NoError(t, b.AddToReadSet("ns1", "k2", version.NewHeight(1, 1)))
+		err := b.AddToReadSet("ns1", "k3", version.NewHeight(1, 1))
+		require.Error(t, err)
+		require.Equal(t, err, b.AddToReadSet("ns1", "k1", version.NewHeight(2, 1)))
+	})
+}
+
+func TestBreachWarningRateLimited(t *testing.T) {
+	l := newRateLimitedLogger(time.Hour)
+	l.warn("first")
+	require.Zero(t, l.suppressed)
+	l.warn("second")
+	require.Equal(t, uint64(1), l.suppressed)
+	l.warn("third")
+	require.Equal(t, uint64(2), l.suppressed)
+}
+
+// TestRWSetSizeLimitBulkScan verifies that a long range scan whose results far
+// exceed the budget in sum is not rejected while its peak retention stays
+// below it
+func TestRWSetSizeLimitBulkScan(t *testing.T) {
+	b := NewRWSetBuilderWithMaxRWSetSize(100 * 1024 * 1024)
+	helper, err := NewRangeQueryResultsHelperWithAccounting(true, 50, testHashFunc, b)
+	require.NoError(t, err)
+	require.NoError(t, b.AddRangeQueryKeys("a", "z"))
+	// 771k results of overhead(128) + key(7-9) sum to over 100MiB, but only
+	// one maxDegree batch is retained at a time
+	for i := range 771_000 {
+		require.NoError(t, helper.AddResult(NewKVRead(fmt.Sprintf("key%04d", i), version.NewHeight(1, 2))))
+	}
+	require.Less(t, b.rwSetBytes, int64(514+51*(128+9)))
+	results, summary, err := helper.Done()
+	require.NoError(t, err)
+	require.Nil(t, results)
+	require.NotNil(t, summary)
+	require.Equal(t, int64(514), b.rwSetBytes)
+}
+
+// TestRWSetSizeLimitBulkWrites drives the bulk-write pattern of a chaincode
+// performing many large PutState calls in a single simulation and asserts that
+// the accumulation is cut off deterministically at the configured budget
+func TestRWSetSizeLimitBulkWrites(t *testing.T) {
+	const valueSize = 50 * 1024
+	const limit = 4 * 1024 * 1024
+	b := NewRWSetBuilderWithMaxRWSetSize(limit)
+	entrySize := int64(writeEntryOverhead + len("rwset-00000000") + valueSize)
+	expected := int(limit / entrySize)
+	for i := range expected {
+		require.NoError(t, b.AddToWriteSet("ns", fmt.Sprintf("rwset-%08d", i), make([]byte, valueSize)))
+	}
+	err := b.AddToWriteSet("ns", "rwset-overflow", make([]byte, valueSize))
+	require.ErrorContains(t, err, "exceeds the maximum allowed size")
+	// the accumulated writes are retained but no partial results can be obtained
+	_, resErr := b.GetTxSimulationResults()
+	require.ErrorContains(t, resErr, "exceeds the maximum allowed size")
+	require.Nil(t, b.GetTxReadWriteSet())
+	require.Len(t, b.pubRwBuilderMap["ns"].writeMap, expected)
 }
