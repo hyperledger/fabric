@@ -10,15 +10,20 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	gossip2 "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	mspproto "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric-protos-go-apiv2/transientstore"
 	"github.com/hyperledger/fabric/core/ledger"
 	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/privdata/mocks"
+	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 /*
@@ -37,6 +42,9 @@ func TestNewDataRetriever_GetDataFromTransientStore(t *testing.T) {
 	txID := "testTxID"
 
 	committer.On("LedgerHeight").Return(uint64(1), nil)
+	historyRetreiver := &mocks.ConfigHistoryRetriever{}
+	historyRetreiver.On("MostRecentCollectionConfigBelow", mock.Anything, namespace).Return(newCollectionConfig(collectionName), nil)
+	committer.On("GetConfigHistoryRetriever").Return(historyRetreiver, nil)
 
 	retriever := NewDataRetriever("testchannel", store.store, committer)
 
@@ -570,10 +578,11 @@ func TestNewDataRetriever_EmptyPvtRWSetInTransientStore(t *testing.T) {
 }
 
 /*
-Test checks that when the transient store holds several entries for the same
-txID with different collection configs, only the write sets stored under the
-selected collection config are returned, since the requester's eligibility is
-evaluated against that config alone.
+Test checks that write sets in the transient store are returned under the
+collection config committed to the ledger rather than the config stored with
+the entry. Entries whose member orgs policy matches the ledger config are all
+returned even if other config fields differ, while entries stored under a
+different member orgs policy are dropped.
 */
 func TestNewDataRetriever_TransientStoreEntriesWithDifferentConfigs(t *testing.T) {
 	committer := &mocks.Committer{}
@@ -585,41 +594,25 @@ func TestNewDataRetriever_TransientStoreEntriesWithDifferentConfigs(t *testing.T
 	collectionName := "testCollectionName"
 	txID := "testTxID"
 
+	ledgerConfig := collectionConfigWithPolicy(collectionName, memberOrgsPolicy("org1"), 3)
+
 	committer.On("LedgerHeight").Return(uint64(1), nil)
+	historyRetreiver := &mocks.ConfigHistoryRetriever{}
+	historyRetreiver.On("MostRecentCollectionConfigBelow", mock.Anything, namespace).Return(&ledger.CollectionConfigInfo{
+		CollectionConfig: &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{ledgerConfig}},
+	}, nil)
+	committer.On("GetConfigHistoryRetriever").Return(historyRetreiver, nil)
 
 	retriever := NewDataRetriever("testchannel", store.store, committer)
 
-	configWithMaxPeers := func(maxPeers int32) map[string]*peer.CollectionConfigPackage {
-		return map[string]*peer.CollectionConfigPackage{
-			namespace: {
-				Config: []*peer.CollectionConfig{
-					{
-						Payload: &peer.CollectionConfig_StaticCollectionConfig{
-							StaticCollectionConfig: &peer.StaticCollectionConfig{
-								Name:             collectionName,
-								MaximumPeerCount: maxPeers,
-							},
-						},
-					},
-				},
-			},
-		}
-	}
-
-	store.Persist(txID, 2, &transientstore.TxPvtReadWriteSetWithConfigInfo{
-		PvtRwset: &rwset.TxPvtReadWriteSet{
-			DataModel:  rwset.TxReadWriteSet_KV,
-			NsPvtRwset: []*rwset.NsPvtReadWriteSet{pvtReadWriteSet(namespace, collectionName, []byte{1, 2})},
-		},
-		CollectionConfigs: configWithMaxPeers(1),
-	})
-	store.Persist(txID, 2, &transientstore.TxPvtReadWriteSetWithConfigInfo{
-		PvtRwset: &rwset.TxPvtReadWriteSet{
-			DataModel:  rwset.TxReadWriteSet_KV,
-			NsPvtRwset: []*rwset.NsPvtReadWriteSet{pvtReadWriteSet(namespace, collectionName, []byte{3, 4})},
-		},
-		CollectionConfigs: configWithMaxPeers(2),
-	})
+	// Two entries endorsed under the ledger's member orgs policy, with a different MaximumPeerCount.
+	store.Persist(txID, 2, transientStoreEntry(namespace, collectionName, []byte{1, 2},
+		collectionConfigWithPolicy(collectionName, memberOrgsPolicy("org1"), 1)))
+	store.Persist(txID, 2, transientStoreEntry(namespace, collectionName, []byte{3, 4},
+		collectionConfigWithPolicy(collectionName, memberOrgsPolicy("org1"), 2)))
+	// An entry pushed with a member orgs policy that differs from the ledger's.
+	store.Persist(txID, 2, transientStoreEntry(namespace, collectionName, []byte{5, 6},
+		collectionConfigWithPolicy(collectionName, memberOrgsPolicy("org2"), 1)))
 
 	rwSets, _, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{{
 		Namespace:  namespace,
@@ -639,14 +632,88 @@ func TestNewDataRetriever_TransientStoreEntriesWithDifferentConfigs(t *testing.T
 		SeqInBlock: 1,
 	}]
 	assertion.NotNil(dig2pvtRWSet)
-	assertion.Len(dig2pvtRWSet.RWSet, 1)
+	assertion.True(proto.Equal(ledgerConfig, dig2pvtRWSet.CollectionConfig))
+	assertion.ElementsMatch([]util.PrivateRWSet{{1, 2}, {3, 4}}, dig2pvtRWSet.RWSet)
+}
 
-	// Both entries were stored with EndorsedAt == 0, so either config may be selected,
-	// but the returned write set must be the one stored under the selected config.
-	if dig2pvtRWSet.CollectionConfig.GetStaticCollectionConfig().GetMaximumPeerCount() == 1 {
-		assertion.Equal([]byte{1, 2}, []byte(dig2pvtRWSet.RWSet[0]))
-	} else {
-		assertion.Equal([]byte{3, 4}, []byte(dig2pvtRWSet.RWSet[0]))
+/*
+Test checks that no private data is returned from the transient store when the
+collection config cannot be obtained from the ledger, since there is no
+trustworthy config to evaluate the requester against.
+*/
+func TestNewDataRetriever_TransientStoreNoLedgerCollectionConfig(t *testing.T) {
+	committer := &mocks.Committer{}
+
+	store := newTransientStore(t)
+	defer store.tearDown()
+
+	namespace := "testChaincodeName1"
+	collectionName := "testCollectionName"
+	txID := "testTxID"
+
+	committer.On("LedgerHeight").Return(uint64(1), nil)
+	historyRetreiver := &mocks.ConfigHistoryRetriever{}
+	historyRetreiver.On("MostRecentCollectionConfigBelow", mock.Anything, namespace).Return(nil, nil)
+	committer.On("GetConfigHistoryRetriever").Return(historyRetreiver, nil)
+
+	retriever := NewDataRetriever("testchannel", store.store, committer)
+
+	store.Persist(txID, 2, transientStoreEntry(namespace, collectionName, []byte{1, 2},
+		collectionConfigWithPolicy(collectionName, memberOrgsPolicy("org1"), 1)))
+
+	rwSets, _, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{{
+		Namespace:  namespace,
+		Collection: collectionName,
+		BlockSeq:   2,
+		TxId:       txID,
+		SeqInBlock: 1,
+	}}, 2)
+
+	assertion := require.New(t)
+	assertion.NoError(err)
+	assertion.Empty(rwSets)
+}
+
+func memberOrgsPolicy(mspID string) *peer.CollectionPolicyConfig {
+	return &peer.CollectionPolicyConfig{
+		Payload: &peer.CollectionPolicyConfig_SignaturePolicy{
+			SignaturePolicy: &common.SignaturePolicyEnvelope{
+				Rule: &common.SignaturePolicy{
+					Type: &common.SignaturePolicy_SignedBy{SignedBy: 0},
+				},
+				Identities: []*mspproto.MSPPrincipal{{
+					PrincipalClassification: mspproto.MSPPrincipal_ROLE,
+					Principal: protoutil.MarshalOrPanic(&mspproto.MSPRole{
+						MspIdentifier: mspID,
+						Role:          mspproto.MSPRole_MEMBER,
+					}),
+				}},
+			},
+		},
+	}
+}
+
+func collectionConfigWithPolicy(collectionName string, policy *peer.CollectionPolicyConfig, maxPeers int32) *peer.CollectionConfig {
+	return &peer.CollectionConfig{
+		Payload: &peer.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &peer.StaticCollectionConfig{
+				Name:             collectionName,
+				MemberOrgsPolicy: policy,
+				MaximumPeerCount: maxPeers,
+			},
+		},
+	}
+}
+
+func transientStoreEntry(namespace, collectionName string, data []byte, config *peer.CollectionConfig) *transientstore.TxPvtReadWriteSetWithConfigInfo {
+	return &transientstore.TxPvtReadWriteSetWithConfigInfo{
+		PvtRwset: &rwset.TxPvtReadWriteSet{
+			DataModel:  rwset.TxReadWriteSet_KV,
+			NsPvtRwset: []*rwset.NsPvtReadWriteSet{pvtReadWriteSet(namespace, collectionName, data)},
+		},
+		CollectionConfigs: map[string]*peer.CollectionConfigPackage{
+			namespace: {Config: []*peer.CollectionConfig{config}},
+		},
 	}
 }
 

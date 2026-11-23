@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	mspproto "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -1137,6 +1138,97 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 	require.Equal(t, 1, dataRetreiver.getNumberOfCalls())
 	require.Len(t, fetchedMessages.AvailableElements[0].GetPayload(), 2)
 	require.Len(t, fetchedMessages.AvailableElements[1].GetPayload(), 2)
+}
+
+// memberOrgsAccessFactory derives the access policy from the collection config it is given,
+// granting access to a requester whose identity equals the MSP ID in the member orgs policy.
+type memberOrgsAccessFactory struct{}
+
+func (memberOrgsAccessFactory) AccessPolicy(config *peer.CollectionConfig, _ string) (privdata.CollectionAccessPolicy, error) {
+	identities := config.GetStaticCollectionConfig().GetMemberOrgsPolicy().GetSignaturePolicy().GetIdentities()
+	if len(identities) != 1 {
+		return nil, errors.New("collection config has no member orgs policy")
+	}
+	role := &mspproto.MSPRole{}
+	if err := pb.Unmarshal(identities[0].GetPrincipal(), role); err != nil {
+		return nil, err
+	}
+	policy := &mocks.CollectionAccessPolicy{}
+	Setup(policy, 1, 2, func(data protoutil.SignedData) bool {
+		return string(data.Identity) == role.GetMspIdentifier()
+	}, map[string]struct{}{role.GetMspIdentifier(): {}}, false)
+	return policy, nil
+}
+
+// newTransientStorePuller creates a puller that serves pull requests from a real transient store
+// through the real dataRetriever. The ledger is at height 5 and holds a collection config whose
+// only member is org1. The transient store holds the real private write set for txID1, received
+// by dissemination and therefore stored with EndorsedAt 0, plus forgedEntries entries for the same
+// txID pushed by org2 under a collection config that lists org2 as the only member.
+func newTransientStorePuller(t *testing.T, forgedEntries int) (*puller, *proto.PvtDataDigest) {
+	store := newTransientStore(t)
+	t.Cleanup(store.tearDown)
+
+	namespace, collection, txID := "ns1", "col1", "txID1"
+	ledgerConfig := collectionConfigWithPolicy(collection, memberOrgsPolicy("org1"), 1)
+
+	committer := &mocks.Committer{}
+	committer.On("LedgerHeight").Return(uint64(5), nil)
+	historyRetriever := &mocks.ConfigHistoryRetriever{}
+	historyRetriever.On("MostRecentCollectionConfigBelow", mock.Anything, namespace).Return(&ledger.CollectionConfigInfo{
+		CollectionConfig: &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{ledgerConfig}},
+	}, nil)
+	committer.On("GetConfigHistoryRetriever").Return(historyRetriever, nil)
+
+	require.NoError(t, store.Persist(txID, 5, transientStoreEntry(namespace, collection, []byte("private"), ledgerConfig)))
+	forgedConfig := collectionConfigWithPolicy(collection, memberOrgsPolicy("org2"), 1)
+	for range forgedEntries {
+		require.NoError(t, store.Persist(txID, 5, transientStoreEntry(namespace, collection, []byte("forged"), forgedConfig)))
+	}
+
+	gn := &gossipNetwork{}
+	p := gn.newPuller("p1", newCollectionStore(), memberOrgsAccessFactory{})
+	p.PrivateDataRetriever = NewDataRetriever("A", store.store, committer)
+
+	// A block sequence above the ledger height makes the peer serve the request from the transient store.
+	return p, &proto.PvtDataDigest{TxId: txID, Collection: collection, Namespace: namespace, BlockSeq: 6}
+}
+
+func pullRequestFrom(identity string, dig *proto.PvtDataDigest) protoext.ReceivedMessage {
+	msg, err := protoext.NoopSign(&proto.GossipMessage{
+		Channel: []byte("A"),
+		Tag:     proto.GossipMessage_CHAN_ONLY,
+		Content: &proto.GossipMessage_PrivateReq{
+			PrivateReq: &proto.RemotePvtDataRequest{Digests: []*proto.PvtDataDigest{dig}},
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	return &receivedMsg{
+		RemotePeer:          &comm.RemotePeer{PKIID: common.PKIidType(identity), Endpoint: identity},
+		SignedGossipMessage: msg,
+	}
+}
+
+func TestPullerTransientStoreNonMemberWithForgedConfig(t *testing.T) {
+	// Scenario: org2 is a channel member outside the collection. It pushed entries for txID1 whose
+	// collection config lists org2 as a member, and now pulls txID1 for a block the peer has not
+	// committed yet. The response must not contain any element, in particular not the real write set.
+	p, dig := newTransientStorePuller(t, 20)
+
+	require.Empty(t, p.createResponse(pullRequestFrom("org2", dig)))
+}
+
+func TestPullerTransientStoreMemberWithForgedEntries(t *testing.T) {
+	// Scenario: org1 is a member of the collection and pulls txID1 while the transient store also
+	// holds entries pushed by org2 under a forged collection config. org1 must still receive the
+	// real write set, and only that one.
+	p, dig := newTransientStorePuller(t, 20)
+
+	elements := p.createResponse(pullRequestFrom("org1", dig))
+	require.Len(t, elements, 1)
+	require.Equal(t, [][]byte{[]byte("private")}, elements[0].GetPayload())
 }
 
 func toDigKey(dig *proto.PvtDataDigest) *privdatacommon.DigKey {
