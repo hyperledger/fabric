@@ -447,11 +447,33 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) 
 
 // collectPrincipals collects principals from combined principals into a single MSPPrincipal slice.
 func collectPrincipals(principal *m.MSPPrincipal, mspVersion MSPVersion) ([]*m.MSPPrincipal, error) {
+	collected := 0
+	return collectPrincipalsRecursive(principal, mspVersion, 0, &collected)
+}
+
+const (
+	// maxCombinedPrincipalDepth bounds the nesting of combined principals.
+	// Legitimate policies nest only a few levels; each level unmarshals the
+	// remaining bytes, so deep chains retain memory quadratically in depth.
+	maxCombinedPrincipalDepth = 8
+
+	// maxCollectedPrincipals bounds the total number of leaf principals a
+	// combined principal tree may expand into.
+	maxCollectedPrincipals = 1024
+)
+
+// collectPrincipalsRecursive walks a combined principal tree, rejecting
+// nesting beyond maxCombinedPrincipalDepth and expansions beyond
+// maxCollectedPrincipals.
+func collectPrincipalsRecursive(principal *m.MSPPrincipal, mspVersion MSPVersion, depth int, collected *int) ([]*m.MSPPrincipal, error) {
 	switch principal.GetPrincipalClassification() {
 	case m.MSPPrincipal_COMBINED:
 		// Combined principals are not supported in MSP v1.0 or v1.1
 		if mspVersion <= MSPv1_1 {
 			return nil, errors.Errorf("invalid principal type %d", int32(principal.GetPrincipalClassification()))
+		}
+		if depth >= maxCombinedPrincipalDepth {
+			return nil, errors.Errorf("combined principal nesting exceeds maximum supported depth %d", maxCombinedPrincipalDepth)
 		}
 		// Principal is a combination of multiple principals.
 		principals := &m.CombinedPrincipal{}
@@ -463,11 +485,10 @@ func collectPrincipals(principal *m.MSPPrincipal, mspVersion MSPVersion) ([]*m.M
 		if len(principals.GetPrincipals()) == 0 {
 			return nil, errors.New("No principals in CombinedPrincipal")
 		}
-		// Recursively call msp.collectPrincipals for all combined principals.
-		// There is no limit for the levels of nesting for the combined principals.
+		// Recursively collect all combined principals.
 		var principalsSlice []*m.MSPPrincipal
 		for _, cp := range principals.GetPrincipals() {
-			internalSlice, err := collectPrincipals(cp, mspVersion)
+			internalSlice, err := collectPrincipalsRecursive(cp, mspVersion, depth+1, collected)
 			if err != nil {
 				return nil, err
 			}
@@ -476,6 +497,10 @@ func collectPrincipals(principal *m.MSPPrincipal, mspVersion MSPVersion) ([]*m.M
 		// All the combined principals have been collected into principalsSlice
 		return principalsSlice, nil
 	default:
+		*collected++
+		if *collected > maxCollectedPrincipals {
+			return nil, errors.Errorf("combined principal contains more than the maximum supported %d principals", maxCollectedPrincipals)
+		}
 		return []*m.MSPPrincipal{principal}, nil
 	}
 }

@@ -47,6 +47,13 @@ func TestChooseKoutOfN(t *testing.T) {
 	require.Equal(t, indiceSetsToStrings(expectedSets), indiceSetsToStrings(chooseKoutOfN(6, 4)))
 }
 
+// A negative threshold comes from a malformed raw protobuf policy; without a
+// guard the recursion has no base case and never terminates.
+func TestChooseNegativeK(t *testing.T) {
+	require.Empty(t, chooseKoutOfN(3, -1))
+	require.Empty(t, chooseKoutOfN(0, -1))
+}
+
 func indiceSetsToStrings(sets indiceSets) []string {
 	var res []string
 	for _, set := range sets {

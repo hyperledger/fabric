@@ -29,6 +29,11 @@ func compile(policy *cb.SignaturePolicy, identities []*mb.MSPPrincipal) (func([]
 
 	switch t := policy.GetType().(type) {
 	case *cb.SignaturePolicy_NOutOf_:
+		// Raw protobuf policies skip the DSL parser, which rejects negatives;
+		// N=0 (accept-all) and N>len(rules) (reject-all) stay legal.
+		if t.NOutOf.GetN() < 0 {
+			return nil, fmt.Errorf("invalid NOutOf policy: negative predicate %d", t.NOutOf.GetN())
+		}
 		policies := make([]func([]msp.Identity, []bool) bool, len(t.NOutOf.GetRules()))
 		for i, policy := range t.NOutOf.GetRules() {
 			compiledPolicy, err := compile(policy, identities)

@@ -25,10 +25,23 @@ const (
 	// Hacky fix constants, used in recurseConfigMap
 	hackyFixOrdererCapabilities = "[Value]  /Channel/Orderer/Capabilities"
 	hackyFixNewModPolicy        = "Admins"
+
+	// maxConfigGroupDepth bounds ConfigGroup nesting accepted by mapConfig.
+	// Legitimate channel configs nest only a few levels (e.g.
+	// Channel/Consortiums/Consortium/Org); deep chains make the per-node path
+	// bookkeeping retain memory quadratically relative to the wire size.
+	maxConfigGroupDepth = 64
+
+	// maxConfigMapEntries bounds the total number of groups, values and
+	// policies mapConfig will index, so that a maximally-sized config update
+	// cannot expand into an unbounded in-memory map.
+	maxConfigMapEntries = 100_000
 )
 
 // mapConfig is intended to be called outside this file
 // it takes a ConfigGroup and generates a map of fqPath to comparables (or error on invalid keys)
+// it rejects configs nested deeper than maxConfigGroupDepth or containing more
+// than maxConfigMapEntries entries
 func mapConfig(channelGroup *cb.ConfigGroup, rootGroupKey string) (map[string]comparable, error) {
 	result := make(map[string]comparable)
 	if channelGroup != nil {
@@ -67,11 +80,19 @@ func addToMap(cg comparable, result map[string]comparable) error {
 
 	result[fqPath] = cg
 
+	if len(result) > maxConfigMapEntries {
+		return errors.Errorf("config contains more than the maximum supported %d entries", maxConfigMapEntries)
+	}
+
 	return nil
 }
 
 // recurseConfig is used only internally by mapConfig
 func recurseConfig(result map[string]comparable, path []string, group *cb.ConfigGroup) error {
+	if len(path) > maxConfigGroupDepth {
+		return errors.Errorf("config group nesting depth %d exceeds maximum supported depth %d", len(path), maxConfigGroupDepth)
+	}
+
 	if err := addToMap(comparable{key: path[len(path)-1], path: path[:len(path)-1], ConfigGroup: group}, result); err != nil {
 		return err
 	}

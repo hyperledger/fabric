@@ -821,6 +821,30 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 			require.Empty(t, ledgerFactory.ChannelIDs())
 		})
 
+		t.Run("failure - chain does not validate consensus metadata", func(t *testing.T) {
+			badConsenter := &mocks.Consenter{}
+			badConsenter.IsChannelMemberReturns(true, nil)
+			badConsenter.HandleChainReturns(chainWithoutMetadataValidator{Chain: &mockChain{done: make(chan struct{})}}, nil)
+			mockConsenters := map[string]consensus.Consenter{confAppRaft.Orderer.OrdererType: badConsenter}
+			registrar.Initialize(mockConsenters)
+
+			// Before joining the channel, it doesn't exist
+			require.Nil(t, registrar.GetChain("my-raft-channel"))
+			require.Empty(t, ledgerFactory.ChannelIDs())
+
+			_, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft)
+			require.EqualError(t, err, "failed to create chain support: consenter of type etcdraft for channel my-raft-channel does not validate consensus metadata")
+
+			// After join failure, check that everything has been cleaned up
+			require.Eventually(t, func() bool { return len(ledgerFactory.ChannelIDs()) == 0 }, time.Minute, time.Second)
+			require.Empty(t, ledgerFactory.ChannelIDs())
+			joinBlockPath := filepath.Join(tmpdir, "pendingops", "join", "my-raft-channel.join")
+			_, err = os.Stat(joinBlockPath)
+			require.True(t, os.IsNotExist(err))
+			require.Nil(t, registrar.GetChain("my-raft-channel"))
+			require.Empty(t, ledgerFactory.ChannelIDs())
+		})
+
 		t.Run("success", func(t *testing.T) {
 			registrar.Initialize(mockConsenters)
 			// Before joining the channel, it doesn't exist

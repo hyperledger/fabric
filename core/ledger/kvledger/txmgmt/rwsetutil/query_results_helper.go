@@ -54,16 +54,30 @@ type RangeQueryResultsHelper struct {
 	maxDegree      uint32
 	hashingEnabled bool
 	hashFunc       HashFunc
+	// accounting tracks the metered size of pendingResults with the builder so
+	// the charge is released when results are compacted into the merkle tree;
+	// peak retention is one maxDegree batch, not the sum of the scan
+	accounting     *RWSetBuilder
+	accountedBytes int64
 }
 
 // NewRangeQueryResultsHelper constructs a RangeQueryResultsHelper
 func NewRangeQueryResultsHelper(enableHashing bool, maxDegree uint32, hashFunc HashFunc) (*RangeQueryResultsHelper, error) {
+	return NewRangeQueryResultsHelperWithAccounting(enableHashing, maxDegree, hashFunc, nil)
+}
+
+// NewRangeQueryResultsHelperWithAccounting constructs a RangeQueryResultsHelper
+// that meters the retained pending results with the given builder
+func NewRangeQueryResultsHelperWithAccounting(enableHashing bool, maxDegree uint32, hashFunc HashFunc,
+	accounting *RWSetBuilder,
+) (*RangeQueryResultsHelper, error) {
 	helper := &RangeQueryResultsHelper{
 		pendingResults: nil,
 		hashingEnabled: enableHashing,
 		maxDegree:      maxDegree,
 		mt:             nil,
 		hashFunc:       hashFunc,
+		accounting:     accounting,
 	}
 	if enableHashing {
 		var err error
@@ -79,12 +93,36 @@ func NewRangeQueryResultsHelper(enableHashing bool, maxDegree uint32, hashFunc H
 // consume the results for incrementally update the merkle tree
 func (helper *RangeQueryResultsHelper) AddResult(kvRead *kvrwset.KVRead) error {
 	logger.Debug("Adding a result")
-	helper.pendingResults = append(helper.pendingResults, kvRead)
-	if helper.hashingEnabled && uint32(len(helper.pendingResults)) > helper.maxDegree {
-		logger.Debug("Processing the accumulated results")
-		if err := helper.processPendingResults(); err != nil {
+	if helper.accounting != nil {
+		// charge before retaining so a rejected result is never kept
+		if err := helper.accounting.chargeRangeQueryResult(kvRead.GetKey()); err != nil {
 			return err
 		}
+	}
+	helper.pendingResults = append(helper.pendingResults, kvRead)
+	if helper.accounting != nil {
+		helper.accountedBytes += rangeQueryReadOverhead + int64(len(kvRead.GetKey()))
+	}
+	if helper.hashingEnabled && uint32(len(helper.pendingResults)) > helper.maxDegree {
+		logger.Debug("Processing the accumulated results")
+		return helper.compact()
+	}
+	return nil
+}
+
+// compact folds the pending results into the merkle tree and releases their
+// metered charge; the summary is metered when the finalized query info is
+// added to the read-write set
+func (helper *RangeQueryResultsHelper) compact() error {
+	charged := helper.accountedBytes
+	if err := helper.processPendingResults(); err != nil {
+		return err
+	}
+	if helper.accounting != nil {
+		if err := helper.accounting.creditBytes(charged); err != nil {
+			return err
+		}
+		helper.accountedBytes = 0
 	}
 	return nil
 }
@@ -102,7 +140,7 @@ func (helper *RangeQueryResultsHelper) Done() ([]*kvrwset.KVRead, *kvrwset.Query
 	}
 	if len(helper.pendingResults) != 0 {
 		logger.Debug("Processing the pending results")
-		if err := helper.processPendingResults(); err != nil {
+		if err := helper.compact(); err != nil {
 			return helper.pendingResults, nil, err
 		}
 	}

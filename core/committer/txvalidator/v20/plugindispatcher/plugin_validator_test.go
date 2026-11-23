@@ -8,6 +8,7 @@ package plugindispatcher_test
 
 import (
 	errors2 "errors"
+	"sync"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -124,4 +125,109 @@ func TestSamplePlugin(t *testing.T) {
 		Channel: "mychannel",
 	}
 	require.NoError(t, v.ValidateWithPlugin(ctx))
+}
+
+// recordedInvalidTxSignal is an invalid-transaction signal delivered to a plugin
+type recordedInvalidTxSignal struct {
+	blockNum, txNum uint64
+	err             error
+}
+
+// signalingPlugin is a validation plugin that records the invalid-transaction
+// signals delivered to it
+type signalingPlugin struct {
+	mutex   sync.Mutex
+	signals []recordedInvalidTxSignal
+}
+
+func (p *signalingPlugin) Validate(block *common.Block, namespace string, txPosition int, actionPosition int, contextData ...validation.ContextDatum) error {
+	return nil
+}
+
+func (p *signalingPlugin) Init(dependencies ...validation.Dependency) error {
+	return nil
+}
+
+func (p *signalingPlugin) SignalInvalidTx(blockNum, txNum uint64, err error) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	p.signals = append(p.signals, recordedInvalidTxSignal{blockNum: blockNum, txNum: txNum, err: err})
+}
+
+func (p *signalingPlugin) recordedSignals() []recordedInvalidTxSignal {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return append([]recordedInvalidTxSignal(nil), p.signals...)
+}
+
+func newSignalingPluginValidator() (*plugindispatcher.PluginValidator, *signalingPlugin) {
+	pm := make(plugin.MapBasedMapper)
+	rec := &signalingPlugin{}
+	factory := &mocks.PluginFactory{}
+	factory.On("New").Return(rec)
+	pm["vscc"] = factory
+	mcpmg := &mocks.ChannelPolicyManagerGetter{}
+	mcpmg.On("Manager", mock.Anything).Return(&mocks.PolicyManager{})
+	v := plugindispatcher.NewPluginValidator(pm, &mocks.QueryExecutorCreator{}, &mocks.IdentityDeserializer{}, &mocks.Capabilities{}, mcpmg, nil)
+	return v, rec
+}
+
+func blockContext(blockNum uint64) *plugindispatcher.Context {
+	return &plugindispatcher.Context{
+		Namespace:  "mycc",
+		PluginName: "vscc",
+		Channel:    "mychannel",
+		Block: &common.Block{
+			Header: &common.BlockHeader{Number: blockNum},
+			Data:   &common.BlockData{},
+		},
+	}
+}
+
+func TestSignalInvalidTxReplayedToLazilyCreatedPlugin(t *testing.T) {
+	v, rec := newSignalingPluginValidator()
+	errRejected := errors.New("rejected")
+
+	// the signal arrives before any plugin instance exists for the channel
+	v.SignalInvalidTx("mychannel", 2, 0, errRejected)
+	require.Empty(t, rec.recordedSignals())
+
+	// the plugin instance is created lazily during validation of block 2 and
+	// is caught up on the pending signal
+	require.NoError(t, v.ValidateWithPlugin(blockContext(2)))
+	require.Equal(t, []recordedInvalidTxSignal{{blockNum: 2, txNum: 0, err: errRejected}}, rec.recordedSignals())
+}
+
+func TestStaleSignalNotReplayedToPluginCreatedForLaterBlock(t *testing.T) {
+	v, rec := newSignalingPluginValidator()
+	errRejected := errors.New("rejected")
+
+	// a signal for block 2 is pending while no plugin instance exists yet
+	v.SignalInvalidTx("mychannel", 2, 0, errRejected)
+
+	// the plugin instance is only created during validation of block 3; the
+	// pending signal of block 2 is stale and must not be replayed to an
+	// instance whose validation context may already have moved to block 3
+	require.NoError(t, v.ValidateWithPlugin(blockContext(3)))
+	require.Empty(t, rec.recordedSignals())
+
+	// signals of the block under validation are still delivered
+	v.SignalInvalidTx("mychannel", 3, 1, errRejected)
+	require.Equal(t, []recordedInvalidTxSignal{{blockNum: 3, txNum: 1, err: errRejected}}, rec.recordedSignals())
+}
+
+func TestSignalInvalidTxDeliveredRepeatedly(t *testing.T) {
+	v, rec := newSignalingPluginValidator()
+	errRejected := errors.New("rejected")
+
+	require.NoError(t, v.ValidateWithPlugin(blockContext(2)))
+
+	// duplicate signals for the same transaction are all delivered;
+	// idempotent handling of them is the plugin's documented contract
+	v.SignalInvalidTx("mychannel", 2, 0, errRejected)
+	v.SignalInvalidTx("mychannel", 2, 0, errRejected)
+	require.Equal(t, []recordedInvalidTxSignal{
+		{blockNum: 2, txNum: 0, err: errRejected},
+		{blockNum: 2, txNum: 0, err: errRejected},
+	}, rec.recordedSignals())
 }

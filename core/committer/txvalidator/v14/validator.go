@@ -65,6 +65,11 @@ type ChannelResources interface {
 // testability of TxValidator
 type vsccValidator interface {
 	VSCCValidateTx(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (peer.TxValidationCode, error)
+
+	// SignalInvalidTx signals validation plugins serving the given channel that the
+	// transaction at txNum in the block at blockNum was rejected without producing
+	// a plugin validation result
+	SignalInvalidTx(channel string, blockNum uint64, txNum int, err error)
 }
 
 // implementation of Validator interface, keeps
@@ -173,6 +178,13 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	for range len(block.GetData().GetData()) {
 		res := <-results
 
+		// a transaction rejected before or during plugin validation recorded
+		// its state-based endorsement dependencies without ever producing a
+		// plugin validation result; release the transactions waiting on it
+		if res.err != nil || res.validationCode != peer.TxValidationCode_VALID {
+			v.signalInvalidTx(block, res)
+		}
+
 		if res.err != nil {
 			// if there is an error, we buffer its value, wait for
 			// all workers to complete validation and then return
@@ -265,6 +277,43 @@ func markTXIdDuplicates(txids []string, txsfltr txflags.ValidationFlags) {
 			txidMap[txid] = struct{}{}
 		}
 	}
+}
+
+// signalInvalidTx releases transactions waiting on the state-based endorsement
+// dependencies of a transaction that was rejected before or during plugin
+// validation and therefore never produced a plugin validation result
+func (v *TxValidator) signalInvalidTx(block *common.Block, res *blockValidationResult) {
+	err := res.err
+	if err == nil {
+		err = errors.Errorf("transaction invalidated with validation code %d", res.validationCode)
+	}
+
+	blockNum := block.GetHeader().GetNumber()
+	v.Vscc.SignalInvalidTx(v.ChannelID, blockNum, res.tIdx, err)
+
+	// plugin instances are keyed by the channel in the transaction's own
+	// header, which is not necessarily the validator's channel
+	if channel := txChannelID(block, res.tIdx); channel != "" && channel != v.ChannelID {
+		v.Vscc.SignalInvalidTx(channel, blockNum, res.tIdx, err)
+	}
+}
+
+// txChannelID extracts the channel ID from the header of the transaction at
+// the given position, returning "" if the transaction cannot be parsed
+func txChannelID(block *common.Block, tIdx int) string {
+	env, err := protoutil.GetEnvelopeFromBlock(block.GetData().GetData()[tIdx])
+	if err != nil {
+		return ""
+	}
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
+	if err != nil {
+		return ""
+	}
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
+	if err != nil {
+		return ""
+	}
+	return chdr.GetChannelId()
 }
 
 func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *blockValidationResult) {
@@ -550,8 +599,13 @@ func (v *TxValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upg
 		return invokeIns, nil, nil
 	}
 
-	// ChaincodeActionPayload
-	cap, err := protoutil.UnmarshalChaincodeActionPayload(tx.GetActions()[0].GetPayload())
+	// ChaincodeActionPayload; a block may carry transactions without actions
+	actions := tx.GetActions()
+	if len(actions) == 0 {
+		logger.Errorf("transaction contains no actions")
+		return invokeIns, nil, nil
+	}
+	cap, err := protoutil.UnmarshalChaincodeActionPayload(actions[0].GetPayload())
 	if err != nil {
 		logger.Errorf("GetChaincodeActionPayload failed: %+v", err)
 		return invokeIns, nil, nil

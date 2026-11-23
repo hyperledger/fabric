@@ -32,3 +32,6 @@ type MockVsccValidator struct{}
 func (v *MockVsccValidator) VSCCValidateTx(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (peer.TxValidationCode, error) {
 	return peer.TxValidationCode_VALID, nil
 }
+
+// SignalInvalidTx does nothing
+func (v *MockVsccValidator) SignalInvalidTx(channel string, blockNum uint64, txNum int, err error) {}

@@ -26,6 +26,11 @@ func (_m *StateBasedValidator) PreValidate(txNum uint64, block *common.Block) {
 	_m.Called(txNum, block)
 }
 
+// SignalInvalidTx provides a mock function with given fields: blockNum, txNum, err
+func (_m *StateBasedValidator) SignalInvalidTx(blockNum uint64, txNum uint64, err error) {
+	_m.Called(blockNum, txNum, err)
+}
+
 // Validate provides a mock function with given fields: cc, blockNum, txNum, rwset, prp, ep, endorsements
 func (_m *StateBasedValidator) Validate(cc string, blockNum uint64, txNum uint64, rwset []byte, prp []byte, ep []byte, endorsements []*peer.Endorsement) errors.TxValidationError {
 	ret := _m.Called(cc, blockNum, txNum, rwset, prp, ep, endorsements)
