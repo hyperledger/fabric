@@ -59,3 +59,23 @@ func TestNumRetries(t *testing.T) {
 	n = numRetries2Max(2.0, 2*time.Second, time.Second)
 	require.Equal(t, 0, n)
 }
+
+func TestHeaderReceiverTrackerPruneOlderThan(t *testing.T) {
+	base := time.Unix(1000, 0)
+	tracker := &headerReceiverTracker{}
+
+	require.True(t, tracker.appendIfNewer(base))
+	require.True(t, tracker.appendIfNewer(base.Add(1*time.Second)))
+	require.True(t, tracker.appendIfNewer(base.Add(2*time.Second)))
+	require.True(t, tracker.appendIfNewer(base.Add(5*time.Second)))
+	require.Equal(t, 4, tracker.stopTimes.Len())
+
+	// Prune all entries strictly older than base+3s (should remove 3 entries, keeping base+5s).
+	tracker.pruneOlderThan(base.Add(3 * time.Second))
+	require.Equal(t, 1, tracker.stopTimes.Len())
+	require.Equal(t, base.Add(5*time.Second), tracker.stopTimes.Front().Value.(time.Time))
+
+	// Prune remaining entry as well.
+	tracker.pruneOlderThan(base.Add(10 * time.Second))
+	require.Equal(t, 0, tracker.stopTimes.Len())
+}

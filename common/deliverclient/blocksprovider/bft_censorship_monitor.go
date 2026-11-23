@@ -83,12 +83,14 @@ func (tracker *headerReceiverTracker) pruneOlderThan(u time.Time) {
 		return
 	}
 
-	for e := tracker.stopTimes.Front(); e != nil; e = e.Next() {
+	for e := tracker.stopTimes.Front(); e != nil; {
+		next := e.Next()
 		if s := e.Value.(time.Time); s.Before(u) {
 			tracker.stopTimes.Remove(e)
 		} else {
 			break
 		}
+		e = next
 	}
 }
 
@@ -124,6 +126,14 @@ func NewBFTCensorshipMonitor(
 	// MaxRetryInterval, the retry interval will stay at MaxRetryInterval.
 	stopWindowDur := time.Duration(int64(numRetries2Max(2.0, timeoutConf.MinRetryInterval, timeoutConf.MaxRetryInterval)+1) * timeoutConf.MaxRetryInterval.Nanoseconds())
 
+	hdrRcvTrackers := make(map[string]*headerReceiverTracker, len(fetchSources))
+	for i, ep := range fetchSources {
+		if i == blockSourceIndex {
+			continue
+		}
+		hdrRcvTrackers[ep.Address] = &headerReceiverTracker{}
+	}
+
 	m := &BFTCensorshipMonitor{
 		chainID:                 chainID,
 		updatableHeaderVerifier: updatableVerifier,
@@ -132,7 +142,7 @@ func NewBFTCensorshipMonitor(
 		progressReporter:        progressReporter,
 		stopCh:                  make(chan struct{}),
 		errorCh:                 make(chan error, 1), // Buffered to allow the Monitor() goroutine to exit without waiting
-		hdrRcvTrackers:          make(map[string]*headerReceiverTracker),
+		hdrRcvTrackers:          hdrRcvTrackers,
 		blockSourceIndex:        blockSourceIndex,
 		timeoutConfig:           timeoutConf,
 		stopHistoryWindowDur:    stopWindowDur,
@@ -152,13 +162,6 @@ func (m *BFTCensorshipMonitor) Monitor() {
 	defer func() {
 		m.logger.Debug("Stopping to monitor block and header fetching progress")
 	}()
-
-	for i, ep := range m.fetchSources {
-		if i == m.blockSourceIndex {
-			continue
-		}
-		m.hdrRcvTrackers[ep.Address] = &headerReceiverTracker{}
-	}
 
 	for {
 		if err := m.launchHeaderReceivers(); err != nil {
@@ -307,6 +310,10 @@ func (m *BFTCensorshipMonitor) launchHeaderReceivers() error {
 	numEP := len(m.fetchSources)
 	if numEP <= 0 {
 		return errors.New("no endpoints")
+	}
+
+	if m.stopFlag {
+		return nil
 	}
 
 	hRcvToCreate := make([]*orderers.Endpoint, 0)

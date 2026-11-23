@@ -723,6 +723,33 @@ func TestBFTCensorshipMonitor_FaultySourceRecovery(t *testing.T) {
 	require.EqualError(t, err, "received a stop signal")
 }
 
+func TestBFTCensorshipMonitor_StopMultiSourceNoRaceAndNoLaunchAfterStop(t *testing.T) {
+	flogging.ActivateSpec("debug")
+
+	// Case 1: Stop called before Monitor() must not launch any header receivers.
+	sStopped := newMonitorTestSetup(t, 4)
+	sStopped.fakeRequester.ConnectReturns(nil, nil, errors.New("unexpected connect"))
+	monStopped := blocksprovider.NewBFTCensorshipMonitor(sStopped.channelID, sStopped.fakeUpdatableBlockVerifier, sStopped.fakeRequester, sStopped.fakeProgressReporter, sStopped.sources, 0, blocksprovider.TimeoutConfig{})
+	monStopped.Stop()
+	monStopped.Monitor()
+	require.Equal(t, 0, sStopped.fakeRequester.ConnectCallCount())
+	require.EqualError(t, <-monStopped.ErrorsChannel(), "received a stop signal")
+
+	// Case 2: Concurrent Monitor() and Stop() with multiple sources must not race on hdrRcvTrackers.
+	for range 20 {
+		s := newMonitorTestSetup(t, 4)
+		s.fakeRequester.ConnectReturns(nil, nil, errors.New("connection refused"))
+		mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeUpdatableBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, 0, blocksprovider.TimeoutConfig{})
+
+		var wg sync.WaitGroup
+		wg.Go(func() {
+			mon.Monitor()
+		})
+		mon.Stop()
+		wg.Wait()
+	}
+}
+
 type monitorTestSetup struct {
 	channelID                  string
 	fakeUpdatableBlockVerifier *fake.UpdatableBlockVerifier
