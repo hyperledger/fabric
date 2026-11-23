@@ -281,8 +281,8 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 	return outputFileWriter, nil
 }
 
-// Returns the next record from a snapshot reader. NewSnapshotReader returns a nil reader
-// when the snapshot has no data file, and a nil reader has no records.
+// nextRecord returns the next record from a snapshot reader. NewSnapshotReader returns a nil
+// reader when the snapshot has no data file, and a nil reader has no records.
 func nextRecord(snapshotReader *privacyenabledstate.SnapshotReader) (string, *privacyenabledstate.SnapshotRecord, error) {
 	if snapshotReader == nil {
 		return "", nil, nil
