@@ -13,8 +13,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -27,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	dcontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/registry"
 	dcli "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 )
@@ -119,6 +123,7 @@ func (vm *DockerVM) buildImage(ccid string, reader io.Reader) error {
 		Tags:        []string{id},
 		PullParent:  vm.ChaincodePull,
 		NetworkMode: vm.NetworkMode,
+		AuthConfigs: getAuthFromDockerConfig(),
 	})
 
 	vm.BuildMetrics.ChaincodeImageBuildDuration.With(
@@ -137,6 +142,96 @@ func (vm *DockerVM) buildImage(ccid string, reader io.Reader) error {
 
 	dockerLogger.Debugf("Created image: %s, output: %s", id, buf.String())
 	return nil
+}
+
+// dockerConfigFile is a minimal struct for unmarshalling authentication details
+// from the Docker config file.
+type dockerConfigFile struct {
+	Auths map[string]registry.AuthConfig `json:"auths,omitempty"`
+}
+
+// getAuthFromDockerConfig gets the authentication configuration that may be
+// provided in the Docker config file.
+func getAuthFromDockerConfig() map[string]registry.AuthConfig {
+	emptyConfig := make(map[string]registry.AuthConfig)
+
+	configFilePath := filepath.Join(getDockerConfigDir(), "config.json")
+
+	file, err := os.Open(configFilePath)
+	if err != nil {
+		dockerLogger.Debugf("Error occurred while trying to read Docker config file from path \"%s\". Returning empty auth config.", configFilePath)
+		return emptyConfig
+	}
+	defer file.Close()
+
+	var currConfig dockerConfigFile
+	err = json.NewDecoder(file).Decode(&currConfig)
+	if err != nil {
+		return emptyConfig
+	}
+
+	mappedAuths, err := mapDockerConfigAuth(currConfig.Auths)
+	if err != nil {
+		dockerLogger.Debugf("Error while decoding Docker auth: %s. Returning empty auth config.", err.Error())
+		return emptyConfig
+	}
+
+	return mappedAuths
+}
+
+func getDockerConfigDir() string {
+	homeDir, _ := os.UserHomeDir()
+
+	// The value of DOCKER_CONFIG environment variable overrides the default
+	// config directory (~/.docker). This behaviour mimics that of Docker CLI.
+	configDir := os.Getenv("DOCKER_CONFIG")
+	if configDir == "" {
+		configDir = filepath.Join(homeDir, ".docker")
+	}
+
+	return configDir
+}
+
+// mapDockerConfigAuth maps the provided Docker auth configuration to the format
+// expected by the Docker Engine (i.e. Username and Password based auth).
+func mapDockerConfigAuth(auths map[string]registry.AuthConfig) (map[string]registry.AuthConfig, error) {
+	mappedAuth := make(map[string]registry.AuthConfig)
+
+	for reg, auth := range auths {
+		if auth.Auth != "" {
+			username, password, err := decodeAuth(auth.Auth)
+			if err != nil {
+				return mappedAuth, err
+			}
+
+			mappedAuth[reg] = registry.AuthConfig{
+				Username: username,
+				Password: password,
+			}
+		}
+	}
+
+	return mappedAuth, nil
+}
+
+// decodeAuth decodes the provided Docker authentication configuration as a
+// Base64 encoded string and returns the username and password from it.
+func decodeAuth(auth string) (string, string, error) {
+	decLen := base64.StdEncoding.DecodedLen(len(auth))
+	decoded := make([]byte, decLen)
+
+	n, err := base64.StdEncoding.Decode(decoded, []byte(auth))
+	if err != nil {
+		return "", "", err
+	}
+	if n > decLen {
+		return "", "", errors.New("something went wrong decoding auth config")
+	}
+	userName, password, ok := strings.Cut(string(decoded), ":")
+	if !ok || userName == "" {
+		return "", "", errors.New("invalid auth configuration file")
+	}
+	return userName, strings.Trim(password, "\x00"), nil
 }
 
 // Build is responsible for building an image if it does not already exist.
