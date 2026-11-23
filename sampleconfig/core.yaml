@@ -568,6 +568,7 @@ chaincode:
   # Send inline registry credentials to the Docker daemon for chaincode builds.
   # Reads $DOCKER_CONFIG/config.json when set, otherwise ~/.docker/config.json
   # with ~/.dockercfg as a fallback. Credential helpers are unsupported.
+  # If the peer has no home directory, set DOCKER_CONFIG to the directory containing config.json.
   useDockerAuth: false
 
   # The id is used by the Chaincode stub to register the executing Chaincode

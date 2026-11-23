@@ -34,6 +34,7 @@ func LoadDockerAuthConfigs() (map[string]registry.AuthConfig, error) {
 	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
+		dockerLogger.Warn("Could not determine the home directory; skipping Docker credential lookup. Set DOCKER_CONFIG to a directory containing config.json")
 		return nil, nil
 	}
 	return loadDockerAuthConfigs(filepath.Join(homeDir, ".docker"), homeDir)
