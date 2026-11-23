@@ -13,13 +13,18 @@ import (
 )
 
 // Cmd returns the cobra command for lifecycle
-func Cmd(cryptoProvider bccsp.BCCSP) *cobra.Command {
+func Cmd(cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	lifecycleCmd := &cobra.Command{
 		Use:   "lifecycle",
-		Short: "Perform _lifecycle operations",
-		Long:  "Perform _lifecycle operations",
+		Short: "Perform _lifecycle operations.",
+		Long:  "Perform _lifecycle operations.",
 	}
-	lifecycleCmd.AddCommand(chaincode.Cmd(cryptoProvider))
+	lifecycleCmd.AddCommand(chaincode.Cmd(cryptoProvider, isNew))
+
+	if !isNew {
+		lifecycleCmd.Short = "[DEPRECATED] Perform _lifecycle operations (use the \"peercli lifecycle\")."
+		lifecycleCmd.Long = "[DEPRECATED] Perform _lifecycle operations. Instead of this command, use \"peercli lifecycle\"."
+	}
 
 	return lifecycleCmd
 }

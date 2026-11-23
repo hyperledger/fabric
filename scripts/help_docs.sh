@@ -113,6 +113,41 @@ generateOrCheck \
         docs/wrappers/peer_snapshot_postscript.md \
         "${commands[@]}"
 
+commands=("peercli version")
+generateOrCheck \
+        docs/source/commands/peercliversion.md \
+        docs/wrappers/peercli_version_preamble.md \
+        docs/wrappers/license_postscript.md \
+        "${commands[@]}"
+
+commands=("peercli chaincode invoke" "peercli chaincode query")
+generateOrCheck \
+        docs/source/commands/peerclichaincode.md \
+        docs/wrappers/peercli_chaincode_preamble.md \
+        docs/wrappers/peercli_chaincode_postscript.md \
+        "${commands[@]}"
+
+commands=("peercli lifecycle" "peercli lifecycle chaincode" "peercli lifecycle chaincode package" "peercli lifecycle chaincode install" "peercli lifecycle chaincode queryinstalled" "peercli lifecycle chaincode getinstalledpackage" "peercli lifecycle chaincode calculatepackageid" "peercli lifecycle chaincode approveformyorg" "peercli lifecycle chaincode queryapproved" "peercli lifecycle chaincode checkcommitreadiness" "peercli lifecycle chaincode commit" "peercli lifecycle chaincode querycommitted")
+generateOrCheck \
+        docs/source/commands/peerclilifecycle.md \
+        docs/wrappers/peercli_lifecycle_chaincode_preamble.md \
+        docs/wrappers/peercli_lifecycle_chaincode_postscript.md \
+        "${commands[@]}"
+
+commands=("peercli channel" "peercli channel fetch" "peercli channel getinfo" "peercli channel join" "peercli channel joinbysnapshot" "peercli channel joinbysnapshotstatus" "peercli channel list" "peercli channel signconfigtx")
+generateOrCheck \
+        docs/source/commands/peerclichannel.md \
+        docs/wrappers/peercli_channel_preamble.md \
+        docs/wrappers/peercli_channel_postscript.md \
+        "${commands[@]}"
+
+commands=("peercli snapshot cancelrequest" "peercli snapshot listpending" "peercli snapshot submitrequest")
+generateOrCheck \
+        docs/source/commands/peerclisnapshot.md \
+        docs/wrappers/peercli_snapshot_preamble.md \
+        docs/wrappers/peercli_snapshot_postscript.md \
+        "${commands[@]}"
+
 commands=("configtxgen")
 generateOrCheck \
         docs/source/commands/configtxgen.md \

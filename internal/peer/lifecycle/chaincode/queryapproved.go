@@ -43,7 +43,7 @@ type ApprovedQueryInput struct {
 
 // QueryApprovedCmd returns the cobra command for
 // querying the approved chaincode definition for the organization
-func QueryApprovedCmd(a *ApprovedQuerier, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func QueryApprovedCmd(a *ApprovedQuerier, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	chaincodeQueryApprovedCmd := &cobra.Command{
 		Use:   "queryapproved",
 		Short: "Query org's approved chaincode definitions from its peer.",
@@ -83,6 +83,12 @@ func QueryApprovedCmd(a *ApprovedQuerier, cryptoProvider bccsp.BCCSP) *cobra.Com
 			return a.Query()
 		},
 	}
+
+	if !isNew {
+		chaincodeQueryApprovedCmd.Short = "[DEPRECATED] Query org's approved chaincode definitions from its peer (use the \"peercli lifecycle chaincode queryapproved\")."
+		chaincodeQueryApprovedCmd.Long = "[DEPRECATED] Query organization's approved chaincode definitions from its peer. Instead of this command, use \"peercli lifecycle chaincode queryapproved\"."
+	}
+
 	flagList := []string{
 		"channelID",
 		"name",

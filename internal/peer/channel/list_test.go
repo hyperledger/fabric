@@ -46,7 +46,7 @@ func TestListChannels(t *testing.T) {
 		Signer:           signer,
 	}
 
-	cmd := listCmd(mockCF)
+	cmd := listCmd(mockCF, true)
 	AddFlags(cmd)
 	if err := cmd.Execute(); err != nil {
 		t.Fail()
@@ -57,7 +57,7 @@ func TestListChannels(t *testing.T) {
 }
 
 func testListChannelsEmptyCF(t *testing.T, mockCF *ChannelCmdFactory) {
-	cmd := listCmd(nil)
+	cmd := listCmd(nil, true)
 	AddFlags(cmd)
 
 	// Error case 1: no orderer endpoints
