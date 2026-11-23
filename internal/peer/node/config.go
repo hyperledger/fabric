@@ -7,7 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package node
 
 import (
+	"math"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	coreconfig "github.com/hyperledger/fabric/core/config"
@@ -44,6 +46,19 @@ func ledgerConfig() *ledger.Config {
 	purgedKeyAuditLogging := true
 	if viper.IsSet("ledger.pvtdataStore.purgedKeyAuditLogging") {
 		purgedKeyAuditLogging = viper.GetBool("ledger.pvtdataStore.purgedKeyAuditLogging")
+	}
+	// The default equals the default peer.maxSendMsgSize (100MB), the largest
+	// payload a peer emits; it is a memory-safety ceiling per simulation, not
+	// a deliverability guarantee - the proposal response and the ordering
+	// BatchSize limits bound deliverable transactions more tightly.
+	maxRWSetSize := int64(100 * 1024 * 1024)
+	if viper.IsSet("ledger.state.maxRWSetSize") {
+		maxRWSetSize = parseMaxRWSetSize(viper.Get("ledger.state.maxRWSetSize"), maxRWSetSize)
+	}
+	if maxRWSetSize > 0 {
+		logger.Infof("Transaction simulation read-write set size limit = %d bytes", maxRWSetSize)
+	} else {
+		logger.Info("Transaction simulation read-write set size limit is disabled")
 	}
 
 	fsPath := coreconfig.GetPath("peer.fileSystemPath")
@@ -84,6 +99,7 @@ func ledgerConfig() *ledger.Config {
 		SnapshotsConfig: &ledger.SnapshotsConfig{
 			RootDir: snapshotsRootDir,
 		},
+		MaxRWSetSize: maxRWSetSize,
 	}
 
 	if conf.StateDBConfig.StateDatabase == ledger.CouchDB {
@@ -103,4 +119,45 @@ func ledgerConfig() *ledger.Config {
 		}
 	}
 	return conf
+}
+
+// parseMaxRWSetSize converts the configured value to bytes; a non-numeric
+// value in a security-relevant setting must not silently disable the limit,
+// so it falls back to the default with a warning
+func parseMaxRWSetSize(value any, defaultValue int64) int64 {
+	var parsed int64
+	switch v := value.(type) {
+	case int:
+		parsed = int64(v)
+	case int64:
+		parsed = v
+	case float64:
+		// non-finite or fractional values would convert to an arbitrary or
+		// zero limit and could silently disable it
+		if math.IsNaN(v) || math.IsInf(v, 0) || v != math.Trunc(v) || v >= float64(math.MaxInt64) {
+			logger.Warningf("Invalid ledger.state.maxRWSetSize value %v, using default %d bytes", value, defaultValue)
+			return defaultValue
+		}
+		parsed = int64(v)
+	case uint64:
+		if v > uint64(math.MaxInt64) {
+			logger.Warningf("Invalid ledger.state.maxRWSetSize value %v, using default %d bytes", value, defaultValue)
+			return defaultValue
+		}
+		parsed = int64(v)
+	case string:
+		var err error
+		if parsed, err = strconv.ParseInt(v, 10, 64); err != nil {
+			logger.Warningf("Invalid ledger.state.maxRWSetSize value %v, using default %d bytes", value, defaultValue)
+			return defaultValue
+		}
+	default:
+		logger.Warningf("Invalid ledger.state.maxRWSetSize value %v, using default %d bytes", value, defaultValue)
+		return defaultValue
+	}
+	if parsed < 0 {
+		// 0 is the documented way to disable; a negative value is likely a typo
+		logger.Warningf("Negative ledger.state.maxRWSetSize value %d disables the limit; set 0 to disable explicitly", parsed)
+	}
+	return parsed
 }

@@ -75,7 +75,9 @@ func (q *queryExecutor) getState(ns, key string) ([]byte, []byte, error) {
 	}
 	val, metadata, ver := decomposeVersionedValue(versionedValue)
 	if q.collectReadset {
-		q.rwsetBuilder.AddToReadSet(ns, key, ver)
+		if err := q.rwsetBuilder.AddToReadSet(ns, key, ver); err != nil {
+			return nil, nil, err
+		}
 	}
 	return val, metadata, nil
 }
@@ -112,7 +114,9 @@ func (q *queryExecutor) GetStateMultipleKeys(ns string, keys []string) ([][]byte
 	for i, versionedValue := range versionedValues {
 		val, _, ver := decomposeVersionedValue(versionedValue)
 		if q.collectReadset {
-			q.rwsetBuilder.AddToReadSet(ns, keys[i], ver)
+			if err := q.rwsetBuilder.AddToReadSet(ns, keys[i], ver); err != nil {
+				return nil, err
+			}
 		}
 		values[i] = val
 	}
@@ -221,7 +225,9 @@ func (q *queryExecutor) GetPrivateData(ns, coll, key string) ([]byte, error) {
 		)
 	}
 	if q.collectReadset {
-		q.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver)
+		if err := q.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver); err != nil {
+			return nil, err
+		}
 		q.privateReads.Add(ns, coll)
 	}
 	return val, nil
@@ -241,7 +247,9 @@ func (q *queryExecutor) GetPrivateDataHash(ns, coll, key string) ([]byte, error)
 	}
 	valHash, _, ver := decomposeVersionedValue(versionedValue)
 	if q.collectReadset {
-		q.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver)
+		if err := q.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver); err != nil {
+			return nil, err
+		}
 	}
 	return valHash, nil
 }
@@ -278,7 +286,9 @@ func (q *queryExecutor) getPrivateDataValueHash(ns, coll, key string) (valueHash
 	}
 	valHash, metadata, ver := decomposeVersionedValue(versionedValue)
 	if q.collectReadset {
-		q.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver)
+		if err := q.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver); err != nil {
+			return nil, nil, err
+		}
 	}
 	return valHash, metadata, nil
 }
@@ -322,7 +332,9 @@ func (q *queryExecutor) GetPrivateDataMultipleKeys(ns, coll string, keys []strin
 	for i, versionedValue := range versionedValues {
 		val, _, ver := decomposeVersionedValue(versionedValue)
 		if q.collectReadset {
-			q.rwsetBuilder.AddToHashedReadSet(ns, coll, keys[i], ver)
+			if err := q.rwsetBuilder.AddToHashedReadSet(ns, coll, keys[i], ver); err != nil {
+				return nil, err
+			}
 			q.privateReads.Add(ns, coll)
 		}
 		values[i] = val
@@ -421,8 +433,14 @@ func newResultsItr(ns string, startKey string, endKey string, pageSize int32,
 		itr.endKey = endKey
 		// just set the StartKey... set the EndKey later below in the Next() method.
 		itr.rangeQueryInfo = &kvrwset.RangeQueryInfo{StartKey: startKey}
-		resultsHelper, err := rwsetutil.NewRangeQueryResultsHelper(enableHashing, maxDegree, hashFunc)
+		// the iterator references the bounds until the simulation ends
+		if err := rwsetBuilder.AddRangeQueryKeys(startKey, endKey); err != nil {
+			dbItr.Close()
+			return nil, err
+		}
+		resultsHelper, err := rwsetutil.NewRangeQueryResultsHelperWithAccounting(enableHashing, maxDegree, hashFunc, rwsetBuilder)
 		if err != nil {
+			dbItr.Close()
 			return nil, err
 		}
 		itr.rangeQueryResultsHelper = resultsHelper
@@ -483,6 +501,7 @@ func (itr *resultsItr) updateRangeQueryInfo(queryResult *statedb.VersionedKV) er
 		return nil
 	}
 
+	// the helper meters the retained results and releases the charge on compaction
 	if err := itr.rangeQueryResultsHelper.AddResult(rwsetutil.NewKVRead(queryResult.Key, queryResult.Version)); err != nil {
 		return err
 	}
@@ -514,7 +533,9 @@ func (itr *queryResultsItr) Next() (commonledger.QueryResult, error) {
 	logger.Debugf("queryResultsItr.Next() returned a record:%s", string(queryResult.Value))
 
 	if itr.RWSetBuilder != nil {
-		itr.RWSetBuilder.AddToReadSet(queryResult.Namespace, queryResult.Key, queryResult.Version)
+		if err := itr.RWSetBuilder.AddToReadSet(queryResult.Namespace, queryResult.Key, queryResult.Version); err != nil {
+			return nil, err
+		}
 	}
 	return &queryresult.KV{
 		Namespace: queryResult.Namespace,
@@ -592,6 +613,9 @@ func (q *queryExecutor) addRangeQueryInfo() {
 		if hash != nil {
 			rwsetutil.SetMerkelSummary(itr.rangeQueryInfo, hash)
 		}
-		q.rwsetBuilder.AddToRangeQuerySet(itr.ns, itr.rangeQueryInfo)
+		if err := q.rwsetBuilder.AddToRangeQuerySet(itr.ns, itr.rangeQueryInfo); err != nil {
+			q.err = err
+			return
+		}
 	}
 }

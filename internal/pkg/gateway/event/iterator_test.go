@@ -226,7 +226,7 @@ func TestIterators(t *testing.T) {
 				resultIter := &mocks.ResultsIterator{}
 				resultIter.NextReturns(nil, errors.New("MY_ERROR"))
 
-				eventsIter := event.NewChaincodeEventsIterator(resultIter)
+				eventsIter := event.NewChaincodeEventsIterator(resultIter, "")
 				_, err := eventsIter.Next()
 
 				require.ErrorContains(t, err, "MY_ERROR")
@@ -237,7 +237,7 @@ func TestIterators(t *testing.T) {
 			resultIter := &mocks.ResultsIterator{}
 			resultIter.NextReturns(blockProto, nil)
 
-			eventsIter := event.NewChaincodeEventsIterator(resultIter)
+			eventsIter := event.NewChaincodeEventsIterator(resultIter, "")
 			actual, err := eventsIter.Next()
 
 			require.NoError(t, err, "Next()")
@@ -262,7 +262,7 @@ func TestIterators(t *testing.T) {
 			resultIter.NextReturnsOnCall(0, emptyBlock, nil)
 			resultIter.NextReturnsOnCall(1, blockProto, nil)
 
-			eventsIter := event.NewChaincodeEventsIterator(resultIter)
+			eventsIter := event.NewChaincodeEventsIterator(resultIter, "")
 			actual, err := eventsIter.Next()
 
 			require.NoError(t, err, "Next()")
@@ -277,11 +277,64 @@ func TestIterators(t *testing.T) {
 			require.True(t, proto.Equal(expected, actual), "ChaincodeEventsResponse: %v", actual)
 		})
 
+		t.Run("skips transactions up to and including after transaction ID", func(t *testing.T) {
+			afterTransactionID := "AFTER_TRANSACTION_ID"
+			noEventsEnvelope := &common.Envelope{
+				Payload: protoutil.MarshalOrPanic(&common.Payload{
+					Header: &common.Header{
+						ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
+							Type: int32(common.HeaderType_ENDORSER_TRANSACTION),
+							TxId: afterTransactionID,
+						}),
+					},
+				}),
+			}
+			block := &common.Block{
+				Header: &common.BlockHeader{
+					Number: 418,
+				},
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{
+						nil,
+						nil,
+						{
+							byte(peer.TxValidationCode_VALID),
+							byte(peer.TxValidationCode_MVCC_READ_CONFLICT),
+							byte(peer.TxValidationCode_VALID),
+						},
+					},
+				},
+				Data: &common.BlockData{
+					Data: [][]byte{
+						protoutil.MarshalOrPanic(txEnvelope),
+						protoutil.MarshalOrPanic(noEventsEnvelope),
+						protoutil.MarshalOrPanic(txEnvelope),
+					},
+				},
+			}
+			resultIter := &mocks.ResultsIterator{}
+			resultIter.NextReturns(block, nil)
+
+			eventsIter := event.NewChaincodeEventsIterator(resultIter, afterTransactionID)
+			actual, err := eventsIter.Next()
+
+			require.NoError(t, err, "Next()")
+			require.NotNil(t, actual, "events")
+
+			expected := &gateway.ChaincodeEventsResponse{
+				BlockNumber: block.GetHeader().GetNumber(),
+				Events: []*peer.ChaincodeEvent{
+					chaincodeEvent,
+				},
+			}
+			require.True(t, proto.Equal(expected, actual), "ChaincodeEventsResponse: %v", actual)
+		})
+
 		t.Run("Close", func(t *testing.T) {
 			t.Run("closes wrapped iterator", func(t *testing.T) {
 				resultIter := &mocks.ResultsIterator{}
 
-				eventsIter := event.NewChaincodeEventsIterator(resultIter)
+				eventsIter := event.NewChaincodeEventsIterator(resultIter, "")
 				eventsIter.Close()
 
 				require.Equal(t, 1, resultIter.CloseCallCount())

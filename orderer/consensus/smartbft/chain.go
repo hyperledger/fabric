@@ -24,12 +24,14 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	types2 "github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/smartbft/util"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -361,6 +363,31 @@ func (c *BFTChain) Configure(config *cb.Envelope, configSeq uint64) error {
 		}
 	}
 	return c.submit(config)
+}
+
+// ValidateConsensusMetadata validates the SmartBFT options of a config update before it is ordered.
+// The options are built and validated the same way the runtime configuration is built from a committed
+// config block, so a config update that would fail there is rejected here instead.
+func (c *BFTChain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig channelconfig.Orderer, newChannel bool) error {
+	if newOrdererConfig == nil {
+		return errors.New("new orderer config is nil")
+	}
+
+	if newOrdererConfig.ConsensusType() != "BFT" {
+		return errors.Errorf("unsupported consensus type: %s", newOrdererConfig.ConsensusType())
+	}
+
+	options, err := createSmartBftConfig(newOrdererConfig)
+	if err != nil {
+		return err
+	}
+
+	// The self ID is not part of the channel config; any non-zero ID passes validation.
+	if _, err := util.ConfigFromMetadataOptions(1, options); err != nil {
+		return errors.Wrap(err, "invalid BFT consensus metadata")
+	}
+
+	return nil
 }
 
 // Deliver delivers proposal, writes block with transactions and metadata

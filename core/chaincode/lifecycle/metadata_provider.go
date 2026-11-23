@@ -128,20 +128,25 @@ func (mp *MetadataProvider) Metadata(channel string, ccName string, collections 
 		Version:            strconv.FormatInt(ccInfo.Definition.Sequence, 10),
 		Policy:             spe,
 		CollectionPolicies: map[string][]byte{},
-		CollectionsConfig:  ccInfo.Definition.Collections,
 	}
 
+	// The cached definition is shared state accessed concurrently; implicit
+	// collections must be synthesized on a per-call copy, never appended to it.
+	collectionsConfig := ccInfo.Definition.Collections
+	configs := collectionsConfig.GetConfig()
+	copied := false
 	for _, col := range collections {
 		if isImplicit, mspID := implicitcollection.MspIDIfImplicitCollection(col); isImplicit {
 			// Implicit collection
 
-			// Initialize definition of collections if it's missing
-			if ccInfo.Definition.Collections == nil {
-				ccInfo.Definition.Collections = &peer.CollectionConfigPackage{}
+			if !copied {
+				copied = true
+				configs = make([]*peer.CollectionConfig, len(configs), len(configs)+len(collections))
+				copy(configs, collectionsConfig.GetConfig())
 			}
 
 			spe := policydsl.SignedByMspMember(mspID)
-			ccInfo.Definition.Collections.Config = append(ccInfo.Definition.Collections.Config, &peer.CollectionConfig{
+			configs = append(configs, &peer.CollectionConfig{
 				Payload: &peer.CollectionConfig_StaticCollectionConfig{
 					StaticCollectionConfig: &peer.StaticCollectionConfig{
 						Name: col,
@@ -161,13 +166,18 @@ func (mp *MetadataProvider) Metadata(channel string, ccName string, collections 
 		}
 	}
 
-	if ccInfo.Definition.Collections == nil {
+	if copied {
+		collectionsConfig = &peer.CollectionConfigPackage{Config: configs}
+	}
+	ccMetadata.CollectionsConfig = collectionsConfig
+
+	if collectionsConfig == nil {
 		return ccMetadata
 	}
 
 	// process any existing collection endorsement policies
 	for _, collectionName := range collections {
-		for _, conf := range ccInfo.Definition.Collections.GetConfig() {
+		for _, conf := range collectionsConfig.GetConfig() {
 			staticCollConfig := conf.GetStaticCollectionConfig()
 			if staticCollConfig == nil {
 				continue

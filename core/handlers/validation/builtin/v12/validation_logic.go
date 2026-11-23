@@ -832,3 +832,8 @@ func policyErr(err error) *commonerrors.VSCCEndorsementPolicyError {
 		Err: err,
 	}
 }
+
+// SignalInvalidTx is a no-op for the 1.2 validator: without key-level
+// endorsement support it records no dependencies, so nothing waits on the
+// transaction's validation result
+func (vscc *Validator) SignalInvalidTx(blockNum, txNum uint64, err error) {}

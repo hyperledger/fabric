@@ -69,7 +69,9 @@ func principalsOfTree(tree *graph.Tree, principals policies.PrincipalSet) polici
 		}
 		switch principalIndex := pol.GetType().(type) {
 		case *common.SignaturePolicy_SignedBy:
-			if len(principals) <= int(principalIndex.SignedBy) {
+			// Raw protobuf policies bypass the DSL parser, so negative indices
+			// must be rejected here as well.
+			if principalIndex.SignedBy < 0 || len(principals) <= int(principalIndex.SignedBy) {
 				logger.Warning("Failed computing principalsOfTree, index out of bounds")
 				return nil
 			}

@@ -453,6 +453,11 @@ func getTxInfoFromTransactionBytes(envBytes []byte) (*txInfo, error) {
 		return nil, err
 	}
 
+	if len(tx.GetActions()) == 0 {
+		logger.Warningf("Transaction without actions in payload data for tx [%s]", chdr.GetTxId())
+		return nil, errors.New("transaction contains no actions")
+	}
+
 	ccActionPayload, err := protoutil.UnmarshalChaincodeActionPayload(tx.GetActions()[0].GetPayload())
 	if err != nil {
 		logger.Warningf("Invalid chaincode action in payload for tx [%s]: %s", chdr.GetTxId(), err)
