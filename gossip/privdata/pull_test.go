@@ -9,6 +9,7 @@ package privdata
 import (
 	"bytes"
 	"crypto/rand"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -1164,8 +1165,8 @@ func (memberOrgsAccessFactory) AccessPolicy(config *peer.CollectionConfig, _ str
 // through the real dataRetriever. The ledger is at height 5 and holds a collection config whose
 // only member is org1. The transient store holds the real private write set for txID1, received
 // by dissemination and therefore stored with EndorsedAt 0, plus forgedEntries entries for the same
-// txID pushed by org2 under a collection config that lists org2 as the only member.
-func newTransientStorePuller(t *testing.T, forgedEntries int) (*puller, *proto.PvtDataDigest) {
+// txID pushed by org2 under a collection config with the given member orgs policy.
+func newTransientStorePuller(t *testing.T, forgedEntries int, forgedPolicy *peer.CollectionPolicyConfig) (*puller, *proto.PvtDataDigest) {
 	store := newTransientStore(t)
 	t.Cleanup(store.tearDown)
 
@@ -1181,7 +1182,7 @@ func newTransientStorePuller(t *testing.T, forgedEntries int) (*puller, *proto.P
 	committer.On("GetConfigHistoryRetriever").Return(historyRetriever, nil)
 
 	require.NoError(t, store.Persist(txID, 5, transientStoreEntry(namespace, collection, []byte("private"), ledgerConfig)))
-	forgedConfig := collectionConfigWithPolicy(collection, memberOrgsPolicy("org2"), 1)
+	forgedConfig := collectionConfigWithPolicy(collection, forgedPolicy, 1)
 	for range forgedEntries {
 		require.NoError(t, store.Persist(txID, 5, transientStoreEntry(namespace, collection, []byte("forged"), forgedConfig)))
 	}
@@ -1215,20 +1216,47 @@ func TestPullerTransientStoreNonMemberWithForgedConfig(t *testing.T) {
 	// Scenario: org2 is a channel member outside the collection. It pushed entries for txID1 whose
 	// collection config lists org2 as a member, and now pulls txID1 for a block the peer has not
 	// committed yet. The response must not contain any element, in particular not the real write set.
-	p, dig := newTransientStorePuller(t, 20)
+	//
+	// Without the ledger config check the served config is that of the last entry iterated, and the
+	// transient store iterates entries of a txID in random order, so the real entry wins for one in
+	// forgedEntries+1 requests. Running the scenario over several fresh stores makes the leak show
+	// up in all practical runs on such code, while the fixed code is deterministic.
+	const stores, forgedEntries = 5, 100
+	for i := range stores {
+		t.Run(fmt.Sprintf("store%d", i), func(t *testing.T) {
+			p, dig := newTransientStorePuller(t, forgedEntries, memberOrgsPolicy("org2"))
 
-	require.Empty(t, p.createResponse(pullRequestFrom("org2", dig)))
+			require.Empty(t, p.createResponse(pullRequestFrom("org2", dig)))
+		})
+	}
 }
 
 func TestPullerTransientStoreMemberWithForgedEntries(t *testing.T) {
 	// Scenario: org1 is a member of the collection and pulls txID1 while the transient store also
 	// holds entries pushed by org2 under a forged collection config. org1 must still receive the
 	// real write set, and only that one.
-	p, dig := newTransientStorePuller(t, 20)
+	p, dig := newTransientStorePuller(t, 20, memberOrgsPolicy("org2"))
 
 	elements := p.createResponse(pullRequestFrom("org1", dig))
 	require.Len(t, elements, 1)
 	require.Equal(t, [][]byte{[]byte("private")}, elements[0].GetPayload())
+}
+
+func TestPullerTransientStoreMemberWithForgedEntriesUnderLedgerPolicy(t *testing.T) {
+	// Scenario: org2 pushed entries for txID1 that copy the collection's real member orgs policy,
+	// which is public. The member orgs policy check cannot tell them from the real entry, so org1
+	// receives the real write set together with the forged ones and relies on its hash check to
+	// discard the latter. This documents the residual behavior; a non-member still gets nothing.
+	const forgedEntries = 3
+	p, dig := newTransientStorePuller(t, forgedEntries, memberOrgsPolicy("org1"))
+
+	require.Empty(t, p.createResponse(pullRequestFrom("org2", dig)))
+
+	elements := p.createResponse(pullRequestFrom("org1", dig))
+	require.Len(t, elements, 1)
+	payload := elements[0].GetPayload()
+	require.Len(t, payload, forgedEntries+1)
+	require.Contains(t, payload, []byte("private"))
 }
 
 func toDigKey(dig *proto.PvtDataDigest) *privdatacommon.DigKey {

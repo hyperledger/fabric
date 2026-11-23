@@ -637,6 +637,55 @@ func TestNewDataRetriever_TransientStoreEntriesWithDifferentConfigs(t *testing.T
 }
 
 /*
+Test checks that an entry endorsed under a member orgs policy that a later
+collection config update replaced is not served from the transient store. The
+ledger config governs eligibility, and the data is only available from the
+ledger once the block that carries the transaction is committed.
+*/
+func TestNewDataRetriever_TransientStoreEntryUnderPreviousPolicy(t *testing.T) {
+	committer := &mocks.Committer{}
+
+	store := newTransientStore(t)
+	defer store.tearDown()
+
+	namespace := "testChaincodeName1"
+	collectionName := "testCollectionName"
+	txID := "testTxID"
+
+	// The collection was updated so that org2 replaced org1 as its member; the
+	// transaction was endorsed before the update under the previous policy.
+	ledgerConfig := collectionConfigWithPolicy(collectionName, memberOrgsPolicy("org2"), 1)
+
+	committer.On("LedgerHeight").Return(uint64(1), nil)
+	historyRetreiver := &mocks.ConfigHistoryRetriever{}
+	historyRetreiver.On("MostRecentCollectionConfigBelow", mock.Anything, namespace).Return(&ledger.CollectionConfigInfo{
+		CollectionConfig: &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{ledgerConfig}},
+	}, nil)
+	committer.On("GetConfigHistoryRetriever").Return(historyRetreiver, nil)
+
+	retriever := NewDataRetriever("testchannel", store.store, committer)
+
+	store.Persist(txID, 2, transientStoreEntry(namespace, collectionName, []byte{1, 2},
+		collectionConfigWithPolicy(collectionName, memberOrgsPolicy("org1"), 1)))
+
+	digest := &gossip2.PvtDataDigest{
+		Namespace:  namespace,
+		Collection: collectionName,
+		BlockSeq:   2,
+		TxId:       txID,
+		SeqInBlock: 1,
+	}
+	rwSets, _, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{digest}, 2)
+
+	assertion := require.New(t)
+	assertion.NoError(err)
+	dig2pvtRWSet := rwSets[*toDigKey(digest)]
+	assertion.NotNil(dig2pvtRWSet)
+	assertion.True(proto.Equal(ledgerConfig, dig2pvtRWSet.CollectionConfig))
+	assertion.Empty(dig2pvtRWSet.RWSet)
+}
+
+/*
 Test checks that no private data is returned from the transient store when the
 collection config cannot be obtained from the ledger, since there is no
 trustworthy config to evaluate the requester against.
@@ -661,17 +710,21 @@ func TestNewDataRetriever_TransientStoreNoLedgerCollectionConfig(t *testing.T) {
 	store.Persist(txID, 2, transientStoreEntry(namespace, collectionName, []byte{1, 2},
 		collectionConfigWithPolicy(collectionName, memberOrgsPolicy("org1"), 1)))
 
-	rwSets, _, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{{
+	digest := &gossip2.PvtDataDigest{
 		Namespace:  namespace,
 		Collection: collectionName,
 		BlockSeq:   2,
 		TxId:       txID,
 		SeqInBlock: 1,
-	}}, 2)
+	}
+	rwSets, _, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{digest}, 2)
 
 	assertion := require.New(t)
 	assertion.NoError(err)
-	assertion.Empty(rwSets)
+	dig2pvtRWSet := rwSets[*toDigKey(digest)]
+	assertion.NotNil(dig2pvtRWSet)
+	assertion.Nil(dig2pvtRWSet.CollectionConfig)
+	assertion.Empty(dig2pvtRWSet.RWSet)
 }
 
 func memberOrgsPolicy(mspID string) *peer.CollectionPolicyConfig {

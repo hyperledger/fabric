@@ -243,9 +243,22 @@ func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, fil
 	// push, and the collection config they carry is stored as received. The requester's eligibility
 	// is therefore evaluated against the collection config committed to the ledger, and only the
 	// write sets stored under a config with the same member orgs policy are returned.
+	//
+	// The policy comparison is defense in depth: it keeps the peer from relaying write sets that
+	// were pushed under a different policy, but an entry pushed under a copy of the ledger's
+	// policy still passes and is left to the requester's hash check. It also drops an entry
+	// endorsed under a member orgs policy that a later collection update replaced; such data is
+	// served from the ledger once its block is committed.
+	//
+	// A collection with no config in the ledger is expected on this path, for example when a
+	// peer pushed an entry for a collection that does not exist, so it is logged as a warning
+	// and nothing is served for the digest.
 	ledgerConfig, err := dr.ledgerCollectionConfig(dig)
 	if err != nil {
-		return nil, err
+		dr.logger.Warningf("Not serving %d transient store entries for txID <%s>, collection <%s>, namespace <%s>,"+
+			" because the collection config could not be obtained from the ledger: %s",
+			len(entries), dig.GetTxId(), dig.GetCollection(), dig.GetNamespace(), err)
+		return results, nil
 	}
 	results.CollectionConfig = ledgerConfig
 
