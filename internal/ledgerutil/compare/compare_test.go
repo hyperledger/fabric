@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"hash"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -445,6 +446,70 @@ func TestCompare(t *testing.T) {
 				}
 			]
 		}`
+	expectedPvtMissingResult1 := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+				{
+					"namespace" : "_lifecycle$$h_implicit_org_Org1MSP",
+					"key" : "736b31",
+					"hashed" : true,
+					"snapshotrecord1" : {
+						"value" : "2321",
+						"blockNum" : 1,
+						"txNum" : 1
+					},
+					"snapshotrecord2" : null
+				}
+			]
+		}`
+	expectedPvtMissingResult2 := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+				{
+					"namespace" : "_lifecycle$$h_implicit_org_Org1MSP",
+					"key" : "736b31",
+					"hashed" : true,
+					"snapshotrecord1" : null,
+					"snapshotrecord2" : {
+						"value" : "2321",
+						"blockNum" : 1,
+						"txNum" : 1
+					}
+				}
+			]
+		}`
+	expectedPubMissingResult1 := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+				{
+					"namespace" : "ns1",
+					"key" : "k1",
+					"hashed" : false,
+					"snapshotrecord1" : {
+						"value" : "v1",
+						"blockNum" : 1,
+						"txNum" : 1
+					},
+					"snapshotrecord2" : null
+				}
+			]
+		}`
+	expectedPubMissingResult2 := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+				{
+					"namespace" : "ns1",
+					"key" : "k1",
+					"hashed" : false,
+					"snapshotrecord1" : null,
+					"snapshotrecord2" : {
+						"value" : "v1",
+						"blockNum" : 1,
+						"txNum" : 1
+					}
+				}
+			]
+		}`
 	expectedEmpty := "null"
 
 	testCases := map[string]struct {
@@ -591,6 +656,54 @@ func TestCompare(t *testing.T) {
 			expectedFirOutput:      expectedEmpty,
 			expectedDiffCount:      1,
 		},
+		// Second snapshot has no private data hashes, so it has no private state hashes files
+		"second-missing-pvt-data": {
+			inputTestRecords1:      sampleRecords1,
+			inputTestPvtRecords1:   samplePvtRecords1,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords1,
+			inputSignableMetadata2: sampleSignableMetadata1,
+			expectedOutputType:     "json",
+			expectedPubOutput:      expectedEmpty,
+			expectedPvtOutput:      expectedPvtMissingResult1,
+			expectedFirOutput:      expectedEmpty,
+			expectedDiffCount:      1,
+		},
+		// First snapshot has no private data hashes, so it has no private state hashes files
+		"first-missing-pvt-data": {
+			inputTestRecords1:      sampleRecords1,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords1,
+			inputTestPvtRecords2:   samplePvtRecords1,
+			inputSignableMetadata2: sampleSignableMetadata1,
+			expectedOutputType:     "json",
+			expectedPubOutput:      expectedEmpty,
+			expectedPvtOutput:      expectedPvtMissingResult2,
+			expectedFirOutput:      expectedEmpty,
+			expectedDiffCount:      1,
+		},
+		// Second snapshot has no public state, so it has no public state files
+		"second-missing-pub-data": {
+			inputTestRecords1:      sampleRecords1[:1],
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputSignableMetadata2: sampleSignableMetadata1,
+			expectedOutputType:     "json",
+			expectedPubOutput:      expectedPubMissingResult1,
+			expectedPvtOutput:      expectedEmpty,
+			expectedFirOutput:      expectedEmpty,
+			expectedDiffCount:      1,
+		},
+		// First snapshot has no public state, so it has no public state files
+		"first-missing-pub-data": {
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords1[:1],
+			inputSignableMetadata2: sampleSignableMetadata1,
+			expectedOutputType:     "json",
+			expectedPubOutput:      expectedPubMissingResult2,
+			expectedPvtOutput:      expectedEmpty,
+			expectedFirOutput:      expectedEmpty,
+			expectedDiffCount:      1,
+		},
 	}
 
 	// Run test cases individually
@@ -634,72 +747,91 @@ func TestCompare(t *testing.T) {
 	}
 }
 
-// createSnapshot generates a sample snapshot based on the passed in records and metadata
+// createSnapshot generates a sample snapshot based on the passed in records and metadata.
+// Like a real snapshot, it only has state files for state that has records, and its
+// signable metadata only lists the files it has.
 func createSnapshot(dir string, pubStateRecords []*testRecord, pvtStateRecords []*testRecord,
 	signableMetadata *kvledger.SnapshotSignableMetadata,
 ) error {
 	// Generate public state of sample snapshot
-	pubStateWriter, err := privacyenabledstate.NewSnapshotWriter(
-		dir,
-		privacyenabledstate.PubStateDataFileName,
-		privacyenabledstate.PubStateMetadataFileName,
-		testNewHashFunc,
-	)
-	if err != nil {
-		return err
-	}
-	defer pubStateWriter.Close()
-
-	// Add sample records to sample snapshot
-	for _, sample := range pubStateRecords {
-		err = pubStateWriter.AddData(sample.namespace, &privacyenabledstate.SnapshotRecord{
-			Key:      []byte(sample.key),
-			Value:    []byte(sample.value),
-			Metadata: []byte(sample.metadata),
-			Version:  toBytes(sample.blockNum, sample.txNum),
-		})
+	if len(pubStateRecords) > 0 {
+		pubStateWriter, err := privacyenabledstate.NewSnapshotWriter(
+			dir,
+			privacyenabledstate.PubStateDataFileName,
+			privacyenabledstate.PubStateMetadataFileName,
+			testNewHashFunc,
+		)
 		if err != nil {
 			return err
 		}
-	}
+		defer pubStateWriter.Close()
 
-	_, _, err = pubStateWriter.Done()
-	if err != nil {
-		return err
+		// Add sample records to sample snapshot
+		for _, sample := range pubStateRecords {
+			err = pubStateWriter.AddData(sample.namespace, &privacyenabledstate.SnapshotRecord{
+				Key:      []byte(sample.key),
+				Value:    []byte(sample.value),
+				Metadata: []byte(sample.metadata),
+				Version:  toBytes(sample.blockNum, sample.txNum),
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		_, _, err = pubStateWriter.Done()
+		if err != nil {
+			return err
+		}
 	}
 
 	// Generate private state of sample snapshot
-	pvtStateWriter, err := privacyenabledstate.NewSnapshotWriter(
-		dir,
-		privacyenabledstate.PvtStateHashesFileName,
-		privacyenabledstate.PvtStateHashesMetadataFileName,
-		testNewHashFunc,
-	)
-	if err != nil {
-		return err
-	}
-	defer pvtStateWriter.Close()
+	if len(pvtStateRecords) > 0 {
+		pvtStateWriter, err := privacyenabledstate.NewSnapshotWriter(
+			dir,
+			privacyenabledstate.PvtStateHashesFileName,
+			privacyenabledstate.PvtStateHashesMetadataFileName,
+			testNewHashFunc,
+		)
+		if err != nil {
+			return err
+		}
+		defer pvtStateWriter.Close()
 
-	// Add sample records to sample snapshot
-	for _, sample := range pvtStateRecords {
-		err = pvtStateWriter.AddData(sample.namespace, &privacyenabledstate.SnapshotRecord{
-			Key:      []byte(sample.key),
-			Value:    []byte(sample.value),
-			Metadata: []byte(sample.metadata),
-			Version:  toBytes(sample.blockNum, sample.txNum),
-		})
+		// Add sample records to sample snapshot
+		for _, sample := range pvtStateRecords {
+			err = pvtStateWriter.AddData(sample.namespace, &privacyenabledstate.SnapshotRecord{
+				Key:      []byte(sample.key),
+				Value:    []byte(sample.value),
+				Metadata: []byte(sample.metadata),
+				Version:  toBytes(sample.blockNum, sample.txNum),
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		_, _, err = pvtStateWriter.Done()
 		if err != nil {
 			return err
 		}
 	}
 
-	_, _, err = pvtStateWriter.Done()
-	if err != nil {
-		return err
+	// List only the state files that were written in the signable metadata. The passed in
+	// metadata is shared between test cases, so it is copied before it is changed.
+	metadata := *signableMetadata
+	metadata.FilesAndHashes = maps.Clone(signableMetadata.FilesAndHashes)
+	if len(pubStateRecords) == 0 {
+		delete(metadata.FilesAndHashes, privacyenabledstate.PubStateDataFileName)
+		delete(metadata.FilesAndHashes, privacyenabledstate.PubStateMetadataFileName)
+	}
+	if len(pvtStateRecords) == 0 {
+		delete(metadata.FilesAndHashes, privacyenabledstate.PvtStateHashesFileName)
+		delete(metadata.FilesAndHashes, privacyenabledstate.PvtStateHashesMetadataFileName)
 	}
 
 	// Generate the signable metadata files for sample snapshot
-	signableMetadataBytes, err := signableMetadata.ToJSON()
+	signableMetadataBytes, err := metadata.ToJSON()
 	if err != nil {
 		return err
 	}
