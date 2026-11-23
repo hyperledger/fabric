@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"hash"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -819,10 +820,7 @@ func createSnapshot(dir string, pubStateRecords []*testRecord, pvtStateRecords [
 	// List only the state files that were written in the signable metadata. The passed in
 	// metadata is shared between test cases, so it is copied before it is changed.
 	metadata := *signableMetadata
-	metadata.FilesAndHashes = make(map[string]string, len(signableMetadata.FilesAndHashes))
-	for file, hash := range signableMetadata.FilesAndHashes {
-		metadata.FilesAndHashes[file] = hash
-	}
+	metadata.FilesAndHashes = maps.Clone(signableMetadata.FilesAndHashes)
 	if len(pubStateRecords) == 0 {
 		delete(metadata.FilesAndHashes, privacyenabledstate.PubStateDataFileName)
 		delete(metadata.FilesAndHashes, privacyenabledstate.PubStateMetadataFileName)
