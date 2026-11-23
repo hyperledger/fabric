@@ -557,15 +557,14 @@ func serve(args []string) error {
 		}
 
 		dockerVM := &dockercontroller.DockerVM{
-			PeerID:           coreConfig.PeerID,
-			NetworkID:        coreConfig.NetworkID,
-			BuildMetrics:     dockercontroller.NewBuildMetrics(opsSystem.Provider),
-			Client:           client,
-			AttachStdOut:     coreConfig.VMDockerAttachStdout,
-			HostConfig:       getDockerHostConfig(),
-			ChaincodePull:    coreConfig.ChaincodePull,
-			NetworkMode:      coreConfig.VMNetworkMode,
-			AuthConfigLoader: dockercontroller.LoadDockerAuthConfigs,
+			PeerID:        coreConfig.PeerID,
+			NetworkID:     coreConfig.NetworkID,
+			BuildMetrics:  dockercontroller.NewBuildMetrics(opsSystem.Provider),
+			Client:        client,
+			AttachStdOut:  coreConfig.VMDockerAttachStdout,
+			HostConfig:    getDockerHostConfig(),
+			ChaincodePull: coreConfig.ChaincodePull,
+			NetworkMode:   coreConfig.VMNetworkMode,
 			PlatformBuilder: &platforms.Builder{
 				Registry: platformRegistry,
 				Client:   client,
@@ -579,6 +578,9 @@ func serve(args []string) error {
 				"CORE_CHAINCODE_LOGGING_FORMAT=" + chaincodeConfig.LogFormat,
 			},
 			MSPID: mspID,
+		}
+		if coreConfig.ChaincodeUseDockerAuth {
+			dockerVM.AuthConfigLoader = dockercontroller.LoadDockerAuthConfigs
 		}
 		if err := opsSystem.RegisterChecker("docker", dockerVM); err != nil {
 			logger.Panicf("failed to register docker health check: %s", err)

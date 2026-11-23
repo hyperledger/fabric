@@ -21,23 +21,22 @@ import (
 const dockerConfigEnv = "DOCKER_CONFIG"
 
 type dockerConfigFile struct {
+	CredsStore  string                         `json:"credsStore"`
+	CredHelpers map[string]string              `json:"credHelpers"`
 	AuthConfigs map[string]registry.AuthConfig `json:"auths"`
 }
 
 // LoadDockerAuthConfigs loads registry credentials from the Docker CLI config.
 // It supports config.json and the legacy .dockercfg format.
 func LoadDockerAuthConfigs() (map[string]registry.AuthConfig, error) {
-	configDir := os.Getenv(dockerConfigEnv)
+	if configDir := os.Getenv(dockerConfigEnv); configDir != "" {
+		return loadDockerAuthConfigs(configDir, "")
+	}
 	homeDir, err := os.UserHomeDir()
-	if err != nil && configDir == "" {
-		return nil, fmt.Errorf("determine home directory: %w", err)
+	if err != nil {
+		return nil, nil
 	}
-
-	if configDir == "" {
-		configDir = filepath.Join(homeDir, ".docker")
-	}
-
-	return loadDockerAuthConfigs(configDir, homeDir)
+	return loadDockerAuthConfigs(filepath.Join(homeDir, ".docker"), homeDir)
 }
 
 func loadDockerAuthConfigs(configDir, homeDir string) (map[string]registry.AuthConfig, error) {
@@ -73,6 +72,9 @@ func readDockerAuthConfigs(path string, legacy bool) (map[string]registry.AuthCo
 	} else {
 		configFile := &dockerConfigFile{}
 		err = json.Unmarshal(configJSON, configFile)
+		if err == nil && (configFile.CredsStore != "" || len(configFile.CredHelpers) > 0) {
+			dockerLogger.Warn("Docker credential helpers are unsupported for chaincode builds; only inline credentials will be used")
+		}
 		authConfigs = configFile.AuthConfigs
 	}
 	if err != nil {
@@ -82,18 +84,21 @@ func readDockerAuthConfigs(path string, legacy bool) (map[string]registry.AuthCo
 	for address, authConfig := range authConfigs {
 		if authConfig.Auth != "" {
 			credentials, err := base64.StdEncoding.DecodeString(authConfig.Auth)
-			if err != nil {
-				return nil, true, fmt.Errorf("decode credentials for registry %s in Docker config %s: %w", address, path, err)
-			}
-
 			username, password, found := strings.Cut(string(credentials), ":")
-			if !found || username == "" {
-				return nil, true, fmt.Errorf("invalid credentials for registry %s in Docker config %s", address, path)
+			if err != nil || !found || username == "" {
+				dockerLogger.Warnf("Skipping malformed credentials for registry %q", address)
+				delete(authConfigs, address)
+				continue
 			}
 			authConfig.Username = username
 			authConfig.Password = strings.Trim(password, "\x00")
 			authConfig.Auth = ""
 		}
+		if authConfig.Username == "" && authConfig.IdentityToken == "" && authConfig.RegistryToken == "" {
+			delete(authConfigs, address)
+			continue
+		}
+		dockerLogger.Debugf("Loaded credentials for registry %q", address)
 		authConfig.ServerAddress = address
 		authConfigs[address] = authConfig
 	}

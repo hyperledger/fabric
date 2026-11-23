@@ -116,15 +116,15 @@ func (vm *DockerVM) buildImage(ccid string, reader io.Reader) error {
 		return err
 	}
 
+	startTime := time.Now()
 	var authConfigs map[string]registry.AuthConfig
 	if vm.AuthConfigLoader != nil {
 		authConfigs, err = vm.AuthConfigLoader()
 		if err != nil {
-			return errors.Wrap(err, "failed to load Docker registry credentials")
+			dockerLogger.Warnf("Could not load Docker registry credentials: %v", err)
 		}
 	}
 
-	startTime := time.Now()
 	res, err := vm.Client.ImageBuild(context.Background(), reader, dcli.ImageBuildOptions{
 		Tags:        []string{id},
 		PullParent:  vm.ChaincodePull,

@@ -424,6 +424,9 @@ func Test_buildImage(t *testing.T) {
 
 func Test_buildImageAuthConfigFailure(t *testing.T) {
 	client := &mock.DockerClient{}
+	rc := &mock.ReadCloser{}
+	rc.ReadReturns(0, io.EOF)
+	client.ImageBuildReturns(dcli.ImageBuildResult{Body: rc}, nil)
 	dvm := DockerVM{
 		BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
 		Client:       client,
@@ -433,8 +436,10 @@ func Test_buildImageAuthConfigFailure(t *testing.T) {
 	}
 
 	err := dvm.buildImage("simple", &bytes.Buffer{})
-	require.EqualError(t, err, "failed to load Docker registry credentials: bad config")
-	require.Equal(t, 0, client.ImageBuildCallCount())
+	require.NoError(t, err)
+	require.Equal(t, 1, client.ImageBuildCallCount())
+	_, _, options := client.ImageBuildArgsForCall(0)
+	require.Empty(t, options.AuthConfigs)
 }
 
 func Test_buildImageFailure(t *testing.T) {

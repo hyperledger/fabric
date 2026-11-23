@@ -93,12 +93,13 @@ func TestLoadDockerAuthConfigs(t *testing.T) {
 		configDir := filepath.Join(homeDir, ".docker")
 		require.NoError(t, os.MkdirAll(configDir, 0o700))
 		configPath := filepath.Join(configDir, "config.json")
-		config := `{"auths":{"registry.example.com":{"auth":"not-base64"}}}`
+		config := `{"auths":{"broken":{"auth":"not-base64"},"missing-colon":{"auth":"YQ=="},"valid":{"identitytoken":"token"}}}`
 		require.NoError(t, os.WriteFile(configPath, []byte(config), 0o600))
 
-		_, err := loadDockerAuthConfigs(configDir, homeDir)
-		require.ErrorContains(t, err, "decode credentials for registry registry.example.com")
-		require.NotContains(t, err.Error(), "not-base64")
+		authConfigs, err := loadDockerAuthConfigs(configDir, homeDir)
+		require.NoError(t, err)
+		require.Len(t, authConfigs, 1)
+		require.Equal(t, "token", authConfigs["valid"].IdentityToken)
 	})
 }
 
@@ -107,6 +108,10 @@ func TestLoadDockerAuthConfigsUsesDockerConfigEnv(t *testing.T) {
 	configDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
 	t.Setenv(dockerConfigEnv, configDir)
+	require.NoError(t, os.WriteFile(filepath.Join(homeDir, ".dockercfg"), []byte(`{"legacy":{"username":"legacy"}}`), 0o600))
+	configs, err := LoadDockerAuthConfigs()
+	require.NoError(t, err)
+	require.Empty(t, configs)
 	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.json"), []byte(`{"auths":{"registry.example.com":{"username":"alice","password":"secret"}}}`), 0o600))
 
 	authConfigs, err := LoadDockerAuthConfigs()
@@ -119,9 +124,13 @@ func TestLoadDockerAuthConfigsDoesNotRequireHomeWithDockerConfigEnv(t *testing.T
 	configDir := t.TempDir()
 	t.Setenv("HOME", "")
 	t.Setenv(dockerConfigEnv, configDir)
-	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.json"), []byte(`{"auths":{}}`), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.json"), []byte(`{"credsStore":"desktop","credHelpers":{"registry":"helper"}}`), 0o600))
 
 	authConfigs, err := LoadDockerAuthConfigs()
+	require.NoError(t, err)
+	require.Empty(t, authConfigs)
+	t.Setenv(dockerConfigEnv, "")
+	authConfigs, err = LoadDockerAuthConfigs()
 	require.NoError(t, err)
 	require.Empty(t, authConfigs)
 }
