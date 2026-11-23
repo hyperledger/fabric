@@ -66,8 +66,7 @@ func (p *plan) endorsers() []*endorser {
 	p.planLock.Lock()
 	defer p.planLock.Unlock()
 
-	var endorsers []*endorser
-	for endorsers == nil {
+	for {
 		// Skip over any defunct layouts.
 		for p.nextLayout < len(p.layouts) && p.layouts[p.nextLayout] == nil {
 			p.nextLayout++
@@ -75,20 +74,28 @@ func (p *plan) endorsers() []*endorser {
 		if p.nextLayout >= len(p.layouts) {
 			return nil
 		}
-		for group, qty := range p.layouts[p.nextLayout].required {
+		required := p.layouts[p.nextLayout].required
+		satisfiable := true
+		for group, qty := range required {
 			if qty > len(p.groupEndorsers[group]) {
 				// requires more group endorsers than available - abandon this layout
-				endorsers = nil
-				p.layouts[p.nextLayout] = nil
-				p.nextLayout++
+				satisfiable = false
 				break
 			}
+		}
+		if !satisfiable {
+			p.layouts[p.nextLayout] = nil
+			p.nextLayout++
+			continue
+		}
+		var endorsers []*endorser
+		for group, qty := range required {
 			// remove the first qty endorsers from the front of this group
 			endorsers = append(endorsers, p.groupEndorsers[group][0:qty]...)
 			p.groupEndorsers[group] = p.groupEndorsers[group][qty:]
 		}
+		return endorsers
 	}
-	return endorsers
 }
 
 // Invoke processEndorsement when an endorsement has been successfully received for the given endorser.

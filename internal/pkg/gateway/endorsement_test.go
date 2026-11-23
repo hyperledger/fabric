@@ -327,3 +327,42 @@ func TestUniqueEndorsements(t *testing.T) {
 	require.Len(t, unique, 3)
 	require.ElementsMatch(t, unique, []*peer.Endorsement{e1, e2, e4})
 }
+
+func TestAbandonUnsatisfiableLayoutPreservesUntriedEndorsers(t *testing.T) {
+	// Repeat to cover randomized Go map iteration orders across layout.required.
+	for range 50 {
+		layouts := []*layout{
+			{required: map[string]int{"g0": 1, "g2": 1}},
+			{required: map[string]int{"g1": 1, "g2": 2}},
+			{required: map[string]int{"g1": 1, "g3": 1}},
+		}
+		groupEndorsers := map[string][]*endorser{
+			"g0": {localhostMock},
+			"g1": {peer1Mock},
+			"g2": {peer2Mock, peer3Mock},
+			"g3": {peer4Mock},
+		}
+		plan := newPlan(layouts, groupEndorsers)
+
+		// Layout 0 tries localhostMock (g0) and peer2Mock (g2).
+		endorsers := plan.endorsers()
+		require.ElementsMatch(t, []*endorser{localhostMock, peer2Mock}, endorsers)
+
+		// g0 fails with no fallback peers -> abandon g0 (layout 0 becomes nil).
+		retry, group := plan.nextPeerInGroup(localhostMock)
+		require.Nil(t, retry)
+		plan.abandonGroupRemoveLayouts(group)
+
+		// peer2Mock (g2) fails, retry peer3Mock (g2) succeeds -> g2 now has 0 untried peers,
+		// while layout 1 still requires 1 more endorsement from g2.
+		retry, _ = plan.nextPeerInGroup(peer2Mock)
+		require.Equal(t, peer3Mock, retry)
+		response := &peer.ProposalResponse{Payload: []byte("p"), Endorsement: &peer.Endorsement{Endorser: []byte("e3")}}
+		require.True(t, plan.processEndorsement(peer3Mock, response))
+
+		// Layout 1 ({g1:1, g2:1}) is unsatisfiable because g2 has 0 untried peers.
+		// Abandoning layout 1 must NOT discard peer1Mock from g1, so layout 2 ({g1:1, g3:1}) succeeds.
+		endorsers = plan.endorsers()
+		require.ElementsMatch(t, []*endorser{peer1Mock, peer4Mock}, endorsers)
+	}
+}
