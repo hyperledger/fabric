@@ -1044,7 +1044,7 @@ func createChaincodeServer(coreConfig *peer.Config, ca tlsgen.CA, peerHostname s
 
 	cclistenAddress := coreConfig.ChaincodeListenAddress
 	if cclistenAddress == "" {
-		cclistenAddress = net.JoinHostPort(peerHostname, strconv.Itoa(defaultChaincodePort))
+		cclistenAddress = defaultChaincodeAddress(peerHostname)
 		logger.Warningf("%s is not set, using %s", chaincodeListenAddrKey, cclistenAddress)
 		coreConfig.ChaincodeListenAddress = cclistenAddress
 	}
@@ -1096,6 +1096,12 @@ func createChaincodeServer(coreConfig *peer.Config, ca tlsgen.CA, peerHostname s
 	}
 
 	return srv, ccEndpoint, nil
+}
+
+// defaultChaincodeAddress returns the host:port the chaincode server uses on the peer host
+// when no chaincode address is configured. An IPv6 host is put in square brackets.
+func defaultChaincodeAddress(peerHostname string) string {
+	return net.JoinHostPort(peerHostname, strconv.Itoa(defaultChaincodePort))
 }
 
 // computeChaincodeEndpoint will utilize chaincode address, chaincode listen
@@ -1158,7 +1164,7 @@ func computeChaincodeEndpoint(chaincodeAddress string, chaincodeListenAddress st
 	}
 
 	// use peerAddress:defaultChaincodePort
-	ccEndpoint = net.JoinHostPort(peerHostname, strconv.Itoa(defaultChaincodePort))
+	ccEndpoint = defaultChaincodeAddress(peerHostname)
 
 	logger.Infof("Exit with ccEndpoint: %s", ccEndpoint)
 	return ccEndpoint, nil
