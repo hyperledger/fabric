@@ -900,7 +900,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		overwriteModifiedSignableMetadata()
 
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
-		require.EqualError(t, err, "invalid channel name in snapshot metadata: invalid ledger ID [../../outside]")
+		require.EqualError(t, err, "invalid channel name in snapshot metadata: ledger ID [../../outside] contains characters outside [A-Za-z0-9._-]")
 		require.FileExists(t, filepath.Join(outsideDir, "file"))
 	})
 

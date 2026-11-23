@@ -118,18 +118,69 @@ func testLedgerProvider(t *testing.T, enableHistoryDB bool) {
 	require.EqualError(t, err, "cannot open ledger [ledger_000010], ledger does not exist")
 }
 
+func TestValidateLedgerID(t *testing.T) {
+	for _, ledgerID := range []string{"mychannel", "testLedger", "ledger_000010", "my-channel.v2", "A1"} {
+		require.NoError(t, validateLedgerID(ledgerID), ledgerID)
+	}
+
+	for _, tc := range []struct {
+		ledgerID    string
+		expectedErr string
+	}{
+		{"", "ledger ID cannot be empty"},
+		{".", `ledger ID [.] cannot be "." or ".."`},
+		{"..", `ledger ID [..] cannot be "." or ".."`},
+		{"../outside", "ledger ID [../outside] contains characters outside [A-Za-z0-9._-]"},
+		{"a/b", "ledger ID [a/b] contains characters outside [A-Za-z0-9._-]"},
+		{`a\b`, `ledger ID [a\b] contains characters outside [A-Za-z0-9._-]`},
+		{".. ", "ledger ID [.. ] contains characters outside [A-Za-z0-9._-]"},
+		{"A b", "ledger ID [A b] contains characters outside [A-Za-z0-9._-]"},
+		{"/abs", "ledger ID [/abs] contains characters outside [A-Za-z0-9._-]"},
+	} {
+		require.EqualError(t, validateLedgerID(tc.ledgerID), tc.expectedErr, tc.ledgerID)
+	}
+}
+
 func TestCreateFromGenesisBlockInvalidLedgerID(t *testing.T) {
 	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
-	for _, ledgerID := range []string{".", "..", "../outside", "a/b"} {
+	for _, ledgerID := range []string{"", ".", "..", "../outside", "a/b", `a\b`} {
 		genesisBlock, err := configtxtest.MakeGenesisBlock(ledgerID)
 		require.NoError(t, err)
 		_, err = provider.CreateFromGenesisBlock(genesisBlock)
-		require.EqualError(t, err, fmt.Sprintf("invalid ledger ID [%s]", ledgerID))
+		require.EqualError(t, err, validateLedgerID(ledgerID).Error())
+		exists, err := provider.idStore.ledgerIDExists(ledgerID)
+		require.NoError(t, err)
+		require.False(t, exists)
 	}
 	require.NoDirExists(t, filepath.Join(conf.RootFSPath, "chains", "outside"))
+}
+
+func TestDeletePartialLedgersSkipsInvalidLedgerID(t *testing.T) {
+	conf := testConfig(t)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+
+	// a record persisted by a release that did not validate the ledger ID
+	ledgerID := "../outside"
+	require.NoError(
+		t,
+		provider.idStore.createLedgerID(ledgerID, &msgs.LedgerMetadata{
+			Status: msgs.Status_UNDER_CONSTRUCTION,
+		}),
+	)
+	// chains/../outside resolves to this directory
+	outsideDir := filepath.Join(conf.RootFSPath, "outside")
+	require.NoError(t, os.MkdirAll(outsideDir, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(outsideDir, "file"), []byte("content"), 0o600))
+	provider.Close()
+
+	// construct a new provider to invoke the partial ledger cleanup at start
+	provider = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+	defer provider.Close()
+	require.FileExists(t, filepath.Join(outsideDir, "file"))
+	verifyLedgerIDExists(t, provider, ledgerID, msgs.Status_UNDER_CONSTRUCTION)
 }
 
 func TestGetLedger(t *testing.T) {
