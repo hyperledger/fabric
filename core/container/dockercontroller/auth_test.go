@@ -9,6 +9,7 @@ package dockercontroller
 import (
 	"encoding/base64"
 	"os"
+	"os/user"
 	"path/filepath"
 	"testing"
 
@@ -93,7 +94,7 @@ func TestLoadDockerAuthConfigs(t *testing.T) {
 		configDir := filepath.Join(homeDir, ".docker")
 		require.NoError(t, os.MkdirAll(configDir, 0o700))
 		configPath := filepath.Join(configDir, "config.json")
-		config := `{"auths":{"broken":{"auth":"not-base64"},"missing-colon":{"auth":"YQ=="},"valid":{"identitytoken":"token"}}}`
+		config := `{"auths":{"wrong-type":{"auth":42},"broken":{"auth":"not-base64"},"missing-colon":{"auth":"YQ=="},"valid":{"identitytoken":"token"}}}`
 		require.NoError(t, os.WriteFile(configPath, []byte(config), 0o600))
 
 		authConfigs, err := loadDockerAuthConfigs(configDir, homeDir)
@@ -130,7 +131,12 @@ func TestLoadDockerAuthConfigsDoesNotRequireHomeWithDockerConfigEnv(t *testing.T
 	require.NoError(t, err)
 	require.Empty(t, authConfigs)
 	t.Setenv(dockerConfigEnv, "")
-	authConfigs, err = LoadDockerAuthConfigs()
+	home := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(home, ".docker"), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(home, ".docker", "config.json"), []byte(`{"auths":{"private.example":{"username":"alice","password":"secret"}}}`), 0o600))
+	authConfigs, err = loadDockerAuthConfigsForUser(func() (*user.User, error) {
+		return &user.User{HomeDir: home}, nil
+	})
 	require.NoError(t, err)
-	require.Empty(t, authConfigs)
+	require.Equal(t, "alice", authConfigs["private.example"].Username)
 }

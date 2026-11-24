@@ -556,19 +556,20 @@ func serve(args []string) error {
 			logger.Panicf("cannot create docker client: %s", err)
 		}
 
+		platformBuilder := &platforms.Builder{
+			Registry: platformRegistry,
+			Client:   client,
+		}
 		dockerVM := &dockercontroller.DockerVM{
-			PeerID:        coreConfig.PeerID,
-			NetworkID:     coreConfig.NetworkID,
-			BuildMetrics:  dockercontroller.NewBuildMetrics(opsSystem.Provider),
-			Client:        client,
-			AttachStdOut:  coreConfig.VMDockerAttachStdout,
-			HostConfig:    getDockerHostConfig(),
-			ChaincodePull: coreConfig.ChaincodePull,
-			NetworkMode:   coreConfig.VMNetworkMode,
-			PlatformBuilder: &platforms.Builder{
-				Registry: platformRegistry,
-				Client:   client,
-			},
+			PeerID:          coreConfig.PeerID,
+			NetworkID:       coreConfig.NetworkID,
+			BuildMetrics:    dockercontroller.NewBuildMetrics(opsSystem.Provider),
+			Client:          client,
+			AttachStdOut:    coreConfig.VMDockerAttachStdout,
+			HostConfig:      getDockerHostConfig(),
+			ChaincodePull:   coreConfig.ChaincodePull,
+			NetworkMode:     coreConfig.VMNetworkMode,
+			PlatformBuilder: platformBuilder,
 			// This field is superfluous for chaincodes built with v2.0+ binaries
 			// however, to prevent users from being forced to rebuild leaving for now
 			// but it should be removed in the future.
@@ -581,6 +582,7 @@ func serve(args []string) error {
 		}
 		if coreConfig.ChaincodeUseDockerAuth {
 			dockerVM.AuthConfigLoader = dockercontroller.LoadDockerAuthConfigs
+			platformBuilder.Client = &dockercontroller.RegistryClient{APIClient: client}
 		}
 		if err := opsSystem.RegisterChecker("docker", dockerVM); err != nil {
 			logger.Panicf("failed to register docker health check: %s", err)

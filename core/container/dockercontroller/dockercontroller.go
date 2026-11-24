@@ -13,6 +13,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
@@ -110,13 +111,19 @@ func (vm *DockerVM) createContainer(imageID, containerID string, args, env []str
 	return nil
 }
 
-func (vm *DockerVM) buildImage(ccid string, reader io.Reader) error {
+func (vm *DockerVM) buildImage(ccid string, reader io.Reader) (err error) {
 	id, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
 	}
 
 	startTime := time.Now()
+	defer func() {
+		vm.BuildMetrics.ChaincodeImageBuildDuration.With(
+			"chaincode", ccid,
+			"success", strconv.FormatBool(err == nil),
+		).Observe(time.Since(startTime).Seconds())
+	}()
 	var authConfigs map[string]registry.AuthConfig
 	if vm.AuthConfigLoader != nil {
 		authConfigs, err = vm.AuthConfigLoader()
@@ -131,22 +138,30 @@ func (vm *DockerVM) buildImage(ccid string, reader io.Reader) error {
 		NetworkMode: vm.NetworkMode,
 		AuthConfigs: authConfigs,
 	})
-
-	vm.BuildMetrics.ChaincodeImageBuildDuration.With(
-		"chaincode", ccid,
-		"success", strconv.FormatBool(err == nil),
-	).Observe(time.Since(startTime).Seconds())
-
 	if err != nil {
 		dockerLogger.Errorf("Error building image: %s", err)
 		return err
 	}
 	defer res.Body.Close()
 
-	var buf bytes.Buffer
-	io.Copy(&buf, res.Body)
-
-	dockerLogger.Debugf("Created image: %s, output: %s", id, buf.String())
+	decoder := json.NewDecoder(res.Body)
+	for {
+		var result struct {
+			Error  string `json:"error"`
+			Stream string `json:"stream"`
+		}
+		if err := decoder.Decode(&result); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return errors.Wrap(err, "read Docker build response")
+		}
+		if result.Error != "" {
+			return errors.New(result.Error)
+		}
+		dockerLogger.Debug(result.Stream)
+	}
+	dockerLogger.Debugf("Created image: %s", id)
 	return nil
 }
 
