@@ -163,6 +163,7 @@ func TestGlobalConfigDefaults(t *testing.T) {
 }
 
 func TestGlobalConfigReceiveByteLimits(t *testing.T) {
+	t.Cleanup(viper.Reset)
 	endpoint := "0.0.0.0:7051"
 
 	// Explicit zero disables the per-connection limit only; the node-wide
@@ -192,4 +193,21 @@ func TestGlobalConfigReceiveByteLimits(t *testing.T) {
 		require.Equal(t, 2*peercomm.DefaultMaxRecvMsgSize+peercomm.DefaultMaxRecvMsgSize/2, coreConfig.MaxRecvBytesInFlight, "value %v", value)
 		require.Equal(t, 4*(2*peercomm.DefaultMaxRecvMsgSize+peercomm.DefaultMaxRecvMsgSize/2), coreConfig.MaxRecvBytesTotal, "value %v", value)
 	}
+
+	// A malformed value for the new keys falls back to the default rather
+	// than disabling the limit silently.
+	viper.Reset()
+	viper.Set("peer.gossip.maxRecvBytesInFlight", "not-a-number")
+	viper.Set("peer.gossip.maxRecvBytesTotal", "also-not-a-number")
+	coreConfig, err = gossip.GlobalConfig(endpoint, nil)
+	require.NoError(t, err)
+	require.Equal(t, 2*peercomm.DefaultMaxRecvMsgSize+peercomm.DefaultMaxRecvMsgSize/2, coreConfig.MaxRecvBytesInFlight)
+	require.Equal(t, 4*(2*peercomm.DefaultMaxRecvMsgSize+peercomm.DefaultMaxRecvMsgSize/2), coreConfig.MaxRecvBytesTotal)
+
+	// An explicit negative still disables deliberately.
+	viper.Reset()
+	viper.Set("peer.gossip.maxRecvBytesInFlight", -1)
+	coreConfig, err = gossip.GlobalConfig(endpoint, nil)
+	require.NoError(t, err)
+	require.Equal(t, -1, coreConfig.MaxRecvBytesInFlight)
 }

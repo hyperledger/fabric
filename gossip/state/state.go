@@ -303,17 +303,20 @@ func (s *GossipStateProviderImpl) receiveAndDispatchDirectMessages(ch <-chan pro
 	for msg := range ch {
 		s.logger.Debug("Dispatching a message", msg)
 		go func(msg protoext.ReceivedMessage) {
-			defer comm.DisposeMessage(msg)
 			gm := msg.GetGossipMessage()
 			// Check type of the message
 			if protoext.IsRemoteStateMessage(gm.GossipMessage) {
 				s.logger.Debug("Handling direct state transfer message")
 				// Got state transfer request response
-				s.directMessage(msg)
+				if !s.directMessage(msg) {
+					// Not forwarded: no consumer will release the charge.
+					comm.DisposeMessage(msg)
+				}
 			} else if gm.GetPrivateData() != nil {
 				s.logger.Debug("Handling private data collection message")
 				// Handling private data replication message
 				s.privateDataMessage(msg)
+				comm.DisposeMessage(msg)
 			}
 		}(msg)
 	}
@@ -373,38 +376,50 @@ func (s *GossipStateProviderImpl) privateDataMessage(msg protoext.ReceivedMessag
 	s.logger.Debug("Private data for collection", collectionName, "has been stored")
 }
 
-func (s *GossipStateProviderImpl) directMessage(msg protoext.ReceivedMessage) {
+// directMessage forwards the message to the matching state channel, dropping
+// it when the queue is full. It reports whether the message was forwarded and
+// its receive-path charge transferred to the queue consumer.
+func (s *GossipStateProviderImpl) directMessage(msg protoext.ReceivedMessage) bool {
 	s.logger.Debug("[ENTER] -> directMessage")
 	defer s.logger.Debug("[EXIT] ->  directMessage")
 
 	if msg == nil {
 		s.logger.Error("Got nil message via end-to-end channel, should not happen!")
-		return
+		return false
 	}
 
 	if !bytes.Equal(msg.GetGossipMessage().Channel, []byte(s.chainID)) {
 		s.logger.Warning("Received state transfer request for channel",
 			string(msg.GetGossipMessage().Channel), "while expecting channel", s.chainID, "skipping request...")
-		return
+		return false
 	}
 
 	incoming := msg.GetGossipMessage()
 
 	if incoming.GetStateRequest() != nil {
-		if len(s.stateRequestCh) < s.config.StateChannelSize {
-			select {
-			case s.stateRequestCh <- msg:
-			case <-s.stopCh:
-			}
+		select {
+		case s.stateRequestCh <- msg:
+			return true
+		case <-s.stopCh:
+			return false
+		default:
+			s.logger.Warning("State request queue is full, dropping the request; the requester retries")
+			return false
 		}
 	} else if incoming.GetStateResponse() != nil {
 		if atomic.LoadInt32(&s.stateTransferActive) == 1 {
 			select {
 			case s.stateResponseCh <- msg:
+				return true
 			case <-s.stopCh:
+				return false
+			default:
+				s.logger.Warning("State response queue is full, dropping the response; the requester retries")
+				return false
 			}
 		}
 	}
+	return false
 }
 
 func (s *GossipStateProviderImpl) processStateRequests() {
@@ -414,6 +429,7 @@ func (s *GossipStateProviderImpl) processStateRequests() {
 			return
 		}
 		s.handleStateRequest(msg)
+		comm.DisposeMessage(msg)
 	}
 }
 
@@ -672,10 +688,12 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 				}
 				if msg.GetGossipMessage().Nonce !=
 					gossipMsg.GetNonce() {
+					comm.DisposeMessage(msg)
 					continue
 				}
 				// Got corresponding response for state request, can continue
 				index, err := s.handleStateResponse(msg)
+				comm.DisposeMessage(msg)
 				if err != nil {
 					s.logger.Warningf("Wasn't able to process state response for "+
 						"blocks [%d...%d], due to %+v", prev, next, errors.WithStack(err))

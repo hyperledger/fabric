@@ -135,7 +135,9 @@ func (m *ChannelDeMultiplexer) deMultiplex(msg any, abort <-chan struct{}, track
 
 	// The delivery count must be known before the first delivery, as consumers
 	// may release the message while later deliveries are still in progress.
-	var matched []*channel
+	// The stack buffer keeps the common case allocation-free.
+	var matchedBuf [8]*channel
+	matched := matchedBuf[:0]
 	for _, ch := range channels {
 		if ch.pred(msg) {
 			matched = append(matched, ch)
@@ -149,10 +151,10 @@ func (m *ChannelDeMultiplexer) deMultiplex(msg any, abort <-chan struct{}, track
 	for i, ch := range matched {
 		select {
 		case <-m.stopCh:
-			m.disposeUndelivered(tracker, tracked, matched[i:])
+			m.disposeUndelivered(tracker, tracked, len(matched)-i)
 			return // stopping
 		case <-abort:
-			m.disposeUndelivered(tracker, tracked, matched[i:])
+			m.disposeUndelivered(tracker, tracked, len(matched)-i)
 			return // aborted
 		case ch.ch <- msg:
 		}
@@ -160,11 +162,11 @@ func (m *ChannelDeMultiplexer) deMultiplex(msg any, abort <-chan struct{}, track
 }
 
 // disposeUndelivered consumes the deliveries that were tracked but not made.
-func (m *ChannelDeMultiplexer) disposeUndelivered(tracker consumptionTracker, tracked bool, undelivered []*channel) {
+func (m *ChannelDeMultiplexer) disposeUndelivered(tracker consumptionTracker, tracked bool, n int) {
 	if !tracked {
 		return
 	}
-	for range undelivered {
+	for range n {
 		tracker.Dispose()
 	}
 }

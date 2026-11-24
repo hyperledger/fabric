@@ -86,11 +86,17 @@ type Config struct {
 	// a single connection may hold unconsumed before the connection is closed.
 	// Non-positive disables the limit.
 	MaxRecvBytesInFlight int
-	// MaxRecvBytesTotal is the limit on the wire bytes of received messages
-	// held unconsumed across all connections; on excess the connection holding
-	// the most in-flight bytes is closed. Non-positive disables the limit.
-	// The bound covers the receive pipeline up to message handling; queues
-	// past handling (channel, state transfer) are bounded separately.
+	// MaxRecvBytesTotal bounds the wire bytes of received messages held
+	// unconsumed across all live connections; on excess the live connection
+	// holding the most in-flight bytes is closed. Non-positive disables the
+	// limit.
+	// The bound covers the receive pipeline up to message handling: channel
+	// message stores, state-transfer queues, and the block payload buffer sit
+	// past that boundary and apply their own bounds (count, membership, TTL).
+	// Messages already delivered by a removed connection keep counting until
+	// consumed; that residual debt is bounded by subscriber queue capacity
+	// (tens of messages per subscription), not by this limit, so the total is
+	// not a full heap bound.
 	MaxRecvBytesTotal int
 
 	// MsgExpirationTimeout indicate leadership message expiration timeout.
@@ -108,6 +114,22 @@ type Config struct {
 	MsgExpirationFactor int
 	// MaxConnectionAttempts is the max number of attempts to connect to a peer (wait for alive ack)
 	MaxConnectionAttempts int
+}
+
+// gossipLimitOrDefault reads an int config key: unset means the default,
+// an explicit numeric value (including non-positive, which disables) is used
+// as-is, and a malformed value warns and uses the default so a typo cannot
+// silently disable a safety limit.
+func gossipLimitOrDefault(key string, defaultValue int) int {
+	if !viper.IsSet(key) {
+		return defaultValue
+	}
+	value, err := strconv.Atoi(viper.GetString(key))
+	if err != nil {
+		util.GetLogger(util.GossipLogger, "").Warningf("Malformed value %q for %s, using the default %d", viper.GetString(key), key, defaultValue)
+		return defaultValue
+	}
+	return value
 }
 
 // GlobalConfig builds a Config from the given endpoint, certificate and bootstrap peers.
@@ -156,7 +178,8 @@ func (c *Config) loadConfig(endpoint string, certs *common.TLSCertificates, boot
 	// The default receive budget fits two maximum-size envelopes in flight
 	// plus headroom for interleaved control messages, and scales with an
 	// operator-raised peer.maxRecvMsgSize. Explicit non-positive values
-	// disable the corresponding limit.
+	// disable the corresponding limit; malformed values fall back to the
+	// default with a warning rather than disabling the limit silently.
 	maxRecvMsgSize := peercomm.DefaultMaxRecvMsgSize
 	if viper.IsSet("peer.maxRecvMsgSize") {
 		maxRecvMsgSize = int(viper.GetInt32("peer.maxRecvMsgSize"))
@@ -167,20 +190,14 @@ func (c *Config) loadConfig(endpoint string, certs *common.TLSCertificates, boot
 		maxRecvMsgSize = peercomm.DefaultMaxRecvMsgSize
 	}
 	defaultInFlight := 2*maxRecvMsgSize + maxRecvMsgSize/2
-	c.MaxRecvBytesInFlight = defaultInFlight
-	if viper.IsSet("peer.gossip.maxRecvBytesInFlight") {
-		c.MaxRecvBytesInFlight = viper.GetInt("peer.gossip.maxRecvBytesInFlight")
-	}
+	c.MaxRecvBytesInFlight = gossipLimitOrDefault("peer.gossip.maxRecvBytesInFlight", defaultInFlight)
 	// Deriving the total from a non-zero base keeps the node-wide limit on
 	// even when only the per-connection one is disabled.
 	totalBase := c.MaxRecvBytesInFlight
 	if totalBase <= 0 {
 		totalBase = defaultInFlight
 	}
-	c.MaxRecvBytesTotal = 4 * totalBase
-	if viper.IsSet("peer.gossip.maxRecvBytesTotal") {
-		c.MaxRecvBytesTotal = viper.GetInt("peer.gossip.maxRecvBytesTotal")
-	}
+	c.MaxRecvBytesTotal = gossipLimitOrDefault("peer.gossip.maxRecvBytesTotal", 4*totalBase)
 	c.MsgExpirationTimeout = util.GetDurationOrDefault("peer.gossip.election.leaderAliveThreshold", election.DefLeaderAliveThreshold) * 10
 	c.AliveTimeInterval = util.GetDurationOrDefault("peer.gossip.aliveTimeInterval", discovery.DefAliveTimeInterval)
 	c.AliveExpirationTimeout = util.GetDurationOrDefault("peer.gossip.aliveExpirationTimeout", 5*c.AliveTimeInterval)

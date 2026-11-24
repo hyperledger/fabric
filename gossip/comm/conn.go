@@ -44,6 +44,7 @@ type connectionStore struct {
 	connFactory  connFactory            // creates a connection to remote peer
 	sync.RWMutex                        // synchronize access to shared variables
 	pki2Conn     map[string]*connection // mapping between pkiID to connections
+	metrics      *metrics.CommMetrics
 	// deadCharged tracks removed connections whose delivered charges are still
 	// counted against the shared budget until consumed downstream.
 	deadCharged      map[*connection]struct{}
@@ -51,7 +52,7 @@ type connectionStore struct {
 	// used to prevent concurrent connection establishment to the same remote endpoint
 }
 
-func newConnStore(connFactory connFactory, logger util.Logger, config ConnConfig) *connectionStore {
+func newConnStore(connFactory connFactory, logger util.Logger, config ConnConfig, metrics *metrics.CommMetrics) *connectionStore {
 	return &connectionStore{
 		connFactory:      connFactory,
 		isClosing:        false,
@@ -60,6 +61,7 @@ func newConnStore(connFactory connFactory, logger util.Logger, config ConnConfig
 		destinationLocks: make(map[string]*sync.Mutex),
 		logger:           logger,
 		config:           config,
+		metrics:          metrics,
 	}
 }
 
@@ -246,12 +248,13 @@ func (cs *connectionStore) evictConnLocked(conn *connection) bool {
 	return false
 }
 
-// evictLargestConnection drops the connection retaining the most unconsumed
-// received bytes, but only while the aggregate in-flight bytes of live
-// connections alone exceed max: charges already delivered by removed
+// evictLargestConnection drops the live connection retaining the most
+// unconsumed received bytes, but only while the aggregate in-flight bytes of
+// live connections alone exceed max: charges already delivered by removed
 // connections outlive them until consumed, so live connections overcommit
-// while the overage is retired debt instead of cascading evictions
-// to bystanders.
+// while the overage is retired debt instead of cascading evictions to
+// bystanders. When live debt does exceed max, the largest live offender is
+// dropped — which can be a slow but honest peer.
 func (cs *connectionStore) evictLargestConnection(max int64) {
 	cs.Lock()
 	defer cs.Unlock()
@@ -277,11 +280,13 @@ func (cs *connectionStore) evictLargestConnection(max int64) {
 
 	if max <= 0 || victim == nil || liveTotal <= max {
 		if deadTotal > 0 {
+			cs.metrics.SharedRecvOver.Add(1)
 			cs.logger.Debugf("Shared receive byte budget of %d bytes is exceeded by %d bytes delivered by removed connections; overcommitting until subscribers drain", max, deadTotal)
 		}
 		return
 	}
 	cs.logger.Warningf("Shared receive byte budget exceeded, dropping connection to %s holding %d unconsumed bytes", victim.pkiID, mostLive)
+	cs.metrics.SharedRecvEvicts.Add(1)
 	victim.close()
 	cs.evictConnLocked(victim)
 }
@@ -384,6 +389,12 @@ func (conn *connection) close() {
 	conn.stopOnce.Do(func() {
 		close(conn.stopChan)
 
+		// Wake senders waiting for queue room; the writer may still be stuck
+		// in stream.Send and its broadcast would come too late.
+		conn.sendMu.Lock()
+		conn.sendCond.Broadcast()
+		conn.sendMu.Unlock()
+
 		if conn.conn != nil {
 			conn.conn.Close()
 		}
@@ -463,6 +474,12 @@ func (conn *connection) serviceConnection() error {
 			conn.logger.Debug("Closing reading from stream")
 			return nil
 		case err := <-errChan:
+			// A dead receive path must not linger in the store as a zombie:
+			// outbound connections have no GossipStream defer to clean them up.
+			conn.close()
+			if conn.evictFromStore != nil {
+				conn.evictFromStore()
+			}
 			return err
 		case msg := <-msgChan:
 			conn.handler(msg)
@@ -542,6 +559,7 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 				conn.releaseReceivedBytes(msg) // never delivered
 				err = errors.Errorf("received bytes in flight exceed the per-connection limit of %d bytes", conn.maxRecvBytesInFlight)
 				conn.logger.Warningf("Dropping connection: %v", err)
+				conn.metrics.RecvBudgetDrops.Add(1)
 				errChan <- err
 				// The handler may be wedged on a stalled subscriber, so tear
 				// the connection down and evict it instead of waiting.

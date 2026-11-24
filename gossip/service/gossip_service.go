@@ -82,10 +82,14 @@ type gossipSvc interface {
 	// only peer identities that match the given criteria, and that they published their channel participation
 	PeerFilter(channel common.ChannelID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error)
 
-	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
+	// Accept returns a read-only channel for messages sent by other nodes that match the acceptor.
 	// If passThrough is false, the messages are processed by the gossip layer beforehand.
 	// If passThrough is true, the gossip layer doesn't intervene and the messages
-	// can be used to send a reply back to the sender
+	// can be used to send a reply back to the sender. In that case every message
+	// holds receive-path resources accounted against the sender's connection and
+	// the node-wide budget, and the consumer MUST call comm.DisposeMessage once
+	// done with it; when a message reaches multiple subscribers, each delivery
+	// must be disposed independently.
 	Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *gproto.GossipMessage, <-chan protoext.ReceivedMessage)
 
 	// JoinChan makes the Gossip instance join a channel

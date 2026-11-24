@@ -170,13 +170,16 @@ peer:
     # the budget and drops the connection. A non-positive value disables the
     # limit.
     # maxRecvBytesInFlight: 262144000
-    # Maximum wire bytes of received messages held unconsumed across all
-    # gossip connections (unit: bytes); on excess the connection holding the
-    # most in-flight bytes is closed. If unset, defaults to 4 times
+    # Maximum wire bytes of received messages held unconsumed across all live
+    # gossip connections (unit: bytes); on excess the live connection holding
+    # the most in-flight bytes is closed. If unset, defaults to 4 times
     # maxRecvBytesInFlight. A non-positive value disables the limit.
     # The bound covers the gossip receive pipeline up to message handling;
-    # queues past handling (channel, state transfer) are bounded separately,
-    # so this is not a full heap bound.
+    # channel message stores, state-transfer queues, and the block payload
+    # buffer sit past that boundary and apply their own bounds, and bytes
+    # already delivered by removed connections keep counting until consumed
+    # (bounded by subscriber queue capacity) — so this is not a full heap
+    # bound.
     # maxRecvBytesTotal: 1048576000
     # Time to wait before pull engine processes incoming digests (unit: second)
     # Should be slightly smaller than requestWaitTime

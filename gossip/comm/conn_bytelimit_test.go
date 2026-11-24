@@ -9,15 +9,20 @@ package comm
 import (
 	"errors"
 	"fmt"
+	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	libmetrics "github.com/hyperledger/fabric-lib-go/common/metrics"
 	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	gmocks "github.com/hyperledger/fabric/gossip/comm/mocks"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/stretchr/testify/mock"
@@ -197,6 +202,8 @@ func TestReceiveByteLimitReleasedOnConsume(t *testing.T) {
 		exitChan:     make(chan struct{}),
 		logger:       flogging.MustGetLogger("test"),
 	}
+	defer close(c.exitChan)      // releases the Accept relay
+	defer c.msgPublisher.Close() // closes subscriber channels
 	inc := c.Accept(func(any) bool { return true })
 
 	var recvCalls atomic.Int64
@@ -312,7 +319,7 @@ func TestEvictedFromStoreOnOverflow(t *testing.T) {
 		payload: payloadSize,
 		pkiID:   []byte("pkiID"),
 	}
-	cs := newConnStore(factory, flogging.MustGetLogger("test"), ConnConfig{})
+	cs := newConnStore(factory, flogging.MustGetLogger("test"), ConnConfig{}, disabledMetrics)
 	peer := &RemotePeer{PKIID: factory.pkiID, Endpoint: "localhost:1234"}
 
 	conn, err := cs.getConnection(peer)
@@ -420,7 +427,7 @@ func TestReplacedConnectionDrainKeepsSuccessor(t *testing.T) {
 		return errors.New("done")
 	})
 
-	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{})
+	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{}, disabledMetrics)
 	oldConn := newConnection(nil, nil, oldStream, disabledMetrics, ConnConfig{RecvBuffSize: 1, SendBuffSize: 4})
 	oldConn.pkiID = pkiID
 	oldConn.logger = flogging.MustGetLogger("test")
@@ -560,7 +567,7 @@ func TestSharedBudgetBystanderSurvivesAfterEviction(t *testing.T) {
 	c.msgPublisher.AddChannel(func(any) bool { return true }) // stalled subscriber
 
 	shared := &sharedRecvBudget{max: 3 * bigSize}
-	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{})
+	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{}, disabledMetrics)
 	shared.evict = func() { cs.evictLargestConnection(shared.max) }
 
 	done := make(chan struct{})
@@ -657,7 +664,7 @@ func TestSharedBudgetPolicyUsesAggregateDebt(t *testing.T) {
 	msgSize := int64(goproto.Size(makeDataEnvelope(1024)))
 
 	shared := &sharedRecvBudget{max: 15 * msgSize}
-	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared})
+	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared}, disabledMetrics)
 	shared.evict = func() { cs.evictLargestConnection(shared.max) }
 
 	newChargedConn := func(pkiID string) *connection {
@@ -784,7 +791,7 @@ func TestIdentityChangeRetiresChargedConn(t *testing.T) {
 	newConn.logger = flogging.MustGetLogger("test")
 	newConn.handler = func(*protoext.SignedGossipMessage) {}
 
-	cs := newConnStore(&staticConnFactory{conn: newConn}, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared})
+	cs := newConnStore(&staticConnFactory{conn: newConn}, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared}, disabledMetrics)
 	cs.pki2Conn["b"] = oldConn
 	oldConn.store = cs
 
@@ -813,7 +820,7 @@ func TestIdentityChangeRetiresChargedConn(t *testing.T) {
 func TestPostTeardownReceiveDoesNotCharge(t *testing.T) {
 	msgSize := int64(goproto.Size(makeDataEnvelope(1024)))
 	shared := &sharedRecvBudget{max: msgSize + msgSize/2}
-	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared})
+	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared}, disabledMetrics)
 	shared.evict = func() { cs.evictLargestConnection(shared.max) }
 
 	healthy := newConnection(nil, nil, &gmocks.MockStream{}, disabledMetrics, ConnConfig{sharedRecvBudget: shared})
@@ -865,9 +872,61 @@ func TestPostTeardownReceiveDoesNotCharge(t *testing.T) {
 	healthy.close()
 }
 
-// TestDeMultiplexUntrackedDoesNotAllocate pins the hot path: untracked
-// delivery must not allocate the matched slice per message.
-func TestDeMultiplexUntrackedDoesNotAllocate(t *testing.T) {
+// TestConnectionEvictedOnReceiveError covers the outbound zombie path: a
+// connection whose receive stream dies must be closed, removed from the
+// store, and retired with its outstanding charge.
+func TestConnectionEvictedOnReceiveError(t *testing.T) {
+	shared := &sharedRecvBudget{max: 1 << 60}
+	var calls atomic.Int64
+	stream := &gmocks.MockStream{}
+	stream.On("CloseSend").Return(nil)
+	stream.On("Recv").Return(
+		func() *proto.Envelope {
+			if calls.Add(1) == 1 {
+				return makeDataEnvelope(1024)
+			}
+			return nil
+		},
+		func() error {
+			if calls.Load() > 1 {
+				return errors.New("stream dead")
+			}
+			return nil
+		},
+	)
+
+	conn := newConnection(nil, nil, stream, disabledMetrics, ConnConfig{
+		RecvBuffSize:     DefRecvBuffSize,
+		SendBuffSize:     1,
+		sharedRecvBudget: shared,
+	})
+	conn.pkiID = []byte("pkiID")
+	conn.logger = flogging.MustGetLogger("test")
+	conn.handler = func(*protoext.SignedGossipMessage) {} // never consumes
+
+	cs := newConnStore(&staticConnFactory{conn: conn}, flogging.MustGetLogger("test"), ConnConfig{}, disabledMetrics)
+	got, err := cs.getConnection(&RemotePeer{PKIID: conn.pkiID, Endpoint: "localhost:1234"})
+	require.NoError(t, err)
+	require.Same(t, conn, got)
+
+	// The first message is charged and held; the receive stream then dies.
+	require.Eventually(t, func() bool {
+		return cs.connNum() == 0
+	}, 30*time.Second, time.Millisecond, "connection with a dead receive stream was not evicted from the store")
+	select {
+	case <-conn.stopChan:
+	default:
+		t.Fatal("connection with a dead receive stream was not closed")
+	}
+	cs.RLock()
+	retired := len(cs.deadCharged)
+	cs.RUnlock()
+	require.Equal(t, 1, retired, "evicted connection was not retired with its outstanding charge")
+}
+
+// TestDeMultiplexDoesNotAllocate pins the hot path: neither untracked nor
+// tracked delivery may allocate per message with a typical subscriber count.
+func TestDeMultiplexDoesNotAllocate(t *testing.T) {
 	demux := NewChannelDemultiplexer()
 	defer demux.Close()
 	sub := demux.AddChannel(acceptAll)
@@ -876,9 +935,200 @@ func TestDeMultiplexUntrackedDoesNotAllocate(t *testing.T) {
 		}
 	}()
 
-	require.Zero(t, testing.AllocsPerRun(100, func() {
-		demux.DeMultiplex(struct{}{})
-	}))
+	t.Run("untracked", func(t *testing.T) {
+		require.Zero(t, testing.AllocsPerRun(100, func() {
+			demux.DeMultiplex(struct{}{})
+		}))
+	})
+
+	t.Run("tracked", func(t *testing.T) {
+		msg := &trackableMessage{}
+		require.Zero(t, testing.AllocsPerRun(100, func() {
+			demux.DeMultiplexAbortable(msg, nil)
+		}))
+	})
+}
+
+// TestDeliveriesTrackedAcrossFanOut pins the multi-subscriber refcount: the
+// charge is released only after every delivery is consumed.
+func TestDeliveriesTrackedAcrossFanOut(t *testing.T) {
+	c := &commImpl{
+		msgPublisher: NewChannelDemultiplexer(),
+		pubSub:       util.NewPubSub(),
+		logger:       flogging.MustGetLogger("test"),
+	}
+	sub1 := c.msgPublisher.AddChannel(acceptAll)
+	sub2 := c.msgPublisher.AddChannel(acceptAll)
+	defer c.msgPublisher.Close()
+
+	conn := newConnection(nil, nil, &gmocks.MockStream{}, disabledMetrics, ConnConfig{RecvBuffSize: 1, SendBuffSize: 1})
+	conn.logger = flogging.MustGetLogger("test")
+	conn.handler = c.publishingHandler(conn, &protoext.ConnectionInfo{ID: []byte("peer")})
+
+	msg, err := protoext.EnvelopeToGossipMessage(makeDataEnvelope(1024))
+	require.NoError(t, err)
+	require.True(t, conn.admitReceivedBytes(msg)) // charge as readFromStream does
+	conn.handler(msg)
+	require.Positive(t, conn.recvBytesInFlight.Load())
+
+	(<-sub1).(*ReceivedMessageImpl).Dispose()
+	require.Positive(t, conn.recvBytesInFlight.Load(), "charge released before all deliveries were consumed")
+	(<-sub2).(*ReceivedMessageImpl).Dispose()
+	require.Zero(t, conn.recvBytesInFlight.Load(), "charge held after all deliveries were consumed")
+}
+
+// TestAckReleasedWithoutDelivery pins the ack fast path: acknowledgements
+// never enter the delivery pipeline and must release their charge at once.
+func TestAckReleasedWithoutDelivery(t *testing.T) {
+	c := &commImpl{
+		msgPublisher: NewChannelDemultiplexer(),
+		pubSub:       util.NewPubSub(),
+		logger:       flogging.MustGetLogger("test"),
+	}
+	sub := c.msgPublisher.AddChannel(acceptAll)
+	defer c.msgPublisher.Close()
+
+	conn := newConnection(nil, nil, &gmocks.MockStream{}, disabledMetrics, ConnConfig{RecvBuffSize: 1, SendBuffSize: 1})
+	conn.logger = flogging.MustGetLogger("test")
+	conn.handler = c.publishingHandler(conn, &protoext.ConnectionInfo{ID: []byte("peer")})
+
+	ack := &proto.GossipMessage{
+		Content: &proto.GossipMessage_Ack{Ack: &proto.Acknowledgement{}},
+	}
+	signedAck, err := protoext.NoopSign(ack)
+	require.NoError(t, err)
+	require.True(t, conn.admitReceivedBytes(signedAck)) // charge as readFromStream does
+	conn.handler(signedAck)
+	require.Zero(t, conn.recvBytesInFlight.Load(), "ack charge was not released")
+	require.Empty(t, sub, "ack must not be delivered to subscribers")
+}
+
+// TestNewCommInstanceWiresReceiveBudgets covers config propagation through
+// the exported constructor into the connection store.
+func TestNewCommInstanceWiresReceiveBudgets(t *testing.T) {
+	port, gRPCServer, certs, secureDialOpts, dialOpts := util.CreateGRPCLayer()
+	defer gRPCServer.Stop()
+	endpoint := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+	id := []byte(endpoint)
+	identityMapper := identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity, naiveSec)
+
+	config := testCommConfig
+	config.MaxRecvBytesInFlight = 1000
+	config.MaxRecvBytesTotal = 4000
+	inst, err := NewCommInstance(gRPCServer.Server(), certs, identityMapper, id, secureDialOpts,
+		naiveSec, disabledMetrics, config, dialOpts...)
+	require.NoError(t, err)
+	defer inst.Stop()
+
+	ci := inst.(*commImpl)
+	require.Equal(t, 1000, ci.connStore.config.MaxRecvBytesInFlight)
+	require.NotNil(t, ci.connStore.config.sharedRecvBudget)
+	require.Equal(t, int64(4000), ci.connStore.config.sharedRecvBudget.max)
+	require.NotNil(t, ci.connStore.config.sharedRecvBudget.evict)
+}
+
+type fakeCounter struct{ n atomic.Int64 }
+
+func (c *fakeCounter) With(...string) libmetrics.Counter { return c }
+func (c *fakeCounter) Add(delta float64)                 { c.n.Add(int64(delta)) }
+
+type fakeGauge struct{}
+
+func (fakeGauge) With(...string) libmetrics.Gauge { return fakeGauge{} }
+func (fakeGauge) Add(float64)                     {}
+func (fakeGauge) Set(float64)                     {}
+
+type fakeHistogram struct{}
+
+func (fakeHistogram) With(...string) libmetrics.Histogram { return fakeHistogram{} }
+func (fakeHistogram) Observe(float64)                     {}
+
+type fakeMetricsProvider struct {
+	counters sync.Map
+}
+
+func (p *fakeMetricsProvider) NewCounter(o libmetrics.CounterOpts) libmetrics.Counter {
+	c := &fakeCounter{}
+	p.counters.Store(o.Name, c)
+	return c
+}
+func (p *fakeMetricsProvider) NewGauge(libmetrics.GaugeOpts) libmetrics.Gauge { return fakeGauge{} }
+func (p *fakeMetricsProvider) NewHistogram(libmetrics.HistogramOpts) libmetrics.Histogram {
+	return fakeHistogram{}
+}
+
+func (p *fakeMetricsProvider) counter(name string) *fakeCounter {
+	v, ok := p.counters.Load(name)
+	if !ok {
+		return &fakeCounter{}
+	}
+	return v.(*fakeCounter)
+}
+
+// TestReceiveBudgetMetrics pins the eviction and overcommit counters.
+func TestReceiveBudgetMetrics(t *testing.T) {
+	provider := &fakeMetricsProvider{}
+	commMetrics := metrics.NewGossipMetrics(provider).CommMetrics
+
+	// Per-connection drop on overflow.
+	stream := &gmocks.MockStream{}
+	stream.On("CloseSend").Return(nil)
+	stream.On("Recv").Return(
+		func() *proto.Envelope { return makeDataEnvelope(1024) },
+		func() error { return nil },
+	)
+	msgSize := int64(goproto.Size(makeDataEnvelope(1024)))
+	conn := newConnection(nil, nil, stream, commMetrics, ConnConfig{
+		RecvBuffSize:         DefRecvBuffSize,
+		SendBuffSize:         1,
+		MaxRecvBytesInFlight: int(2 * msgSize),
+	})
+	conn.logger = flogging.MustGetLogger("test")
+
+	errChan := make(chan error, 1)
+	msgChan := make(chan *protoext.SignedGossipMessage, DefRecvBuffSize)
+	go conn.readFromStream(errChan, msgChan)
+	require.Error(t, <-errChan)
+	require.EqualValues(t, 1, provider.counter("receive_budget_drops").n.Load())
+	conn.close()
+
+	// Node-wide eviction and overcommit.
+	shared := &sharedRecvBudget{max: 15 * msgSize}
+	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared}, commMetrics)
+	shared.evict = func() { cs.evictLargestConnection(shared.max) }
+
+	dead := newConnection(nil, nil, &gmocks.MockStream{}, commMetrics, ConnConfig{sharedRecvBudget: shared})
+	dead.pkiID = []byte("dead")
+	dead.logger = flogging.MustGetLogger("test")
+	cs.pki2Conn["dead"] = dead
+	dead.store = cs
+	for range 10 {
+		dead.admitReceivedBytes(&protoext.SignedGossipMessage{Envelope: makeDataEnvelope(1024)})
+	}
+	cs.evictConn(dead)
+
+	// Overcommit: retired debt pushes the shared counter over the budget while
+	// live debt stays under it.
+	live := newConnection(nil, nil, &gmocks.MockStream{}, commMetrics, ConnConfig{sharedRecvBudget: shared})
+	live.pkiID = []byte("live")
+	live.logger = flogging.MustGetLogger("test")
+	cs.pki2Conn["live"] = live
+	live.store = cs
+	for range 6 {
+		live.admitReceivedBytes(&protoext.SignedGossipMessage{Envelope: makeDataEnvelope(1024)})
+	}
+	require.Positive(t, provider.counter("receive_shared_overcommit").n.Load())
+
+	// Aggregate live debt past the budget: the fattest live connection evicted.
+	for range 10 {
+		live.admitReceivedBytes(&protoext.SignedGossipMessage{Envelope: makeDataEnvelope(1024)})
+	}
+	require.EqualValues(t, 1, provider.counter("receive_shared_evictions").n.Load())
+	select {
+	case <-live.stopChan:
+	default:
+		t.Fatal("largest live connection was not evicted")
+	}
 }
 
 type trackableMessage struct {
@@ -950,7 +1200,7 @@ func TestSharedBudgetEvictsLargestConnection(t *testing.T) {
 	bigSize := int64(goproto.Size(makeDataEnvelope(bigPayload)))
 
 	shared := &sharedRecvBudget{max: 12 * bigSize}
-	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{})
+	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{}, disabledMetrics)
 	shared.evict = func() { cs.evictLargestConnection(shared.max) }
 
 	done := make(chan struct{})

@@ -93,7 +93,7 @@ func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore iden
 		sharedRecvBudget:     sharedBudget,
 	}
 
-	commInst.connStore = newConnStore(commInst, commInst.logger, connConfig)
+	commInst.connStore = newConnStore(commInst, commInst.logger, connConfig, commMetrics)
 	sharedBudget.evict = func() { commInst.connStore.evictLargestConnection(sharedBudget.max) }
 
 	proto.RegisterGossipServer(s, commInst)
@@ -112,8 +112,8 @@ type CommConfig struct {
 	// Non-positive disables the limit.
 	MaxRecvBytesInFlight int
 	// MaxRecvBytesTotal bounds the wire bytes of received messages held
-	// unconsumed across all connections; on excess the connection holding the
-	// most in-flight bytes is closed. Non-positive disables the limit.
+	// unconsumed across all live connections; on excess the live connection
+	// holding the most in-flight bytes is closed. Non-positive disables the limit.
 	MaxRecvBytesTotal int
 }
 
@@ -623,7 +623,8 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 
 	defer func() {
 		c.logger.Debug("Client", extractRemoteAddress(stream), " disconnected")
-		c.connStore.closeConnByPKIid(connInfo.ID)
+		// Guarded: a replaced stream's exit must not tear down its successor.
+		c.connStore.evictConn(conn)
 	}()
 
 	return conn.serviceConnection()
