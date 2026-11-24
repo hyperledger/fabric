@@ -46,6 +46,7 @@ type fakeSessionLimiter struct {
 	acquireCalls         int
 	acquireForBlockErr   error
 	acquireForBlockCalls int
+	releaseForBlockCalls int
 	releaseCalls         int
 }
 
@@ -54,9 +55,13 @@ func (f *fakeSessionLimiter) Acquire() error {
 	return f.acquireErr
 }
 
-func (f *fakeSessionLimiter) AcquireForBlock(*cb.Block) error {
+func (f *fakeSessionLimiter) AcquireForBlock(*cb.Block, bool) error {
 	f.acquireForBlockCalls++
 	return f.acquireForBlockErr
+}
+
+func (f *fakeSessionLimiter) ReleaseForBlock(*cb.Block, bool) {
+	f.releaseForBlockCalls++
 }
 
 func (f *fakeSessionLimiter) Release() {
@@ -338,10 +343,11 @@ var _ = Describe("Deliver", func() {
 				Expect(limiter.releaseCalls).To(Equal(2))
 			})
 
-			It("consults the limiter before sending each block", func() {
+			It("consults the limiter around sending each block", func() {
 				err := handler.Handle(context.Background(), server)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(limiter.acquireForBlockCalls).To(Equal(1))
+				Expect(limiter.releaseForBlockCalls).To(Equal(1))
 			})
 
 			When("the limiter rejects a block", func() {

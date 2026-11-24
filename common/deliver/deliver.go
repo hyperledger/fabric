@@ -125,13 +125,16 @@ type Filtered interface {
 // SessionLimiter bounds the number of concurrent block delivery sessions.
 // Acquire is called after a seek request is authenticated and before a
 // ledger iterator is allocated for it, and may be called more than once
-// per stream. AcquireForBlock is called before each block is sent, and
-// may escalate the session to a costlier budget depending on the block.
-// Release is called when a delivery completes and when the stream handler
-// returns; it must be idempotent and a no-op when no permit is held.
+// per stream. AcquireForBlock and ReleaseForBlock are called around the
+// sending of each block, and may charge the block to a costlier budget
+// depending on the block; isConfigBlock is the precomputed result of
+// protoutil.IsConfigBlock for the block. Release is called when a
+// delivery completes and when the stream handler returns; it must be
+// idempotent and a no-op when no permit is held.
 type SessionLimiter interface {
 	Acquire() error
-	AcquireForBlock(block *cb.Block) error
+	AcquireForBlock(block *cb.Block, isConfigBlock bool) error
+	ReleaseForBlock(block *cb.Block, isConfigBlock bool)
 	Release()
 }
 
@@ -368,8 +371,9 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 
 		// Data blocks carry nil data for block attestations.
 		// Never mutate the block received from the iterator as it is from a cache.
+		isConfigBlock := protoutil.IsConfigBlock(block)
 		block2send := block
-		if seekInfo.GetContentType() == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
+		if seekInfo.GetContentType() == ab.SeekInfo_HEADER_WITH_SIG && !isConfigBlock {
 			block2send = &cb.Block{
 				Header:   block.GetHeader(),
 				Metadata: block.GetMetadata(),
@@ -377,7 +381,7 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		}
 
 		if srv.SessionLimiter != nil {
-			if err := srv.SessionLimiter.AcquireForBlock(block); err != nil {
+			if err := srv.SessionLimiter.AcquireForBlock(block, isConfigBlock); err != nil {
 				logger.Debugf("[channel: %s] Rejecting deliver request from %s: %s", chdr.GetChannelId(), addr, err)
 				return cb.Status_SERVICE_UNAVAILABLE, nil
 			}
@@ -387,6 +391,10 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		if err := srv.SendBlockResponse(block2send, chdr.GetChannelId(), chain, signedData); err != nil {
 			logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.GetChannelId(), addr, err)
 			return cb.Status_INTERNAL_SERVER_ERROR, err
+		}
+
+		if srv.SessionLimiter != nil {
+			srv.SessionLimiter.ReleaseForBlock(block, isConfigBlock)
 		}
 
 		h.Metrics.BlocksSent.With(labels...).Add(1)

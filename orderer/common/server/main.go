@@ -197,8 +197,11 @@ func Main() {
 
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 
-	if conf.General.Limits.Concurrency.ClusterReplication > 0 && !conf.General.TLS.Enabled {
-		logger.Warn("General.Limits.Concurrency.ClusterReplication has no effect without TLS: orderer-to-orderer pulls cannot be identified and are charged to the client deliver budgets")
+	switch {
+	case !conf.General.TLS.Enabled:
+		logger.Warn("Orderer-to-orderer block pulls cannot be identified without TLS and are charged to the client deliver budgets (see General.Limits.Concurrency)")
+	case !reuseGrpcListener && conf.General.Cluster.ClientCertificate == "":
+		logger.Warn("General.Cluster.ClientCertificate is not set while a separate cluster listener is configured: orderer-to-orderer block pulls present no client certificate and are charged to the client deliver budgets (see General.Limits.Concurrency)")
 	}
 
 	server := NewServer(

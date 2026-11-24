@@ -52,33 +52,37 @@ const (
 	deliverPoolBlock deliverPool = iota
 	// deliverPoolHeader serves header-only requests (BFT censorship
 	// monitor); retained memory per stream is small except when config
-	// blocks are served, which escalate to the block budget.
+	// blocks are served, which are charged to the block budget per block.
 	deliverPoolHeader
 	// deliverPoolReplication serves orderer-to-orderer block pulls,
 	// identified by the consenter client TLS certificate.
 	deliverPoolReplication
 )
 
-// deliverPoolCount is the number of budgets.
-const deliverPoolCount = 3
+// preAuthPoolName labels the budget of streams that have not yet been
+// authenticated into a request class.
+const preAuthPoolName = "preauth"
 
-// deliverConcurrencyLimiter bounds the number of concurrent authenticated
-// deliver sessions, split into independent finite budgets per request
-// class. Streams consume a budget only while a seek request is being
+// deliverConcurrencyLimiter bounds the number of concurrent deliver
+// streams, split into independent finite budgets: streams that have not
+// sent an authenticated seek request yet (goroutine-bound), and
+// authenticated sessions per request class (memory-bound). Streams
+// consume an authenticated budget only while a seek request is being
 // served, so idle connections cannot exhaust it.
 type deliverConcurrencyLimiter struct {
+	preAuthSema     semaphore.Semaphore // nil = unlimited
 	clientSema      semaphore.Semaphore // nil = unlimited
 	headerSema      semaphore.Semaphore // nil = unlimited
 	replicationSema semaphore.Semaphore // nil = unlimited
 	rejected        metrics.Counter
 	held            metrics.Gauge
-	throttles       [deliverPoolCount]*rateLimitedLogger
+	throttles       map[string]*rateLimitedLogger
 }
 
 // newDeliverConcurrencyLimiter returns nil when all limits are not
 // positive (unlimited). A zero value selects the configuration default,
 // mirroring localconfig normalization.
-func newDeliverConcurrencyLimiter(deliverLimit, headerLimit, replicationLimit int, metricsProvider metrics.Provider) *deliverConcurrencyLimiter {
+func newDeliverConcurrencyLimiter(deliverLimit, headerLimit, replicationLimit, preAuthLimit int, metricsProvider metrics.Provider) *deliverConcurrencyLimiter {
 	defaults := localconfig.Defaults.General.Limits.Concurrency
 	if deliverLimit == 0 {
 		deliverLimit = defaults.DeliverService
@@ -89,15 +93,22 @@ func newDeliverConcurrencyLimiter(deliverLimit, headerLimit, replicationLimit in
 	if replicationLimit == 0 {
 		replicationLimit = defaults.ClusterReplication
 	}
-	if deliverLimit <= 0 && headerLimit <= 0 && replicationLimit <= 0 {
+	if preAuthLimit == 0 {
+		preAuthLimit = defaults.DeliverPreAuth
+	}
+	if deliverLimit <= 0 && headerLimit <= 0 && replicationLimit <= 0 && preAuthLimit <= 0 {
 		return nil
 	}
 	limiter := &deliverConcurrencyLimiter{
-		rejected: metricsProvider.NewCounter(deliverSessionsRejected),
-		held:     metricsProvider.NewGauge(deliverSessionsHeld),
+		rejected:  metricsProvider.NewCounter(deliverSessionsRejected),
+		held:      metricsProvider.NewGauge(deliverSessionsHeld),
+		throttles: map[string]*rateLimitedLogger{},
 	}
-	for pool := range deliverPoolCount {
-		limiter.throttles[pool] = &rateLimitedLogger{interval: time.Minute, logf: logger.Errorf}
+	for _, poolName := range []string{preAuthPoolName, "block", "header", "replication"} {
+		limiter.throttles[poolName] = &rateLimitedLogger{interval: time.Minute, logf: logger.Errorf}
+	}
+	if preAuthLimit > 0 {
+		limiter.preAuthSema = semaphore.New(preAuthLimit)
 	}
 	if deliverLimit > 0 {
 		limiter.clientSema = semaphore.New(deliverLimit)
@@ -124,7 +135,7 @@ func (l *deliverConcurrencyLimiter) budget(pool deliverPool) (semaphore.Semaphor
 
 // admit takes one permit from sema, or counts and logs a rejection before
 // returning an error. A nil semaphore is an unlimited budget.
-func (l *deliverConcurrencyLimiter) admit(sema semaphore.Semaphore, pool deliverPool, poolName string) error {
+func (l *deliverConcurrencyLimiter) admit(sema semaphore.Semaphore, poolName string) error {
 	if sema == nil {
 		return nil
 	}
@@ -133,7 +144,7 @@ func (l *deliverConcurrencyLimiter) admit(sema semaphore.Semaphore, pool deliver
 		return nil
 	}
 	l.rejected.With("pool", poolName).Add(1)
-	l.throttles[pool].errorf("Too many %s requests, exceeding concurrency limit (%d)", poolName, cap(sema))
+	l.throttles[poolName].errorf("Too many %s requests, exceeding concurrency limit (%d)", poolName, cap(sema))
 	return errors.Errorf("too many %s requests, exceeding concurrency limit (%d)", poolName, cap(sema))
 }
 
@@ -143,18 +154,39 @@ func newDeliverSession(limiter *deliverConcurrencyLimiter) *deliverSession {
 	return &deliverSession{limiter: limiter}
 }
 
-// deliverSession tracks a single stream's permits, acquired when a seek
-// request starts being served and released when the delivery completes or
-// the stream ends.
+// deliverSession tracks a single stream's permits: a pre-auth permit held
+// from stream start until the first authenticated admission, and a
+// request-class permit held while a seek request is being served.
 type deliverSession struct {
 	limiter *deliverConcurrencyLimiter
 	pool    deliverPool
 
-	sema     semaphore.Semaphore
-	semaPool string
-	// configSema holds a block-budget permit taken by a header session
-	// that is serving config blocks, which are sent in full.
+	preAuth    semaphore.Semaphore
+	sema       semaphore.Semaphore
+	semaPool   string
 	configSema semaphore.Semaphore
+}
+
+// AcquirePreAuth admits the stream into the pre-authentication budget,
+// bounding the number of streams whose handler is waiting for a first seek
+// request.
+func (s *deliverSession) AcquirePreAuth() error {
+	if s.limiter == nil || s.limiter.preAuthSema == nil {
+		return nil
+	}
+	if err := s.limiter.admit(s.limiter.preAuthSema, preAuthPoolName); err != nil {
+		return err
+	}
+	s.preAuth = s.limiter.preAuthSema
+	return nil
+}
+
+func (s *deliverSession) releasePreAuth() {
+	if s.limiter != nil && s.preAuth != nil {
+		s.limiter.held.With("pool", preAuthPoolName).Add(-1)
+		s.preAuth.Release()
+		s.preAuth = nil
+	}
 }
 
 // classify selects the budget for the next admission decision. It is
@@ -165,37 +197,50 @@ func (s *deliverSession) classify(pool deliverPool) {
 
 // Acquire admits the session into its classified budget, and is a no-op
 // while the session holds a permit or when no limit is configured for that
-// budget.
+// budget. On the first admission the pre-auth permit is returned: the
+// stream is now bounded by its request class instead.
 func (s *deliverSession) Acquire() error {
 	if s.limiter == nil || s.sema != nil {
 		return nil
 	}
 	sema, poolName := s.limiter.budget(s.pool)
-	if err := s.limiter.admit(sema, s.pool, poolName); err != nil {
+	if err := s.limiter.admit(sema, poolName); err != nil {
 		return err
 	}
 	s.sema = sema
 	s.semaPool = poolName
+	s.releasePreAuth()
 	return nil
 }
 
-// AcquireForBlock escalates a header session that is about to send a config
-// block to the block budget: config blocks are delivered in full even to
-// header-only streams (the censorship monitor tracks configuration with
-// them), so they cost as much memory as a full-block stream.
-func (s *deliverSession) AcquireForBlock(block *cb.Block) error {
-	if s.limiter == nil || s.pool != deliverPoolHeader || s.configSema != nil {
-		return nil
-	}
-	if !protoutil.IsConfigBlock(block) {
+// AcquireForBlock escalates a header session that is about to send a
+// config block to the block budget: config blocks are delivered in full
+// even to header-only streams (the censorship monitor tracks configuration
+// with them), so they cost as much memory as a full-block stream while
+// being sent.
+func (s *deliverSession) AcquireForBlock(_ *cb.Block, isConfigBlock bool) error {
+	if s.limiter == nil || s.pool != deliverPoolHeader || !isConfigBlock || s.configSema != nil {
 		return nil
 	}
 	sema, poolName := s.limiter.budget(deliverPoolBlock)
-	if err := s.limiter.admit(sema, deliverPoolBlock, poolName); err != nil {
+	if err := s.limiter.admit(sema, poolName); err != nil {
 		return err
 	}
 	s.configSema = sema
 	return nil
+}
+
+// ReleaseForBlock returns the escalation permit taken for a config block
+// once the block is sent, so a header stream does not hold the block
+// budget beyond the config block itself.
+func (s *deliverSession) ReleaseForBlock(_ *cb.Block, _ bool) {
+	if s.limiter == nil || s.configSema == nil {
+		return
+	}
+	_, poolName := s.limiter.budget(deliverPoolBlock)
+	s.limiter.held.With("pool", poolName).Add(-1)
+	s.configSema.Release()
+	s.configSema = nil
 }
 
 // Release returns the permits, and is a no-op when none are held.
@@ -203,17 +248,13 @@ func (s *deliverSession) Release() {
 	if s.limiter == nil {
 		return
 	}
+	s.releasePreAuth()
 	if s.sema != nil {
 		s.limiter.held.With("pool", s.semaPool).Add(-1)
 		s.sema.Release()
 		s.sema = nil
 	}
-	if s.configSema != nil {
-		_, poolName := s.limiter.budget(deliverPoolBlock)
-		s.limiter.held.With("pool", poolName).Add(-1)
-		s.configSema.Release()
-		s.configSema = nil
-	}
+	s.ReleaseForBlock(nil, false)
 }
 
 // newDeliverPolicyChecker returns the policy checker applied to every seek

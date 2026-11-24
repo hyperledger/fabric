@@ -212,6 +212,10 @@ type Concurrency struct {
 	// /Channel/Orderer/Readers policy and the consenter client TLS
 	// certificate. A value of -1 disables the limit.
 	ClusterReplication int
+	// DeliverPreAuth limits the number of concurrent deliver streams whose
+	// handler is still waiting for the first seek request. A value of -1
+	// disables the limit.
+	DeliverPreAuth int
 }
 
 // ChannelParticipation provides the channel participation API configuration for the orderer.
@@ -258,6 +262,7 @@ var Defaults = TopLevel{
 				DeliverService:       80,
 				DeliverHeaderService: 1000,
 				ClusterReplication:   -1,
+				DeliverPreAuth:       500,
 			},
 			DeliverSeekTimeout: 30 * time.Second,
 		},
@@ -444,8 +449,15 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.Limits.Concurrency.ClusterReplication == 0:
 			logger.Infof("General.Limits.Concurrency.ClusterReplication is unset, setting to %v", Defaults.General.Limits.Concurrency.ClusterReplication)
 			c.General.Limits.Concurrency.ClusterReplication = Defaults.General.Limits.Concurrency.ClusterReplication
+		case c.General.Limits.Concurrency.DeliverPreAuth < -1:
+			logger.Panicf("General.Limits.Concurrency.DeliverPreAuth must be -1 (unlimited), 0 (default), or a positive integer, got %d", c.General.Limits.Concurrency.DeliverPreAuth)
+		case c.General.Limits.Concurrency.DeliverPreAuth == 0:
+			logger.Infof("General.Limits.Concurrency.DeliverPreAuth is unset, setting to %v", Defaults.General.Limits.Concurrency.DeliverPreAuth)
+			c.General.Limits.Concurrency.DeliverPreAuth = Defaults.General.Limits.Concurrency.DeliverPreAuth
 		case c.General.Limits.DeliverSeekTimeout < -1:
-			logger.Panicf("General.Limits.DeliverSeekTimeout must be -1 (disabled), 0 (default), or a positive duration, got %v", c.General.Limits.DeliverSeekTimeout)
+			// any negative duration disables the timeout
+			logger.Infof("General.Limits.DeliverSeekTimeout is negative, disabling the timeout")
+			c.General.Limits.DeliverSeekTimeout = -1
 		case c.General.Limits.DeliverSeekTimeout == 0:
 			logger.Infof("General.Limits.DeliverSeekTimeout is unset, setting to %v", Defaults.General.Limits.DeliverSeekTimeout)
 			c.General.Limits.DeliverSeekTimeout = Defaults.General.Limits.DeliverSeekTimeout

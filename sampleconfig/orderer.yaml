@@ -89,27 +89,36 @@ General:
     # first message on a deliver stream before closing it, so clients
     # cannot hold handler goroutines with streams that never send a seek
     # request. When the property is missing or the value is 0, the
-    # default of 30s is applied. Set to -1 to disable the timeout.
+    # default of 30s is applied. Any negative value disables the timeout.
     DeliverSeekTimeout: 30s
     # Concurrency limits the number of concurrent requests per service.
     # Each budget is independent and finite unless set to -1 (unlimited).
-    # A stream consumes a budget only after its seek request passes the
-    # channel policy check and only while the seek is being served, so
-    # idle connections cannot exhaust it. Streams that have not sent a
-    # seek request yet are bounded only by DeliverSeekTimeout; they still
-    # cost a goroutine and connection state. When a property is missing
-    # or the value is 0, the documented default is applied. The budgets
-    # are global with no per-identity or per-channel fairness: one
-    # authorized reader can occupy all of a budget's slots. Operators
-    # should alert on the deliver_sessions_rejected metric (labeled by
-    # budget) and size up or isolate heavy tenants accordingly.
+    # A stream consumes an authenticated budget only after its seek
+    # request passes the channel policy check and only while the seek is
+    # being served, so idle connections cannot exhaust it. When a
+    # property is missing or the value is 0, the documented default is
+    # applied. The budgets are global with no per-identity or per-channel
+    # fairness: one authorized reader can occupy all of a budget's slots.
+    # Operators should alert on the deliver_sessions_rejected metric
+    # (labeled by budget, e.g. rate(deliver_sessions_rejected[5m]) > 0)
+    # and size up or isolate heavy tenants accordingly.
     Concurrency:
+      # DeliverPreAuth limits concurrent deliver streams whose handler is
+      # still waiting for the first seek request, bounding the goroutine
+      # and connection-state cost of clients that connect but never seek.
+      # Such a stream holds only this budget (until the first seek is
+      # admitted, or the stream ends or hits DeliverSeekTimeout), never
+      # the authenticated budgets. The default of 500 covers connection
+      # churn; each stream costs only a goroutine. Set to -1 for no
+      # limit.
+      DeliverPreAuth: 500
       # DeliverService limits concurrent deliver sessions serving full
       # blocks to channel readers; this is the memory-critical budget.
-      # A serving stream retains about 3 MB with 100 KB blocks and about
-      # 25 MB with 10 MB blocks (the sample configtx AbsoluteMaxBytes)
-      # when consumers are slow. Two constraints pull in opposite
-      # directions and must BOTH be satisfied:
+      # A serving stream retains roughly 2.5x the block size when
+      # consumers are slow: about 5 MB at the sample PreferredMaxBytes
+      # (2 MB, the size blocks are typically cut to) and about 25 MB at
+      # AbsoluteMaxBytes (10 MB, the hard ceiling). Two constraints pull
+      # in opposite directions and must BOTH be satisfied:
       #   memory:  limit x 2.5 x AbsoluteMaxBytes <= memory budget.
       #            The default of 80 keeps slow-drained clients within
       #            roughly 2 GiB at the 10 MiB sample AbsoluteMaxBytes.
@@ -139,15 +148,16 @@ General:
       # consenter client TLS certificate (and the /Channel/Orderer/Readers
       # policy). This budget is reserved: client floods can never draw
       # from it, so replication stays alive even when the client budgets
-      # are exhausted. Replication classification works whenever the
-      # client presents a consenter TLS certificate (the TLS server
-      # requests client certificates whenever TLS is enabled); without
-      # TLS, orderer pulls fall back to the client budgets. The default
-      # of -1 (no limit) keeps existing deployments unaffected; set it
-      # to (orderers - 1) x channels served, plus headroom for concurrent
-      # catch-up probes, to bound a compromised consenter - note that a
-      # Byzantine consenter is out of scope regardless, since it can halt
-      # consensus directly.
+      # are exhausted. Classification works whenever the pulling orderer
+      # presents a consenter client certificate, which requires TLS to be
+      # enabled and, when a separate cluster listener is configured,
+      # General.Cluster.ClientCertificate to be set; otherwise pulls fall
+      # back to the client budgets (a startup warning is logged in both
+      # cases). The default of -1 (no limit) keeps existing deployments
+      # unaffected; set it to (orderers - 1) x channels served, plus
+      # headroom for concurrent catch-up probes, to bound a compromised
+      # consenter - note that a Byzantine consenter is out of scope
+      # regardless, since it can halt consensus directly.
       ClusterReplication: -1
 
   # Cluster settings for ordering service nodes that communicate with other ordering service nodes

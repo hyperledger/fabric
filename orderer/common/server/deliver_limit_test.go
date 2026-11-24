@@ -8,6 +8,7 @@ package server
 
 import (
 	"crypto/x509"
+	"io"
 	"testing"
 	"time"
 
@@ -27,21 +28,22 @@ import (
 
 func TestNewDeliverConcurrencyLimiter(t *testing.T) {
 	// zero values normalize to the configuration defaults
-	limiter := newDeliverConcurrencyLimiter(0, 0, 0, &disabled.Provider{})
+	limiter := newDeliverConcurrencyLimiter(0, 0, 0, 0, &disabled.Provider{})
 	require.NotNil(t, limiter)
+	require.Equal(t, 500, cap(limiter.preAuthSema))
 	require.Equal(t, 80, cap(limiter.clientSema))
 	require.Equal(t, 1000, cap(limiter.headerSema))
 	require.Nil(t, limiter.replicationSema)
 
-	require.Nil(t, newDeliverConcurrencyLimiter(-1, -1, -1, &disabled.Provider{}))
+	require.Nil(t, newDeliverConcurrencyLimiter(-1, -1, -1, -1, &disabled.Provider{}))
 
-	limiter = newDeliverConcurrencyLimiter(80, 500, 20, &disabled.Provider{})
+	limiter = newDeliverConcurrencyLimiter(80, 500, 20, -1, &disabled.Provider{})
 	require.NotNil(t, limiter)
 	require.Equal(t, 80, cap(limiter.clientSema))
 	require.Equal(t, 500, cap(limiter.headerSema))
 	require.Equal(t, 20, cap(limiter.replicationSema))
 
-	limiter = newDeliverConcurrencyLimiter(-1, 500, -1, &disabled.Provider{})
+	limiter = newDeliverConcurrencyLimiter(-1, 500, -1, -1, &disabled.Provider{})
 	require.NotNil(t, limiter)
 	require.Nil(t, limiter.clientSema)
 	require.Equal(t, 500, cap(limiter.headerSema))
@@ -49,7 +51,7 @@ func TestNewDeliverConcurrencyLimiter(t *testing.T) {
 }
 
 func TestDeliverSessionAcquireAndRelease(t *testing.T) {
-	limiter := newDeliverConcurrencyLimiter(1, -1, -1, &disabled.Provider{})
+	limiter := newDeliverConcurrencyLimiter(1, -1, -1, -1, &disabled.Provider{})
 
 	first := newDeliverSession(limiter)
 	require.NoError(t, first.Acquire())
@@ -67,8 +69,30 @@ func TestDeliverSessionAcquireAndRelease(t *testing.T) {
 	require.NoError(t, second.Acquire())
 }
 
+func TestDeliverSessionPreAuthBudget(t *testing.T) {
+	limiter := newDeliverConcurrencyLimiter(-1, -1, -1, 1, &disabled.Provider{})
+
+	// the first silent stream holds the only pre-auth permit
+	silent := newDeliverSession(limiter)
+	require.NoError(t, silent.AcquirePreAuth())
+
+	// the second silent stream is rejected
+	other := newDeliverSession(limiter)
+	err := other.AcquirePreAuth()
+	require.EqualError(t, err, "too many preauth requests, exceeding concurrency limit (1)")
+
+	// admitting into a request class returns the pre-auth permit
+	require.NoError(t, silent.Acquire())
+	require.NoError(t, other.AcquirePreAuth())
+
+	// and releasing the stream returns everything
+	silent.Release()
+	other.Release()
+	require.NoError(t, newDeliverSession(limiter).Acquire())
+}
+
 func TestDeliverSessionHeaderBudget(t *testing.T) {
-	limiter := newDeliverConcurrencyLimiter(1, 1, -1, &disabled.Provider{})
+	limiter := newDeliverConcurrencyLimiter(1, 1, -1, -1, &disabled.Provider{})
 
 	// a client block stream holds the only block permit
 	blockSession := newDeliverSession(limiter)
@@ -92,39 +116,48 @@ func TestDeliverSessionHeaderBudget(t *testing.T) {
 }
 
 // A header session serving config blocks escalates to the block budget,
-// because config blocks are sent in full even to header-only streams.
+// because config blocks are sent in full even to header-only streams, and
+// returns the permit as soon as the config block is sent.
 func TestDeliverSessionHeaderConfigBlockEscalation(t *testing.T) {
-	limiter := newDeliverConcurrencyLimiter(1, 1, -1, &disabled.Provider{})
+	limiter := newDeliverConcurrencyLimiter(1, 1, -1, -1, &disabled.Provider{})
 
 	headerSession := newDeliverSession(limiter)
 	headerSession.classify(deliverPoolHeader)
 	require.NoError(t, headerSession.Acquire())
 
 	// normal blocks do not escalate
-	require.NoError(t, headerSession.AcquireForBlock(makeBlock(1, 4<<10)))
+	require.NoError(t, headerSession.AcquireForBlock(makeBlock(1, 4<<10), false))
 	require.Nil(t, headerSession.configSema)
 
 	// a config block escalates to the block budget
-	require.NoError(t, headerSession.AcquireForBlock(makeConfigBlock(0, 4<<10)))
+	require.NoError(t, headerSession.AcquireForBlock(makeConfigBlock(0, 4<<10), true))
 	require.NotNil(t, headerSession.configSema)
 
-	// the escalation is charged once, not per block
-	require.NoError(t, headerSession.AcquireForBlock(makeConfigBlock(1, 4<<10)))
-
-	// the block budget is now full for block streams
+	// the block budget is full for block streams while the config block is in flight
 	blockSession := newDeliverSession(limiter)
 	err := blockSession.Acquire()
 	require.EqualError(t, err, "too many block requests, exceeding concurrency limit (1)")
 
-	// both permits are released
-	headerSession.Release()
+	// once the config block is sent, the block permit is returned even
+	// though the header stream stays open
+	headerSession.ReleaseForBlock(makeConfigBlock(0, 4<<10), true)
+	require.Nil(t, headerSession.configSema)
 	require.NoError(t, blockSession.Acquire())
+	blockSession.Release()
+
+	// a later config block is charged again
+	require.NoError(t, headerSession.AcquireForBlock(makeConfigBlock(1, 4<<10), true))
+	require.NotNil(t, headerSession.configSema)
+
+	// everything is released at stream end
+	headerSession.Release()
+	require.NoError(t, newDeliverSession(limiter).Acquire())
 }
 
 // When the block budget is full, a header session is rejected at the first
 // config block instead of retaining it.
 func TestDeliverSessionHeaderConfigBlockRejected(t *testing.T) {
-	limiter := newDeliverConcurrencyLimiter(1, 1, -1, &disabled.Provider{})
+	limiter := newDeliverConcurrencyLimiter(1, 1, -1, -1, &disabled.Provider{})
 
 	blockSession := newDeliverSession(limiter)
 	require.NoError(t, blockSession.Acquire())
@@ -133,13 +166,13 @@ func TestDeliverSessionHeaderConfigBlockRejected(t *testing.T) {
 	headerSession.classify(deliverPoolHeader)
 	require.NoError(t, headerSession.Acquire())
 
-	err := headerSession.AcquireForBlock(makeConfigBlock(0, 4<<10))
+	err := headerSession.AcquireForBlock(makeConfigBlock(0, 4<<10), true)
 	require.EqualError(t, err, "too many block requests, exceeding concurrency limit (1)")
 	require.Nil(t, headerSession.configSema)
 }
 
 func TestDeliverSessionReplicationBudget(t *testing.T) {
-	limiter := newDeliverConcurrencyLimiter(1, -1, 1, &disabled.Provider{})
+	limiter := newDeliverConcurrencyLimiter(1, -1, 1, -1, &disabled.Provider{})
 
 	// a client stream holds the only client permit
 	reader := newDeliverSession(limiter)
@@ -163,7 +196,7 @@ func TestDeliverSessionReplicationBudget(t *testing.T) {
 // The budget classification is evaluated per seek request; it is never
 // latched for the lifetime of the stream.
 func TestDeliverSessionClassificationIsPerSeek(t *testing.T) {
-	limiter := newDeliverConcurrencyLimiter(1, -1, 1, &disabled.Provider{})
+	limiter := newDeliverConcurrencyLimiter(1, -1, 1, -1, &disabled.Provider{})
 
 	session := newDeliverSession(limiter)
 	session.classify(deliverPoolReplication)
@@ -191,7 +224,7 @@ func TestDeliverSessionUnlimitedWhenNoLimiter(t *testing.T) {
 }
 
 func TestDeliverSessionUnlimitedPool(t *testing.T) {
-	limiter := newDeliverConcurrencyLimiter(-1, -1, 1, &disabled.Provider{})
+	limiter := newDeliverConcurrencyLimiter(-1, -1, 1, -1, &disabled.Provider{})
 
 	for range 10 {
 		require.NoError(t, newDeliverSession(limiter).Acquire())
@@ -213,10 +246,10 @@ func TestDeliverSessionRejectionMetricAndThrottledLog(t *testing.T) {
 	provider := &metricsfakes.Provider{}
 	provider.NewCounterReturns(counter)
 	provider.NewGaugeReturns(gauge)
-	limiter := newDeliverConcurrencyLimiter(1, -1, -1, provider)
+	limiter := newDeliverConcurrencyLimiter(1, -1, -1, -1, provider)
 
 	logCount := 0
-	limiter.throttles[deliverPoolBlock] = &rateLimitedLogger{
+	limiter.throttles["block"] = &rateLimitedLogger{
 		interval: time.Hour,
 		logf:     func(string, ...any) { logCount++ },
 	}
@@ -311,7 +344,7 @@ func TestNewDeliverPolicyChecker(t *testing.T) {
 	}
 
 	newSession := func() (*deliverSession, deliver.PolicyChecker) {
-		session := newDeliverSession(newDeliverConcurrencyLimiter(1, 1, 1, &disabled.Provider{}))
+		session := newDeliverSession(newDeliverConcurrencyLimiter(1, 1, 1, -1, &disabled.Provider{}))
 		return session, newDeliverPolicyChecker(getChain, ordererCert, session)
 	}
 
@@ -334,7 +367,7 @@ func TestNewDeliverPolicyChecker(t *testing.T) {
 	})
 
 	t.Run("orderer without a client certificate falls back to the block budget", func(t *testing.T) {
-		session := newDeliverSession(newDeliverConcurrencyLimiter(1, 1, 1, &disabled.Provider{}))
+		session := newDeliverSession(newDeliverConcurrencyLimiter(1, 1, 1, -1, &disabled.Provider{}))
 		checker := newDeliverPolicyChecker(getChain, nil, session)
 		require.NoError(t, checker.CheckPolicy(deliverSeekEnvelope("orderer"), "mychannel"))
 		require.Equal(t, deliverPoolBlock, session.pool)
@@ -361,8 +394,10 @@ func TestNewDeliverPolicyChecker(t *testing.T) {
 
 func TestFirstMessageTimeoutReceiver(t *testing.T) {
 	t.Run("times out a silent stream", func(t *testing.T) {
+		blocking := &blockingReceiver{done: make(chan struct{})}
+		defer close(blocking.done)
 		receiver := &firstMessageTimeoutReceiver{
-			Receiver: &blockingReceiver{},
+			Receiver: blocking,
 			timeout:  20 * time.Millisecond,
 		}
 		start := time.Now()
@@ -386,10 +421,13 @@ func TestFirstMessageTimeoutReceiver(t *testing.T) {
 	})
 }
 
-type blockingReceiver struct{}
+type blockingReceiver struct {
+	done chan struct{}
+}
 
-func (*blockingReceiver) Recv() (*cb.Envelope, error) {
-	select {}
+func (b *blockingReceiver) Recv() (*cb.Envelope, error) {
+	<-b.done
+	return nil, io.EOF
 }
 
 type stubReceiver struct {
@@ -448,7 +486,7 @@ func TestNewServerDeliverConcurrencyLimit(t *testing.T) {
 		conf.General.Authentication.TimeWindow,
 		false,
 		true,
-		localconfig.Limits{Concurrency: localconfig.Concurrency{DeliverService: -1, DeliverHeaderService: -1, ClusterReplication: -1}},
+		localconfig.Limits{Concurrency: localconfig.Concurrency{DeliverService: -1, DeliverHeaderService: -1, ClusterReplication: -1, DeliverPreAuth: -1}},
 	).(*server)
 	require.Nil(t, s.deliverLimiter)
 }

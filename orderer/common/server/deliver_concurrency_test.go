@@ -169,9 +169,13 @@ type deliverTestService struct {
 }
 
 func (s *deliverTestService) Deliver(stream ab.AtomicBroadcast_DeliverServer) error {
+	session := newDeliverSession(s.limiter)
+	if err := session.AcquirePreAuth(); err != nil {
+		return err
+	}
 	return s.h.Handle(stream.Context(), newDeliverServer(stream, func(string) msgprocessor.SigFilterSupport {
 		return s.support
-	}, s.limiter, s.seekTimeout, &localconfig.Debug{}))
+	}, session, s.seekTimeout, &localconfig.Debug{}))
 }
 
 func deliverSeekEnvelope(creator string) *cb.Envelope {
@@ -214,6 +218,7 @@ func deliverSeekEnvelopeWith(creator string, stop uint64, contentType ab.SeekInf
 type deliverTestServer struct {
 	client  ab.AtomicBroadcastClient
 	chain   *mock.Chain
+	limiter *deliverConcurrencyLimiter
 	cleanup func()
 }
 
@@ -243,12 +248,12 @@ func deliverLimitTestChainWithBlocks(blocks []*cb.Block) *mock.Chain {
 // startDeliverTestServer runs a real gRPC server and deliver handler with
 // the given concurrency limits over an insecure connection, mirroring the
 // production Deliver path.
-func startDeliverTestServer(t *testing.T, deliverLimit, headerLimit, replicationLimit int, seekTimeout time.Duration) *deliverTestServer {
+func startDeliverTestServer(t *testing.T, deliverLimit, headerLimit, replicationLimit, preAuthLimit int, seekTimeout time.Duration) *deliverTestServer {
 	t.Helper()
-	return startDeliverTestServerWithChain(t, deliverLimitTestChain(), deliverLimit, headerLimit, replicationLimit, seekTimeout)
+	return startDeliverTestServerWithChain(t, deliverLimitTestChain(), deliverLimit, headerLimit, replicationLimit, preAuthLimit, seekTimeout)
 }
 
-func startDeliverTestServerWithChain(t *testing.T, chain *mock.Chain, deliverLimit, headerLimit, replicationLimit int, seekTimeout time.Duration) *deliverTestServer {
+func startDeliverTestServerWithChain(t *testing.T, chain *mock.Chain, deliverLimit, headerLimit, replicationLimit, preAuthLimit int, seekTimeout time.Duration) *deliverTestServer {
 	t.Helper()
 
 	chainManager := &mock.ChainManager{}
@@ -266,9 +271,10 @@ func startDeliverTestServerWithChain(t *testing.T, chain *mock.Chain, deliverLim
 	require.NoError(t, err)
 	srv, err := comm.NewGRPCServerFromListener(lis, initializeServerConfig(conf, nil))
 	require.NoError(t, err)
+	limiter := newDeliverConcurrencyLimiter(deliverLimit, headerLimit, replicationLimit, preAuthLimit, &disabled.Provider{})
 	ab.RegisterAtomicBroadcastServer(srv.Server(), &deliverTestService{
 		h:           handler,
-		limiter:     newDeliverConcurrencyLimiter(deliverLimit, headerLimit, replicationLimit, &disabled.Provider{}),
+		limiter:     limiter,
 		seekTimeout: seekTimeout,
 		support: deliverTestChainSupport{
 			policyManager: testDeliverPolicyManager{},
@@ -281,8 +287,9 @@ func startDeliverTestServerWithChain(t *testing.T, chain *mock.Chain, deliverLim
 	require.NoError(t, err)
 
 	return &deliverTestServer{
-		client: ab.NewAtomicBroadcastClient(conn),
-		chain:  chain,
+		client:  ab.NewAtomicBroadcastClient(conn),
+		chain:   chain,
+		limiter: limiter,
 		cleanup: func() {
 			conn.Close()
 			srv.Stop()
@@ -350,7 +357,7 @@ func startDeliverTestServerTLS(t *testing.T, deliverLimit, replicationLimit int,
 	require.NoError(t, err)
 	ab.RegisterAtomicBroadcastServer(srv.Server(), &deliverTestService{
 		h:       handler,
-		limiter: newDeliverConcurrencyLimiter(deliverLimit, -1, replicationLimit, &disabled.Provider{}),
+		limiter: newDeliverConcurrencyLimiter(deliverLimit, -1, replicationLimit, -1, &disabled.Provider{}),
 		support: deliverTestChainSupport{
 			policyManager: testDeliverPolicyManager{},
 			ordererConfig: stubOrdererConfig{
@@ -441,7 +448,7 @@ func TestDeliverConcurrencyLimit(t *testing.T) {
 		headerLimit = 2
 	)
 
-	ts := startDeliverTestServer(t, clientLimit, headerLimit, -1, -1)
+	ts := startDeliverTestServer(t, clientLimit, headerLimit, -1, -1, -1)
 	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -502,7 +509,7 @@ func TestDeliverConcurrencyBFTHeaderFanout(t *testing.T) {
 		headerLimit = 100
 	)
 
-	ts := startDeliverTestServer(t, clientLimit, headerLimit, -1, -1)
+	ts := startDeliverTestServer(t, clientLimit, headerLimit, -1, -1, -1)
 	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -525,7 +532,7 @@ func TestDeliverConcurrencyBFTHeaderFanout(t *testing.T) {
 // A completed delivery releases the permit, so a stream idling after a
 // finished seek does not hold the budget.
 func TestDeliverConcurrencyPermitReleasedAfterCompletedDelivery(t *testing.T) {
-	ts := startDeliverTestServer(t, 1, -1, -1, -1)
+	ts := startDeliverTestServer(t, 1, -1, -1, -1, -1)
 	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -554,8 +561,9 @@ func TestDeliverConcurrencyPermitReleasedAfterCompletedDelivery(t *testing.T) {
 }
 
 func TestDeliverConcurrencyUnlimited(t *testing.T) {
-	ts := startDeliverTestServer(t, -1, -1, -1, -1)
+	ts := startDeliverTestServer(t, -1, -1, -1, -1, -1)
 	defer ts.cleanup()
+	require.Nil(t, ts.limiter)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -646,7 +654,7 @@ func TestDeliverConcurrencyHeaderConfigBlockEscalation(t *testing.T) {
 	for i := 1; i < deliverLimitTestBlocks; i++ {
 		blocks = append(blocks, makeBlock(uint64(i), deliverLimitTestBlkSize))
 	}
-	ts := startDeliverTestServerWithChain(t, deliverLimitTestChainWithBlocks(blocks), clientLimit, headerLimit, -1, -1)
+	ts := startDeliverTestServerWithChain(t, deliverLimitTestChainWithBlocks(blocks), clientLimit, headerLimit, -1, -1, -1)
 	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -661,31 +669,43 @@ func TestDeliverConcurrencyHeaderConfigBlockEscalation(t *testing.T) {
 }
 
 // A header stream that finds room in the block budget receives config
-// blocks in full.
+// blocks in full, and returns the escalation permit as soon as the config
+// block is sent, so it does not starve block streams by staying open.
 func TestDeliverConcurrencyHeaderConfigBlockDelivered(t *testing.T) {
+	const clientLimit = 1
+
 	blocks := []*cb.Block{makeConfigBlock(0, 128<<10)}
 	for i := 1; i < deliverLimitTestBlocks; i++ {
 		blocks = append(blocks, makeBlock(uint64(i), deliverLimitTestBlkSize))
 	}
-	ts := startDeliverTestServerWithChain(t, deliverLimitTestChainWithBlocks(blocks), 1, 10, -1, -1)
+	ts := startDeliverTestServerWithChain(t, deliverLimitTestChainWithBlocks(blocks), clientLimit, 10, -1, -1, -1)
 	defer ts.cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	stream, err := ts.client.Deliver(ctx)
+	headerCtx, headerCancel := context.WithCancel(ctx)
+	defer headerCancel()
+	headerStream, err := ts.client.Deliver(headerCtx)
 	require.NoError(t, err)
-	require.NoError(t, stream.Send(deliverHeaderSeekEnvelope("reader")))
-	resp, err := stream.Recv()
+	require.NoError(t, headerStream.Send(deliverHeaderSeekEnvelope("reader")))
+	resp, err := headerStream.Recv()
 	require.NoError(t, err)
 	require.True(t, protoutil.IsConfigBlock(resp.GetBlock()))
 	require.Len(t, resp.GetBlock().GetData().GetData(), 1)
+
+	// the header stream is parked on the next block, but the config-block
+	// escalation permit was returned once the config block was sent, so a
+	// block stream is admitted into the single-slot block budget
+	blockCtx, blockCancel := context.WithCancel(ctx)
+	defer blockCancel()
+	require.NoError(t, openDeliver(blockCtx, ts.client, "reader"))
 }
 
 // A stream that never sends a seek request is closed after the configured
 // seek timeout instead of holding a handler goroutine forever.
 func TestDeliverSeekTimeout(t *testing.T) {
-	ts := startDeliverTestServer(t, -1, -1, -1, 100*time.Millisecond)
+	ts := startDeliverTestServer(t, -1, -1, -1, -1, 100*time.Millisecond)
 	defer ts.cleanup()
 
 	stream, err := ts.client.Deliver(context.Background())
@@ -753,15 +773,18 @@ func (f *fakeDeliverServerStream) Send(resp *ab.DeliverResponse) error {
 }
 
 // The production server.Deliver wires the deliver handler with the policy
-// checker and session limiter; a seek on an unknown channel travels the
-// whole path and is answered with a status response.
+// checker and session limiter: a seek travels the whole path into the
+// production policy checker, which rejects it for want of the channel, and
+// the handler answers with a status response.
 func TestServerDeliverWiring(t *testing.T) {
+	chain := deliverLimitTestChain()
 	chainManager := &mock.ChainManager{}
+	chainManager.GetChainReturns(chain)
 	handler := deliver.NewHandler(chainManager, time.Hour, false, deliver.NewMetrics(&disabled.Provider{}), true)
 	s := &server{
 		dh:                 handler,
 		debug:              &localconfig.Debug{},
-		deliverLimiter:     newDeliverConcurrencyLimiter(1, 1, 1, &disabled.Provider{}),
+		deliverLimiter:     newDeliverConcurrencyLimiter(1, 1, 1, -1, &disabled.Provider{}),
 		deliverSeekTimeout: -1,
 		Registrar:          &multichannel.Registrar{},
 	}
@@ -774,8 +797,75 @@ func TestServerDeliverWiring(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- s.Deliver(stream) }()
 
+	// the handler finds the channel, but the policy checker does not (the
+	// registrar is empty), so the request is forbidden before admission
 	stream.recvCh <- deliverRecvResult{env: deliverSeekEnvelope("reader")}
 	resp := <-stream.sendCh
-	require.Equal(t, cb.Status_NOT_FOUND, resp.GetStatus())
+	require.Equal(t, cb.Status_FORBIDDEN, resp.GetStatus())
 	require.NoError(t, <-done)
+	require.Equal(t, 0, chain.ReaderCallCount())
+}
+
+// Streams that never send a seek request are bounded by the pre-auth
+// budget, not only by the seek timeout: the third silent stream is
+// rejected, and so is an authenticated one until a slot frees.
+func TestDeliverConcurrencyPreAuthBound(t *testing.T) {
+	const preAuthLimit = 2
+
+	ts := startDeliverTestServer(t, -1, -1, -1, preAuthLimit, -1)
+	defer ts.cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	silentCtx, silentCancel := context.WithCancel(ctx)
+	// client streams are lazy: a background Recv flushes the headers so the
+	// server-side handler starts and occupies a pre-auth slot
+	for range preAuthLimit {
+		stream, err := ts.client.Deliver(silentCtx)
+		require.NoError(t, err)
+		go func() { _, _ = stream.Recv() }()
+	}
+	require.Eventually(t, func() bool {
+		return len(ts.limiter.preAuthSema) == preAuthLimit
+	}, 10*time.Second, 5*time.Millisecond)
+
+	// a third silent stream is rejected out of the pre-auth budget
+	probe, err := ts.client.Deliver(ctx)
+	require.NoError(t, err)
+	_, err = probe.Recv()
+	require.ErrorContains(t, err, "too many preauth requests")
+
+	// and so is an authenticated reader until a silent stream goes away
+	reader, err := ts.client.Deliver(ctx)
+	require.NoError(t, err)
+	_ = reader.Send(deliverSeekEnvelope("reader"))
+	_, err = reader.Recv()
+	require.ErrorContains(t, err, "too many preauth requests")
+	require.Equal(t, 0, ts.chain.ReaderCallCount())
+
+	silentCancel()
+	require.Eventually(t, func() bool {
+		return len(ts.limiter.preAuthSema) == 0
+	}, 10*time.Second, 5*time.Millisecond)
+	require.NoError(t, openDeliver(ctx, ts.client, "reader"))
+}
+
+// The budgets are global and first-come-first-served: one reader can
+// occupy every slot and starve another. This is the documented boundary;
+// operators are expected to alert on deliver_sessions_rejected.
+func TestDeliverConcurrencyGlobalBudgetIsFirstComeFirstServed(t *testing.T) {
+	const clientLimit = 2
+
+	ts := startDeliverTestServer(t, clientLimit, -1, -1, -1, -1)
+	defer ts.cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for range clientLimit {
+		require.NoError(t, openDeliver(ctx, ts.client, "reader-tenant-a"))
+	}
+	requireRejectedUnavailable(t, ts.client, deliverSeekEnvelope("reader-tenant-b"))
+	require.Equal(t, clientLimit, ts.chain.ReaderCallCount())
 }

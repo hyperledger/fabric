@@ -92,6 +92,10 @@ func NewServer(
 	expirationCheckDisabled bool,
 	limits localconfig.Limits,
 ) ab.AtomicBroadcastServer {
+	deliverSeekTimeout := limits.DeliverSeekTimeout
+	if deliverSeekTimeout == 0 {
+		deliverSeekTimeout = localconfig.Defaults.General.Limits.DeliverSeekTimeout
+	}
 	s := &server{
 		dh: deliver.NewHandler(deliverSupport{Registrar: r}, timeWindow, mutualTLS, deliver.NewMetrics(metricsProvider), expirationCheckDisabled),
 		bh: &broadcast.Handler{
@@ -99,8 +103,8 @@ func NewServer(
 			Metrics:          broadcast.NewMetrics(metricsProvider),
 		},
 		debug:              debug,
-		deliverLimiter:     newDeliverConcurrencyLimiter(limits.Concurrency.DeliverService, limits.Concurrency.DeliverHeaderService, limits.Concurrency.ClusterReplication, metricsProvider),
-		deliverSeekTimeout: limits.DeliverSeekTimeout,
+		deliverLimiter:     newDeliverConcurrencyLimiter(limits.Concurrency.DeliverService, limits.Concurrency.DeliverHeaderService, limits.Concurrency.ClusterReplication, limits.Concurrency.DeliverPreAuth, metricsProvider),
+		deliverSeekTimeout: deliverSeekTimeout,
 		Registrar:          r,
 	}
 	return s
@@ -194,7 +198,11 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		logger.Debugf("Closing Deliver stream")
 	}()
 
-	return s.dh.Handle(srv.Context(), newDeliverServer(srv, s.chainSupport, s.deliverLimiter, s.deliverSeekTimeout, s.debug))
+	session := newDeliverSession(s.deliverLimiter)
+	if err := session.AcquirePreAuth(); err != nil {
+		return err
+	}
+	return s.dh.Handle(srv.Context(), newDeliverServer(srv, s.chainSupport, session, s.deliverSeekTimeout, s.debug))
 }
 
 // chainSupport adapts the registrar to the signature the deliver policy
@@ -209,8 +217,7 @@ func (s *server) chainSupport(channelID string) msgprocessor.SigFilterSupport {
 // newDeliverServer builds the deliver server for a stream: the policy
 // checker classifies each seek request into a concurrency budget and the
 // session limiter admits it after authentication.
-func newDeliverServer(srv ab.AtomicBroadcast_DeliverServer, getChain func(string) msgprocessor.SigFilterSupport, limiter *deliverConcurrencyLimiter, seekTimeout time.Duration, dbg *localconfig.Debug) *deliver.Server {
-	session := newDeliverSession(limiter)
+func newDeliverServer(srv ab.AtomicBroadcast_DeliverServer, getChain func(string) msgprocessor.SigFilterSupport, session *deliverSession, seekTimeout time.Duration, dbg *localconfig.Debug) *deliver.Server {
 	return &deliver.Server{
 		PolicyChecker: newDeliverPolicyChecker(getChain, util.ExtractCertificateFromContext(srv.Context()), session),
 		Receiver: &deliverMsgTracer{
