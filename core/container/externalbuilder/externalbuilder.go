@@ -61,6 +61,18 @@ func (d *Detector) CachedBuild(ccid string) (*Instance, error) {
 		return nil, errors.WithMessage(err, "existing build detected, but something went wrong inspecting it")
 	}
 
+	// A complete build has both its release and bld directories, because Build copies both
+	// of them, even when they are empty. A directory without one of them is a partial build
+	// left by a version that persisted the build in place. Remove it, so that Build builds
+	// the chaincode again instead of restoring or failing on an incomplete build.
+	if !isDir(filepath.Join(durablePath, "release")) || !isDir(filepath.Join(durablePath, "bld")) {
+		logger.Warningf("Removing the incomplete build of '%s' at '%s'", ccid, durablePath)
+		if err := os.RemoveAll(durablePath); err != nil {
+			return nil, errors.WithMessagef(err, "existing build is incomplete and could not be removed")
+		}
+		return nil, nil
+	}
+
 	buildInfoPath := filepath.Join(durablePath, "build-info.json")
 	buildInfoData, err := os.ReadFile(buildInfoPath)
 	if err != nil {
@@ -139,7 +151,11 @@ func (d *Detector) Build(ccid string, mdBytes []byte, codeStream io.Reader) (*In
 		return nil, errors.WithMessagef(err, "could not create dir for '%s' to persist build output", durablePath)
 	}
 	// This is a no-op once the staging directory has been renamed.
-	defer os.RemoveAll(stagingPath)
+	defer func() {
+		if err := os.RemoveAll(stagingPath); err != nil {
+			logger.Warningf("Failed to remove the staging directory '%s': %s", stagingPath, err)
+		}
+	}()
 
 	err = CopyDir(logger, buildContext.ReleaseDir, filepath.Join(stagingPath, "release"))
 	if err != nil {
@@ -176,6 +192,11 @@ func (d *Detector) Build(ccid string, mdBytes []byte, codeStream io.Reader) (*In
 		ReleaseDir:  filepath.Join(durablePath, "release"),
 		TermTimeout: 5 * time.Second,
 	}, nil
+}
+
+func isDir(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 func (d *Detector) detect(buildContext *BuildContext) *Builder {

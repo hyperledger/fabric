@@ -163,29 +163,54 @@ var _ = Describe("externalbuilder", func() {
 				})
 			})
 
-			Context("when the build output cannot be copied to the durable path", func() {
+			for _, tc := range []struct{ builder, dir string }{
+				{builder: "symlinkbuilder", dir: "bld"},
+				{builder: "symlinkreleasebuilder", dir: "release"},
+			} {
+				Context(fmt.Sprintf("when the %s output cannot be copied to the durable path", tc.dir), func() {
+					BeforeEach(func() {
+						detector.Builders = externalbuilder.CreateBuilders([]peer.ExternalBuilder{
+							{Path: filepath.Join("testdata", tc.builder), Name: tc.builder},
+						}, "mspid")
+					})
+
+					It("removes the partial build output", func() {
+						_, err := detector.Build("fake-package-id", md, codePackage)
+						Expect(err).To(MatchError(ContainSubstring("could not move or copy build context " + tc.dir + " to persistent location")))
+						Expect(filepath.Join(durablePath, "fake-package-id")).NotTo(BeAnExistingFile())
+
+						// Neither the build nor its staging directory is left behind
+						entries, err := os.ReadDir(durablePath)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(entries).To(BeEmpty())
+
+						Expect(codePackage.Close()).To(Succeed())
+						codePackage, err = os.Open("testdata/normal_archive.tar.gz")
+						Expect(err).NotTo(HaveOccurred())
+						instance, err := detector.Build("fake-package-id", md, codePackage)
+						Expect(err).To(MatchError(ContainSubstring("could not move or copy build context " + tc.dir + " to persistent location")))
+						Expect(instance).To(BeNil())
+					})
+				})
+			}
+
+			Context("when an earlier version left a partial build", func() {
 				BeforeEach(func() {
-					detector.Builders = externalbuilder.CreateBuilders([]peer.ExternalBuilder{
-						{Path: "testdata/symlinkbuilder", Name: "symlinkbuilder"},
-					}, "mspid")
+					// An earlier version persisted build-info.json and the release directory in place
+					// and failed before it copied the bld directory.
+					partialPath := filepath.Join(durablePath, "fake-package-id")
+					Expect(os.MkdirAll(filepath.Join(partialPath, "release"), 0o700)).To(Succeed())
+					Expect(os.WriteFile(filepath.Join(partialPath, "build-info.json"), []byte(`{"builder_name":"goodbuilder"}`), 0o600)).To(Succeed())
 				})
 
-				It("removes the partial build output", func() {
-					_, err := detector.Build("fake-package-id", md, codePackage)
-					Expect(err).To(MatchError(ContainSubstring("could not move or copy build context bld to persistent location")))
-					Expect(filepath.Join(durablePath, "fake-package-id")).NotTo(BeAnExistingFile())
-
-					// Neither the build nor its staging directory is left behind
-					entries, err := os.ReadDir(durablePath)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(entries).To(BeEmpty())
-
-					Expect(codePackage.Close()).To(Succeed())
-					codePackage, err = os.Open("testdata/normal_archive.tar.gz")
-					Expect(err).NotTo(HaveOccurred())
+				It("builds the chaincode again", func() {
 					instance, err := detector.Build("fake-package-id", md, codePackage)
-					Expect(err).To(MatchError(ContainSubstring("could not move or copy build context bld to persistent location")))
-					Expect(instance).To(BeNil())
+					Expect(err).NotTo(HaveOccurred())
+					Expect(instance).NotTo(BeNil())
+
+					Expect(filepath.Join(durablePath, "fake-package-id", "bld")).To(BeADirectory())
+					Expect(filepath.Join(durablePath, "fake-package-id", "release")).To(BeADirectory())
+					Expect(filepath.Join(durablePath, "fake-package-id", "build-info.json")).To(BeARegularFile())
 				})
 			})
 		})
@@ -207,6 +232,27 @@ var _ = Describe("externalbuilder", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(existingInstance).To(Equal(newInstance))
 			})
+
+			for _, missing := range [][]string{
+				{"bld"},
+				{"release"},
+				{"bld", "release", "build-info.json"},
+			} {
+				When(strings.Join(missing, ", ")+" is missing", func() {
+					BeforeEach(func() {
+						for _, name := range missing {
+							Expect(os.RemoveAll(filepath.Join(durablePath, "fake-package-id", name))).To(Succeed())
+						}
+					})
+
+					It("removes the incomplete build and returns no instance", func() {
+						instance, err := detector.CachedBuild("fake-package-id")
+						Expect(err).NotTo(HaveOccurred())
+						Expect(instance).To(BeNil())
+						Expect(filepath.Join(durablePath, "fake-package-id")).NotTo(BeAnExistingFile())
+					})
+				})
+			}
 
 			When("the build-info is missing", func() {
 				BeforeEach(func() {
