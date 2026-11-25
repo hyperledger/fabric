@@ -388,6 +388,7 @@ func TestEvaluate(t *testing.T) {
 // goroutine must not block forever trying to report its failure.
 func TestEvaluateDoesNotLeakGoroutineOnTimeout(t *testing.T) {
 	const fn = "gateway.(*Server).Evaluate.func"
+	waitForNoGoroutinesInFunction(t, fn)
 	before := goroutinesInFunction(fn)
 
 	tt := &testDef{

@@ -406,6 +406,80 @@ func TestLoadMetadata(t *testing.T) {
 	require.Equal(t, metadata, loadedMetadata)
 }
 
+func TestLoadMetadataMalformedNumRows(t *testing.T) {
+	// The num-rows count is decoded from an untrusted snapshot during
+	// "peer channel joinbysnapshot". A count larger than any allocatable slice
+	// used to panic make() before a single row was read, and a zero count used
+	// to produce an empty metadata slice that the cursor then indexed out of
+	// range in Next. Both ran in the import goroutine, which has no recover,
+	// and crashed the peer.
+	testCases := []struct {
+		name        string
+		numRows     uint64
+		expectedErr string
+	}{
+		{
+			name:        "oversized_num-rows_fails_at_eof_on_first_row",
+			numRows:     ^uint64(0),
+			expectedErr: "error while reading namespace name",
+		},
+		{
+			name:        "zero_num-rows_is_rejected",
+			numRows:     0,
+			expectedErr: "metadata file contains no rows",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testdir := t.TempDir()
+			metadataFilePath := filepath.Join(testdir, PubStateMetadataFileName)
+			metadataFileWriter, err := snapshot.CreateFile(metadataFilePath, snapshotFileFormat, testNewHashFunc)
+			require.NoError(t, err)
+			require.NoError(t, metadataFileWriter.EncodeUVarint(tc.numRows))
+			_, err = metadataFileWriter.Done()
+			require.NoError(t, err)
+			defer metadataFileWriter.Close()
+
+			metadataFileReader, err := snapshot.OpenFile(metadataFilePath, snapshotFileFormat)
+			require.NoError(t, err)
+			defer metadataFileReader.Close()
+
+			metadata, err := readMetadata(metadataFileReader)
+			require.ErrorContains(t, err, tc.expectedErr)
+			require.Nil(t, metadata)
+		})
+	}
+}
+
+func TestSnapshotReaderRejectsEmptyMetadata(t *testing.T) {
+	testdir := t.TempDir()
+
+	// Write a valid data file with one record, then overwrite the metadata
+	// file so that it declares zero rows. Before readMetadata rejected this,
+	// NewSnapshotReader succeeded with an empty metadata slice and the first
+	// Next() panicked with an index out of range in cursor.move.
+	w, err := NewSnapshotWriter(testdir, "datafile", "metadatafile", testNewHashFunc)
+	require.NoError(t, err)
+	require.NoError(t, w.AddData("ns", &SnapshotRecord{Key: []byte("key"), Value: []byte("value")}))
+	_, _, err = w.Done()
+	require.NoError(t, err)
+	w.Close()
+
+	metadataFilePath := filepath.Join(testdir, "metadatafile")
+	require.NoError(t, os.Remove(metadataFilePath))
+	metadataFileWriter, err := snapshot.CreateFile(metadataFilePath, snapshotFileFormat, testNewHashFunc)
+	require.NoError(t, err)
+	require.NoError(t, metadataFileWriter.EncodeUVarint(0))
+	_, err = metadataFileWriter.Done()
+	require.NoError(t, err)
+	defer metadataFileWriter.Close()
+
+	r, err := NewSnapshotReader(testdir, "datafile", "metadatafile")
+	require.EqualError(t, err, "metadata file contains no rows")
+	require.Nil(t, r)
+}
+
 func TestSnapshotExportErrorPropagation(t *testing.T) {
 	var dbEnv *LevelDBTestEnv
 	var snapshotDir string
@@ -620,6 +694,44 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
 			)
 			require.Contains(t, err.Error(), "error while reading num-rows in metadata")
+		})
+
+		t.Run("zero_num-rows_in_metadata_file:"+f, func(t *testing.T) {
+			init()
+			defer cleanup()
+
+			metadataFile := filepath.Join(snapshotDir, f)
+			require.NoError(t, os.Remove(metadataFile))
+
+			fileContentWithZeroRows := []byte{snapshotFileFormat}
+			var buf []byte
+			buf = protowire.AppendVarint(buf, 0)
+			fileContentWithZeroRows = append(fileContentWithZeroRows, buf...)
+			require.NoError(t, os.WriteFile(metadataFile, fileContentWithZeroRows, 0o600))
+
+			err := dbEnv.GetProvider().ImportFromSnapshot(
+				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
+			)
+			require.EqualError(t, err, "metadata file contains no rows")
+		})
+
+		t.Run("oversized_num-rows_in_metadata_file:"+f, func(t *testing.T) {
+			init()
+			defer cleanup()
+
+			metadataFile := filepath.Join(snapshotDir, f)
+			require.NoError(t, os.Remove(metadataFile))
+
+			fileContentWithOversizedNumRows := []byte{snapshotFileFormat}
+			var buf []byte
+			buf = protowire.AppendVarint(buf, ^uint64(0))
+			fileContentWithOversizedNumRows = append(fileContentWithOversizedNumRows, buf...)
+			require.NoError(t, os.WriteFile(metadataFile, fileContentWithOversizedNumRows, 0o600))
+
+			err := dbEnv.GetProvider().ImportFromSnapshot(
+				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
+			)
+			require.Contains(t, err.Error(), "error while reading namespace name")
 		})
 
 		t.Run("error_while_reading_chaincode_name_from_metadata_file:"+f, func(t *testing.T) {
