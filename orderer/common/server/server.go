@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package server
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime/debug"
@@ -51,6 +52,7 @@ type server struct {
 	debug              *localconfig.Debug
 	deliverLimiter     *deliverConcurrencyLimiter
 	deliverSeekTimeout time.Duration
+	getChainSupport    func(string) msgprocessor.SigFilterSupport
 	*multichannel.Registrar
 }
 
@@ -107,6 +109,7 @@ func NewServer(
 		deliverSeekTimeout: deliverSeekTimeout,
 		Registrar:          r,
 	}
+	s.getChainSupport = s.chainSupport
 	return s
 }
 
@@ -215,7 +218,10 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 	if !admitPreAuth(srv, session) {
 		return nil
 	}
-	return s.dh.Handle(srv.Context(), newDeliverServer(srv, s.chainSupport, session, s.deliverSeekTimeout, s.debug))
+	// the derived context lets the seek timeout abort the handler promptly
+	ctx, cancel := context.WithCancel(srv.Context())
+	defer cancel()
+	return s.dh.Handle(ctx, newDeliverServer(srv, s.getChainSupport, session, s.deliverSeekTimeout, s.debug, cancel))
 }
 
 // chainSupport adapts the registrar to the signature the deliver policy
@@ -230,11 +236,11 @@ func (s *server) chainSupport(channelID string) msgprocessor.SigFilterSupport {
 // newDeliverServer builds the deliver server for a stream: the policy
 // checker classifies each seek request into a concurrency budget and the
 // session limiter admits it after authentication.
-func newDeliverServer(srv ab.AtomicBroadcast_DeliverServer, getChain func(string) msgprocessor.SigFilterSupport, session *deliverSession, seekTimeout time.Duration, dbg *localconfig.Debug) *deliver.Server {
+func newDeliverServer(srv ab.AtomicBroadcast_DeliverServer, getChain func(string) msgprocessor.SigFilterSupport, session *deliverSession, seekTimeout time.Duration, dbg *localconfig.Debug, onTimeout func()) *deliver.Server {
 	return &deliver.Server{
 		PolicyChecker: newDeliverPolicyChecker(getChain, util.ExtractCertificateFromContext(srv.Context()), session),
 		Receiver: &deliverMsgTracer{
-			Receiver: &seekTimeoutReceiver{Receiver: srv, timeout: seekTimeout},
+			Receiver: &seekTimeoutReceiver{Receiver: srv, timeout: seekTimeout, onTimeout: onTimeout},
 			debug:    dbg,
 			function: "Deliver",
 		},

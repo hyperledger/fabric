@@ -91,6 +91,46 @@ func TestDeliverSessionPreAuthBudget(t *testing.T) {
 	require.NoError(t, newDeliverSession(limiter).Acquire())
 }
 
+func TestDeliverSessionComplete(t *testing.T) {
+	limiter := newDeliverConcurrencyLimiter(1, -1, -1, 1, &disabled.Provider{})
+
+	session := newDeliverSession(limiter)
+	require.NoError(t, session.AcquirePreAuth())
+	require.NoError(t, session.Acquire())
+	require.Nil(t, session.preAuth, "the pre-auth permit is returned while serving")
+
+	// completing the delivery returns the serving permit and re-acquires
+	// the pre-auth permit for the wait
+	require.NoError(t, session.Complete())
+	require.Nil(t, session.sema)
+	require.False(t, session.acquired)
+	require.NotNil(t, session.preAuth)
+
+	// a second waiter is bounded out while the first waits
+	other := newDeliverSession(limiter)
+	require.EqualError(t, other.AcquirePreAuth(), "too many preauth requests, exceeding concurrency limit (1)")
+
+	// the next seek returns to the serving budget and frees the wait slot
+	require.NoError(t, session.Acquire())
+	require.Nil(t, session.preAuth)
+	require.NoError(t, other.AcquirePreAuth())
+}
+
+func TestDeliverSessionCompleteRejectedWhenWaitBudgetFull(t *testing.T) {
+	limiter := newDeliverConcurrencyLimiter(-1, -1, -1, 1, &disabled.Provider{})
+
+	other := newDeliverSession(limiter)
+	require.NoError(t, other.AcquirePreAuth())
+
+	session := newDeliverSession(limiter)
+	require.NoError(t, session.Acquire())
+	err := session.Complete()
+	require.EqualError(t, err, "too many preauth requests, exceeding concurrency limit (1)")
+	// the serving permit was returned regardless
+	require.Nil(t, session.sema)
+	require.False(t, session.acquired)
+}
+
 func TestDeliverSessionHeaderBudget(t *testing.T) {
 	limiter := newDeliverConcurrencyLimiter(1, 1, -1, -1, &disabled.Provider{})
 
@@ -407,6 +447,20 @@ func TestSeekTimeoutReceiver(t *testing.T) {
 		// the timeout re-arms on the next wait, not only the first
 		_, err = receiver.Recv()
 		require.ErrorContains(t, err, "no seek request received within 20ms")
+	})
+
+	t.Run("calls onTimeout when the timeout fires", func(t *testing.T) {
+		blocking := &blockingReceiver{done: make(chan struct{})}
+		defer close(blocking.done)
+		fired := make(chan struct{})
+		receiver := &seekTimeoutReceiver{
+			Receiver:  blocking,
+			timeout:   20 * time.Millisecond,
+			onTimeout: func() { close(fired) },
+		}
+		_, err := receiver.Recv()
+		require.ErrorContains(t, err, "no seek request received within 20ms")
+		<-fired
 	})
 
 	t.Run("passes messages through", func(t *testing.T) {

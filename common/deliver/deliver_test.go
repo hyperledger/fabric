@@ -47,6 +47,8 @@ type fakeSessionLimiter struct {
 	acquireForBlockErr   error
 	acquireForBlockCalls int
 	releaseForBlockCalls int
+	completeErr          error
+	completeCalls        int
 	releaseCalls         int
 }
 
@@ -62,6 +64,11 @@ func (f *fakeSessionLimiter) AcquireForBlock(*cb.Block, bool) error {
 
 func (f *fakeSessionLimiter) ReleaseForBlock(*cb.Block, bool) {
 	f.releaseForBlockCalls++
+}
+
+func (f *fakeSessionLimiter) Complete() error {
+	f.completeCalls++
+	return f.completeErr
 }
 
 func (f *fakeSessionLimiter) Release() {
@@ -336,11 +343,12 @@ var _ = Describe("Deliver", func() {
 				server.SessionLimiter = limiter
 			})
 
-			It("acquires the session after the policy check and releases it when the delivery completes and when the stream ends", func() {
+			It("acquires the session after the policy check and completes it when the delivery completes, releasing at stream end", func() {
 				err := handler.Handle(context.Background(), server)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(limiter.acquireCalls).To(Equal(1))
-				Expect(limiter.releaseCalls).To(Equal(2))
+				Expect(limiter.completeCalls).To(Equal(1))
+				Expect(limiter.releaseCalls).To(Equal(1))
 			})
 
 			It("consults the limiter around sending each block", func() {
@@ -364,14 +372,30 @@ var _ = Describe("Deliver", func() {
 				})
 			})
 
-			It("re-acquires per seek and releases after each completed delivery", func() {
+			It("re-acquires per seek and completes after each completed delivery", func() {
 				fakeReceiver.RecvReturnsOnCall(1, envelope, nil)
 				fakeReceiver.RecvReturnsOnCall(2, nil, io.EOF)
 
 				err := handler.Handle(context.Background(), server)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(limiter.acquireCalls).To(Equal(2))
-				Expect(limiter.releaseCalls).To(Equal(3))
+				Expect(limiter.completeCalls).To(Equal(2))
+				Expect(limiter.releaseCalls).To(Equal(1))
+			})
+
+			When("completing the delivery fails", func() {
+				BeforeEach(func() {
+					limiter.completeErr = errors.New("wait budget exhausted")
+				})
+
+				It("sends a service unavailable status after the successful delivery", func() {
+					err := handler.Handle(context.Background(), server)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(1))
+					Expect(fakeResponseSender.SendStatusResponseCallCount()).To(Equal(2))
+					Expect(fakeResponseSender.SendStatusResponseArgsForCall(0)).To(Equal(cb.Status_SUCCESS))
+					Expect(fakeResponseSender.SendStatusResponseArgsForCall(1)).To(Equal(cb.Status_SERVICE_UNAVAILABLE))
+				})
 			})
 
 			When("the limiter rejects the session", func() {

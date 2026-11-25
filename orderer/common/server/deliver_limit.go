@@ -154,13 +154,14 @@ func newDeliverSession(limiter *deliverConcurrencyLimiter) *deliverSession {
 }
 
 // deliverSession tracks a single stream's permits: a pre-auth permit held
-// from stream start until the first authenticated admission, and a
-// request-class permit held while a seek request is being served.
+// whenever the stream is not serving a seek request, and a request-class
+// permit held while a seek request is being served.
 type deliverSession struct {
 	limiter *deliverConcurrencyLimiter
 	pool    deliverPool
 
 	preAuth    semaphore.Semaphore
+	acquired   bool
 	sema       semaphore.Semaphore
 	semaPool   string
 	configSema semaphore.Semaphore
@@ -170,14 +171,7 @@ type deliverSession struct {
 // bounding the number of streams whose handler is waiting for a first seek
 // request.
 func (s *deliverSession) AcquirePreAuth() error {
-	if s.limiter == nil || s.limiter.preAuthSema == nil {
-		return nil
-	}
-	if err := s.limiter.admit(s.limiter.preAuthSema, preAuthPoolName); err != nil {
-		return err
-	}
-	s.preAuth = s.limiter.preAuthSema
-	return nil
+	return s.acquirePreAuth()
 }
 
 func (s *deliverSession) releasePreAuth() {
@@ -195,20 +189,53 @@ func (s *deliverSession) classify(pool deliverPool) {
 }
 
 // Acquire admits the session into its classified budget, and is a no-op
-// while the session holds a permit or when no limit is configured for that
+// once the session is admitted or when no limit is configured for that
 // budget. On the first admission the pre-auth permit is returned: the
 // stream is now bounded by its request class instead.
 func (s *deliverSession) Acquire() error {
-	if s.limiter == nil || s.sema != nil {
+	if s.limiter == nil || s.acquired {
 		return nil
 	}
 	sema, poolName := s.limiter.budget(s.pool)
 	if err := s.limiter.admit(sema, poolName); err != nil {
 		return err
 	}
+	s.acquired = true
 	s.sema = sema
 	s.semaPool = poolName
 	s.releasePreAuth()
+	return nil
+}
+
+// Complete is called when a delivery completes: the serving permits are
+// returned, and the stream is admitted back into the pre-auth budget while
+// it waits for the next seek request. An error means the stream cannot
+// stay open and is closed.
+func (s *deliverSession) Complete() error {
+	if s.limiter == nil {
+		return nil
+	}
+	if s.sema != nil {
+		s.limiter.held.With("pool", s.semaPool).Add(-1)
+		s.sema.Release()
+		s.sema = nil
+	}
+	s.acquired = false
+	s.ReleaseForBlock(nil, false)
+	return s.acquirePreAuth()
+}
+
+// acquirePreAuth admits the stream into the pre-auth budget, and is a
+// no-op when the stream already holds the permit or the budget is
+// unlimited.
+func (s *deliverSession) acquirePreAuth() error {
+	if s.limiter == nil || s.limiter.preAuthSema == nil || s.preAuth != nil {
+		return nil
+	}
+	if err := s.limiter.admit(s.limiter.preAuthSema, preAuthPoolName); err != nil {
+		return err
+	}
+	s.preAuth = s.limiter.preAuthSema
 	return nil
 }
 
@@ -253,6 +280,7 @@ func (s *deliverSession) Release() {
 		s.sema.Release()
 		s.sema = nil
 	}
+	s.acquired = false
 	s.ReleaseForBlock(nil, false)
 }
 
@@ -352,10 +380,12 @@ func seekContentType(env *cb.Envelope) ab.SeekInfo_SeekContentType {
 // timeout while the handler waits for a seek request, so idle streams
 // cannot hold goroutines forever. The timeout applies to every receive:
 // while a seek is being served the handler does not call Recv, so
-// long-lived deliveries are unaffected.
+// long-lived deliveries are unaffected. onTimeout, when set, is called
+// when the timeout fires so the handler can be aborted promptly.
 type seekTimeoutReceiver struct {
 	deliver.Receiver
-	timeout time.Duration
+	timeout   time.Duration
+	onTimeout func()
 }
 
 func (r *seekTimeoutReceiver) Recv() (*cb.Envelope, error) {
@@ -378,6 +408,9 @@ func (r *seekTimeoutReceiver) Recv() (*cb.Envelope, error) {
 	case result := <-resultCh:
 		return result.env, result.err
 	case <-timer.C:
+		if r.onTimeout != nil {
+			r.onTimeout()
+		}
 		return nil, errors.Errorf("no seek request received within %v", r.timeout)
 	}
 }

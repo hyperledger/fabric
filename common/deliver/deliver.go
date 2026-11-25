@@ -128,13 +128,15 @@ type Filtered interface {
 // per stream. AcquireForBlock and ReleaseForBlock are called around the
 // sending of each block, and may charge the block to a costlier budget
 // depending on the block; isConfigBlock is the precomputed result of
-// protoutil.IsConfigBlock for the block. Release is called when a
-// delivery completes and when the stream handler returns; it must be
-// idempotent and a no-op when no permit is held.
+// protoutil.IsConfigBlock for the block. Complete is called when a
+// delivery completes, before waiting for the next seek request; an error
+// closes the stream. Release is called when the stream handler returns;
+// it must be idempotent and a no-op when no permit is held.
 type SessionLimiter interface {
 	Acquire() error
 	AcquireForBlock(block *cb.Block, isConfigBlock bool) error
 	ReleaseForBlock(block *cb.Block, isConfigBlock bool)
+	Complete() error
 	Release()
 }
 
@@ -208,10 +210,16 @@ func (h *Handler) Handle(ctx context.Context, srv *Server) error {
 			return err
 		}
 
-		// The delivery completed; the permit is free until the next seek
-		// request arrives, so an idle stream cannot hold the budget.
+		// The delivery completed; the serving permits are freed until the
+		// next seek request arrives, so an idle stream cannot hold them.
 		if srv.SessionLimiter != nil {
-			srv.SessionLimiter.Release()
+			if err := srv.SessionLimiter.Complete(); err != nil {
+				logger.Debugf("Rejecting deliver stream from %s after a completed delivery: %s", addr, err)
+				if err := srv.SendStatusResponse(cb.Status_SERVICE_UNAVAILABLE); err != nil {
+					logger.Warningf("Error sending to %s: %s", addr, err)
+				}
+				return nil
+			}
 		}
 
 		logger.Debugf("Waiting for new SeekInfo from %s", addr)
