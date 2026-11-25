@@ -85,11 +85,13 @@ General:
 
   # Limits defines resource limits for the services exposed by the orderer.
   Limits:
-    # DeliverSeekTimeout is the maximum time the orderer waits for the
-    # first message on a deliver stream before closing it, so clients
-    # cannot hold handler goroutines with streams that never send a seek
-    # request. When the property is missing or the value is 0, the
-    # default of 30s is applied. Any negative value disables the timeout.
+    # DeliverSeekTimeout is the maximum time the orderer waits for a seek
+    # request on a deliver stream before closing it - both before the
+    # first seek and between completed deliveries - so idle streams cannot
+    # hold handler goroutines forever. A stream being served (delivering
+    # blocks, or waiting at the chain tip) is unaffected. When the
+    # property is missing or the value is 0, the default of 30s is
+    # applied. Any negative value disables the timeout.
     DeliverSeekTimeout: 30s
     # Concurrency limits the number of concurrent requests per service.
     # Each budget is independent and finite unless set to -1 (unlimited).

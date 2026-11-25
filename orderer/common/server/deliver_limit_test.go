@@ -392,32 +392,44 @@ func TestNewDeliverPolicyChecker(t *testing.T) {
 	})
 }
 
-func TestFirstMessageTimeoutReceiver(t *testing.T) {
-	t.Run("times out a silent stream", func(t *testing.T) {
+func TestSeekTimeoutReceiver(t *testing.T) {
+	t.Run("times out every idle wait", func(t *testing.T) {
 		blocking := &blockingReceiver{done: make(chan struct{})}
 		defer close(blocking.done)
-		receiver := &firstMessageTimeoutReceiver{
+		receiver := &seekTimeoutReceiver{
 			Receiver: blocking,
 			timeout:  20 * time.Millisecond,
 		}
 		start := time.Now()
 		_, err := receiver.Recv()
-		require.ErrorContains(t, err, "no message received within 20ms")
+		require.ErrorContains(t, err, "no seek request received within 20ms")
 		require.Less(t, time.Since(start), 10*time.Second)
+		// the timeout re-arms on the next wait, not only the first
+		_, err = receiver.Recv()
+		require.ErrorContains(t, err, "no seek request received within 20ms")
 	})
 
 	t.Run("passes messages through", func(t *testing.T) {
 		stub := &stubReceiver{env: &cb.Envelope{Payload: []byte("x")}}
-		receiver := &firstMessageTimeoutReceiver{
+		receiver := &seekTimeoutReceiver{
 			Receiver: stub,
 			timeout:  time.Hour,
 		}
 		env, err := receiver.Recv()
 		require.NoError(t, err)
 		require.Same(t, stub.env, env)
-		// subsequent receives bypass the timeout machinery
 		_, err = receiver.Recv()
 		require.NoError(t, err)
+	})
+
+	t.Run("disabled by non-positive timeout", func(t *testing.T) {
+		stub := &stubReceiver{err: io.EOF}
+		receiver := &seekTimeoutReceiver{
+			Receiver: stub,
+			timeout:  -1,
+		}
+		_, err := receiver.Recv()
+		require.ErrorIs(t, err, io.EOF)
 	})
 }
 

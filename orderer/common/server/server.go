@@ -188,6 +188,19 @@ func (s *server) Broadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
 	})
 }
 
+// admitPreAuth takes a pre-auth permit for the stream; on rejection it
+// sends a retryable service-unavailable status (so that block pullers back
+// off) and returns false.
+func admitPreAuth(srv ab.AtomicBroadcast_DeliverServer, session *deliverSession) bool {
+	if err := session.AcquirePreAuth(); err != nil {
+		if sendErr := (&responseSender{AtomicBroadcast_DeliverServer: srv}).SendStatusResponse(cb.Status_SERVICE_UNAVAILABLE); sendErr != nil {
+			logger.Warningf("Failed to send service-unavailable status to deliver client: %s", sendErr)
+		}
+		return false
+	}
+	return true
+}
+
 // Deliver sends a stream of blocks to a client after ordering
 func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 	logger.Debugf("Starting new Deliver handler")
@@ -199,8 +212,8 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 	}()
 
 	session := newDeliverSession(s.deliverLimiter)
-	if err := session.AcquirePreAuth(); err != nil {
-		return err
+	if !admitPreAuth(srv, session) {
+		return nil
 	}
 	return s.dh.Handle(srv.Context(), newDeliverServer(srv, s.chainSupport, session, s.deliverSeekTimeout, s.debug))
 }
@@ -221,7 +234,7 @@ func newDeliverServer(srv ab.AtomicBroadcast_DeliverServer, getChain func(string
 	return &deliver.Server{
 		PolicyChecker: newDeliverPolicyChecker(getChain, util.ExtractCertificateFromContext(srv.Context()), session),
 		Receiver: &deliverMsgTracer{
-			Receiver: &firstMessageTimeoutReceiver{Receiver: srv, timeout: seekTimeout},
+			Receiver: &seekTimeoutReceiver{Receiver: srv, timeout: seekTimeout},
 			debug:    dbg,
 			function: "Deliver",
 		},

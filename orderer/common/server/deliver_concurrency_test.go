@@ -170,8 +170,8 @@ type deliverTestService struct {
 
 func (s *deliverTestService) Deliver(stream ab.AtomicBroadcast_DeliverServer) error {
 	session := newDeliverSession(s.limiter)
-	if err := session.AcquirePreAuth(); err != nil {
-		return err
+	if !admitPreAuth(stream, session) {
+		return nil
 	}
 	return s.h.Handle(stream.Context(), newDeliverServer(stream, func(string) msgprocessor.SigFilterSupport {
 		return s.support
@@ -711,7 +711,31 @@ func TestDeliverSeekTimeout(t *testing.T) {
 	stream, err := ts.client.Deliver(context.Background())
 	require.NoError(t, err)
 	_, err = stream.Recv()
-	require.ErrorContains(t, err, "no message received within 100ms")
+	require.ErrorContains(t, err, "no seek request received within 100ms")
+}
+
+// The timeout re-arms while the handler waits for the next seek request, so
+// a stream that goes idle after a completed delivery is torn down as well.
+func TestDeliverSeekTimeoutAfterCompletedDelivery(t *testing.T) {
+	ts := startDeliverTestServer(t, -1, -1, -1, -1, 100*time.Millisecond)
+	defer ts.cleanup()
+
+	stream, err := ts.client.Deliver(context.Background())
+	require.NoError(t, err)
+	require.NoError(t, stream.Send(deliverSeekEnvelopeTo("reader", deliverLimitTestBlocks-1)))
+	for {
+		resp, err := stream.Recv()
+		require.NoError(t, err)
+		if _, isStatus := resp.GetType().(*ab.DeliverResponse_Status); isStatus {
+			require.Equal(t, cb.Status_SUCCESS, resp.GetStatus())
+			break
+		}
+	}
+
+	// the delivery completed and the stream now idles; it is closed after
+	// the seek timeout
+	_, err = stream.Recv()
+	require.ErrorContains(t, err, "no seek request received within 100ms")
 }
 
 // With TLS enabled but ClientAuthRequired disabled (the sample default),
@@ -830,18 +854,12 @@ func TestDeliverConcurrencyPreAuthBound(t *testing.T) {
 		return len(ts.limiter.preAuthSema) == preAuthLimit
 	}, 10*time.Second, 5*time.Millisecond)
 
-	// a third silent stream is rejected out of the pre-auth budget
-	probe, err := ts.client.Deliver(ctx)
-	require.NoError(t, err)
-	_, err = probe.Recv()
-	require.ErrorContains(t, err, "too many preauth requests")
+	// a third silent stream is rejected out of the pre-auth budget with a
+	// retryable status, consistent with the authenticated path
+	requireRejectedUnavailable(t, ts.client, deliverSeekEnvelope("reader"))
 
-	// and so is an authenticated reader until a silent stream goes away
-	reader, err := ts.client.Deliver(ctx)
-	require.NoError(t, err)
-	_ = reader.Send(deliverSeekEnvelope("reader"))
-	_, err = reader.Recv()
-	require.ErrorContains(t, err, "too many preauth requests")
+	// and an authenticated reader is rejected the same way until a silent
+	// stream goes away
 	require.Equal(t, 0, ts.chain.ReaderCallCount())
 
 	silentCancel()

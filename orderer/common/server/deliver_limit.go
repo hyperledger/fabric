@@ -10,7 +10,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
@@ -349,17 +348,18 @@ func seekContentType(env *cb.Envelope) ab.SeekInfo_SeekContentType {
 	return seekInfo.GetContentType()
 }
 
-// firstMessageTimeoutReceiver fails the stream when the first message does
-// not arrive within the timeout, so clients cannot hold handler goroutines
-// with streams that never send a seek request.
-type firstMessageTimeoutReceiver struct {
+// seekTimeoutReceiver fails the stream when no message arrives within the
+// timeout while the handler waits for a seek request, so idle streams
+// cannot hold goroutines forever. The timeout applies to every receive:
+// while a seek is being served the handler does not call Recv, so
+// long-lived deliveries are unaffected.
+type seekTimeoutReceiver struct {
 	deliver.Receiver
-	timeout  time.Duration
-	received atomic.Bool
+	timeout time.Duration
 }
 
-func (r *firstMessageTimeoutReceiver) Recv() (*cb.Envelope, error) {
-	if r.timeout <= 0 || r.received.Load() {
+func (r *seekTimeoutReceiver) Recv() (*cb.Envelope, error) {
+	if r.timeout <= 0 {
 		return r.Receiver.Recv()
 	}
 	type recvResult struct {
@@ -376,10 +376,9 @@ func (r *firstMessageTimeoutReceiver) Recv() (*cb.Envelope, error) {
 	defer timer.Stop()
 	select {
 	case result := <-resultCh:
-		r.received.Store(true)
 		return result.env, result.err
 	case <-timer.C:
-		return nil, errors.Errorf("no message received within %v", r.timeout)
+		return nil, errors.Errorf("no seek request received within %v", r.timeout)
 	}
 }
 

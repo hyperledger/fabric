@@ -189,11 +189,11 @@ type Throttling struct {
 type Limits struct {
 	// Concurrency limits the number of concurrent requests per service.
 	Concurrency Concurrency
-	// DeliverSeekTimeout is the maximum time the orderer waits for the
-	// first message on a deliver stream before closing it, so
-	// unauthenticated clients cannot hold goroutines with idle streams.
-	// A zero value is replaced by the default. A value of -1 disables the
-	// timeout.
+	// DeliverSeekTimeout is the maximum time the orderer waits for a seek
+	// request on a deliver stream before closing it, both before the first
+	// seek and between completed deliveries, so idle streams cannot hold
+	// handler goroutines forever. A zero value is replaced by the default.
+	// A negative value disables the timeout.
 	DeliverSeekTimeout time.Duration
 }
 
