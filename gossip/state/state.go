@@ -71,7 +71,11 @@ type GossipAdapter interface {
 	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 	// If passThrough is false, the messages are processed by the gossip layer beforehand.
 	// If passThrough is true, the gossip layer doesn't intervene and the messages
-	// can be used to send a reply back to the sender
+	// can be used to send a reply back to the sender. In that case every message
+	// holds receive-path resources accounted against the sender's connection and
+	// the node-wide budget, and the consumer MUST call comm.DisposeMessage once
+	// done with it; when a message reaches multiple subscribers, each delivery
+	// must be disposed independently.
 	Accept(acceptor common2.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan protoext.ReceivedMessage)
 
 	// UpdateLedgerHeight updates the ledger height the peer
@@ -151,6 +155,15 @@ type GossipStateProviderImpl struct {
 	stopCh chan struct{}
 
 	once sync.Once
+
+	// dispatchMu serializes state-channel handoff against teardown draining,
+	// so a racing send can neither land behind a drain nor hit a closed channel.
+	dispatchMu     sync.Mutex
+	dispatchClosed bool
+	// directSem bounds concurrent direct-message handlers.
+	directSem chan struct{}
+	// droppedDirect counts dropped direct messages to rate-limit warnings.
+	droppedDirect atomic.Int64
 
 	stateTransferActive int32
 
@@ -248,6 +261,7 @@ func NewGossipStateProvider(
 		stateResponseCh:     make(chan protoext.ReceivedMessage, config.StateChannelSize),
 		stateRequestCh:      make(chan protoext.ReceivedMessage, config.StateChannelSize),
 		stopCh:              make(chan struct{}),
+		directSem:           make(chan struct{}, 2*config.StateChannelSize),
 		stateTransferActive: 0,
 		once:                sync.Once{},
 		stateMetrics:        stateMetrics,
@@ -301,8 +315,19 @@ func (s *GossipStateProviderImpl) receiveAndQueueGossipMessages(ch <-chan *proto
 
 func (s *GossipStateProviderImpl) receiveAndDispatchDirectMessages(ch <-chan protoext.ReceivedMessage) {
 	for msg := range ch {
+		select {
+		case s.directSem <- struct{}{}:
+		case <-s.stopCh:
+			return
+		default:
+			// All handler slots busy: drop rather than spawn unbounded work.
+			s.warnDropped("direct message handler slots are saturated")
+			comm.DisposeMessage(msg)
+			continue
+		}
 		s.logger.Debug("Dispatching a message", msg)
 		go func(msg protoext.ReceivedMessage) {
+			defer func() { <-s.directSem }()
 			gm := msg.GetGossipMessage()
 			// Check type of the message
 			if protoext.IsRemoteStateMessage(gm.GossipMessage) {
@@ -319,6 +344,13 @@ func (s *GossipStateProviderImpl) receiveAndDispatchDirectMessages(ch <-chan pro
 				comm.DisposeMessage(msg)
 			}
 		}(msg)
+	}
+}
+
+// warnDropped rate-limits drop warnings: first drop and then every 1000th.
+func (s *GossipStateProviderImpl) warnDropped(what string) {
+	if n := s.droppedDirect.Add(1); n == 1 || n%1000 == 0 {
+		s.logger.Warningf("Dropping %s; %d direct state messages dropped so far on channel %s", what, n, s.chainID)
 	}
 }
 
@@ -378,7 +410,8 @@ func (s *GossipStateProviderImpl) privateDataMessage(msg protoext.ReceivedMessag
 
 // directMessage forwards the message to the matching state channel, dropping
 // it when the queue is full. It reports whether the message was forwarded and
-// its receive-path charge transferred to the queue consumer.
+// its receive-path charge transferred to the queue consumer. The handoff is
+// serialized with teardown draining so it can never panic on teardown.
 func (s *GossipStateProviderImpl) directMessage(msg protoext.ReceivedMessage) bool {
 	s.logger.Debug("[ENTER] -> directMessage")
 	defer s.logger.Debug("[EXIT] ->  directMessage")
@@ -396,40 +429,39 @@ func (s *GossipStateProviderImpl) directMessage(msg protoext.ReceivedMessage) bo
 
 	incoming := msg.GetGossipMessage()
 
+	var out chan protoext.ReceivedMessage
 	if incoming.GetStateRequest() != nil {
-		select {
-		case s.stateRequestCh <- msg:
-			return true
-		case <-s.stopCh:
-			return false
-		default:
-			s.logger.Warning("State request queue is full, dropping the request; the requester retries")
-			return false
-		}
-	} else if incoming.GetStateResponse() != nil {
-		if atomic.LoadInt32(&s.stateTransferActive) == 1 {
-			select {
-			case s.stateResponseCh <- msg:
-				return true
-			case <-s.stopCh:
-				return false
-			default:
-				s.logger.Warning("State response queue is full, dropping the response; the requester retries")
-				return false
-			}
-		}
+		out = s.stateRequestCh
+	} else if incoming.GetStateResponse() != nil && atomic.LoadInt32(&s.stateTransferActive) == 1 {
+		out = s.stateResponseCh
 	}
-	return false
+	if out == nil {
+		return false
+	}
+
+	s.dispatchMu.Lock()
+	defer s.dispatchMu.Unlock()
+	if s.dispatchClosed {
+		return false
+	}
+	select {
+	case out <- msg:
+		return true
+	default:
+		s.warnDropped("message; the state queue is full and the consumer retries")
+		return false
+	}
 }
 
 func (s *GossipStateProviderImpl) processStateRequests() {
 	for {
-		msg, stillOpen := <-s.stateRequestCh
-		if !stillOpen {
+		select {
+		case msg := <-s.stateRequestCh:
+			s.handleStateRequest(msg)
+			comm.DisposeMessage(msg)
+		case <-s.stopCh:
 			return
 		}
-		s.handleStateRequest(msg)
-		comm.DisposeMessage(msg)
 	}
 }
 
@@ -544,16 +576,51 @@ func (s *GossipStateProviderImpl) handleStateResponse(msg protoext.ReceivedMessa
 	return max, nil
 }
 
+// drainStateResponses disposes every response still queued, so none of them
+// stays charged after the transfer that expected them ended.
+func (s *GossipStateProviderImpl) drainStateResponses() {
+	s.dispatchMu.Lock()
+	defer s.dispatchMu.Unlock()
+	for {
+		select {
+		case msg := <-s.stateResponseCh:
+			comm.DisposeMessage(msg)
+		default:
+			return
+		}
+	}
+}
+
+// drainStateChannels disposes everything queued in both state channels and
+// stops further handoffs, so a racing directMessage can neither be stranded
+// behind the drain nor send on a closed channel.
+func (s *GossipStateProviderImpl) drainStateChannels() {
+	s.dispatchMu.Lock()
+	s.dispatchClosed = true
+	defer s.dispatchMu.Unlock()
+	for {
+		select {
+		case msg := <-s.stateRequestCh:
+			comm.DisposeMessage(msg)
+		case msg := <-s.stateResponseCh:
+			comm.DisposeMessage(msg)
+		default:
+			return
+		}
+	}
+}
+
 // Stop function sends halting signal to all go routines
 func (s *GossipStateProviderImpl) Stop() {
 	// Make sure stop won't be executed twice
 	// and stop channel won't be used again
 	s.once.Do(func() {
 		close(s.stopCh)
+		// Dispose queued state messages before the ledger closes; the channels
+		// themselves stay open so no send can ever panic on teardown.
+		s.drainStateChannels()
 		// Close all resources
 		s.ledger.Close()
-		close(s.stateRequestCh)
-		close(s.stateResponseCh)
 	})
 }
 
@@ -650,6 +717,9 @@ func (s *GossipStateProviderImpl) maxAvailableLedgerHeight() uint64 {
 // numbers in the range [start...end).
 func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64) {
 	atomic.StoreInt32(&s.stateTransferActive, 1)
+	// Dispose every response still queued when this transfer round ends, so
+	// unsolicited, duplicate, or late responses never stay charged.
+	defer s.drainStateResponses()
 	defer atomic.StoreInt32(&s.stateTransferActive, 0)
 
 	for prev := start; prev <= end; {
@@ -682,10 +752,7 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 
 			// Wait until timeout or response arrival
 			select {
-			case msg, stillOpen := <-s.stateResponseCh:
-				if !stillOpen {
-					return
-				}
+			case msg := <-s.stateResponseCh:
 				if msg.GetGossipMessage().Nonce !=
 					gossipMsg.GetNonce() {
 					comm.DisposeMessage(msg)
@@ -701,6 +768,8 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 				}
 				prev = index + 1
 				responseReceived = true
+			case <-s.stopCh:
+				return
 			case <-time.After(s.config.StateResponseTimeout):
 			}
 		}

@@ -30,18 +30,7 @@ func TestDirectMessageOwnership(t *testing.T) {
 	}
 
 	messageOf := func(nonce uint64, response bool) protoext.ReceivedMessage {
-		msg := &proto.GossipMessage{
-			Nonce:   nonce,
-			Channel: []byte("testchannel"),
-		}
-		if response {
-			msg.Content = &proto.GossipMessage_StateResponse{StateResponse: &proto.RemoteStateResponse{}}
-		} else {
-			msg.Content = &proto.GossipMessage_StateRequest{StateRequest: &proto.RemoteStateRequest{}}
-		}
-		sMsg, err := protoext.NoopSign(msg)
-		require.NoError(t, err)
-		return &comm.ReceivedMessageImpl{SignedGossipMessage: sMsg}
+		return stateTestMessage(t, nonce, response, "testchannel")
 	}
 
 	// Inactive state transfer: responses are dropped, not forwarded.

@@ -27,6 +27,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
+	goproto "google.golang.org/protobuf/proto"
 )
 
 const (
@@ -587,7 +588,17 @@ func (c *commImpl) publishingHandler(conn *connection, connInfo *protoext.Connec
 			SignedGossipMessage: m,
 			connInfo:            connInfo,
 		}
-		rmi.onConsumed = func() { conn.releaseReceivedBytes(m) }
+		rmi.onConsumed = func() {
+			conn.releaseReceivedBytes(m)
+			if rmi.sharedCharged.Load() {
+				size := int64(goproto.Size(m.Envelope))
+				conn.sharedChargedTotal.Add(-size)
+				conn.sharedRecvBudget.release(size)
+				if conn.retiredCharged.Load() {
+					conn.sharedRecvBudget.deadTotal.Add(-size)
+				}
+			}
+		}
 		c.msgPublisher.DeMultiplexAbortable(rmi, conn.stopChan)
 	}
 	intercept := interceptAcks(publish, connInfo.ID, c.pubSub)

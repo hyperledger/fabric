@@ -91,12 +91,12 @@ type Config struct {
 	// holding the most in-flight bytes is closed. Non-positive disables the
 	// limit.
 	// The bound covers the receive pipeline up to message handling: channel
-	// message stores, state-transfer queues, and the block payload buffer sit
-	// past that boundary and apply their own bounds (count, membership, TTL).
-	// Messages already delivered by a removed connection keep counting until
-	// consumed; that residual debt is bounded by subscriber queue capacity
-	// (tens of messages per subscription), not by this limit, so the total is
-	// not a full heap bound.
+	// message stores, state-transfer queues (peer.gossip.state.channelSize),
+	// and the block payload buffer sit past that boundary and apply their own
+	// bounds (count, membership, TTL). Messages already delivered by a removed
+	// connection keep counting until consumed; that residual debt is bounded
+	// by subscriber and state queue capacities, not by this limit, so the
+	// total is not a full heap bound.
 	MaxRecvBytesTotal int
 
 	// MsgExpirationTimeout indicate leadership message expiration timeout.

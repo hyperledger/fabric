@@ -676,9 +676,29 @@ func TestSharedBudgetPolicyUsesAggregateDebt(t *testing.T) {
 		conn.store = cs
 		return conn
 	}
-	charge := func(conn *connection, n int) {
+	// chargeDelivered emulates a delivered, unconsumed message: the receive
+	// path charges the connection on admission and the shared budget at first
+	// delivery.
+	chargeDelivered := func(conn *connection, n int) {
 		for range n {
-			conn.admitReceivedBytes(msgOf())
+			msg := msgOf()
+			conn.admitReceivedBytes(msg)
+			size := int64(goproto.Size(msg.Envelope))
+			conn.sharedChargedTotal.Add(size)
+			shared.admit(size)
+		}
+	}
+	// disposeDelivered mirrors the consumer release path for delivered bytes.
+	disposeDelivered := func(conn *connection, n int) {
+		for range n {
+			msg := msgOf()
+			conn.releaseReceivedBytes(msg)
+			size := int64(goproto.Size(msg.Envelope))
+			conn.sharedChargedTotal.Add(-size)
+			shared.release(size)
+			if conn.retiredCharged.Load() {
+				shared.deadTotal.Add(-size)
+			}
 		}
 	}
 	alive := func(conn *connection) bool {
@@ -692,7 +712,7 @@ func TestSharedBudgetPolicyUsesAggregateDebt(t *testing.T) {
 
 	// A retired connection holds 10 bytes of delivered debt.
 	dead := newChargedConn("dead")
-	charge(dead, 10)
+	chargeDelivered(dead, 10)
 	cs.evictConn(dead)
 	require.Len(t, cs.deadCharged, 1)
 	require.Equal(t, 10*msgSize, shared.inFlight.Load())
@@ -700,26 +720,22 @@ func TestSharedBudgetPolicyUsesAggregateDebt(t *testing.T) {
 	// Live debt 6: the shared counter (16) exceeds the budget, but the live
 	// debt alone does not, so nothing may be evicted.
 	liveA := newChargedConn("a")
-	charge(liveA, 6)
+	chargeDelivered(liveA, 6)
 	require.True(t, alive(liveA), "overcommit caused by retired debt must not evict live connections")
 
 	// Aggregate live debt 6+10=16 crosses the budget: the fattest live
 	// connection must be evicted, the bystander must not.
 	liveB := newChargedConn("b")
-	charge(liveB, 10)
+	chargeDelivered(liveB, 10)
 	require.False(t, alive(liveB), "largest live connection past the aggregate cap must be evicted")
 	require.True(t, alive(liveA), "bystander connection must survive")
 	require.Equal(t, 1, cs.connNum())
 
 	// Consuming the retired connections' last deliveries purges them without
 	// any further budget overage.
-	for range 10 {
-		dead.releaseReceivedBytes(msgOf())
-	}
+	disposeDelivered(dead, 10)
 	require.Len(t, cs.deadCharged, 1) // the evicted live connection remains
-	for range 10 {
-		liveB.releaseReceivedBytes(msgOf())
-	}
+	disposeDelivered(liveB, 10)
 	require.Empty(t, cs.deadCharged)
 }
 
@@ -830,7 +846,10 @@ func TestPostTeardownReceiveDoesNotCharge(t *testing.T) {
 	healthy.store = cs
 	msg, err := protoext.EnvelopeToGossipMessage(makeDataEnvelope(1024))
 	require.NoError(t, err)
-	healthy.admitReceivedBytes(msg) // fills the budget to exactly max
+	// Delivered charge on the healthy connection: fills the budget to exactly max.
+	healthy.admitReceivedBytes(msg)
+	healthy.sharedChargedTotal.Add(msgSize)
+	shared.admit(msgSize)
 
 	// The victim's reader is blocked in Recv while the connection is torn down.
 	recvGate := make(chan struct{})
@@ -1097,14 +1116,22 @@ func TestReceiveBudgetMetrics(t *testing.T) {
 	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared}, commMetrics)
 	shared.evict = func() { cs.evictLargestConnection(shared.max) }
 
+	chargeDelivered := func(conn *connection, n int) {
+		for range n {
+			msg := &protoext.SignedGossipMessage{Envelope: makeDataEnvelope(1024)}
+			conn.admitReceivedBytes(msg)
+			size := int64(goproto.Size(msg.Envelope))
+			conn.sharedChargedTotal.Add(size)
+			shared.admit(size)
+		}
+	}
+
 	dead := newConnection(nil, nil, &gmocks.MockStream{}, commMetrics, ConnConfig{sharedRecvBudget: shared})
 	dead.pkiID = []byte("dead")
 	dead.logger = flogging.MustGetLogger("test")
 	cs.pki2Conn["dead"] = dead
 	dead.store = cs
-	for range 10 {
-		dead.admitReceivedBytes(&protoext.SignedGossipMessage{Envelope: makeDataEnvelope(1024)})
-	}
+	chargeDelivered(dead, 10)
 	cs.evictConn(dead)
 
 	// Overcommit: retired debt pushes the shared counter over the budget while
@@ -1114,21 +1141,185 @@ func TestReceiveBudgetMetrics(t *testing.T) {
 	live.logger = flogging.MustGetLogger("test")
 	cs.pki2Conn["live"] = live
 	live.store = cs
-	for range 6 {
-		live.admitReceivedBytes(&protoext.SignedGossipMessage{Envelope: makeDataEnvelope(1024)})
-	}
+	chargeDelivered(live, 6)
 	require.Positive(t, provider.counter("receive_shared_overcommit").n.Load())
 
 	// Aggregate live debt past the budget: the fattest live connection evicted.
-	for range 10 {
-		live.admitReceivedBytes(&protoext.SignedGossipMessage{Envelope: makeDataEnvelope(1024)})
-	}
+	chargeDelivered(live, 10)
 	require.EqualValues(t, 1, provider.counter("receive_shared_evictions").n.Load())
 	select {
 	case <-live.stopChan:
 	default:
 		t.Fatal("largest live connection was not evicted")
 	}
+}
+
+// TestUnmatchedMessageDoesNotEvictBystander proves that a large decodable
+// message matching no subscriber is never charged to the shared budget, so it
+// cannot evict a bystander.
+func TestUnmatchedMessageDoesNotEvictBystander(t *testing.T) {
+	msgSize := int64(goproto.Size(makeDataEnvelope(1024)))
+
+	c := &commImpl{
+		msgPublisher: NewChannelDemultiplexer(),
+		pubSub:       util.NewPubSub(),
+		logger:       flogging.MustGetLogger("test"),
+	}
+	c.msgPublisher.AddChannel(func(any) bool { return false }) // matches nothing
+	defer c.msgPublisher.Close()
+
+	shared := &sharedRecvBudget{max: 3 * msgSize}
+	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{}, disabledMetrics)
+	shared.evict = func() { cs.evictLargestConnection(shared.max) }
+
+	bystander := newConnection(nil, nil, &gmocks.MockStream{}, disabledMetrics, ConnConfig{sharedRecvBudget: shared})
+	bystander.pkiID = []byte("bystander")
+	bystander.logger = flogging.MustGetLogger("test")
+	cs.pki2Conn["bystander"] = bystander
+	bystander.store = cs
+
+	var recvCalls atomic.Int64
+	flooderStream := &gmocks.MockStream{}
+	flooderStream.On("CloseSend").Return(nil)
+	flooderStream.On("Recv").Return(
+		func() *proto.Envelope {
+			recvCalls.Add(1)
+			return makeDataEnvelope(1024)
+		},
+		func() error { return nil },
+	)
+	flooder := newConnection(nil, nil, flooderStream, disabledMetrics, ConnConfig{
+		RecvBuffSize:     DefRecvBuffSize,
+		SendBuffSize:     1,
+		sharedRecvBudget: shared,
+	})
+	flooder.pkiID = []byte("flooder")
+	flooder.logger = flogging.MustGetLogger("test")
+	flooder.handler = c.publishingHandler(flooder, &protoext.ConnectionInfo{ID: flooder.pkiID})
+	cs.pki2Conn["flooder"] = flooder
+	flooder.evictFromStore = func() { cs.evictConn(flooder) }
+	flooder.store = cs
+
+	svcDone := make(chan error, 1)
+	go func() {
+		svcDone <- flooder.serviceConnection()
+	}()
+
+	// The flooder streams many unmatched messages: none may be charged.
+	require.Eventually(t, func() bool {
+		return recvCalls.Load() > 20
+	}, 30*time.Second, time.Millisecond, "flooded messages never arrived")
+	require.Zero(t, shared.inFlight.Load(), "unmatched messages charged the shared budget")
+	require.Equal(t, 2, cs.connNum())
+
+	select {
+	case <-bystander.stopChan:
+		t.Fatal("bystander connection was dropped by unmatched-message floods")
+	default:
+	}
+	flooder.close()
+	bystander.close()
+	<-svcDone
+}
+
+// TestPerConnTripDoesNotEvictOther proves that a message tripping only the
+// per-connection budget drops that connection without touching the shared
+// budget or any other connection.
+func TestPerConnTripDoesNotEvictOther(t *testing.T) {
+	msgSize := int64(goproto.Size(makeDataEnvelope(1024)))
+	shared := &sharedRecvBudget{max: 100 * msgSize}
+	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{}, disabledMetrics)
+	shared.evict = func() { cs.evictLargestConnection(shared.max) }
+
+	healthy := newConnection(nil, nil, &gmocks.MockStream{}, disabledMetrics, ConnConfig{sharedRecvBudget: shared})
+	healthy.pkiID = []byte("healthy")
+	healthy.logger = flogging.MustGetLogger("test")
+	healthy.handler = func(*protoext.SignedGossipMessage) {}
+	cs.pki2Conn["healthy"] = healthy
+	healthy.store = cs
+
+	stream := &gmocks.MockStream{}
+	stream.On("CloseSend").Return(nil)
+	stream.On("Recv").Return(
+		func() *proto.Envelope { return makeDataEnvelope(1024) },
+		func() error { return nil },
+	)
+	victim := newConnection(nil, nil, stream, disabledMetrics, ConnConfig{
+		RecvBuffSize:         DefRecvBuffSize,
+		SendBuffSize:         1,
+		MaxRecvBytesInFlight: int(2 * msgSize),
+		sharedRecvBudget:     shared,
+	})
+	victim.pkiID = []byte("victim")
+	victim.logger = flogging.MustGetLogger("test")
+	victim.handler = func(*protoext.SignedGossipMessage) {} // never consumes
+	cs.pki2Conn["victim"] = victim
+	victim.evictFromStore = func() { cs.evictConn(victim) }
+	victim.store = cs
+
+	svcDone := make(chan error, 1)
+	go func() {
+		svcDone <- victim.serviceConnection()
+	}()
+
+	require.Eventually(t, func() bool {
+		select {
+		case <-victim.stopChan:
+			return true
+		default:
+			return false
+		}
+	}, 30*time.Second, 10*time.Millisecond, "connection did not trip its per-connection budget")
+	<-svcDone
+
+	require.Zero(t, shared.inFlight.Load(), "per-connection trip charged the shared budget")
+	select {
+	case <-healthy.stopChan:
+		t.Fatal("healthy connection was evicted by another connection's per-connection trip")
+	default:
+	}
+	healthy.close()
+}
+
+// TestSharedBudgetLogsOvercommitOncePerEpisode pins the throttle: while
+// retired debt keeps the budget exceeded, the eviction scan runs once per
+// episode, not per admission.
+func TestSharedBudgetLogsOvercommitOncePerEpisode(t *testing.T) {
+	msgSize := int64(goproto.Size(makeDataEnvelope(1024)))
+	var evictCalls atomic.Int32
+	shared := &sharedRecvBudget{max: 4 * msgSize}
+	shared.evict = func() { evictCalls.Add(1) }
+
+	// Retired debt at the budget: 4 messages retired with delivered charges.
+	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared}, disabledMetrics)
+	dead := newConnection(nil, nil, &gmocks.MockStream{}, disabledMetrics, ConnConfig{sharedRecvBudget: shared})
+	dead.pkiID = []byte("dead")
+	dead.logger = flogging.MustGetLogger("test")
+	cs.pki2Conn["dead"] = dead
+	dead.store = cs
+	msg, err := protoext.EnvelopeToGossipMessage(makeDataEnvelope(1024))
+	require.NoError(t, err)
+	for range 4 {
+		dead.admitReceivedBytes(msg)
+		dead.sharedChargedTotal.Add(msgSize)
+		shared.admit(msgSize)
+	}
+	cs.evictConn(dead)
+	require.EqualValues(t, 0, evictCalls.Load(), "no scan expected before the budget is exceeded")
+
+	// Sustained live admissions while the budget is exceeded by retired debt:
+	// one scan per episode, not per admission.
+	for range 4 {
+		shared.admit(msgSize)
+	}
+	require.EqualValues(t, 1, evictCalls.Load(), "overcommit scan must run once per episode, not per admission")
+
+	// A new episode after draining below the budget scans again.
+	for range 4 {
+		shared.release(msgSize)
+	}
+	shared.admit(msgSize)
+	require.EqualValues(t, 2, evictCalls.Load(), "a new overcommit episode must scan once more")
 }
 
 type trackableMessage struct {
@@ -1194,12 +1385,19 @@ func TestDeMultiplexAbortable(t *testing.T) {
 }
 
 // TestSharedBudgetEvictsLargestConnection ensures a node-wide budget excess
-// drops the connection holding the most in-flight bytes, not bystanders.
+// drops the live connection holding the most in-flight bytes, not bystanders.
 func TestSharedBudgetEvictsLargestConnection(t *testing.T) {
 	bigPayload := 1 << 20
 	bigSize := int64(goproto.Size(makeDataEnvelope(bigPayload)))
 
-	shared := &sharedRecvBudget{max: 12 * bigSize}
+	c := &commImpl{
+		msgPublisher: NewChannelDemultiplexer(),
+		pubSub:       util.NewPubSub(),
+		logger:       flogging.MustGetLogger("test"),
+	}
+	c.msgPublisher.AddChannel(func(any) bool { return true }) // stalled subscriber
+
+	shared := &sharedRecvBudget{max: 8 * bigSize}
 	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{}, disabledMetrics)
 	shared.evict = func() { cs.evictLargestConnection(shared.max) }
 
@@ -1230,7 +1428,7 @@ func TestSharedBudgetEvictsLargestConnection(t *testing.T) {
 		})
 		conn.pkiID = common.PKIidType(pkiID)
 		conn.logger = flogging.MustGetLogger("test")
-		conn.handler = func(*protoext.SignedGossipMessage) {} // never consumes
+		conn.handler = c.publishingHandler(conn, &protoext.ConnectionInfo{ID: conn.pkiID})
 		cs.pki2Conn[pkiID] = conn
 		conn.evictFromStore = func() { cs.evictConn(conn) }
 		return conn

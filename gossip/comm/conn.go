@@ -75,6 +75,11 @@ func (cs *connectionStore) retireChargedConn(conn *connection) {
 		return
 	}
 	cs.deadCharged[conn] = struct{}{}
+	// The connection's delivered charges outlive it in subscriber queues and
+	// now count as retired debt against the shared budget.
+	if b := cs.config.sharedRecvBudget; b != nil {
+		b.deadTotal.Add(conn.sharedChargedTotal.Load())
+	}
 }
 
 // removeDrainedConn drops conn from deadCharged once its charge drains to
@@ -320,21 +325,41 @@ type ConnConfig struct {
 	sharedRecvBudget *sharedRecvBudget
 }
 
-// sharedRecvBudget bounds received-but-unconsumed bytes across connections.
-// On excess, the connection holding the most in-flight bytes is evicted, so
-// bystander connections are never dropped because of another peer's flood.
+// sharedRecvBudget bounds received-but-retained bytes across connections;
+// it is charged only once a message is delivered to a subscriber. While the
+// aggregate live debt exceeds max, the live connection holding the most
+// in-flight bytes is evicted; retired (removed) connections' charges never
+// trigger an eviction.
 type sharedRecvBudget struct {
 	inFlight atomic.Int64
-	max      int64
+	// deadTotal is the part of inFlight held by removed connections.
+	deadTotal atomic.Int64
+	max       int64
 	// evict drops the connection with the most in-flight bytes.
 	evict func()
+	// overCharged marks the upward crossing so overcommit is logged and
+	// measured once per episode, not per message.
+	overCharged atomic.Bool
 }
 
 func (b *sharedRecvBudget) admit(size int64) {
 	if b == nil || b.max <= 0 {
 		return
 	}
-	if b.inFlight.Add(size) > b.max && b.evict != nil {
+	inFlight := b.inFlight.Add(size)
+	if inFlight <= b.max {
+		b.overCharged.Store(false)
+		return
+	}
+	if inFlight-b.deadTotal.Load() > b.max {
+		// Aggregate live debt alone exceeds the budget: evict the offender.
+		if b.evict != nil {
+			b.evict()
+		}
+		return
+	}
+	// Overage is retired debt: overcommit, logged once per episode.
+	if b.overCharged.CompareAndSwap(false, true) && b.evict != nil {
 		b.evict()
 	}
 }
@@ -343,14 +368,19 @@ func (b *sharedRecvBudget) release(size int64) {
 	if b == nil || b.max <= 0 {
 		return
 	}
-	b.inFlight.Add(-size)
+	if b.inFlight.Add(-size) <= b.max {
+		b.overCharged.Store(false)
+	}
 }
 
 type connection struct {
 	recvBuffSize int
 	// recvBytesInFlight tracks received bytes not yet consumed downstream, so
 	// a stalled pipeline cannot pin unbounded memory.
-	recvBytesInFlight    atomic.Int64
+	recvBytesInFlight atomic.Int64
+	// sharedChargedTotal tracks this connection's delivered-but-unconsumed
+	// bytes, the part of its debt the shared budget counts.
+	sharedChargedTotal   atomic.Int64
 	maxRecvBytesInFlight int64
 	sharedRecvBudget     *sharedRecvBudget
 	// evictFromStore removes this connection from the connection store if it
@@ -556,7 +586,6 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 			}
 			if !conn.admitReceivedBytes(msg) {
 				conn.recvMu.Unlock()
-				conn.releaseReceivedBytes(msg) // never delivered
 				err = errors.Errorf("received bytes in flight exceed the per-connection limit of %d bytes", conn.maxRecvBytesInFlight)
 				conn.logger.Warningf("Dropping connection: %v", err)
 				conn.metrics.RecvBudgetDrops.Add(1)
@@ -581,25 +610,26 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 	}
 }
 
-// admitReceivedBytes charges the message's wire size to the shared budget and
-// the connection's receive budget; false means the connection's own budget is
-// exceeded and the connection must be dropped to bound retained memory.
+// admitReceivedBytes charges the message's wire size to the connection's
+// receive budget; false means the budget is exceeded and the connection must
+// be dropped to bound retained memory. The shared budget is charged later, at
+// first delivery, so never-retained messages cannot trigger a node-wide
+// eviction.
 func (conn *connection) admitReceivedBytes(msg *protoext.SignedGossipMessage) bool {
 	size := int64(goproto.Size(msg.Envelope))
 	inFlight := conn.recvBytesInFlight.Add(size)
-	conn.sharedRecvBudget.admit(size)
-	if conn.maxRecvBytesInFlight <= 0 {
-		return true
+	if conn.maxRecvBytesInFlight > 0 && inFlight > conn.maxRecvBytesInFlight {
+		conn.recvBytesInFlight.Add(-size) // never retained
+		return false
 	}
-	return inFlight <= conn.maxRecvBytesInFlight
+	return true
 }
 
-// releaseReceivedBytes returns the message's wire size to both budgets once
-// the message will not be (or no longer is) retained by the receive path.
+// releaseReceivedBytes returns the message's wire size to the connection's
+// receive budget once the message will not be (or no longer is) retained by
+// the receive path.
 func (conn *connection) releaseReceivedBytes(msg *protoext.SignedGossipMessage) {
-	size := int64(goproto.Size(msg.Envelope))
-	conn.sharedRecvBudget.release(size)
-	if conn.recvBytesInFlight.Add(-size) == 0 && conn.retiredCharged.Load() && conn.store != nil {
+	if conn.recvBytesInFlight.Add(-int64(goproto.Size(msg.Envelope))) == 0 && conn.retiredCharged.Load() && conn.store != nil {
 		conn.store.removeDrainedConn(conn)
 	}
 }
