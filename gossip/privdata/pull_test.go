@@ -1167,18 +1167,29 @@ func (memberOrgsAccessFactory) AccessPolicy(config *peer.CollectionConfig, _ str
 // by dissemination and therefore stored with EndorsedAt 0, plus forgedEntries entries for the same
 // txID pushed by org2 under a collection config with the given member orgs policy.
 func newTransientStorePuller(t *testing.T, forgedEntries int, forgedPolicy *peer.CollectionPolicyConfig) (*puller, *proto.PvtDataDigest) {
+	return newTransientStorePullerWithLedgerConfig(t, forgedEntries, forgedPolicy, true)
+}
+
+// newTransientStorePullerWithLedgerConfig is newTransientStorePuller with control over whether the
+// ledger holds a config for the collection at all.
+func newTransientStorePullerWithLedgerConfig(t *testing.T, forgedEntries int, forgedPolicy *peer.CollectionPolicyConfig, inLedger bool) (*puller, *proto.PvtDataDigest) {
 	store := newTransientStore(t)
 	t.Cleanup(store.tearDown)
 
 	namespace, collection, txID := "ns1", "col1", "txID1"
 	ledgerConfig := collectionConfigWithPolicy(collection, memberOrgsPolicy("org1"), 1)
 
+	var ledgerConfigInfo *ledger.CollectionConfigInfo
+	if inLedger {
+		ledgerConfigInfo = &ledger.CollectionConfigInfo{
+			CollectionConfig: &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{ledgerConfig}},
+		}
+	}
+
 	committer := &mocks.Committer{}
 	committer.On("LedgerHeight").Return(uint64(5), nil)
 	historyRetriever := &mocks.ConfigHistoryRetriever{}
-	historyRetriever.On("MostRecentCollectionConfigBelow", mock.Anything, namespace).Return(&ledger.CollectionConfigInfo{
-		CollectionConfig: &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{ledgerConfig}},
-	}, nil)
+	historyRetriever.On("MostRecentCollectionConfigBelow", mock.Anything, namespace).Return(ledgerConfigInfo, nil)
 	committer.On("GetConfigHistoryRetriever").Return(historyRetriever, nil)
 
 	require.NoError(t, store.Persist(txID, 5, transientStoreEntry(namespace, collection, []byte("private"), ledgerConfig)))
@@ -1233,30 +1244,28 @@ func TestPullerTransientStoreNonMemberWithForgedConfig(t *testing.T) {
 
 func TestPullerTransientStoreMemberWithForgedEntries(t *testing.T) {
 	// Scenario: org1 is a member of the collection and pulls txID1 while the transient store also
-	// holds entries pushed by org2 under a forged collection config. org1 must still receive the
-	// real write set, and only that one.
-	p, dig := newTransientStorePuller(t, 20, memberOrgsPolicy("org2"))
-
-	elements := p.createResponse(pullRequestFrom("org1", dig))
-	require.Len(t, elements, 1)
-	require.Equal(t, [][]byte{[]byte("private")}, elements[0].GetPayload())
-}
-
-func TestPullerTransientStoreMemberWithForgedEntriesUnderLedgerPolicy(t *testing.T) {
-	// Scenario: org2 pushed entries for txID1 that copy the collection's real member orgs policy,
-	// which is public. The member orgs policy check cannot tell them from the real entry, so org1
-	// receives the real write set together with the forged ones and relies on its hash check to
-	// discard the latter. This documents the residual behavior; a non-member still gets nothing.
-	const forgedEntries = 3
-	p, dig := newTransientStorePuller(t, forgedEntries, memberOrgsPolicy("org1"))
-
-	require.Empty(t, p.createResponse(pullRequestFrom("org2", dig)))
+	// holds entries pushed by org2 under a forged collection config. org1 must receive the real
+	// write set. The forged ones are relayed with it, since the config an entry was pushed with
+	// says nothing about whether the entry is genuine, and the requester discards them when it
+	// checks them against the hashes in the block.
+	const forgedEntries = 20
+	p, dig := newTransientStorePuller(t, forgedEntries, memberOrgsPolicy("org2"))
 
 	elements := p.createResponse(pullRequestFrom("org1", dig))
 	require.Len(t, elements, 1)
 	payload := elements[0].GetPayload()
 	require.Len(t, payload, forgedEntries+1)
 	require.Contains(t, payload, []byte("private"))
+}
+
+func TestPullerTransientStoreNoLedgerCollectionConfig(t *testing.T) {
+	// Scenario: the ledger holds no collection config below the requested block, so there is no
+	// config to check the requester against. Neither a member nor a non-member receives an element,
+	// which is the fallback filterNotEligible applies to an empty write set list.
+	p, dig := newTransientStorePullerWithLedgerConfig(t, 3, memberOrgsPolicy("org2"), false)
+
+	require.Empty(t, p.createResponse(pullRequestFrom("org1", dig)))
+	require.Empty(t, p.createResponse(pullRequestFrom("org2", dig)))
 }
 
 func toDigKey(dig *proto.PvtDataDigest) *privdatacommon.DigKey {

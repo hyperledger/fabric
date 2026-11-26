@@ -578,11 +578,10 @@ func TestNewDataRetriever_EmptyPvtRWSetInTransientStore(t *testing.T) {
 }
 
 /*
-Test checks that write sets in the transient store are returned under the
-collection config committed to the ledger rather than the config stored with
-the entry. Entries whose member orgs policy matches the ledger config are all
-returned even if other config fields differ, while entries stored under a
-different member orgs policy are dropped.
+Test checks that all write sets the transient store holds for a txID are returned
+under the collection config committed to the ledger, whatever collection config the
+entries themselves were stored with. The stored config is supplied by whichever peer
+wrote the entry, so it decides neither who the data is released to nor what is served.
 */
 func TestNewDataRetriever_TransientStoreEntriesWithDifferentConfigs(t *testing.T) {
 	committer := &mocks.Committer{}
@@ -633,14 +632,16 @@ func TestNewDataRetriever_TransientStoreEntriesWithDifferentConfigs(t *testing.T
 	}]
 	assertion.NotNil(dig2pvtRWSet)
 	assertion.True(proto.Equal(ledgerConfig, dig2pvtRWSet.CollectionConfig))
-	assertion.ElementsMatch([]util.PrivateRWSet{{1, 2}, {3, 4}}, dig2pvtRWSet.RWSet)
+	assertion.ElementsMatch([]util.PrivateRWSet{{1, 2}, {3, 4}, {5, 6}}, dig2pvtRWSet.RWSet)
 }
 
 /*
-Test checks that an entry endorsed under a member orgs policy that a later
-collection config update replaced is not served from the transient store. The
-ledger config governs eligibility, and the data is only available from the
-ledger once the block that carries the transaction is committed.
+Test checks that an entry whose member orgs policy is not the one the ledger holds for
+the collection is still served under the ledger config. This happens in both directions
+around a collection config update: a transaction endorsed under the previous policy, and
+an entry endorsed under the new policy arriving at a peer that has not committed the
+update yet. Eligibility comes from the ledger config either way, so the entry is served
+rather than withheld until the block that carries the transaction commits.
 */
 func TestNewDataRetriever_TransientStoreEntryUnderPreviousPolicy(t *testing.T) {
 	committer := &mocks.Committer{}
@@ -682,49 +683,150 @@ func TestNewDataRetriever_TransientStoreEntryUnderPreviousPolicy(t *testing.T) {
 	dig2pvtRWSet := rwSets[*toDigKey(digest)]
 	assertion.NotNil(dig2pvtRWSet)
 	assertion.True(proto.Equal(ledgerConfig, dig2pvtRWSet.CollectionConfig))
-	assertion.Empty(dig2pvtRWSet.RWSet)
+	assertion.Equal([]util.PrivateRWSet{{1, 2}}, dig2pvtRWSet.RWSet)
 }
 
 /*
 Test checks that no private data is returned from the transient store when the
-collection config cannot be obtained from the ledger, since there is no
-trustworthy config to evaluate the requester against.
+collection config cannot be obtained from the ledger, since there is no trustworthy
+config to evaluate the requester against. This covers a ledger with no config below
+the digest's block, a config package without the digest's collection, and a failure
+of either step of the lookup.
 */
 func TestNewDataRetriever_TransientStoreNoLedgerCollectionConfig(t *testing.T) {
+	namespace := "testChaincodeName1"
+	collectionName := "testCollectionName"
+	txID := "testTxID"
+
+	tests := []struct {
+		name          string
+		configHistory func() (ledger.ConfigHistoryRetriever, error)
+	}{
+		{
+			name: "no collection config below the block",
+			configHistory: func() (ledger.ConfigHistoryRetriever, error) {
+				historyRetreiver := &mocks.ConfigHistoryRetriever{}
+				historyRetreiver.On("MostRecentCollectionConfigBelow", mock.Anything, namespace).Return(nil, nil)
+				return historyRetreiver, nil
+			},
+		},
+		{
+			name: "the collection is not in the ledger config",
+			configHistory: func() (ledger.ConfigHistoryRetriever, error) {
+				historyRetreiver := &mocks.ConfigHistoryRetriever{}
+				historyRetreiver.On("MostRecentCollectionConfigBelow", mock.Anything, namespace).Return(&ledger.CollectionConfigInfo{
+					CollectionConfig: &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{
+						collectionConfigWithPolicy("anotherCollectionName", memberOrgsPolicy("org1"), 1),
+					}},
+				}, nil)
+				return historyRetreiver, nil
+			},
+		},
+		{
+			name: "the config history retriever cannot be obtained",
+			configHistory: func() (ledger.ConfigHistoryRetriever, error) {
+				return nil, errors.New("failed to obtain ConfigHistoryRetriever")
+			},
+		},
+		{
+			name: "the collection config lookup fails",
+			configHistory: func() (ledger.ConfigHistoryRetriever, error) {
+				historyRetreiver := &mocks.ConfigHistoryRetriever{}
+				historyRetreiver.On("MostRecentCollectionConfigBelow", mock.Anything, namespace).
+					Return(nil, errors.New("failed to obtain collection config"))
+				return historyRetreiver, nil
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			store := newTransientStore(t)
+			defer store.tearDown()
+
+			committer := &mocks.Committer{}
+			committer.On("LedgerHeight").Return(uint64(1), nil)
+			committer.On("GetConfigHistoryRetriever").Return(test.configHistory())
+
+			retriever := NewDataRetriever("testchannel", store.store, committer)
+
+			store.Persist(txID, 2, transientStoreEntry(namespace, collectionName, []byte{1, 2},
+				collectionConfigWithPolicy(collectionName, memberOrgsPolicy("org1"), 1)))
+
+			digest := &gossip2.PvtDataDigest{
+				Namespace:  namespace,
+				Collection: collectionName,
+				BlockSeq:   2,
+				TxId:       txID,
+				SeqInBlock: 1,
+			}
+			rwSets, _, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{digest}, 2)
+
+			assertion := require.New(t)
+			assertion.NoError(err)
+			dig2pvtRWSet := rwSets[*toDigKey(digest)]
+			assertion.NotNil(dig2pvtRWSet)
+			assertion.Nil(dig2pvtRWSet.CollectionConfig)
+			assertion.Empty(dig2pvtRWSet.RWSet)
+		})
+	}
+}
+
+/*
+Test checks that the collection config is read from the ledger once per namespace and
+block sequence within a single CollectionRWSet call, rather than once per digest. The
+lookup creates a query executor and reads the state DB for implicit collections, and a
+pull request for one block commonly carries a digest per collection.
+*/
+func TestNewDataRetriever_TransientStoreLedgerConfigLookupCached(t *testing.T) {
 	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)
 	defer store.tearDown()
 
 	namespace := "testChaincodeName1"
-	collectionName := "testCollectionName"
+	collections := []string{"testCollectionName1", "testCollectionName2", "testCollectionName3"}
 	txID := "testTxID"
+
+	configPackage := &peer.CollectionConfigPackage{}
+	for _, collectionName := range collections {
+		configPackage.Config = append(configPackage.Config,
+			collectionConfigWithPolicy(collectionName, memberOrgsPolicy("org1"), 1))
+	}
 
 	committer.On("LedgerHeight").Return(uint64(1), nil)
 	historyRetreiver := &mocks.ConfigHistoryRetriever{}
-	historyRetreiver.On("MostRecentCollectionConfigBelow", mock.Anything, namespace).Return(nil, nil)
+	historyRetreiver.On("MostRecentCollectionConfigBelow", uint64(2), namespace).
+		Return(&ledger.CollectionConfigInfo{CollectionConfig: configPackage}, nil)
 	committer.On("GetConfigHistoryRetriever").Return(historyRetreiver, nil)
 
 	retriever := NewDataRetriever("testchannel", store.store, committer)
 
-	store.Persist(txID, 2, transientStoreEntry(namespace, collectionName, []byte{1, 2},
-		collectionConfigWithPolicy(collectionName, memberOrgsPolicy("org1"), 1)))
-
-	digest := &gossip2.PvtDataDigest{
-		Namespace:  namespace,
-		Collection: collectionName,
-		BlockSeq:   2,
-		TxId:       txID,
-		SeqInBlock: 1,
+	var digests []*gossip2.PvtDataDigest
+	for _, collectionName := range collections {
+		store.Persist(txID, 2, transientStoreEntry(namespace, collectionName, []byte{1, 2},
+			collectionConfigWithPolicy(collectionName, memberOrgsPolicy("org1"), 1)))
+		digests = append(digests, &gossip2.PvtDataDigest{
+			Namespace:  namespace,
+			Collection: collectionName,
+			BlockSeq:   2,
+			TxId:       txID,
+			SeqInBlock: 1,
+		})
 	}
-	rwSets, _, err := retriever.CollectionRWSet([]*gossip2.PvtDataDigest{digest}, 2)
+
+	rwSets, _, err := retriever.CollectionRWSet(digests, 2)
 
 	assertion := require.New(t)
 	assertion.NoError(err)
-	dig2pvtRWSet := rwSets[*toDigKey(digest)]
-	assertion.NotNil(dig2pvtRWSet)
-	assertion.Nil(dig2pvtRWSet.CollectionConfig)
-	assertion.Empty(dig2pvtRWSet.RWSet)
+	assertion.Len(rwSets, len(collections))
+	for _, digest := range digests {
+		dig2pvtRWSet := rwSets[*toDigKey(digest)]
+		assertion.NotNil(dig2pvtRWSet)
+		assertion.Equal([]util.PrivateRWSet{{1, 2}}, dig2pvtRWSet.RWSet)
+	}
+	committer.AssertNumberOfCalls(t, "GetConfigHistoryRetriever", 1)
+	historyRetreiver.AssertNumberOfCalls(t, "MostRecentCollectionConfigBelow", 1)
 }
 
 func memberOrgsPolicy(mspID string) *peer.CollectionPolicyConfig {
