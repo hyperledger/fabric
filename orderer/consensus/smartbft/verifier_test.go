@@ -7,10 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft_test
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -399,44 +401,21 @@ func TestVerifyConsenterSigSubstitutedPayload(t *testing.T) {
 	lastBlock := makeNonConfigBlock(19, 10)
 	lastConfigBlock := makeConfigBlock(10)
 
-	ledger := &mocks.Ledger{}
-	ledger.On("Height").Return(uint64(20))
-	ledger.On("Block", uint64(19)).Return(lastBlock)
-	ledger.On("Block", uint64(10)).Return(lastConfigBlock)
-
-	sequencer := &mocks.Sequencer{}
-	sequencer.On("Sequence").Return(uint64(12))
-
-	ac := &mocks.AccessController{}
-	ac.On("Evaluate", mock.Anything).Return(nil)
-
 	cv := &mocks.ConsenterVerifier{}
 	cv.On("Evaluate", mock.Anything).Return(nil)
 
-	reqInspector := &smartbft.RequestInspector{
-		ValidateIdentityStructure: func(_ *msp.SerializedIdentity) error {
-			return nil
-		},
-		Logger: logger,
-	}
-
 	rtc := smartbft.RuntimeConfig{
-		ID2Identities:          map[uint64][]byte{3: {0, 2, 4, 6}},
-		LastBlock:              lastBlock,
-		LastConfigBlock:        lastConfigBlock,
-		LastCommittedBlockHash: hex.EncodeToString(protoutil.BlockHeaderHash(lastBlock.GetHeader())),
+		ID2Identities:   map[uint64][]byte{3: {0, 2, 4, 6}},
+		LastBlock:       lastBlock,
+		LastConfigBlock: lastConfigBlock,
 	}
 	runtimeConfig := &atomic.Value{}
 	runtimeConfig.Store(rtc)
 
 	v := &smartbft.Verifier{
-		RuntimeConfig:         runtimeConfig,
-		Logger:                logger,
-		Ledger:                ledger,
-		VerificationSequencer: sequencer,
-		AccessController:      ac,
-		ConsenterVerifier:     cv,
-		ReqInspector:          reqInspector,
+		RuntimeConfig:     runtimeConfig,
+		Logger:            logger,
+		ConsenterVerifier: cv,
 	}
 
 	ss := &mocks.SignerSerializer{}
@@ -489,96 +468,173 @@ func TestVerifyConsenterSigSubstitutedPayload(t *testing.T) {
 	require.Error(t, err, "substituted payload must not pass consenter signature verification")
 	require.Contains(t, err.Error(), "data hash")
 
-	_, err = v.VerifyProposal(forgedProposal)
-	require.Error(t, err, "proposal verification must reject the same substituted payload")
+	// Mutating the already verified payload's backing array in place must not
+	// defeat the binding either: the cached hash key must not alias the payload.
+	txOffset := bytes.Index(proposal.Payload, nonConfigTx)
+	require.NotEqual(t, -1, txOffset)
+	proposal.Payload[txOffset+len(nonConfigTx)/2] ^= 0xff
+
+	_, err = v.VerifyConsenterSig(signature, proposal)
+	require.Error(t, err, "in-place mutated payload must not pass consenter signature verification")
 	require.Contains(t, err.Error(), "data hash")
+
+	proposal.Payload[txOffset+len(nonConfigTx)/2] ^= 0xff
+	_, err = v.VerifyConsenterSig(signature, proposal)
+	require.NoError(t, err, "restored payload must pass consenter signature verification")
 }
 
-func TestVerifyConsenterSigDataHashComputedOncePerProposal(t *testing.T) {
+// dataHashCountingVerifier counts block data hash computations and signs proposals
+// as consenters 3, 4 and 5.
+type dataHashCountingVerifier struct {
+	verifier     *smartbft.Verifier
+	assembler    *smartbft.Assembler
+	computations *atomic.Int32
+}
+
+func newDataHashCountingVerifier() *dataHashCountingVerifier {
 	logger := flogging.MustGetLogger("test")
 
 	lastBlock := makeNonConfigBlock(19, 10)
 	lastConfigBlock := makeConfigBlock(10)
 
-	ledger := &mocks.Ledger{}
-	ledger.On("Height").Return(uint64(20))
-	ledger.On("Block", uint64(19)).Return(lastBlock)
-	ledger.On("Block", uint64(10)).Return(lastConfigBlock)
-
-	sequencer := &mocks.Sequencer{}
-	sequencer.On("Sequence").Return(uint64(12))
-
-	ac := &mocks.AccessController{}
-	ac.On("Evaluate", mock.Anything).Return(nil)
-
 	cv := &mocks.ConsenterVerifier{}
 	cv.On("Evaluate", mock.Anything).Return(nil)
 
-	reqInspector := &smartbft.RequestInspector{
-		ValidateIdentityStructure: func(_ *msp.SerializedIdentity) error {
-			return nil
-		},
-		Logger: logger,
-	}
-
-	rtc := smartbft.RuntimeConfig{
-		ID2Identities:          map[uint64][]byte{3: {0, 2, 4, 6}, 4: {0, 2, 4, 8}, 5: {0, 2, 4, 10}},
-		LastBlock:              lastBlock,
-		LastConfigBlock:        lastConfigBlock,
-		LastCommittedBlockHash: hex.EncodeToString(protoutil.BlockHeaderHash(lastBlock.GetHeader())),
-	}
 	runtimeConfig := &atomic.Value{}
-	runtimeConfig.Store(rtc)
+	runtimeConfig.Store(smartbft.RuntimeConfig{
+		ID2Identities:   map[uint64][]byte{3: {0, 2, 4, 6}, 4: {0, 2, 4, 8}, 5: {0, 2, 4, 10}},
+		LastBlock:       lastBlock,
+		LastConfigBlock: lastConfigBlock,
+	})
 
-	var dataHashComputations atomic.Int32
-	v := &smartbft.Verifier{
-		RuntimeConfig:         runtimeConfig,
-		Logger:                logger,
-		Ledger:                ledger,
-		VerificationSequencer: sequencer,
-		AccessController:      ac,
-		ConsenterVerifier:     cv,
-		ReqInspector:          reqInspector,
-		BlockDataHash: func(blockData *cb.BlockData) ([]byte, error) {
-			dataHashComputations.Add(1)
-			return protoutil.BlockDataHash(blockData)
+	computations := &atomic.Int32{}
+	return &dataHashCountingVerifier{
+		verifier: &smartbft.Verifier{
+			RuntimeConfig:     runtimeConfig,
+			Logger:            logger,
+			ConsenterVerifier: cv,
+			BlockDataHash: func(blockData *cb.BlockData) ([]byte, error) {
+				computations.Add(1)
+				return protoutil.BlockDataHash(blockData)
+			},
 		},
+		assembler: &smartbft.Assembler{
+			VerificationSeq: func() uint64 { return 12 },
+			Logger:          logger,
+			RuntimeConfig:   runtimeConfig,
+		},
+		computations: computations,
 	}
+}
 
-	assembler := &smartbft.Assembler{
-		VerificationSeq: func() uint64 { return 12 },
-		Logger:          logger,
-		RuntimeConfig:   runtimeConfig,
+func (dcv *dataHashCountingVerifier) sign(id uint64, proposal types.Proposal) types.Signature {
+	logger := flogging.MustGetLogger("test")
+
+	ss := &mocks.SignerSerializer{}
+	ss.On("Sign", mock.Anything).Return([]byte{1, 2, 3}, nil)
+	ss.On("Serialize", mock.Anything).Return([]byte{0, 2, 4, byte(2 * id)}, nil)
+
+	s := &smartbft.Signer{
+		LastConfigBlockNum: func(_ *cb.Block) uint64 { return 10 },
+		SignerSerializer:   ss,
+		Logger:             logger,
+		ID:                 id,
 	}
+	return *s.SignProposal(proposal, nil)
+}
+
+// verifyQuorum verifies a quorum of consenter signatures over the same proposal,
+// as in a commit certificate.
+func (dcv *dataHashCountingVerifier) verifyQuorum(t *testing.T, proposal types.Proposal) {
+	t.Helper()
+	for _, id := range []uint64{3, 4, 5} {
+		_, err := dcv.verifier.VerifyConsenterSig(dcv.sign(id, proposal), proposal)
+		require.NoError(t, err)
+	}
+}
+
+func TestVerifyConsenterSigDataHashComputedOncePerProposal(t *testing.T) {
+	dcv := newDataHashCountingVerifier()
 
 	md := protoutil.MarshalOrPanic(&smartbftprotos.ViewMetadata{LatestSequence: 20, ViewId: 2})
-	proposal := assembler.AssembleProposal(md, [][]byte{nonConfigTx})
+	proposal1 := dcv.assembler.AssembleProposal(md, [][]byte{nonConfigTx})
+	otherTx := bytes.Clone(nonConfigTx)
+	otherTx[len(otherTx)-1] ^= 0xff
+	proposal2 := dcv.assembler.AssembleProposal(md, [][]byte{otherTx})
 
-	// A quorum of consenters signs the same proposal, as in a commit certificate.
-	signatures := make([]types.Signature, 0, 3)
-	for _, id := range []uint64{3, 4, 5} {
-		ss := &mocks.SignerSerializer{}
-		ss.On("Sign", mock.Anything).Return([]byte{1, 2, 3}, nil)
-		ss.On("Serialize", mock.Anything).Return([]byte{0, 2, 4, byte(2 * id)}, nil)
+	dcv.verifyQuorum(t, proposal1)
+	require.Equal(t, int32(1), dcv.computations.Load(),
+		"block data hash must be computed once per proposal, not once per consenter signature")
 
-		s := &smartbft.Signer{
-			LastConfigBlockNum: func(_ *cb.Block) uint64 {
-				return lastConfigBlock.GetHeader().GetNumber()
-			},
-			SignerSerializer: ss,
-			Logger:           logger,
-			ID:               id,
-		}
-		signatures = append(signatures, *s.SignProposal(proposal, nil))
+	// A malformed proposal must be rejected before any hashing and must not touch the cache.
+	malformed := types.Proposal{
+		Header:               proposal1.Header,
+		Metadata:             proposal1.Metadata,
+		Payload:              []byte{1, 2, 3, 4},
+		VerificationSequence: proposal1.VerificationSequence,
+	}
+	_, err := dcv.verifier.VerifyConsenterSig(dcv.sign(3, proposal1), malformed)
+	require.Error(t, err)
+	require.Equal(t, int32(1), dcv.computations.Load(), "malformed proposal must not reach the hash computation")
+
+	// A well-formed payload whose data does not match the signed header must be
+	// rejected without being retained by the cache.
+	tuple := &smartbft.ByteBufferTuple{}
+	require.NoError(t, tuple.FromBytes(proposal1.Payload))
+	blockData := &cb.BlockData{}
+	require.NoError(t, proto.Unmarshal(tuple.A, blockData))
+	blockData.Data = append(blockData.GetData(), blockData.GetData()[0])
+	tuple.A = protoutil.MarshalOrPanic(blockData)
+	forged := types.Proposal{
+		Header:               proposal1.Header,
+		Metadata:             proposal1.Metadata,
+		Payload:              tuple.ToBytes(),
+		VerificationSequence: proposal1.VerificationSequence,
+	}
+	_, err = dcv.verifier.VerifyConsenterSig(dcv.sign(3, proposal1), forged)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "data hash")
+
+	_, err = dcv.verifier.VerifyConsenterSig(dcv.sign(3, proposal1), proposal1)
+	require.NoError(t, err, "rejected payload must not poison the cached hash")
+	require.Equal(t, int32(2), dcv.computations.Load(), "rejected payload must not be retained")
+
+	dcv.verifyQuorum(t, proposal2)
+	require.Equal(t, int32(3), dcv.computations.Load(),
+		"each distinct proposal must be hashed exactly once")
+}
+
+func TestVerifyConsenterSigDataHashConcurrent(t *testing.T) {
+	dcv := newDataHashCountingVerifier()
+
+	md := protoutil.MarshalOrPanic(&smartbftprotos.ViewMetadata{LatestSequence: 20, ViewId: 2})
+	proposal := dcv.assembler.AssembleProposal(md, [][]byte{nonConfigTx})
+
+	signatures := []types.Signature{
+		dcv.sign(3, proposal),
+		dcv.sign(4, proposal),
+		dcv.sign(5, proposal),
 	}
 
-	for _, signature := range signatures {
-		_, err := v.VerifyConsenterSig(signature, proposal)
+	// Mirror commit processing, where consenter signatures over the same
+	// proposal are verified concurrently.
+	const verifications = 30
+	var wg sync.WaitGroup
+	errs := make(chan error, verifications)
+	for i := range verifications {
+		wg.Go(func() {
+			_, err := dcv.verifier.VerifyConsenterSig(signatures[i%len(signatures)], proposal)
+			errs <- err
+		})
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
 		require.NoError(t, err)
 	}
 
-	require.Equal(t, int32(1), dataHashComputations.Load(),
-		"block data hash must be computed once per proposal, not once per consenter signature")
+	require.Equal(t, int32(1), dcv.computations.Load(),
+		"concurrent verifications of the same proposal must share a single hash computation")
 }
 
 func TestVerifyProposal(t *testing.T) {
