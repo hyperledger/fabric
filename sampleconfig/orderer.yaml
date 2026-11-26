@@ -113,24 +113,44 @@ General:
       # the authenticated budgets. The default of 500 covers connection
       # churn; each stream costs only a goroutine. Set to -1 for no
       # limit.
+      # The budget is global and pre-authentication: a flood of silent
+      # streams can exhaust it until they hit DeliverSeekTimeout.
+      # Connections presenting a consenter TLS certificate fall back to
+      # a reserved allowance sized by ClusterReplication, so cluster
+      # replication is not starved; when ClusterReplication is -1 (the
+      # default) that bypass is unbounded and is not counted by the
+      # deliver_sessions_held gauge. Other clients compete for the
+      # shared budget. Limit concurrent streams per connection at the
+      # transport level to harden further.
       DeliverPreAuth: 500
       # DeliverService limits concurrent deliver sessions serving full
-      # blocks to channel readers; this is the memory-critical budget.
+      # blocks to channel readers; together with DeliverHeaderService
+      # (which retains full config blocks, see below) it is the
+      # memory-critical budget.
       # A serving stream retains roughly 2.5x the block size when
       # consumers are slow: about 5 MB at the sample PreferredMaxBytes
       # (2 MB, the size blocks are typically cut to) and about 25 MB at
-      # AbsoluteMaxBytes (10 MB, the hard ceiling). Two constraints pull
-      # in opposite directions and must BOTH be satisfied:
-      #   memory:  limit x 2.5 x AbsoluteMaxBytes <= memory budget.
-      #            The default of 80 keeps slow-drained clients within
-      #            roughly 2 GiB at the 10 MiB sample AbsoluteMaxBytes.
-      #   fan-out: limit >= (peers x channels) / orderers, with headroom.
-      #            Example: 50 peers x 10 channels on 5 orderers needs
-      #            100, which exceeds the default and would require
-      #            roughly 2.5 GiB of worst-case retention - raise the
-      #            limit and the memory budget together, or add orderers.
+      # the sample AbsoluteMaxBytes (10 MB). AbsoluteMaxBytes is set per
+      # channel in the channel configuration, so the retention figure
+      # scales with it; 10 MB is the sample value, not a ceiling.
+      # Two constraints pull in opposite directions and must BOTH be
+      # satisfied:
+      #   memory:  DeliverService x 2.5 x AbsoluteMaxBytes, plus the
+      #            DeliverHeaderService config-block term below, must
+      #            fit the memory budget. The default of 100 keeps
+      #            slow-drained clients within roughly 2.5 GiB at the
+      #            10 MiB sample AbsoluteMaxBytes.
+      #   fan-out: limit >= (peers x channels) / (orderers - f), where f
+      #            is the number of orderers expected to be unavailable,
+      #            plus headroom for reconnect churn: peers pick block
+      #            sources at random, so per-orderer load varies around
+      #            the mean and spikes during failover. Example: 50
+      #            peers x 10 channels on 5 orderers averages 100 per
+      #            orderer, which the default covers in the balanced
+      #            case; deployments provision by the formula, raising
+      #            the memory budget together with the limit.
       # Set to -1 for no limit.
-      DeliverService: 80
+      DeliverService: 100
       # DeliverHeaderService limits concurrent deliver sessions serving
       # only block headers (SeekInfo HEADER_WITH_SIG), which the BFT
       # censorship monitor opens at one long-lived stream per channel to
@@ -141,9 +161,15 @@ General:
       # 2x headroom for reconnects and retains about 64 MB worst case.
       # Exception: config blocks are delivered in full even to header
       # streams (the censorship monitor tracks configuration with them),
-      # and a stream parked on a config block is charged to the
-      # DeliverService budget instead, so large config blocks cannot
-      # bypass the memory bound. Set to -1 for no limit.
+      # and gRPC queues a sent block until the client drains it, so a
+      # slow header stream retains roughly 2.5x the config-block size
+      # (the queued block, the next marshaled send, and the handler's
+      # block), like a full-block stream. Worst-case config-block
+      # retention is therefore DeliverHeaderService x 2.5 x the largest
+      # config block (about 25 GiB at 1000 x 10 MiB sample
+      # AbsoluteMaxBytes, far less at realistic config-block sizes);
+      # size this budget with that retention in mind.
+      # Set to -1 for no limit.
       DeliverHeaderService: 1000
       # ClusterReplication limits concurrent deliver sessions serving
       # orderer-to-orderer block replication, identified by the channel's

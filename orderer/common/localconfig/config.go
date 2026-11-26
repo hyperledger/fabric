@@ -259,7 +259,7 @@ var Defaults = TopLevel{
 		},
 		Limits: Limits{
 			Concurrency: Concurrency{
-				DeliverService:       80,
+				DeliverService:       100,
 				DeliverHeaderService: 1000,
 				ClusterReplication:   -1,
 				DeliverPreAuth:       500,

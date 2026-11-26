@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -583,36 +584,9 @@ func TestDeliverConcurrencyReplicationRequiresConsenterCertificate(t *testing.T)
 }
 
 // Config blocks are sent in full even to header-only streams (the
-// censorship monitor tracks configuration with them), so they escalate to
-// the block budget instead of counting against the cheap header budget.
-func TestDeliverConcurrencyHeaderConfigBlockEscalation(t *testing.T) {
-	const (
-		clientLimit = 1
-		headerLimit = 10
-	)
-
-	blocks := []*cb.Block{makeConfigBlock(0, 128<<10)}
-	for i := 1; i < deliverLimitTestBlocks; i++ {
-		blocks = append(blocks, makeBlock(uint64(i), deliverLimitTestBlkSize))
-	}
-	ts := startDeliverTestServerWithChain(t, deliverLimitTestChainWithBlocks(blocks), clientLimit, headerLimit, -1, -1, -1)
-	defer ts.cleanup()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// fill the block budget with a slowly consumed block stream
-	require.NoError(t, openDeliver(ctx, ts.client, "reader"))
-
-	// a header stream parked on the config block is rejected from the full
-	// block budget instead of retaining the full config block for free
-	requireRejectedUnavailable(t, ts.client, deliverHeaderSeekEnvelope("reader"))
-}
-
-// A header stream that finds room in the block budget receives config
-// blocks in full, and holds the escalation permit until the seek ends:
-// gRPC may retain the sent block without backpressure, so the permit
-// cannot be returned at send time.
+// censorship monitor tracks configuration with them). A parked header
+// stream holds only its header permit, even with a config block queued
+// unread, so it cannot starve block delivery.
 func TestDeliverConcurrencyHeaderConfigBlockDelivered(t *testing.T) {
 	const clientLimit = 1
 
@@ -627,25 +601,24 @@ func TestDeliverConcurrencyHeaderConfigBlockDelivered(t *testing.T) {
 	defer cancel()
 
 	headerCtx, headerCancel := context.WithCancel(ctx)
+	defer headerCancel()
 	headerStream, err := ts.client.Deliver(headerCtx)
 	require.NoError(t, err)
 	require.NoError(t, headerStream.Send(deliverHeaderSeekEnvelope("reader")))
+
+	// the header stream is admitted and holds its header permit; with the
+	// config block possibly still queued unread, a block stream is
+	// admitted into the single-slot block budget
+	require.Eventually(t, func() bool {
+		return len(ts.limiter.headerSema) == 1
+	}, 10*time.Second, 5*time.Millisecond)
+	require.NoError(t, openDeliver(ctx, ts.client, "reader"))
+
+	// and the parked header stream is served the config block in full
 	resp, err := headerStream.Recv()
 	require.NoError(t, err)
 	require.True(t, protoutil.IsConfigBlock(resp.GetBlock()))
 	require.Len(t, resp.GetBlock().GetData().GetData(), 1)
-
-	// the header stream is parked on the next block and still holds the
-	// escalation permit, so the single-slot block budget stays full
-	requireRejectedUnavailable(t, ts.client, deliverSeekEnvelope("reader"))
-
-	// closing the header stream ends the seek and returns the permit
-	headerCancel()
-	require.Eventually(t, func() bool {
-		streamCtx, streamCancel := context.WithCancel(ctx)
-		defer streamCancel()
-		return openDeliver(streamCtx, ts.client, "reader") == nil
-	}, 30*time.Second, 50*time.Millisecond)
 }
 
 // A stream that never sends a seek request is closed after the configured
@@ -892,6 +865,227 @@ func TestDeliverConcurrencyPreAuthBound(t *testing.T) {
 		return len(ts.limiter.preAuthSema) == 0
 	}, 10*time.Second, 5*time.Millisecond)
 	require.NoError(t, openDeliver(ctx, ts.client, "reader"))
+}
+
+// gatedReader serves blocks one at a time, waiting for a gate signal
+// before each block beyond the first, so a test can change the channel
+// configuration mid-seek.
+type gatedReader struct {
+	blocks []*cb.Block
+	gate   chan struct{}
+}
+
+func (r *gatedReader) Iterator(*ab.SeekPosition) (blockledger.Iterator, uint64) {
+	return &gatedIterator{blocks: r.blocks, gate: r.gate}, 0
+}
+
+func (r *gatedReader) Height() uint64 { return uint64(len(r.blocks)) }
+
+func (r *gatedReader) RetrieveBlockByNumber(n uint64) (*cb.Block, error) {
+	if n < uint64(len(r.blocks)) {
+		return r.blocks[n], nil
+	}
+	return nil, nil
+}
+
+type gatedIterator struct {
+	blocks []*cb.Block
+	gate   chan struct{}
+	idx    int
+}
+
+func (it *gatedIterator) Next() (*cb.Block, cb.Status) {
+	if it.idx >= len(it.blocks) {
+		return nil, cb.Status_NOT_FOUND
+	}
+	if it.idx > 0 {
+		<-it.gate
+	}
+	block := it.blocks[it.idx]
+	it.idx++
+	return block, cb.Status_SUCCESS
+}
+
+func (it *gatedIterator) Close() {}
+
+// mutableChainSupport lets a test swap the orderer config, as a channel
+// configuration update does.
+type mutableChainSupport struct {
+	policyManager policies.Manager
+	ordererConfig atomic.Value
+}
+
+func (s *mutableChainSupport) PolicyManager() policies.Manager { return s.policyManager }
+
+func (s *mutableChainSupport) OrdererConfig() (channelconfig.Orderer, bool) {
+	return s.ordererConfig.Load().(channelconfig.Orderer), true
+}
+
+// A channel configuration update mid-seek re-runs classification: the
+// handler re-evaluates the policy check on every block when the config
+// sequence advances, so the changed-class guard fires while the seek is
+// being served, not only between seeks. The seek is terminated so the
+// client readmits into the new budget.
+func TestDeliverClassificationChangeMidSeekTerminatesSeek(t *testing.T) {
+	ordererCert, _, ordererCertPEM := deliverLimitTestCerts(t)
+
+	var seq atomic.Uint64
+	seq.Store(1)
+	support := &mutableChainSupport{policyManager: testDeliverPolicyManager{}}
+	support.ordererConfig.Store(channelconfig.Orderer(stubOrdererConfig{
+		state:      ab.ConsensusType_STATE_NORMAL,
+		consenters: []*cb.Consenter{{ClientTlsCert: ordererCertPEM}},
+	}))
+
+	blocks := []*cb.Block{makeBlock(0, deliverLimitTestBlkSize), makeBlock(1, deliverLimitTestBlkSize)}
+	gate := make(chan struct{}, 1)
+	chain := &mock.Chain{}
+	chain.ReaderReturns(&gatedReader{blocks: blocks, gate: gate})
+	chain.ErroredReturns(make(chan struct{}))
+	chain.SequenceStub = func() uint64 { return seq.Load() }
+
+	chainManager := &mock.ChainManager{}
+	chainManager.GetChainReturns(chain)
+	handler := deliver.NewHandler(chainManager, time.Hour, false, deliver.NewMetrics(&disabled.Provider{}), true)
+	s := &server{
+		dh:                 handler,
+		debug:              &localconfig.Debug{},
+		deliverLimiter:     newDeliverConcurrencyLimiter(1, -1, 1, -1, &disabled.Provider{}),
+		deliverSeekTimeout: -1,
+		seekTimeoutLog:     &rateLimitedLogger{interval: time.Minute, logf: func(string, ...any) {}},
+		Registrar:          &multichannel.Registrar{},
+		getChainSupport:    func(string) msgprocessor.SigFilterSupport { return support },
+	}
+
+	consenterCtx := peer.NewContext(context.Background(), &peer.Peer{
+		AuthInfo: credentials.TLSInfo{State: tls.ConnectionState{PeerCertificates: []*x509.Certificate{ordererCert}}},
+	})
+	stream := &fakeDeliverServerStream{
+		ctx:    consenterCtx,
+		recvCh: make(chan deliverRecvResult, 1),
+		sendCh: make(chan *ab.DeliverResponse, 4),
+	}
+	done := make(chan error, 1)
+	go func() { done <- s.Deliver(stream) }()
+	stream.recvCh <- deliverRecvResult{env: deliverSeekEnvelopeTo("orderer", 1)}
+
+	// the replication-classified seek delivers the first block
+	resp := <-stream.sendCh
+	require.NotNil(t, resp.GetBlock())
+	require.Len(t, s.deliverLimiter.replicationSema, 1)
+
+	// a config update removes the consenter; the next block's policy
+	// re-evaluation re-runs classification, the class changes, and the
+	// seek is terminated instead of silently switching budgets
+	seq.Store(2)
+	support.ordererConfig.Store(channelconfig.Orderer(stubOrdererConfig{state: ab.ConsensusType_STATE_NORMAL}))
+	gate <- struct{}{}
+	resp = <-stream.sendCh
+	// retryable: FORBIDDEN is read by cluster pullers as self-eviction
+	require.Equal(t, cb.Status_SERVICE_UNAVAILABLE, resp.GetStatus())
+	require.NoError(t, <-done)
+	require.Empty(t, s.deliverLimiter.replicationSema)
+}
+
+// countingChainSupport counts OrdererConfig reads - the expensive part of
+// consenter recognition, which unmarshals consensus metadata - and exposes
+// a config sequence for topology invalidation.
+type countingChainSupport struct {
+	msgprocessor.SigFilterSupport
+	ordererConfigReads *atomic.Int64
+	sequence           *atomic.Uint64
+}
+
+func (c *countingChainSupport) OrdererConfig() (channelconfig.Orderer, bool) {
+	c.ordererConfigReads.Add(1)
+	return c.SigFilterSupport.OrdererConfig()
+}
+
+func (c *countingChainSupport) Sequence() uint64 { return c.sequence.Load() }
+
+// certIsConsenter recognizes consenters with one hash probe against a
+// cached public-key set; the consenter certificates of every channel are
+// read only when the channel topology changes, however many distinct
+// certificates arrive.
+func TestCertIsConsenterCachedTopology(t *testing.T) {
+	ordererCert, otherCert, ordererCertPEM := deliverLimitTestCerts(t)
+
+	support := &mutableChainSupport{policyManager: testDeliverPolicyManager{}}
+	support.ordererConfig.Store(channelconfig.Orderer(stubOrdererConfig{
+		consenters: []*cb.Consenter{{ClientTlsCert: ordererCertPEM}},
+	}))
+	reads := &atomic.Int64{}
+	seq := &atomic.Uint64{}
+	seq.Store(1)
+	s := &server{
+		channelNames: func() []string { return []string{"mychannel"} },
+		getChainSupport: func(string) msgprocessor.SigFilterSupport {
+			return &countingChainSupport{SigFilterSupport: support, ordererConfigReads: reads, sequence: seq}
+		},
+	}
+
+	require.True(t, s.certIsConsenter(ordererCert))
+	require.False(t, s.certIsConsenter(otherCert))
+	require.Equal(t, int64(1), reads.Load(), "the first lookup reads the channel's consenter certificates once")
+
+	// repeated lookups with an unchanged topology do not rescan, however
+	// many distinct certificates arrive
+	for range 10 {
+		require.True(t, s.certIsConsenter(ordererCert))
+		require.False(t, s.certIsConsenter(otherCert))
+	}
+	require.Equal(t, int64(1), reads.Load())
+
+	// a channel configuration change rebuilds the set
+	support.ordererConfig.Store(channelconfig.Orderer(stubOrdererConfig{consenters: nil}))
+	seq.Store(2)
+	require.False(t, s.certIsConsenter(ordererCert))
+	require.Equal(t, int64(2), reads.Load())
+}
+
+// certIsConsenter is safe for concurrent use: parallel lookups race with
+// rebuilds triggered by topology changes.
+func TestConsenterKeySetConcurrent(t *testing.T) {
+	ordererCert, otherCert, ordererCertPEM := deliverLimitTestCerts(t)
+
+	support := &mutableChainSupport{policyManager: testDeliverPolicyManager{}}
+	support.ordererConfig.Store(channelconfig.Orderer(stubOrdererConfig{
+		consenters: []*cb.Consenter{{ClientTlsCert: ordererCertPEM}},
+	}))
+	reads := &atomic.Int64{}
+	seq := &atomic.Uint64{}
+	s := &server{
+		channelNames: func() []string { return []string{"mychannel"} },
+		getChainSupport: func(string) msgprocessor.SigFilterSupport {
+			return &countingChainSupport{SigFilterSupport: support, ordererConfigReads: reads, sequence: seq}
+		},
+	}
+
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+	for range 8 {
+		wg.Go(func() {
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					s.certIsConsenter(ordererCert)
+					s.certIsConsenter(otherCert)
+				}
+			}
+		})
+	}
+	// concurrent rebuild triggers
+	for range 10 {
+		seq.Add(1)
+	}
+	close(stop)
+	wg.Wait()
+
+	// with a stable topology the cached set is consistent
+	require.True(t, s.certIsConsenter(ordererCert))
+	require.False(t, s.certIsConsenter(otherCert))
 }
 
 // A flood of silent streams exhausts the shared pre-auth budget, but a

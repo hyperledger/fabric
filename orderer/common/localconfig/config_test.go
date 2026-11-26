@@ -208,7 +208,7 @@ func TestDeliverServiceConcurrencyLimit(t *testing.T) {
 		require.Equal(t, Defaults.General.Limits.Concurrency.DeliverService, uconf.General.Limits.Concurrency.DeliverService)
 		require.Equal(t, Defaults.General.Limits.Concurrency.DeliverHeaderService, uconf.General.Limits.Concurrency.DeliverHeaderService)
 		require.Equal(t, Defaults.General.Limits.Concurrency.ClusterReplication, uconf.General.Limits.Concurrency.ClusterReplication)
-		require.Equal(t, 80, uconf.General.Limits.Concurrency.DeliverService)
+		require.Equal(t, 100, uconf.General.Limits.Concurrency.DeliverService)
 		require.Equal(t, 1000, uconf.General.Limits.Concurrency.DeliverHeaderService)
 		require.Equal(t, -1, uconf.General.Limits.Concurrency.ClusterReplication)
 		require.Equal(t, 500, uconf.General.Limits.Concurrency.DeliverPreAuth)

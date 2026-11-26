@@ -7,10 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package server
 
 import (
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"maps"
 	"os"
 	"runtime/debug"
+	"sync"
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
@@ -53,6 +57,7 @@ type server struct {
 	deliverLimiter     *deliverConcurrencyLimiter
 	deliverSeekTimeout time.Duration
 	seekTimeoutLog     *rateLimitedLogger
+	consenterKeys      consenterKeySet
 	getChainSupport    func(string) msgprocessor.SigFilterSupport
 	channelNames       func() []string
 	*multichannel.Registrar
@@ -243,14 +248,44 @@ func (s *server) registrarChannelNames() []string {
 	return names
 }
 
-// certIsConsenter reports whether cert is the TLS certificate of a
-// consenter on any known channel. It runs only when the shared pre-auth
-// budget is exhausted, to let cluster replication connections into the
-// reserved allowance.
+// certIsConsenter reports whether cert's public key belongs to a consenter
+// of any known channel. It runs only when the shared pre-auth budget is
+// exhausted, to let cluster replication connections into the reserved
+// allowance. Recognition is one hash probe against the cached consenter
+// key set; the set is rebuilt only when a channel is added or a channel's
+// config sequence advances, so a flood of distinct certificates cannot
+// trigger repeated channel scans or exhaust a per-certificate cache.
 func (s *server) certIsConsenter(cert *x509.Certificate) bool {
 	if cert == nil {
 		return false
 	}
+	if !s.consenterKeys.current(s.consenterSequences()) {
+		s.rebuildConsenterKeys()
+	}
+	return s.consenterKeys.lookup(cert)
+}
+
+// consenterSequences returns the config sequence of every known channel,
+// used to detect configuration changes that invalidate the consenter set.
+func (s *server) consenterSequences() map[string]uint64 {
+	sequences := map[string]uint64{}
+	for _, name := range s.channelNames() {
+		chain := s.getChainSupport(name)
+		if chain == nil {
+			continue
+		}
+		// Every channel is recorded, so channel add/remove invalidates
+		// even when the chain cannot report its config sequence.
+		sequences[name] = 0
+		if sequencer, ok := chain.(interface{ Sequence() uint64 }); ok {
+			sequences[name] = sequencer.Sequence()
+		}
+	}
+	return sequences
+}
+
+func (s *server) rebuildConsenterKeys() {
+	keys := map[[32]byte]struct{}{}
 	for _, name := range s.channelNames() {
 		chain := s.getChainSupport(name)
 		if chain == nil {
@@ -260,11 +295,54 @@ func (s *server) certIsConsenter(cert *x509.Certificate) bool {
 		if !ok {
 			continue
 		}
-		if certMatchesConsenter(cert, consenterTLSCerts(ordererConf)) {
-			return true
+		for _, consenterCert := range consenterTLSCerts(ordererConf) {
+			if key, ok := consenterPublicKeyHash(consenterCert); ok {
+				keys[key] = struct{}{}
+			}
 		}
 	}
-	return false
+	s.consenterKeys.rebuild(s.consenterSequences(), keys)
+}
+
+// consenterKeySet caches the public keys of all channels' consenters.
+type consenterKeySet struct {
+	mu        sync.RWMutex
+	keys      map[[32]byte]struct{}
+	sequences map[string]uint64
+}
+
+func (c *consenterKeySet) current(sequences map[string]uint64) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.sequences != nil && maps.Equal(c.sequences, sequences)
+}
+
+func (c *consenterKeySet) lookup(cert *x509.Certificate) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	_, ok := c.keys[sha256.Sum256(cert.RawSubjectPublicKeyInfo)]
+	return ok
+}
+
+func (c *consenterKeySet) rebuild(sequences map[string]uint64, keys map[[32]byte]struct{}) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.keys = keys
+	c.sequences = sequences
+}
+
+// consenterPublicKeyHash parses a consenter TLS certificate (PEM or DER)
+// and returns the hash of its public key.
+func consenterPublicKeyHash(certBytes []byte) ([32]byte, bool) {
+	der := certBytes
+	if block, _ := pem.Decode(certBytes); block != nil {
+		der = block.Bytes
+	}
+	parsed, err := x509.ParseCertificate(der)
+	if err != nil {
+		return [32]byte{}, false
+	}
+	return sha256.Sum256(parsed.RawSubjectPublicKeyInfo), true
 }
 
 // chainSupport adapts the registrar to the signature the deliver policy

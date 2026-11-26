@@ -125,20 +125,35 @@ type Filtered interface {
 // SessionLimiter bounds the number of concurrent block delivery sessions.
 // Acquire is called after a seek request is authenticated and before a
 // ledger iterator is allocated for it, and may be called more than once
-// per stream. AcquireForBlock is called before each block is sent, and
-// may escalate the session to a costlier budget depending on the block;
-// isConfigBlock is the precomputed result of protoutil.IsConfigBlock for
-// the block, and an escalation permit is held until Complete or Release
-// because the runtime may retain the block after it is sent. Complete is
-// called when a delivery completes, before waiting for the next seek
-// request; an error closes the stream. Release is called when the stream
-// handler returns; it must be idempotent and a no-op when no permit is
-// held.
+// per stream. Complete is called when a delivery completes, before waiting
+// for the next seek request; an error closes the stream. Release is called
+// when the stream handler returns; it must be idempotent and a no-op when
+// no permit is held.
 type SessionLimiter interface {
 	Acquire() error
-	AcquireForBlock(isConfigBlock bool) error
 	Complete() error
 	Release()
+}
+
+// RetryableError is implemented by policy-check errors that reject the
+// request transiently; deliverBlocks answers them with SERVICE_UNAVAILABLE
+// instead of FORBIDDEN.
+type RetryableError interface {
+	error
+	Retryable()
+}
+
+// statusForPolicyError maps a policy-check failure to the response status:
+// retryable failures (such as a request class changed by a channel
+// configuration update) yield SERVICE_UNAVAILABLE, which block pullers
+// retry; everything else is FORBIDDEN, which cluster pullers treat as
+// possible self-eviction.
+func statusForPolicyError(err error) cb.Status {
+	var retryable RetryableError
+	if errors.As(err, &retryable) {
+		return cb.Status_SERVICE_UNAVAILABLE
+	}
+	return cb.Status_FORBIDDEN
 }
 
 // RecvErrorLogged is implemented by Receiver errors that the receiver has
@@ -303,8 +318,13 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	}
 
 	if err := accessControl.Evaluate(); err != nil {
-		logger.Warningf("[channel: %s] Client %s is not authorized: %s", chdr.GetChannelId(), addr, err)
-		return cb.Status_FORBIDDEN, nil
+		status := statusForPolicyError(err)
+		if status == cb.Status_SERVICE_UNAVAILABLE {
+			logger.Debugf("[channel: %s] Deliver request from %s must be resubmitted: %s", chdr.GetChannelId(), addr, err)
+		} else {
+			logger.Warningf("[channel: %s] Client %s is not authorized: %s", chdr.GetChannelId(), addr, err)
+		}
+		return status, nil
 	}
 
 	if srv.SessionLimiter != nil {
@@ -386,27 +406,26 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		number++
 
 		if err := accessControl.Evaluate(); err != nil {
-			logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.GetChannelId(), addr, err)
-			return cb.Status_FORBIDDEN, nil
+			status := statusForPolicyError(err)
+			if status == cb.Status_SERVICE_UNAVAILABLE {
+				logger.Debugf("[channel: %s] Deliver request from %s must be resubmitted: %s", chdr.GetChannelId(), addr, err)
+			} else {
+				logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.GetChannelId(), addr, err)
+			}
+			return status, nil
 		}
 
 		logger.Debugf("[channel: %s] Delivering block [%d] for (%p) for %s", chdr.GetChannelId(), block.GetHeader().GetNumber(), seekInfo, addr)
 
-		// Data blocks carry nil data for block attestations.
 		// Never mutate the block received from the iterator as it is from a cache.
-		isConfigBlock := protoutil.IsConfigBlock(block)
+		// IsConfigBlock unmarshals the block envelope, so the && short-circuit
+		// keeps it off the full-block path.
 		block2send := block
-		if seekInfo.GetContentType() == ab.SeekInfo_HEADER_WITH_SIG && !isConfigBlock {
+		if seekInfo.GetContentType() == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
+			// Data blocks carry nil data for block attestations.
 			block2send = &cb.Block{
 				Header:   block.GetHeader(),
 				Metadata: block.GetMetadata(),
-			}
-		}
-
-		if srv.SessionLimiter != nil {
-			if err := srv.SessionLimiter.AcquireForBlock(isConfigBlock); err != nil {
-				logger.Debugf("[channel: %s] Rejecting deliver request from %s: %s", chdr.GetChannelId(), addr, err)
-				return cb.Status_SERVICE_UNAVAILABLE, nil
 			}
 		}
 

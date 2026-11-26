@@ -52,8 +52,10 @@ const (
 	// memory-critical budget.
 	deliverPoolBlock deliverPool = iota
 	// deliverPoolHeader serves header-only requests (BFT censorship
-	// monitor); retained memory per stream is small except when config
-	// blocks are served, which are charged to the block budget per block.
+	// monitor). Config blocks are delivered in full even to these
+	// streams; a slow stream retains roughly 2.5x the config-block size,
+	// so worst-case config-block retention is bounded by this budget
+	// itself.
 	deliverPoolHeader
 	// deliverPoolReplication serves orderer-to-orderer block pulls,
 	// identified by the consenter client TLS certificate.
@@ -161,6 +163,11 @@ func (l *deliverConcurrencyLimiter) admit(sema semaphore.Semaphore, poolName str
 		l.held.With("pool", poolName).Add(1)
 		return nil
 	}
+	return l.reject(sema, poolName)
+}
+
+// reject counts and logs a rejection for a full budget.
+func (l *deliverConcurrencyLimiter) reject(sema semaphore.Semaphore, poolName string) error {
 	l.rejected.With("pool", poolName).Add(1)
 	l.throttles[poolName].errorf("Too many %s requests, exceeding concurrency limit (%d)", poolName, cap(sema))
 	return errors.Errorf("too many %s requests, exceeding concurrency limit (%d)", poolName, cap(sema))
@@ -191,7 +198,6 @@ type deliverSession struct {
 	acquired    bool
 	sema        semaphore.Semaphore
 	semaPool    string
-	configSema  semaphore.Semaphore
 }
 
 // AcquirePreAuth admits the stream into the pre-authentication budget,
@@ -263,21 +269,24 @@ func (s *deliverSession) acquirePreAuth() error {
 	if s.limiter == nil || s.limiter.preAuthSema == nil || s.preAuth != nil {
 		return nil
 	}
-	err := s.limiter.admit(s.limiter.preAuthSema, preAuthPoolName)
-	if err == nil {
+	// TryAcquire directly: a recognized consenter falling back to the
+	// reserved allowance is admitted, not rejected, and must not be
+	// counted in the rejection metric operators alert on.
+	if s.limiter.preAuthSema.TryAcquire() {
+		s.limiter.held.With("pool", preAuthPoolName).Add(1)
 		s.preAuth = s.limiter.preAuthSema
 		s.preAuthPool = preAuthPoolName
 		return nil
 	}
-	if !s.recognizedConsenter() {
-		return err
+	if s.recognizedConsenter() {
+		if err := s.limiter.admit(s.limiter.consenterPreAuthSema, consenterPreAuthPoolName); err != nil {
+			return err
+		}
+		s.preAuth = s.limiter.consenterPreAuthSema
+		s.preAuthPool = consenterPreAuthPoolName
+		return nil
 	}
-	if err := s.limiter.admit(s.limiter.consenterPreAuthSema, consenterPreAuthPoolName); err != nil {
-		return err
-	}
-	s.preAuth = s.limiter.consenterPreAuthSema
-	s.preAuthPool = consenterPreAuthPoolName
-	return nil
+	return s.limiter.reject(s.limiter.preAuthSema, preAuthPoolName)
 }
 
 // recognizedConsenter reports whether the stream presented a consenter
@@ -291,27 +300,7 @@ func (s *deliverSession) recognizedConsenter() bool {
 	return s.isConsenter
 }
 
-// AcquireForBlock escalates a header session that is about to send a
-// config block to the block budget: config blocks are delivered in full
-// even to header-only streams (the censorship monitor tracks configuration
-// with them), so they cost as much memory as a full-block stream. The
-// escalation permit is held for the rest of the seek, not released once
-// the block is sent: gRPC queues oversized messages without backpressure,
-// so a permit returned at send time would let retained buffers bypass the
-// block budget.
-func (s *deliverSession) AcquireForBlock(isConfigBlock bool) error {
-	if s.limiter == nil || s.pool != deliverPoolHeader || !isConfigBlock || s.configSema != nil {
-		return nil
-	}
-	sema, poolName := s.limiter.budget(deliverPoolBlock)
-	if err := s.limiter.admit(sema, poolName); err != nil {
-		return err
-	}
-	s.configSema = sema
-	return nil
-}
-
-// releaseServing returns the serving and config-escalation permits.
+// releaseServing returns the serving permit.
 func (s *deliverSession) releaseServing() {
 	if s.sema != nil {
 		s.limiter.held.With("pool", s.semaPool).Add(-1)
@@ -319,17 +308,6 @@ func (s *deliverSession) releaseServing() {
 		s.sema = nil
 	}
 	s.acquired = false
-	s.releaseConfigEscalation()
-}
-
-func (s *deliverSession) releaseConfigEscalation() {
-	if s.limiter == nil || s.configSema == nil {
-		return
-	}
-	_, poolName := s.limiter.budget(deliverPoolBlock)
-	s.limiter.held.With("pool", poolName).Add(-1)
-	s.configSema.Release()
-	s.configSema = nil
 }
 
 // Release returns the permits, and is a no-op when none are held.
@@ -360,19 +338,28 @@ func newDeliverPolicyChecker(getChain func(string) msgprocessor.SigFilterSupport
 		// deliverBlocks rejects envelopes whose payload cannot be parsed, so
 		// a parse failure here charges the memory-critical budget.
 		payload, _ := protoutil.UnmarshalPayload(env.GetPayload())
+		ordererConf, hasOrdererConf := chain.OrdererConfig()
 		pool := deliverPoolBlock
 		switch {
-		case isClusterReplication(chain, clientCert, payload, env):
+		case hasOrdererConf && isClusterReplication(chain, ordererConf, clientCert, payload, env):
 			pool = deliverPoolReplication
 		case seekContentType(payload) == ab.SeekInfo_HEADER_WITH_SIG:
 			pool = deliverPoolHeader
 		}
 		if session.classify(pool) {
-			return errors.New("deliver request class changed after a channel configuration update; resubmit the seek request")
+			// Retryable: FORBIDDEN is read by cluster pullers as possible
+			// self-eviction, but the client simply needs to readmit.
+			return retryableCheckError{errors.New("deliver request class changed after a channel configuration update; resubmit the seek request")}
 		}
 		return nil
 	})
 }
+
+// retryableCheckError marks a policy-check failure the client may retry;
+// deliverBlocks maps it to SERVICE_UNAVAILABLE instead of FORBIDDEN.
+type retryableCheckError struct{ error }
+
+func (retryableCheckError) Retryable() {}
 
 // isClusterReplication reports whether the request is an orderer-to-orderer
 // block pull: the envelope must satisfy /Channel/Orderer/Readers and the
@@ -384,15 +371,15 @@ func newDeliverPolicyChecker(getChain func(string) msgprocessor.SigFilterSupport
 // certificates whenever TLS is enabled, so the binding works whenever the
 // client presents a certificate; without TLS the request falls back to the
 // client budgets.
-func isClusterReplication(chain msgprocessor.SigFilterSupport, clientCert *x509.Certificate, payload *cb.Payload, env *cb.Envelope) bool {
+func isClusterReplication(chain msgprocessor.SigFilterSupport, ordererConf channelconfig.Orderer, clientCert *x509.Certificate, payload *cb.Payload, env *cb.Envelope) bool {
 	if clientCert == nil {
 		return false
 	}
-	if !satisfiesOrdererReadersPolicy(chain, payload, env) {
-		return false
-	}
-	ordererConf, ok := chain.OrdererConfig()
-	if !ok {
+	// In maintenance mode the signature filter has already evaluated
+	// /Channel/Orderer/Readers; evaluating it here again would re-verify
+	// the same signatures.
+	if ordererConf.ConsensusState() != ab.ConsensusType_STATE_MAINTENANCE &&
+		!satisfiesOrdererReadersPolicy(chain, payload, env) {
 		return false
 	}
 	return certMatchesConsenter(clientCert, consenterTLSCerts(ordererConf))

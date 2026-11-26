@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/deliver"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
@@ -32,7 +33,7 @@ func TestNewDeliverConcurrencyLimiter(t *testing.T) {
 	limiter := newDeliverConcurrencyLimiter(0, 0, 0, 0, &disabled.Provider{})
 	require.NotNil(t, limiter)
 	require.Equal(t, 500, cap(limiter.preAuthSema))
-	require.Equal(t, 80, cap(limiter.clientSema))
+	require.Equal(t, 100, cap(limiter.clientSema))
 	require.Equal(t, 1000, cap(limiter.headerSema))
 	require.Nil(t, limiter.replicationSema)
 	// unlimited replication: recognized consenters bypass the full pre-auth
@@ -144,6 +145,43 @@ func TestDeliverSessionConsenterPreAuthReserve(t *testing.T) {
 	require.Equal(t, preAuthPoolName, third.preAuthPool)
 }
 
+// A consenter stream admitted through the reserved allowance is not
+// counted as a rejection: operators alert on deliver_sessions_rejected,
+// and a healthy consenter reconnect burst must not trigger the alert.
+func TestDeliverSessionConsenterPreAuthReserveNotCounted(t *testing.T) {
+	counter := &metricsfakes.Counter{}
+	counter.WithReturns(counter)
+	gauge := &metricsfakes.Gauge{}
+	gauge.WithReturns(gauge)
+	provider := &metricsfakes.Provider{}
+	provider.NewCounterReturns(counter)
+	provider.NewGaugeReturns(gauge)
+
+	limiter := newDeliverConcurrencyLimiter(-1, -1, 1, 1, provider)
+
+	silent := newDeliverSession(limiter)
+	require.NoError(t, silent.AcquirePreAuth())
+
+	consenter := newDeliverSession(limiter)
+	consenter.recognizeConsenter = func() bool { return true }
+	require.NoError(t, consenter.AcquirePreAuth())
+	require.Equal(t, consenterPreAuthPoolName, consenter.preAuthPool)
+
+	require.Zero(t, counter.AddCallCount(),
+		"an admitted consenter stream must not be counted as a rejected session")
+
+	// a genuine rejection past both budgets is counted
+	other := newDeliverSession(limiter)
+	other.recognizeConsenter = func() bool { return true }
+	require.Error(t, other.AcquirePreAuth())
+	require.Equal(t, 1, counter.AddCallCount())
+	require.Equal(t, []string{"pool", consenterPreAuthPoolName}, counter.WithArgsForCall(0))
+
+	flood := newDeliverSession(limiter)
+	require.Error(t, flood.AcquirePreAuth())
+	require.Equal(t, []string{"pool", preAuthPoolName}, counter.WithArgsForCall(1))
+}
+
 // With an unlimited replication budget, recognized consenters bypass the
 // exhausted shared pre-auth budget entirely.
 func TestDeliverSessionConsenterPreAuthReserveUnlimitedReplication(t *testing.T) {
@@ -222,70 +260,6 @@ func TestDeliverSessionHeaderBudget(t *testing.T) {
 	anotherBlock := newDeliverSession(limiter)
 	err = anotherBlock.Acquire()
 	require.EqualError(t, err, "too many block requests, exceeding concurrency limit (1)")
-}
-
-// A header session serving config blocks escalates to the block budget,
-// because config blocks are sent in full even to header-only streams, and
-// holds the escalation permit until the seek completes: gRPC may retain
-// sent blocks without backpressure, so a permit released at send time
-// would let retained config blocks bypass the block budget.
-func TestDeliverSessionHeaderConfigBlockEscalation(t *testing.T) {
-	limiter := newDeliverConcurrencyLimiter(1, 1, -1, 1, &disabled.Provider{})
-
-	headerSession := newDeliverSession(limiter)
-	headerSession.classify(deliverPoolHeader)
-	require.NoError(t, headerSession.Acquire())
-
-	// normal blocks do not escalate
-	require.NoError(t, headerSession.AcquireForBlock(false))
-	require.Nil(t, headerSession.configSema)
-
-	// a config block escalates to the block budget
-	require.NoError(t, headerSession.AcquireForBlock(true))
-	require.NotNil(t, headerSession.configSema)
-
-	// the escalation is charged once, however many config blocks follow
-	require.NoError(t, headerSession.AcquireForBlock(true))
-
-	// the permit is held while the seek is parked, so the block budget
-	// stays full for block streams
-	blockSession := newDeliverSession(limiter)
-	err := blockSession.Acquire()
-	require.EqualError(t, err, "too many block requests, exceeding concurrency limit (1)")
-
-	// completing the seek returns both permits and re-acquires the
-	// pre-auth slot for the wait
-	require.NoError(t, headerSession.Complete())
-	require.Nil(t, headerSession.configSema)
-	require.NotNil(t, headerSession.preAuth)
-	require.NoError(t, blockSession.Acquire())
-	blockSession.Release()
-
-	// the next seek escalates again on the first config block
-	require.NoError(t, headerSession.Acquire())
-	require.NoError(t, headerSession.AcquireForBlock(true))
-	require.NotNil(t, headerSession.configSema)
-
-	// everything is released at stream end
-	headerSession.Release()
-	require.NoError(t, newDeliverSession(limiter).Acquire())
-}
-
-// When the block budget is full, a header session is rejected at the first
-// config block instead of retaining it.
-func TestDeliverSessionHeaderConfigBlockRejected(t *testing.T) {
-	limiter := newDeliverConcurrencyLimiter(1, 1, -1, -1, &disabled.Provider{})
-
-	blockSession := newDeliverSession(limiter)
-	require.NoError(t, blockSession.Acquire())
-
-	headerSession := newDeliverSession(limiter)
-	headerSession.classify(deliverPoolHeader)
-	require.NoError(t, headerSession.Acquire())
-
-	err := headerSession.AcquireForBlock(true)
-	require.EqualError(t, err, "too many block requests, exceeding concurrency limit (1)")
-	require.Nil(t, headerSession.configSema)
 }
 
 func TestDeliverSessionReplicationBudget(t *testing.T) {
@@ -409,7 +383,9 @@ func TestIsClusterReplication(t *testing.T) {
 		},
 	}
 	isReplication := func(support deliverTestChainSupport, cert *x509.Certificate, env *cb.Envelope) bool {
-		return isClusterReplication(support, cert, deliverSeekPayload(t, env), env)
+		ordererConf, ok := support.OrdererConfig()
+		require.True(t, ok)
+		return isClusterReplication(support, ordererConf, cert, deliverSeekPayload(t, env), env)
 	}
 
 	// a consenter client certificate with an orderer-signed envelope is replication
@@ -542,6 +518,55 @@ func TestNewDeliverPolicyChecker(t *testing.T) {
 	})
 }
 
+// In maintenance mode the signature filter already evaluates
+// /Channel/Orderer/Readers, so classification must not evaluate it again:
+// each evaluation verifies signatures.
+func TestDeliverPolicyCheckerEvaluatesOrdererReadersOnce(t *testing.T) {
+	_, otherCert, ordererCertPEM := deliverLimitTestCerts(t)
+
+	calls := 0
+	policyManager := countingPolicyManager{policies: map[string]policies.Policy{
+		policies.ChannelReaders:        countingPolicy{Policy: identitiesContaining{"orderer"}, calls: &calls},
+		policies.ChannelOrdererReaders: countingPolicy{Policy: identitiesContaining{"orderer"}, calls: &calls},
+	}}
+	support := deliverTestChainSupport{
+		policyManager: policyManager,
+		ordererConfig: stubOrdererConfig{
+			state:      ab.ConsensusType_STATE_MAINTENANCE,
+			consenters: []*cb.Consenter{{ClientTlsCert: ordererCertPEM}},
+		},
+	}
+
+	session := newDeliverSession(newDeliverConcurrencyLimiter(1, 1, 1, -1, &disabled.Provider{}))
+	checker := newDeliverPolicyChecker(func(string) msgprocessor.SigFilterSupport { return support }, otherCert, session)
+	require.NoError(t, checker.CheckPolicy(deliverSeekEnvelope("orderer"), "mychannel"))
+	require.Equal(t, 1, calls, "/Channel/Orderer/Readers is evaluated once per seek in maintenance mode")
+	require.Equal(t, deliverPoolBlock, session.pool, "the certificate is not a consenter's")
+}
+
+type countingPolicy struct {
+	policies.Policy
+	calls *int
+}
+
+func (p countingPolicy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
+	*p.calls++
+	return p.Policy.EvaluateSignedData(signatureSet)
+}
+
+type countingPolicyManager struct {
+	policies map[string]policies.Policy
+}
+
+func (m countingPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
+	policy, ok := m.policies[id]
+	return policy, ok
+}
+
+func (m countingPolicyManager) Manager([]string) (policies.Manager, bool) {
+	return nil, false
+}
+
 func TestSeekTimeoutReceiver(t *testing.T) {
 	t.Run("times out every idle wait and rate-limits the warning", func(t *testing.T) {
 		blocking := &blockingReceiver{done: make(chan struct{})}
@@ -613,7 +638,7 @@ func TestNewServerDeliverConcurrencyLimit(t *testing.T) {
 	configtest.SetDevFabricConfigPath(t)
 	conf, err := localconfig.Load()
 	require.NoError(t, err)
-	require.Equal(t, 80, conf.General.Limits.Concurrency.DeliverService)
+	require.Equal(t, 100, conf.General.Limits.Concurrency.DeliverService)
 	require.Equal(t, 1000, conf.General.Limits.Concurrency.DeliverHeaderService)
 	require.Equal(t, -1, conf.General.Limits.Concurrency.ClusterReplication)
 	require.Equal(t, 30*time.Second, conf.General.Limits.DeliverSeekTimeout)
@@ -628,7 +653,7 @@ func TestNewServerDeliverConcurrencyLimit(t *testing.T) {
 		conf.General.Limits,
 	).(*server)
 	require.NotNil(t, s.deliverLimiter)
-	require.Equal(t, 80, cap(s.deliverLimiter.clientSema))
+	require.Equal(t, 100, cap(s.deliverLimiter.clientSema))
 	require.Equal(t, 1000, cap(s.deliverLimiter.headerSema))
 	require.Nil(t, s.deliverLimiter.replicationSema)
 	require.Equal(t, 30*time.Second, s.deliverSeekTimeout)
