@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package server
 
 import (
-	"context"
+	"crypto/x509"
 	"fmt"
 	"os"
 	"runtime/debug"
@@ -52,7 +52,9 @@ type server struct {
 	debug              *localconfig.Debug
 	deliverLimiter     *deliverConcurrencyLimiter
 	deliverSeekTimeout time.Duration
+	seekTimeoutLog     *rateLimitedLogger
 	getChainSupport    func(string) msgprocessor.SigFilterSupport
+	channelNames       func() []string
 	*multichannel.Registrar
 }
 
@@ -107,9 +109,11 @@ func NewServer(
 		debug:              debug,
 		deliverLimiter:     newDeliverConcurrencyLimiter(limits.Concurrency.DeliverService, limits.Concurrency.DeliverHeaderService, limits.Concurrency.ClusterReplication, limits.Concurrency.DeliverPreAuth, metricsProvider),
 		deliverSeekTimeout: deliverSeekTimeout,
+		seekTimeoutLog:     &rateLimitedLogger{interval: time.Minute, logf: logger.Warningf},
 		Registrar:          r,
 	}
 	s.getChainSupport = s.chainSupport
+	s.channelNames = s.registrarChannelNames
 	return s
 }
 
@@ -215,13 +219,52 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 	}()
 
 	session := newDeliverSession(s.deliverLimiter)
+	if s.channelNames != nil {
+		cert := util.ExtractCertificateFromContext(srv.Context())
+		session.recognizeConsenter = func() bool { return s.certIsConsenter(cert) }
+	}
 	if !admitPreAuth(srv, session) {
 		return nil
 	}
-	// the derived context lets the seek timeout abort the handler promptly
-	ctx, cancel := context.WithCancel(srv.Context())
-	defer cancel()
-	return s.dh.Handle(ctx, newDeliverServer(srv, s.getChainSupport, session, s.deliverSeekTimeout, s.debug, cancel))
+	return s.dh.Handle(srv.Context(), newDeliverServer(srv, s.getChainSupport, session, s.deliverSeekTimeout, s.seekTimeoutLog, s.debug))
+}
+
+// registrarChannelNames returns the names of all channels known to the
+// registrar, including the system channel.
+func (s *server) registrarChannelNames() []string {
+	list := s.ChannelList()
+	names := make([]string, 0, len(list.Channels)+1)
+	for _, channel := range list.Channels {
+		names = append(names, channel.Name)
+	}
+	if list.SystemChannel != nil {
+		names = append(names, list.SystemChannel.Name)
+	}
+	return names
+}
+
+// certIsConsenter reports whether cert is the TLS certificate of a
+// consenter on any known channel. It runs only when the shared pre-auth
+// budget is exhausted, to let cluster replication connections into the
+// reserved allowance.
+func (s *server) certIsConsenter(cert *x509.Certificate) bool {
+	if cert == nil {
+		return false
+	}
+	for _, name := range s.channelNames() {
+		chain := s.getChainSupport(name)
+		if chain == nil {
+			continue
+		}
+		ordererConf, ok := chain.OrdererConfig()
+		if !ok {
+			continue
+		}
+		if certMatchesConsenter(cert, consenterTLSCerts(ordererConf)) {
+			return true
+		}
+	}
+	return false
 }
 
 // chainSupport adapts the registrar to the signature the deliver policy
@@ -236,11 +279,11 @@ func (s *server) chainSupport(channelID string) msgprocessor.SigFilterSupport {
 // newDeliverServer builds the deliver server for a stream: the policy
 // checker classifies each seek request into a concurrency budget and the
 // session limiter admits it after authentication.
-func newDeliverServer(srv ab.AtomicBroadcast_DeliverServer, getChain func(string) msgprocessor.SigFilterSupport, session *deliverSession, seekTimeout time.Duration, dbg *localconfig.Debug, onTimeout func()) *deliver.Server {
+func newDeliverServer(srv ab.AtomicBroadcast_DeliverServer, getChain func(string) msgprocessor.SigFilterSupport, session *deliverSession, seekTimeout time.Duration, timeoutLog *rateLimitedLogger, dbg *localconfig.Debug) *deliver.Server {
 	return &deliver.Server{
 		PolicyChecker: newDeliverPolicyChecker(getChain, util.ExtractCertificateFromContext(srv.Context()), session),
 		Receiver: &deliverMsgTracer{
-			Receiver: &seekTimeoutReceiver{Receiver: srv, timeout: seekTimeout, onTimeout: onTimeout},
+			Receiver: &seekTimeoutReceiver{Receiver: srv, timeout: seekTimeout, throttle: timeoutLog},
 			debug:    dbg,
 			function: "Deliver",
 		},

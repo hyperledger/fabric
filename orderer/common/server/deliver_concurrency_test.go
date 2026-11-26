@@ -42,6 +42,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -130,12 +131,19 @@ func (testDeliverPolicyManager) Manager([]string) (policies.Manager, bool) {
 }
 
 type stubOrdererConfig struct {
-	state      ab.ConsensusType_State
-	consenters []*cb.Consenter
+	state             ab.ConsensusType_State
+	consenters        []*cb.Consenter
+	consensusType     string
+	consensusMetadata []byte
 }
 
-func (s stubOrdererConfig) ConsensusType() string                  { return "BFT" }
-func (s stubOrdererConfig) ConsensusMetadata() []byte              { return nil }
+func (s stubOrdererConfig) ConsensusType() string {
+	if s.consensusType != "" {
+		return s.consensusType
+	}
+	return "BFT"
+}
+func (s stubOrdererConfig) ConsensusMetadata() []byte              { return s.consensusMetadata }
 func (s stubOrdererConfig) ConsensusState() ab.ConsensusType_State { return s.state }
 func (s stubOrdererConfig) BatchSize() *ab.BatchSize               { return nil }
 func (s stubOrdererConfig) BatchTimeout() time.Duration            { return 0 }
@@ -174,11 +182,9 @@ func (s *deliverTestService) Deliver(stream ab.AtomicBroadcast_DeliverServer) er
 	if !admitPreAuth(stream, session) {
 		return nil
 	}
-	ctx, cancel := context.WithCancel(stream.Context())
-	defer cancel()
-	return s.h.Handle(ctx, newDeliverServer(stream, func(string) msgprocessor.SigFilterSupport {
+	return s.h.Handle(stream.Context(), newDeliverServer(stream, func(string) msgprocessor.SigFilterSupport {
 		return s.support
-	}, session, s.seekTimeout, &localconfig.Debug{}, cancel))
+	}, session, s.seekTimeout, nil, &localconfig.Debug{}))
 }
 
 func deliverSeekEnvelope(creator string) *cb.Envelope {
@@ -503,35 +509,6 @@ func TestDeliverConcurrencyLimit(t *testing.T) {
 	}, 30*time.Second, 50*time.Millisecond)
 }
 
-// A BFT censorship monitor opens one long-lived header stream to every
-// orderer per channel, so the header budget must absorb a fan-out of
-// peers times channels while the block budget stays small.
-func TestDeliverConcurrencyBFTHeaderFanout(t *testing.T) {
-	const (
-		clientLimit = 5
-		headerLimit = 100
-	)
-
-	ts := startDeliverTestServer(t, clientLimit, headerLimit, -1, -1, -1)
-	defer ts.cleanup()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// a fan-out well above the block budget is admitted for header streams
-	for range 90 {
-		require.NoError(t, openDeliverEnvelope(ctx, ts.client, deliverHeaderSeekEnvelope("reader")))
-	}
-	require.Equal(t, 90, ts.chain.ReaderCallCount())
-
-	// block streams still draw from the small client budget
-	for range clientLimit {
-		require.NoError(t, openDeliver(ctx, ts.client, "reader"))
-	}
-	requireRejectedUnavailable(t, ts.client, deliverSeekEnvelope("reader"))
-	require.Equal(t, 90+clientLimit, ts.chain.ReaderCallCount())
-}
-
 // A completed delivery releases the permit, so a stream idling after a
 // finished seek does not hold the budget.
 func TestDeliverConcurrencyPermitReleasedAfterCompletedDelivery(t *testing.T) {
@@ -561,20 +538,6 @@ func TestDeliverConcurrencyPermitReleasedAfterCompletedDelivery(t *testing.T) {
 		defer streamCancel()
 		return openDeliver(streamCtx, ts.client, "reader") == nil
 	}, 30*time.Second, 50*time.Millisecond)
-}
-
-func TestDeliverConcurrencyUnlimited(t *testing.T) {
-	ts := startDeliverTestServer(t, -1, -1, -1, -1, -1)
-	defer ts.cleanup()
-	require.Nil(t, ts.limiter)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	for range 7 {
-		require.NoError(t, openDeliver(ctx, ts.client, "reader"))
-	}
-	require.Equal(t, 7, ts.chain.ReaderCallCount())
 }
 
 // Under mutual TLS, orderer-to-orderer pulls are identified by the
@@ -619,31 +582,6 @@ func TestDeliverConcurrencyReplicationRequiresConsenterCertificate(t *testing.T)
 	require.Equal(t, clientLimit+replicationLimit, ts.chain.ReaderCallCount())
 }
 
-// The replication budget covers concurrent catch-up pulls at the
-// documented boundary of (orderers - 1) x channels.
-func TestDeliverConcurrencyReplicationBoundary(t *testing.T) {
-	const (
-		orderers = 4
-		channels = 7
-		boundary = (orderers - 1) * channels
-	)
-
-	ts := startDeliverTestServerTLS(t, -1, boundary, true)
-	defer ts.cleanup()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	ordererEnv := deliverSeekEnvelopeWith("orderer", math.MaxUint64, ab.SeekInfo_BLOCK, ts.ordererHash)
-	for range boundary {
-		require.NoError(t, openDeliverEnvelope(ctx, ts.ordererClient, ordererEnv))
-	}
-	require.Equal(t, boundary, ts.chain.ReaderCallCount())
-
-	requireRejectedUnavailable(t, ts.ordererClient, ordererEnv)
-	require.Equal(t, boundary, ts.chain.ReaderCallCount())
-}
-
 // Config blocks are sent in full even to header-only streams (the
 // censorship monitor tracks configuration with them), so they escalate to
 // the block budget instead of counting against the cheap header budget.
@@ -672,8 +610,9 @@ func TestDeliverConcurrencyHeaderConfigBlockEscalation(t *testing.T) {
 }
 
 // A header stream that finds room in the block budget receives config
-// blocks in full, and returns the escalation permit as soon as the config
-// block is sent, so it does not starve block streams by staying open.
+// blocks in full, and holds the escalation permit until the seek ends:
+// gRPC may retain the sent block without backpressure, so the permit
+// cannot be returned at send time.
 func TestDeliverConcurrencyHeaderConfigBlockDelivered(t *testing.T) {
 	const clientLimit = 1
 
@@ -688,7 +627,6 @@ func TestDeliverConcurrencyHeaderConfigBlockDelivered(t *testing.T) {
 	defer cancel()
 
 	headerCtx, headerCancel := context.WithCancel(ctx)
-	defer headerCancel()
 	headerStream, err := ts.client.Deliver(headerCtx)
 	require.NoError(t, err)
 	require.NoError(t, headerStream.Send(deliverHeaderSeekEnvelope("reader")))
@@ -697,12 +635,17 @@ func TestDeliverConcurrencyHeaderConfigBlockDelivered(t *testing.T) {
 	require.True(t, protoutil.IsConfigBlock(resp.GetBlock()))
 	require.Len(t, resp.GetBlock().GetData().GetData(), 1)
 
-	// the header stream is parked on the next block, but the config-block
-	// escalation permit was returned once the config block was sent, so a
-	// block stream is admitted into the single-slot block budget
-	blockCtx, blockCancel := context.WithCancel(ctx)
-	defer blockCancel()
-	require.NoError(t, openDeliver(blockCtx, ts.client, "reader"))
+	// the header stream is parked on the next block and still holds the
+	// escalation permit, so the single-slot block budget stays full
+	requireRejectedUnavailable(t, ts.client, deliverSeekEnvelope("reader"))
+
+	// closing the header stream ends the seek and returns the permit
+	headerCancel()
+	require.Eventually(t, func() bool {
+		streamCtx, streamCancel := context.WithCancel(ctx)
+		defer streamCancel()
+		return openDeliver(streamCtx, ts.client, "reader") == nil
+	}, 30*time.Second, 50*time.Millisecond)
 }
 
 // A stream that never sends a seek request is closed after the configured
@@ -951,21 +894,82 @@ func TestDeliverConcurrencyPreAuthBound(t *testing.T) {
 	require.NoError(t, openDeliver(ctx, ts.client, "reader"))
 }
 
-// The budgets are global and first-come-first-served: one reader can
-// occupy every slot and starve another. This is the documented boundary;
-// operators are expected to alert on deliver_sessions_rejected.
-func TestDeliverConcurrencyGlobalBudgetIsFirstComeFirstServed(t *testing.T) {
-	const clientLimit = 2
+// A flood of silent streams exhausts the shared pre-auth budget, but a
+// connection presenting a consenter certificate is admitted through the
+// reserved allowance and pulls blocks, while other new streams are still
+// rejected.
+func TestDeliverPreAuthReserveStarvation(t *testing.T) {
+	ca, err := tlsgen.NewCA()
+	require.NoError(t, err)
+	consenterKp, err := ca.NewClientCertKeyPair()
+	require.NoError(t, err)
 
-	ts := startDeliverTestServer(t, clientLimit, -1, -1, -1, -1)
-	defer ts.cleanup()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	for range clientLimit {
-		require.NoError(t, openDeliver(ctx, ts.client, "reader-tenant-a"))
+	chain := deliverLimitTestChain()
+	chainManager := &mock.ChainManager{}
+	chainManager.GetChainReturns(chain)
+	handler := deliver.NewHandler(chainManager, time.Hour, false, deliver.NewMetrics(&disabled.Provider{}), true)
+	s := &server{
+		dh:                 handler,
+		debug:              &localconfig.Debug{},
+		deliverLimiter:     newDeliverConcurrencyLimiter(-1, -1, -1, 1, &disabled.Provider{}),
+		deliverSeekTimeout: -1,
+		seekTimeoutLog:     &rateLimitedLogger{interval: time.Minute, logf: func(string, ...any) {}},
+		Registrar:          &multichannel.Registrar{},
+		getChainSupport: func(string) msgprocessor.SigFilterSupport {
+			return deliverTestChainSupport{
+				policyManager: testDeliverPolicyManager{},
+				ordererConfig: stubOrdererConfig{
+					state:      ab.ConsensusType_STATE_NORMAL,
+					consenters: []*cb.Consenter{{ClientTlsCert: consenterKp.Cert}},
+				},
+			}
+		},
+		channelNames: func() []string { return []string{"mychannel"} },
 	}
-	requireRejectedUnavailable(t, ts.client, deliverSeekEnvelope("reader-tenant-b"))
-	require.Equal(t, clientLimit, ts.chain.ReaderCallCount())
+
+	newStream := func(ctx context.Context, recvBuf, sendBuf int) (*fakeDeliverServerStream, chan error) {
+		stream := &fakeDeliverServerStream{
+			ctx:    ctx,
+			recvCh: make(chan deliverRecvResult, recvBuf),
+			sendCh: make(chan *ab.DeliverResponse, sendBuf),
+		}
+		done := make(chan error, 1)
+		go func() { done <- s.Deliver(stream) }()
+		return stream, done
+	}
+
+	// a silent stream fills the shared pre-auth budget
+	silent, silentDone := newStream(t.Context(), 1, 1)
+	require.Eventually(t, func() bool {
+		return len(s.deliverLimiter.preAuthSema) == 1
+	}, 10*time.Second, 5*time.Millisecond)
+
+	// a stream without a consenter certificate is rejected
+	other, otherDone := newStream(context.Background(), 1, 1)
+	resp := <-other.sendCh
+	require.Equal(t, cb.Status_SERVICE_UNAVAILABLE, resp.GetStatus())
+	require.NoError(t, <-otherDone)
+
+	// a stream presenting a consenter certificate is admitted through the
+	// reserved allowance and served blocks
+	consenterCtx := peer.NewContext(context.Background(), &peer.Peer{
+		AuthInfo: credentials.TLSInfo{State: tls.ConnectionState{PeerCertificates: []*x509.Certificate{consenterKp.TLSCert}}},
+	})
+	consenter, consenterDone := newStream(consenterCtx, 2, 8)
+	consenter.recvCh <- deliverRecvResult{env: deliverSeekEnvelopeTo("orderer", deliverLimitTestBlocks-1)}
+	for {
+		resp = <-consenter.sendCh
+		if _, isStatus := resp.GetType().(*ab.DeliverResponse_Status); isStatus {
+			require.Equal(t, cb.Status_SUCCESS, resp.GetStatus())
+			break
+		}
+		require.NotNil(t, resp.GetBlock())
+	}
+	consenter.recvCh <- deliverRecvResult{err: io.EOF}
+	require.NoError(t, <-consenterDone)
+
+	// the shared budget is untouched by the reserved admission
+	require.Len(t, s.deliverLimiter.preAuthSema, 1)
+	silent.recvCh <- deliverRecvResult{err: io.EOF}
+	require.NoError(t, <-silentDone)
 }

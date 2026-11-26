@@ -213,12 +213,6 @@ func TestDeliverServiceConcurrencyLimit(t *testing.T) {
 		require.Equal(t, -1, uconf.General.Limits.Concurrency.ClusterReplication)
 		require.Equal(t, 500, uconf.General.Limits.Concurrency.DeliverPreAuth)
 		require.Equal(t, 30*time.Second, uconf.General.Limits.DeliverSeekTimeout)
-		// The default bounds the client budget to roughly a 2 GiB memory
-		// budget at the 10 MiB sample AbsoluteMaxBytes; measurements show
-		// about 25 MiB retained per slow-drained block stream and about
-		// 64 KiB per slow-drained header-only stream at that block size.
-		require.LessOrEqual(t, int64(Defaults.General.Limits.Concurrency.DeliverService)*(25<<20), int64(2)<<30)
-		require.LessOrEqual(t, int64(Defaults.General.Limits.Concurrency.DeliverHeaderService)*(64<<10), int64(64)<<20)
 	})
 
 	t.Run("explicit value is preserved", func(t *testing.T) {

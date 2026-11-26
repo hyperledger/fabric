@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -34,6 +35,9 @@ func TestNewDeliverConcurrencyLimiter(t *testing.T) {
 	require.Equal(t, 80, cap(limiter.clientSema))
 	require.Equal(t, 1000, cap(limiter.headerSema))
 	require.Nil(t, limiter.replicationSema)
+	// unlimited replication: recognized consenters bypass the full pre-auth
+	// budget instead of drawing from a sized reserve
+	require.Nil(t, limiter.consenterPreAuthSema)
 
 	require.Nil(t, newDeliverConcurrencyLimiter(-1, -1, -1, -1, &disabled.Provider{}))
 
@@ -42,6 +46,13 @@ func TestNewDeliverConcurrencyLimiter(t *testing.T) {
 	require.Equal(t, 80, cap(limiter.clientSema))
 	require.Equal(t, 500, cap(limiter.headerSema))
 	require.Equal(t, 20, cap(limiter.replicationSema))
+	// no pre-auth budget, no reserve
+	require.Nil(t, limiter.consenterPreAuthSema)
+
+	// the consenter pre-auth reserve is sized by the replication budget
+	limiter = newDeliverConcurrencyLimiter(80, 500, 20, 500, &disabled.Provider{})
+	require.NotNil(t, limiter)
+	require.Equal(t, 20, cap(limiter.consenterPreAuthSema))
 
 	limiter = newDeliverConcurrencyLimiter(-1, 500, -1, -1, &disabled.Provider{})
 	require.NotNil(t, limiter)
@@ -89,6 +100,64 @@ func TestDeliverSessionPreAuthBudget(t *testing.T) {
 	silent.Release()
 	other.Release()
 	require.NoError(t, newDeliverSession(limiter).Acquire())
+}
+
+// A stream presenting a consenter certificate is admitted through the
+// reserved allowance when unauthenticated streams have exhausted the
+// shared pre-auth budget; other streams are still rejected.
+func TestDeliverSessionConsenterPreAuthReserve(t *testing.T) {
+	limiter := newDeliverConcurrencyLimiter(-1, -1, 1, 1, &disabled.Provider{})
+
+	// a silent stream fills the shared pre-auth budget
+	silent := newDeliverSession(limiter)
+	require.NoError(t, silent.AcquirePreAuth())
+
+	// an unauthenticated flood stream is rejected
+	flood := newDeliverSession(limiter)
+	require.EqualError(t, flood.AcquirePreAuth(), "too many preauth requests, exceeding concurrency limit (1)")
+
+	// a stream presenting a consenter certificate falls back to the
+	// reserved allowance
+	consenter := newDeliverSession(limiter)
+	consenter.recognizeConsenter = func() bool { return true }
+	require.NoError(t, consenter.AcquirePreAuth())
+	require.Equal(t, consenterPreAuthPoolName, consenter.preAuthPool)
+
+	// the reserve is bounded as well: it is sized by the replication budget
+	second := newDeliverSession(limiter)
+	second.recognizeConsenter = func() bool { return true }
+	require.EqualError(t, second.AcquirePreAuth(), "too many consenter-preauth requests, exceeding concurrency limit (1)")
+
+	// the reserved slot is returned once the consenter stream is admitted
+	// into its request class
+	consenter.classify(deliverPoolReplication)
+	require.NoError(t, consenter.Acquire())
+	require.NoError(t, second.AcquirePreAuth())
+
+	// a consenter stream admitted while the shared budget has room uses
+	// the shared budget, keeping the reserve free
+	silent.Release()
+	second.Release()
+	third := newDeliverSession(limiter)
+	third.recognizeConsenter = func() bool { return true }
+	require.NoError(t, third.AcquirePreAuth())
+	require.Equal(t, preAuthPoolName, third.preAuthPool)
+}
+
+// With an unlimited replication budget, recognized consenters bypass the
+// exhausted shared pre-auth budget entirely.
+func TestDeliverSessionConsenterPreAuthReserveUnlimitedReplication(t *testing.T) {
+	limiter := newDeliverConcurrencyLimiter(-1, -1, -1, 1, &disabled.Provider{})
+
+	silent := newDeliverSession(limiter)
+	require.NoError(t, silent.AcquirePreAuth())
+
+	consenter := newDeliverSession(limiter)
+	consenter.recognizeConsenter = func() bool { return true }
+	require.NoError(t, consenter.AcquirePreAuth())
+
+	flood := newDeliverSession(limiter)
+	require.Error(t, flood.AcquirePreAuth())
 }
 
 func TestDeliverSessionComplete(t *testing.T) {
@@ -157,36 +226,44 @@ func TestDeliverSessionHeaderBudget(t *testing.T) {
 
 // A header session serving config blocks escalates to the block budget,
 // because config blocks are sent in full even to header-only streams, and
-// returns the permit as soon as the config block is sent.
+// holds the escalation permit until the seek completes: gRPC may retain
+// sent blocks without backpressure, so a permit released at send time
+// would let retained config blocks bypass the block budget.
 func TestDeliverSessionHeaderConfigBlockEscalation(t *testing.T) {
-	limiter := newDeliverConcurrencyLimiter(1, 1, -1, -1, &disabled.Provider{})
+	limiter := newDeliverConcurrencyLimiter(1, 1, -1, 1, &disabled.Provider{})
 
 	headerSession := newDeliverSession(limiter)
 	headerSession.classify(deliverPoolHeader)
 	require.NoError(t, headerSession.Acquire())
 
 	// normal blocks do not escalate
-	require.NoError(t, headerSession.AcquireForBlock(makeBlock(1, 4<<10), false))
+	require.NoError(t, headerSession.AcquireForBlock(false))
 	require.Nil(t, headerSession.configSema)
 
 	// a config block escalates to the block budget
-	require.NoError(t, headerSession.AcquireForBlock(makeConfigBlock(0, 4<<10), true))
+	require.NoError(t, headerSession.AcquireForBlock(true))
 	require.NotNil(t, headerSession.configSema)
 
-	// the block budget is full for block streams while the config block is in flight
+	// the escalation is charged once, however many config blocks follow
+	require.NoError(t, headerSession.AcquireForBlock(true))
+
+	// the permit is held while the seek is parked, so the block budget
+	// stays full for block streams
 	blockSession := newDeliverSession(limiter)
 	err := blockSession.Acquire()
 	require.EqualError(t, err, "too many block requests, exceeding concurrency limit (1)")
 
-	// once the config block is sent, the block permit is returned even
-	// though the header stream stays open
-	headerSession.ReleaseForBlock(makeConfigBlock(0, 4<<10), true)
+	// completing the seek returns both permits and re-acquires the
+	// pre-auth slot for the wait
+	require.NoError(t, headerSession.Complete())
 	require.Nil(t, headerSession.configSema)
+	require.NotNil(t, headerSession.preAuth)
 	require.NoError(t, blockSession.Acquire())
 	blockSession.Release()
 
-	// a later config block is charged again
-	require.NoError(t, headerSession.AcquireForBlock(makeConfigBlock(1, 4<<10), true))
+	// the next seek escalates again on the first config block
+	require.NoError(t, headerSession.Acquire())
+	require.NoError(t, headerSession.AcquireForBlock(true))
 	require.NotNil(t, headerSession.configSema)
 
 	// everything is released at stream end
@@ -206,7 +283,7 @@ func TestDeliverSessionHeaderConfigBlockRejected(t *testing.T) {
 	headerSession.classify(deliverPoolHeader)
 	require.NoError(t, headerSession.Acquire())
 
-	err := headerSession.AcquireForBlock(makeConfigBlock(0, 4<<10), true)
+	err := headerSession.AcquireForBlock(true)
 	require.EqualError(t, err, "too many block requests, exceeding concurrency limit (1)")
 	require.Nil(t, headerSession.configSema)
 }
@@ -231,30 +308,6 @@ func TestDeliverSessionReplicationBudget(t *testing.T) {
 
 	pull.Release()
 	require.NoError(t, byzantine.Acquire())
-}
-
-// The budget classification is evaluated per seek request; it is never
-// latched for the lifetime of the stream.
-func TestDeliverSessionClassificationIsPerSeek(t *testing.T) {
-	limiter := newDeliverConcurrencyLimiter(1, -1, 1, -1, &disabled.Provider{})
-
-	session := newDeliverSession(limiter)
-	session.classify(deliverPoolReplication)
-	require.NoError(t, session.Acquire())
-	session.Release()
-
-	session.classify(deliverPoolBlock)
-	require.NoError(t, session.Acquire())
-
-	// the replication budget is untouched by the client permit now held
-	pull := newDeliverSession(limiter)
-	pull.classify(deliverPoolReplication)
-	require.NoError(t, pull.Acquire())
-
-	// and the client budget is full for other client streams
-	other := newDeliverSession(limiter)
-	err := other.Acquire()
-	require.EqualError(t, err, "too many block requests, exceeding concurrency limit (1)")
 }
 
 func TestDeliverSessionUnlimitedWhenNoLimiter(t *testing.T) {
@@ -307,18 +360,28 @@ func TestDeliverSessionRejectionMetricAndThrottledLog(t *testing.T) {
 	require.Equal(t, 1, logCount, "expected rejection logs to be rate limited")
 }
 
+// deliverSeekPayload unmarshals the payload of a test seek envelope.
+func deliverSeekPayload(t *testing.T, env *cb.Envelope) *cb.Payload {
+	t.Helper()
+	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
+	require.NoError(t, err)
+	return payload
+}
+
 func TestSeekContentType(t *testing.T) {
-	require.Equal(t, ab.SeekInfo_HEADER_WITH_SIG, seekContentType(deliverHeaderSeekEnvelope("reader")))
-	require.Equal(t, ab.SeekInfo_BLOCK, seekContentType(deliverSeekEnvelope("reader")))
-	require.Equal(t, ab.SeekInfo_BLOCK, seekContentType(&cb.Envelope{Payload: []byte("garbage")}))
+	require.Equal(t, ab.SeekInfo_HEADER_WITH_SIG, seekContentType(deliverSeekPayload(t, deliverHeaderSeekEnvelope("reader"))))
+	require.Equal(t, ab.SeekInfo_BLOCK, seekContentType(deliverSeekPayload(t, deliverSeekEnvelope("reader"))))
+	require.Equal(t, ab.SeekInfo_BLOCK, seekContentType(nil))
 }
 
 func TestSatisfiesOrdererReadersPolicy(t *testing.T) {
 	support := deliverTestChainSupport{policyManager: testDeliverPolicyManager{}}
 
-	require.True(t, satisfiesOrdererReadersPolicy(support, deliverSeekEnvelope("orderer")))
-	require.False(t, satisfiesOrdererReadersPolicy(support, deliverSeekEnvelope("reader")))
-	require.False(t, satisfiesOrdererReadersPolicy(support, nil))
+	ordererEnv := deliverSeekEnvelope("orderer")
+	require.True(t, satisfiesOrdererReadersPolicy(support, deliverSeekPayload(t, ordererEnv), ordererEnv))
+	readerEnv := deliverSeekEnvelope("reader")
+	require.False(t, satisfiesOrdererReadersPolicy(support, deliverSeekPayload(t, readerEnv), readerEnv))
+	require.False(t, satisfiesOrdererReadersPolicy(support, nil, nil))
 }
 
 // deliverLimitTestCerts returns the x509 certificates of an orderer client
@@ -345,16 +408,19 @@ func TestIsClusterReplication(t *testing.T) {
 			consenters: []*cb.Consenter{{ClientTlsCert: ordererCertPEM, ServerTlsCert: ordererCertPEM}},
 		},
 	}
+	isReplication := func(support deliverTestChainSupport, cert *x509.Certificate, env *cb.Envelope) bool {
+		return isClusterReplication(support, cert, deliverSeekPayload(t, env), env)
+	}
 
 	// a consenter client certificate with an orderer-signed envelope is replication
-	require.True(t, isClusterReplication(support, ordererCert, deliverSeekEnvelope("orderer")))
+	require.True(t, isReplication(support, ordererCert, deliverSeekEnvelope("orderer")))
 	// the same envelope from another certificate is not, even though the
 	// identity satisfies the orderer readers policy (overlapping MSP)
-	require.False(t, isClusterReplication(support, otherCert, deliverSeekEnvelope("orderer")))
+	require.False(t, isReplication(support, otherCert, deliverSeekEnvelope("orderer")))
 	// without a presented client certificate there is nothing to bind
-	require.False(t, isClusterReplication(support, nil, deliverSeekEnvelope("orderer")))
+	require.False(t, isReplication(support, nil, deliverSeekEnvelope("orderer")))
 	// a reader-signed envelope is not replication even from a consenter
-	require.False(t, isClusterReplication(support, ordererCert, deliverSeekEnvelope("reader")))
+	require.False(t, isReplication(support, ordererCert, deliverSeekEnvelope("reader")))
 
 	// consenter certificates stored in DER form are normalized as well
 	derSupport := deliverTestChainSupport{
@@ -364,7 +430,22 @@ func TestIsClusterReplication(t *testing.T) {
 			consenters: []*cb.Consenter{{ClientTlsCert: ordererCert.Raw}},
 		},
 	}
-	require.True(t, isClusterReplication(derSupport, ordererCert, deliverSeekEnvelope("orderer")))
+	require.True(t, isReplication(derSupport, ordererCert, deliverSeekEnvelope("orderer")))
+
+	// etcdraft channels carry no Orderers value; their consenters live in
+	// the consensus metadata
+	raftSupport := deliverTestChainSupport{
+		policyManager: testDeliverPolicyManager{},
+		ordererConfig: stubOrdererConfig{
+			state:         ab.ConsensusType_STATE_NORMAL,
+			consensusType: "etcdraft",
+			consensusMetadata: protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{
+				Consenters: []*etcdraft.Consenter{{ClientTlsCert: ordererCertPEM, ServerTlsCert: ordererCertPEM}},
+			}),
+		},
+	}
+	require.True(t, isReplication(raftSupport, ordererCert, deliverSeekEnvelope("orderer")))
+	require.False(t, isReplication(raftSupport, otherCert, deliverSeekEnvelope("orderer")))
 }
 
 func TestNewDeliverPolicyChecker(t *testing.T) {
@@ -420,6 +501,35 @@ func TestNewDeliverPolicyChecker(t *testing.T) {
 		require.Equal(t, deliverPoolBlock, session.pool)
 	})
 
+	t.Run("raft consenter certificate is classified into the replication budget", func(t *testing.T) {
+		raftSupport := deliverTestChainSupport{
+			policyManager: testDeliverPolicyManager{},
+			ordererConfig: stubOrdererConfig{
+				state:         ab.ConsensusType_STATE_NORMAL,
+				consensusType: "etcdraft",
+				consensusMetadata: protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{
+					Consenters: []*etcdraft.Consenter{{ClientTlsCert: ordererCertPEM}},
+				}),
+			},
+		}
+		session := newDeliverSession(newDeliverConcurrencyLimiter(1, 1, 1, -1, &disabled.Provider{}))
+		checker := newDeliverPolicyChecker(func(string) msgprocessor.SigFilterSupport { return raftSupport }, ordererCert, session)
+		require.NoError(t, checker.CheckPolicy(deliverSeekEnvelope("orderer"), "mychannel"))
+		require.Equal(t, deliverPoolReplication, session.pool)
+	})
+
+	t.Run("classification change while serving requires readmission", func(t *testing.T) {
+		session, checker := newSession()
+		require.NoError(t, checker.CheckPolicy(deliverSeekEnvelope("orderer"), "mychannel"))
+		require.NoError(t, session.Acquire())
+		// the policy check re-runs after a channel configuration update; if
+		// the request class changed, the seek is terminated instead of
+		// transferring the permit between budgets
+		err := checker.CheckPolicy(deliverSeekEnvelope("reader"), "mychannel")
+		require.ErrorContains(t, err, "resubmit the seek request")
+		session.Release()
+	})
+
 	t.Run("unauthorized identity is rejected", func(t *testing.T) {
 		session, checker := newSession()
 		require.Error(t, checker.CheckPolicy(deliverSeekEnvelope("stranger"), "mychannel"))
@@ -433,34 +543,26 @@ func TestNewDeliverPolicyChecker(t *testing.T) {
 }
 
 func TestSeekTimeoutReceiver(t *testing.T) {
-	t.Run("times out every idle wait", func(t *testing.T) {
+	t.Run("times out every idle wait and rate-limits the warning", func(t *testing.T) {
 		blocking := &blockingReceiver{done: make(chan struct{})}
 		defer close(blocking.done)
+		logCount := 0
 		receiver := &seekTimeoutReceiver{
 			Receiver: blocking,
 			timeout:  20 * time.Millisecond,
+			throttle: &rateLimitedLogger{interval: time.Hour, logf: func(string, ...any) { logCount++ }},
 		}
 		start := time.Now()
 		_, err := receiver.Recv()
 		require.ErrorContains(t, err, "no seek request received within 20ms")
 		require.Less(t, time.Since(start), 10*time.Second)
+		// the error is pre-logged, so the handler must not warn about it again
+		var logged deliver.RecvErrorLogged
+		require.ErrorAs(t, err, &logged)
 		// the timeout re-arms on the next wait, not only the first
 		_, err = receiver.Recv()
 		require.ErrorContains(t, err, "no seek request received within 20ms")
-	})
-
-	t.Run("calls onTimeout when the timeout fires", func(t *testing.T) {
-		blocking := &blockingReceiver{done: make(chan struct{})}
-		defer close(blocking.done)
-		fired := make(chan struct{})
-		receiver := &seekTimeoutReceiver{
-			Receiver:  blocking,
-			timeout:   20 * time.Millisecond,
-			onTimeout: func() { close(fired) },
-		}
-		_, err := receiver.Recv()
-		require.ErrorContains(t, err, "no seek request received within 20ms")
-		<-fired
+		require.Equal(t, 1, logCount, "expected timeout warnings to be rate limited")
 	})
 
 	t.Run("passes messages through", func(t *testing.T) {
@@ -530,20 +632,8 @@ func TestNewServerDeliverConcurrencyLimit(t *testing.T) {
 	require.Equal(t, 1000, cap(s.deliverLimiter.headerSema))
 	require.Nil(t, s.deliverLimiter.replicationSema)
 	require.Equal(t, 30*time.Second, s.deliverSeekTimeout)
-
-	// a zero-valued Limits struct also installs the defaults
-	s = NewServer(
-		&multichannel.Registrar{},
-		&disabled.Provider{},
-		&conf.Debug,
-		conf.General.Authentication.TimeWindow,
-		false,
-		true,
-		localconfig.Limits{},
-	).(*server)
-	require.NotNil(t, s.deliverLimiter)
-	require.Equal(t, 80, cap(s.deliverLimiter.clientSema))
-	require.Equal(t, 1000, cap(s.deliverLimiter.headerSema))
+	require.NotNil(t, s.seekTimeoutLog)
+	require.NotNil(t, s.channelNames)
 
 	s = NewServer(
 		&multichannel.Registrar{},

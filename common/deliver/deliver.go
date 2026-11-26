@@ -125,19 +125,29 @@ type Filtered interface {
 // SessionLimiter bounds the number of concurrent block delivery sessions.
 // Acquire is called after a seek request is authenticated and before a
 // ledger iterator is allocated for it, and may be called more than once
-// per stream. AcquireForBlock and ReleaseForBlock are called around the
-// sending of each block, and may charge the block to a costlier budget
-// depending on the block; isConfigBlock is the precomputed result of
-// protoutil.IsConfigBlock for the block. Complete is called when a
-// delivery completes, before waiting for the next seek request; an error
-// closes the stream. Release is called when the stream handler returns;
-// it must be idempotent and a no-op when no permit is held.
+// per stream. AcquireForBlock is called before each block is sent, and
+// may escalate the session to a costlier budget depending on the block;
+// isConfigBlock is the precomputed result of protoutil.IsConfigBlock for
+// the block, and an escalation permit is held until Complete or Release
+// because the runtime may retain the block after it is sent. Complete is
+// called when a delivery completes, before waiting for the next seek
+// request; an error closes the stream. Release is called when the stream
+// handler returns; it must be idempotent and a no-op when no permit is
+// held.
 type SessionLimiter interface {
 	Acquire() error
-	AcquireForBlock(block *cb.Block, isConfigBlock bool) error
-	ReleaseForBlock(block *cb.Block, isConfigBlock bool)
+	AcquireForBlock(isConfigBlock bool) error
 	Complete() error
 	Release()
+}
+
+// RecvErrorLogged is implemented by Receiver errors that the receiver has
+// already logged (for example through a rate limiter). Handle logs them at
+// debug level instead of warning, so a burst of such errors cannot flood
+// the log.
+type RecvErrorLogged interface {
+	error
+	RecvErrorLogged()
 }
 
 // Server is a polymorphic structure to support generalization of this handler
@@ -192,7 +202,12 @@ func (h *Handler) Handle(ctx context.Context, srv *Server) error {
 			return nil
 		}
 		if err != nil {
-			logger.Warningf("Error reading from %s: %s", addr, err)
+			var logged RecvErrorLogged
+			if errors.As(err, &logged) {
+				logger.Debugf("Error reading from %s: %s", addr, err)
+			} else {
+				logger.Warningf("Error reading from %s: %s", addr, err)
+			}
 			return err
 		}
 
@@ -389,7 +404,7 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		}
 
 		if srv.SessionLimiter != nil {
-			if err := srv.SessionLimiter.AcquireForBlock(block, isConfigBlock); err != nil {
+			if err := srv.SessionLimiter.AcquireForBlock(isConfigBlock); err != nil {
 				logger.Debugf("[channel: %s] Rejecting deliver request from %s: %s", chdr.GetChannelId(), addr, err)
 				return cb.Status_SERVICE_UNAVAILABLE, nil
 			}
@@ -399,10 +414,6 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		if err := srv.SendBlockResponse(block2send, chdr.GetChannelId(), chain, signedData); err != nil {
 			logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.GetChannelId(), addr, err)
 			return cb.Status_INTERNAL_SERVER_ERROR, err
-		}
-
-		if srv.SessionLimiter != nil {
-			srv.SessionLimiter.ReleaseForBlock(block, isConfigBlock)
 		}
 
 		h.Metrics.BlocksSent.With(labels...).Add(1)
