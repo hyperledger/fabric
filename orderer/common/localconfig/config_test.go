@@ -201,6 +201,102 @@ func TestAdminTLSConfig(t *testing.T) {
 	}
 }
 
+func TestDeliverServiceConcurrencyLimit(t *testing.T) {
+	t.Run("unset defaults to the default limit", func(t *testing.T) {
+		uconf := &TopLevel{}
+		uconf.completeInitialization("/dummy/path")
+		require.Equal(t, Defaults.General.Limits.Concurrency.DeliverService, uconf.General.Limits.Concurrency.DeliverService)
+		require.Equal(t, Defaults.General.Limits.Concurrency.DeliverHeaderService, uconf.General.Limits.Concurrency.DeliverHeaderService)
+		require.Equal(t, Defaults.General.Limits.Concurrency.ClusterReplication, uconf.General.Limits.Concurrency.ClusterReplication)
+		require.Equal(t, 100, uconf.General.Limits.Concurrency.DeliverService)
+		require.Equal(t, 1000, uconf.General.Limits.Concurrency.DeliverHeaderService)
+		require.Equal(t, -1, uconf.General.Limits.Concurrency.ClusterReplication)
+		require.Equal(t, 500, uconf.General.Limits.Concurrency.DeliverPreAuth)
+		require.Equal(t, 30*time.Second, uconf.General.Limits.DeliverSeekTimeout)
+	})
+
+	t.Run("explicit value is preserved", func(t *testing.T) {
+		uconf := &TopLevel{}
+		uconf.General.Limits.Concurrency.DeliverService = 42
+		uconf.General.Limits.Concurrency.DeliverHeaderService = 7
+		uconf.General.Limits.Concurrency.ClusterReplication = 3
+		uconf.General.Limits.Concurrency.DeliverPreAuth = 9
+		uconf.General.Limits.DeliverSeekTimeout = time.Minute
+		uconf.completeInitialization("/dummy/path")
+		require.Equal(t, 42, uconf.General.Limits.Concurrency.DeliverService)
+		require.Equal(t, 7, uconf.General.Limits.Concurrency.DeliverHeaderService)
+		require.Equal(t, 3, uconf.General.Limits.Concurrency.ClusterReplication)
+		require.Equal(t, 9, uconf.General.Limits.Concurrency.DeliverPreAuth)
+		require.Equal(t, time.Minute, uconf.General.Limits.DeliverSeekTimeout)
+	})
+
+	t.Run("any negative duration disables the seek timeout", func(t *testing.T) {
+		uconf := &TopLevel{}
+		uconf.General.Limits.DeliverSeekTimeout = -1
+		uconf.completeInitialization("/dummy/path")
+		require.Equal(t, time.Duration(-1), uconf.General.Limits.DeliverSeekTimeout)
+
+		uconf = &TopLevel{}
+		uconf.General.Limits.DeliverSeekTimeout = -2 * time.Second
+		uconf.completeInitialization("/dummy/path")
+		require.Equal(t, time.Duration(-1), uconf.General.Limits.DeliverSeekTimeout)
+	})
+
+	t.Run("minus one means unlimited", func(t *testing.T) {
+		uconf := &TopLevel{}
+		uconf.General.Limits.Concurrency.DeliverService = -1
+		uconf.General.Limits.Concurrency.DeliverHeaderService = -1
+		uconf.General.Limits.Concurrency.ClusterReplication = -1
+		uconf.General.Limits.Concurrency.DeliverPreAuth = -1
+		uconf.completeInitialization("/dummy/path")
+		require.Equal(t, -1, uconf.General.Limits.Concurrency.DeliverService)
+		require.Equal(t, -1, uconf.General.Limits.Concurrency.DeliverHeaderService)
+		require.Equal(t, -1, uconf.General.Limits.Concurrency.ClusterReplication)
+		require.Equal(t, -1, uconf.General.Limits.Concurrency.DeliverPreAuth)
+	})
+
+	t.Run("other negative values panic", func(t *testing.T) {
+		uconf := &TopLevel{}
+		uconf.General.Limits.Concurrency.DeliverService = -2
+		require.PanicsWithValue(t, "General.Limits.Concurrency.DeliverService must be -1 (unlimited), 0 (default), or a positive integer, got -2", func() { uconf.completeInitialization("/dummy/path") })
+
+		uconf = &TopLevel{}
+		uconf.General.Limits.Concurrency.DeliverHeaderService = -2
+		require.PanicsWithValue(t, "General.Limits.Concurrency.DeliverHeaderService must be -1 (unlimited), 0 (default), or a positive integer, got -2", func() { uconf.completeInitialization("/dummy/path") })
+
+		uconf = &TopLevel{}
+		uconf.General.Limits.Concurrency.ClusterReplication = -2
+		require.PanicsWithValue(t, "General.Limits.Concurrency.ClusterReplication must be -1 (unlimited), 0 (default), or a positive integer, got -2", func() { uconf.completeInitialization("/dummy/path") })
+
+		uconf = &TopLevel{}
+		uconf.General.Limits.Concurrency.DeliverPreAuth = -2
+		require.PanicsWithValue(t, "General.Limits.Concurrency.DeliverPreAuth must be -1 (unlimited), 0 (default), or a positive integer, got -2", func() { uconf.completeInitialization("/dummy/path") })
+	})
+}
+
+func TestDeliverSeekTimeoutDisabledFromYAML(t *testing.T) {
+	name := t.TempDir()
+
+	content := `---
+General:
+  Limits:
+    DeliverSeekTimeout: -1s
+`
+
+	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+	require.NoErrorf(t, err, "Error creating file: %s", err)
+	_, err = f.WriteString(content)
+	require.NoError(t, err)
+	require.NoError(t, f.Close(), "Error closing file")
+
+	t.Setenv("FABRIC_CFG_PATH", name)
+
+	cc := &configCache{}
+	cfg, err := cc.load()
+	require.NoError(t, err)
+	require.Equal(t, time.Duration(-1), cfg.General.Limits.DeliverSeekTimeout)
+}
+
 func TestClusterDefaults(t *testing.T) {
 	configtest.SetDevFabricConfigPath(t)
 

@@ -122,12 +122,58 @@ type Filtered interface {
 	IsFiltered() bool
 }
 
+// SessionLimiter bounds the number of concurrent block delivery sessions.
+// Acquire is called after a seek request is authenticated and before a
+// ledger iterator is allocated for it, and may be called more than once
+// per stream. Complete is called when a delivery completes, before waiting
+// for the next seek request; an error closes the stream. Release is called
+// when the stream handler returns; it must be idempotent and a no-op when
+// no permit is held.
+type SessionLimiter interface {
+	Acquire() error
+	Complete() error
+	Release()
+}
+
+// RetryableError is implemented by policy-check errors that reject the
+// request transiently; deliverBlocks answers them with SERVICE_UNAVAILABLE
+// instead of FORBIDDEN.
+type RetryableError interface {
+	error
+	Retryable()
+}
+
+// statusForPolicyError maps a policy-check failure to the response status:
+// retryable failures (such as a request class changed by a channel
+// configuration update) yield SERVICE_UNAVAILABLE, which block pullers
+// retry; everything else is FORBIDDEN, which cluster pullers treat as
+// possible self-eviction.
+func statusForPolicyError(err error) cb.Status {
+	var retryable RetryableError
+	if errors.As(err, &retryable) {
+		return cb.Status_SERVICE_UNAVAILABLE
+	}
+	return cb.Status_FORBIDDEN
+}
+
+// RecvErrorLogged is implemented by Receiver errors that the receiver has
+// already logged (for example through a rate limiter). Handle logs them at
+// debug level instead of warning, so a burst of such errors cannot flood
+// the log.
+type RecvErrorLogged interface {
+	error
+	RecvErrorLogged()
+}
+
 // Server is a polymorphic structure to support generalization of this handler
 // to be able to deliver different type of responses.
 type Server struct {
 	Receiver
 	PolicyChecker
 	ResponseSender
+	// SessionLimiter, when non-nil, admits authenticated seek requests
+	// before ledger resources are allocated for them.
+	SessionLimiter SessionLimiter
 }
 
 // ExtractChannelHeaderCertHash extracts the TLS cert hash from a channel header.
@@ -160,6 +206,9 @@ func (h *Handler) Handle(ctx context.Context, srv *Server) error {
 	logger.Debugf("Starting new deliver loop for %s", addr)
 	h.Metrics.StreamsOpened.Add(1)
 	defer h.Metrics.StreamsClosed.Add(1)
+	if srv.SessionLimiter != nil {
+		defer srv.SessionLimiter.Release()
+	}
 	for {
 		logger.Debugf("Attempting to read seek info message from %s", addr)
 		envelope, err := srv.Recv()
@@ -168,7 +217,12 @@ func (h *Handler) Handle(ctx context.Context, srv *Server) error {
 			return nil
 		}
 		if err != nil {
-			logger.Warningf("Error reading from %s: %s", addr, err)
+			var logged RecvErrorLogged
+			if errors.As(err, &logged) {
+				logger.Debugf("Error reading from %s: %s", addr, err)
+			} else {
+				logger.Warningf("Error reading from %s: %s", addr, err)
+			}
 			return err
 		}
 
@@ -184,6 +238,18 @@ func (h *Handler) Handle(ctx context.Context, srv *Server) error {
 		if err != nil {
 			logger.Warningf("Error sending to %s: %s", addr, err)
 			return err
+		}
+
+		// The delivery completed; the serving permits are freed until the
+		// next seek request arrives, so an idle stream cannot hold them.
+		if srv.SessionLimiter != nil {
+			if err := srv.SessionLimiter.Complete(); err != nil {
+				logger.Debugf("Rejecting deliver stream from %s after a completed delivery: %s", addr, err)
+				if err := srv.SendStatusResponse(cb.Status_SERVICE_UNAVAILABLE); err != nil {
+					logger.Warningf("Error sending to %s: %s", addr, err)
+				}
+				return nil
+			}
 		}
 
 		logger.Debugf("Waiting for new SeekInfo from %s", addr)
@@ -252,8 +318,22 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	}
 
 	if err := accessControl.Evaluate(); err != nil {
-		logger.Warningf("[channel: %s] Client %s is not authorized: %s", chdr.GetChannelId(), addr, err)
-		return cb.Status_FORBIDDEN, nil
+		status := statusForPolicyError(err)
+		if status == cb.Status_SERVICE_UNAVAILABLE {
+			logger.Debugf("[channel: %s] Deliver request from %s must be resubmitted: %s", chdr.GetChannelId(), addr, err)
+		} else {
+			logger.Warningf("[channel: %s] Client %s is not authorized: %s", chdr.GetChannelId(), addr, err)
+		}
+		return status, nil
+	}
+
+	if srv.SessionLimiter != nil {
+		if err := srv.SessionLimiter.Acquire(); err != nil {
+			// The limiter counts and logs rejections; the client receives
+			// a retryable status.
+			logger.Debugf("[channel: %s] Rejecting deliver request from %s: %s", chdr.GetChannelId(), addr, err)
+			return cb.Status_SERVICE_UNAVAILABLE, nil
+		}
 	}
 
 	if seekInfo.GetStart() == nil || seekInfo.GetStop() == nil {
@@ -326,16 +406,23 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		number++
 
 		if err := accessControl.Evaluate(); err != nil {
-			logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.GetChannelId(), addr, err)
-			return cb.Status_FORBIDDEN, nil
+			status := statusForPolicyError(err)
+			if status == cb.Status_SERVICE_UNAVAILABLE {
+				logger.Debugf("[channel: %s] Deliver request from %s must be resubmitted: %s", chdr.GetChannelId(), addr, err)
+			} else {
+				logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.GetChannelId(), addr, err)
+			}
+			return status, nil
 		}
 
 		logger.Debugf("[channel: %s] Delivering block [%d] for (%p) for %s", chdr.GetChannelId(), block.GetHeader().GetNumber(), seekInfo, addr)
 
-		// Data blocks carry nil data for block attestations.
 		// Never mutate the block received from the iterator as it is from a cache.
+		// IsConfigBlock unmarshals the block envelope, so the && short-circuit
+		// keeps it off the full-block path.
 		block2send := block
 		if seekInfo.GetContentType() == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
+			// Data blocks carry nil data for block attestations.
 			block2send = &cb.Block{
 				Header:   block.GetHeader(),
 				Metadata: block.GetMetadata(),
