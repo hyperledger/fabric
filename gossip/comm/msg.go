@@ -64,6 +64,14 @@ func (m *ReceivedMessageImpl) fireConsumed() {
 	}
 }
 
+// WireConsumption sets the callback fired once the message's tracked
+// deliveries drain to zero. publishingHandler wires it in production; the
+// setter exists so tests in other packages can build charged messages
+// through the exported demultiplexer.
+func (m *ReceivedMessageImpl) WireConsumption(onConsumed func()) {
+	m.onConsumed = onConsumed
+}
+
 // DisposeMessage releases the receive-path byte accounting held by msg, if
 // any. Consumers of Accept channels must call it once done with the message.
 func DisposeMessage(msg protoext.ReceivedMessage) {

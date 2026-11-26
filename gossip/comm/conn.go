@@ -66,32 +66,41 @@ func newConnStore(connFactory connFactory, logger util.Logger, config ConnConfig
 }
 
 // retireChargedConn tracks a removed connection while its delivered charges
-// drain; callers must hold cs's write lock. The flag is set before the counter
-// check so a concurrent final release cannot slip past the insertion.
+// drain; callers must hold cs's write lock. The flag, the counter and the
+// shared budget's retired debt move under the connection's accounting mutex,
+// so retirement is atomic with respect to concurrent releases.
 func (cs *connectionStore) retireChargedConn(conn *connection) {
-	conn.retiredCharged.Store(true)
-	if conn.recvBytesInFlight.Load() == 0 {
-		conn.retiredCharged.Store(false)
+	conn.acctMu.Lock()
+	defer conn.acctMu.Unlock()
+	if conn.retired {
 		return
 	}
+	n := conn.recvBytesInFlight.Load()
+	if n == 0 {
+		return
+	}
+	conn.retired = true
 	cs.deadCharged[conn] = struct{}{}
 	// The connection's retained charges outlive it in subscriber queues and
 	// now count as retired debt against the shared budget.
 	if b := cs.config.sharedRecvBudget; b != nil {
-		b.deadTotal.Add(conn.recvBytesInFlight.Load())
+		b.deadTotal.Add(n)
 	}
 }
 
 // removeDrainedConn drops conn from deadCharged once its charge drains to
-// zero, so retired connections are not referenced forever.
+// zero, so retired connections are not referenced forever. The zero check
+// and the flag reset must be atomic with admissions, which also take acctMu.
 func (cs *connectionStore) removeDrainedConn(conn *connection) {
 	cs.Lock()
 	defer cs.Unlock()
+	conn.acctMu.Lock()
+	defer conn.acctMu.Unlock()
 	if conn.recvBytesInFlight.Load() != 0 {
 		return
 	}
 	delete(cs.deadCharged, conn)
-	conn.retiredCharged.Store(false)
+	conn.retired = false
 }
 
 func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) {
@@ -274,13 +283,16 @@ func (cs *connectionStore) evictLargestConnection(max int64) {
 		}
 	}
 	for conn := range cs.deadCharged {
+		conn.acctMu.Lock()
 		n := conn.recvBytesInFlight.Load()
 		if n == 0 {
 			delete(cs.deadCharged, conn)
-			conn.retiredCharged.Store(false)
-			continue
+			conn.retired = false
 		}
-		deadTotal += n
+		conn.acctMu.Unlock()
+		if n != 0 {
+			deadTotal += n
+		}
 	}
 
 	if max <= 0 || victim == nil || liveTotal <= max {
@@ -297,9 +309,13 @@ func (cs *connectionStore) evictLargestConnection(max int64) {
 }
 
 func newConnection(cl proto.GossipClient, c *grpc.ClientConn, s stream, metrics *metrics.CommMetrics, config ConnConfig) *connection {
+	// The send queue minimum is one slot: with a zero-capacity queue a
+	// blocking sender could wait on sendCond before the writer waits on the
+	// queue, and neither would ever wake the other.
+	sendBuffSize := max(config.SendBuffSize, 1)
 	connection := &connection{
 		metrics:              metrics,
-		outBuff:              make(chan *msgSending, config.SendBuffSize),
+		outBuff:              make(chan *msgSending, sendBuffSize),
 		cl:                   cl,
 		conn:                 c,
 		gossipStream:         s,
@@ -315,6 +331,8 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, s stream, metrics 
 // ConnConfig is the configuration required to initialize a new conn
 type ConnConfig struct {
 	RecvBuffSize int
+	// SendBuffSize is the send queue depth; values below 1 are clamped to 1,
+	// as a zero-capacity queue cannot support blocking sends.
 	SendBuffSize int
 	// MaxRecvBytesInFlight bounds the wire bytes of received messages a
 	// connection may hold unconsumed before the connection is closed.
@@ -386,8 +404,14 @@ type connection struct {
 	// store owns this connection's entry; used to purge retired entries when
 	// the receive charge drains. Nil for connections without a store.
 	store *connectionStore
-	// retiredCharged marks a removed connection with outstanding charges.
-	retiredCharged atomic.Bool
+	// acctMu synchronizes the receive-charge accounting transition: the
+	// retired flag, the in-flight counter and the shared budget's retired
+	// debt are only mutated under it, so retirement can never interleave
+	// with a release and lose or double-count debt.
+	acctMu sync.Mutex
+	// retired marks a removed connection with outstanding charges; it is
+	// only accessed under acctMu.
+	retired bool
 	// recvMu serializes the readFromStream handoff against the teardown drain;
 	// recvClosed makes the reader release new messages itself after teardown.
 	recvMu     sync.Mutex
@@ -611,27 +635,47 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 // receive budget and the node-wide shared budget, so the total also covers
 // queued-not-yet-handed-off messages; false means the connection's own budget
 // is exceeded and the connection must be dropped to bound retained memory.
+// The counter and any retired debt move under acctMu, so a message admitted
+// after retirement is accounted as retired debt symmetrically with its
+// release; the shared admission runs outside acctMu because its eviction
+// callback takes the store lock.
 func (conn *connection) admitReceivedBytes(msg *protoext.SignedGossipMessage) bool {
 	size := int64(goproto.Size(msg.Envelope))
+	conn.acctMu.Lock()
 	inFlight := conn.recvBytesInFlight.Add(size)
+	conn.chargeRetiredDebtLocked(size)
+	conn.acctMu.Unlock()
 	if conn.maxRecvBytesInFlight > 0 && inFlight > conn.maxRecvBytesInFlight {
+		conn.acctMu.Lock()
 		conn.recvBytesInFlight.Add(-size) // never retained
+		conn.chargeRetiredDebtLocked(-size)
+		conn.acctMu.Unlock()
 		return false
 	}
 	conn.sharedRecvBudget.admit(size)
 	return true
 }
 
+// chargeRetiredDebtLocked moves size into (or out of) the shared budget's
+// retired debt when the connection was retired; caller must hold acctMu.
+func (conn *connection) chargeRetiredDebtLocked(size int64) {
+	if conn.retired && conn.sharedRecvBudget != nil {
+		conn.sharedRecvBudget.deadTotal.Add(size)
+	}
+}
+
 // releaseReceivedBytes returns the message's wire size to all budgets once
 // the message will not be (or no longer is) retained by the receive path.
-// Retired debt is subtracted before a zero counter purges the entry.
+// Retired debt is subtracted in the same accounting transition as the
+// counter decrement, so a release can never miss its debt subtraction.
 func (conn *connection) releaseReceivedBytes(msg *protoext.SignedGossipMessage) {
 	size := int64(goproto.Size(msg.Envelope))
 	conn.sharedRecvBudget.release(size)
-	if conn.retiredCharged.Load() {
-		conn.sharedRecvBudget.deadTotal.Add(-size)
-	}
-	if conn.recvBytesInFlight.Add(-size) == 0 && conn.retiredCharged.Load() && conn.store != nil {
+	conn.acctMu.Lock()
+	conn.chargeRetiredDebtLocked(-size)
+	drained := conn.recvBytesInFlight.Add(-size) == 0 && conn.retired && conn.store != nil
+	conn.acctMu.Unlock()
+	if drained {
 		conn.store.removeDrainedConn(conn)
 	}
 }

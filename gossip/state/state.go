@@ -50,6 +50,11 @@ const (
 	nonBlocking = false
 
 	enqueueRetryInterval = time.Millisecond * 100
+
+	// defPrivateDataHandlers floors the private-data handler bound so an
+	// explicit zero or negative state channel size cannot drop every
+	// private-data message.
+	defPrivateDataHandlers = 100
 )
 
 // Configuration keeps state transfer configuration parameters
@@ -160,8 +165,9 @@ type GossipStateProviderImpl struct {
 	// so a racing send can neither land behind a drain nor hit a closed channel.
 	dispatchMu     sync.Mutex
 	dispatchClosed bool
-	// directSem bounds concurrent direct-message handlers.
-	directSem chan struct{}
+	// privateDataSem bounds concurrent private-data handlers, the only
+	// direct-message class that blocks on the ledger.
+	privateDataSem chan struct{}
 	// droppedDirect counts dropped direct messages to rate-limit warnings.
 	droppedDirect atomic.Int64
 
@@ -261,7 +267,7 @@ func NewGossipStateProvider(
 		stateResponseCh:     make(chan protoext.ReceivedMessage, config.StateChannelSize),
 		stateRequestCh:      make(chan protoext.ReceivedMessage, config.StateChannelSize),
 		stopCh:              make(chan struct{}),
-		directSem:           make(chan struct{}, 2*config.StateChannelSize),
+		privateDataSem:      make(chan struct{}, max(2*config.StateChannelSize, defPrivateDataHandlers)),
 		stateTransferActive: 0,
 		once:                sync.Once{},
 		stateMetrics:        stateMetrics,
@@ -316,33 +322,45 @@ func (s *GossipStateProviderImpl) receiveAndQueueGossipMessages(ch <-chan *proto
 func (s *GossipStateProviderImpl) receiveAndDispatchDirectMessages(ch <-chan protoext.ReceivedMessage) {
 	for msg := range ch {
 		select {
-		case s.directSem <- struct{}{}:
 		case <-s.stopCh:
+			// The delivery already left the comm subscription; without the
+			// dispose its receive-path charge would stay outstanding.
+			comm.DisposeMessage(msg)
 			return
 		default:
-			// All handler slots busy: drop rather than spawn unbounded work.
-			s.warnDropped("direct message handler slots are saturated")
+		}
+		gm := msg.GetGossipMessage()
+		if protoext.IsRemoteStateMessage(gm.GossipMessage) {
+			s.logger.Debug("Handling direct state transfer message")
+			// The handoff is nonblocking, so it runs synchronously and can
+			// never starve behind ledger-blocking private-data work.
+			if !s.directMessage(msg) {
+				// Not forwarded: no consumer will release the charge.
+				comm.DisposeMessage(msg)
+			}
+			continue
+		}
+		if gm.GetPrivateData() == nil {
 			comm.DisposeMessage(msg)
 			continue
 		}
-		s.logger.Debug("Dispatching a message", msg)
+		// Private data handling blocks on the ledger, so only it takes a
+		// bounded worker slot; saturation drops instead of spawning work.
+		select {
+		case s.privateDataSem <- struct{}{}:
+		case <-s.stopCh:
+			comm.DisposeMessage(msg)
+			return
+		default:
+			s.warnDropped("private data message; handler slots are saturated")
+			comm.DisposeMessage(msg)
+			continue
+		}
+		s.logger.Debug("Dispatching a private data message", msg)
 		go func(msg protoext.ReceivedMessage) {
-			defer func() { <-s.directSem }()
-			gm := msg.GetGossipMessage()
-			// Check type of the message
-			if protoext.IsRemoteStateMessage(gm.GossipMessage) {
-				s.logger.Debug("Handling direct state transfer message")
-				// Got state transfer request response
-				if !s.directMessage(msg) {
-					// Not forwarded: no consumer will release the charge.
-					comm.DisposeMessage(msg)
-				}
-			} else if gm.GetPrivateData() != nil {
-				s.logger.Debug("Handling private data collection message")
-				// Handling private data replication message
-				s.privateDataMessage(msg)
-				comm.DisposeMessage(msg)
-			}
+			defer func() { <-s.privateDataSem }()
+			s.privateDataMessage(msg)
+			comm.DisposeMessage(msg)
 		}(msg)
 	}
 }

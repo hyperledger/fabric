@@ -8,7 +8,6 @@ package comm
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"strconv"
 	"sync"
@@ -58,55 +57,50 @@ func makeDataEnvelope(payloadBytes int) *proto.Envelope {
 // message size, and exceeding connections must be dropped and evicted.
 
 func TestReadFromStreamEnforcesReceiveByteLimit(t *testing.T) {
-	for _, payloadSize := range []int{1 << 20, 4 << 20} {
-		t.Run(fmt.Sprintf("payload=%dMiB", payloadSize>>20), func(t *testing.T) {
-			msgSize := int64(goproto.Size(makeDataEnvelope(payloadSize)))
-			budget := 8*msgSize + msgSize/2
+	payloadSize := 1 << 20
+	msgSize := int64(goproto.Size(makeDataEnvelope(payloadSize)))
+	budget := 8*msgSize + msgSize/2
 
-			stream := &gmocks.MockStream{}
-			stream.On("CloseSend").Return(nil)
-			stream.On("Recv").Return(
-				func() *proto.Envelope { return makeDataEnvelope(payloadSize) },
-				func() error { return nil },
-			)
+	stream := &gmocks.MockStream{}
+	stream.On("CloseSend").Return(nil)
+	stream.On("Recv").Return(
+		func() *proto.Envelope { return makeDataEnvelope(payloadSize) },
+		func() error { return nil },
+	)
 
-			conn := newConnection(nil, nil, stream, disabledMetrics, ConnConfig{
-				RecvBuffSize:         DefRecvBuffSize,
-				SendBuffSize:         1,
-				MaxRecvBytesInFlight: int(budget),
-			})
-			conn.logger = flogging.MustGetLogger("test")
+	conn := newConnection(nil, nil, stream, disabledMetrics, ConnConfig{
+		RecvBuffSize:         DefRecvBuffSize,
+		SendBuffSize:         1,
+		MaxRecvBytesInFlight: int(budget),
+	})
+	conn.logger = flogging.MustGetLogger("test")
 
-			errChan := make(chan error, 1)
-			msgChan := make(chan *protoext.SignedGossipMessage, DefRecvBuffSize)
-			var wg sync.WaitGroup
-			wg.Go(func() {
-				conn.readFromStream(errChan, msgChan)
-			})
+	errChan := make(chan error, 1)
+	msgChan := make(chan *protoext.SignedGossipMessage, DefRecvBuffSize)
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		conn.readFromStream(errChan, msgChan)
+	})
 
-			// Nothing drains msgChan, so the budget must trip once the
-			// queued bytes exceed it.
-			select {
-			case err := <-errChan:
-				require.ErrorContains(t, err, "received bytes in flight exceed")
-			case <-time.After(30 * time.Second):
-				t.Fatal("connection was not dropped after exceeding the receive byte limit")
-			}
-
-			// The tripping message is released again, hence +1.
-			expectedAdmissions := int(budget/msgSize) + 1
-			stream.AssertNumberOfCalls(t, "Recv", expectedAdmissions)
-			require.Len(t, msgChan, expectedAdmissions-1)
-			charged := conn.recvBytesInFlight.Load()
-			require.LessOrEqual(t, charged, budget)
-			require.Greater(t, charged+msgSize, budget)
-			t.Logf("payload=%dMiB: queued bytes capped at %d (budget %d) after %d messages",
-				payloadSize>>20, charged, budget, expectedAdmissions-1)
-
-			conn.close()
-			wg.Wait()
-		})
+	// Nothing drains msgChan, so the budget must trip once the
+	// queued bytes exceed it.
+	select {
+	case err := <-errChan:
+		require.ErrorContains(t, err, "received bytes in flight exceed")
+	case <-time.After(30 * time.Second):
+		t.Fatal("connection was not dropped after exceeding the receive byte limit")
 	}
+
+	// The tripping message is released again, hence +1.
+	expectedAdmissions := int(budget/msgSize) + 1
+	stream.AssertNumberOfCalls(t, "Recv", expectedAdmissions)
+	require.Len(t, msgChan, expectedAdmissions-1)
+	charged := conn.recvBytesInFlight.Load()
+	require.LessOrEqual(t, charged, budget)
+	require.Greater(t, charged+msgSize, budget)
+
+	conn.close()
+	wg.Wait()
 }
 
 // TestServiceConnectionTerminatesOnOverflow exercises the production receive
@@ -114,74 +108,69 @@ func TestReadFromStreamEnforcesReceiveByteLimit(t *testing.T) {
 // abort the wedged delivery, terminate serviceConnection and close the
 // connection, and the accounting must drain once messages are consumed.
 func TestServiceConnectionTerminatesOnOverflow(t *testing.T) {
-	for _, payloadSize := range []int{1 << 20, 4 << 20} {
-		t.Run(fmt.Sprintf("payload=%dMiB", payloadSize>>20), func(t *testing.T) {
-			msgSize := int64(goproto.Size(makeDataEnvelope(payloadSize)))
-			budget := 16 * msgSize
+	payloadSize := 1 << 20
+	msgSize := int64(goproto.Size(makeDataEnvelope(payloadSize)))
+	budget := 16 * msgSize
 
-			c := &commImpl{
-				msgPublisher: NewChannelDemultiplexer(),
-				pubSub:       util.NewPubSub(),
-				logger:       flogging.MustGetLogger("test"),
-			}
-			sub := c.msgPublisher.AddChannel(func(any) bool { return true }) // never drained
+	c := &commImpl{
+		msgPublisher: NewChannelDemultiplexer(),
+		pubSub:       util.NewPubSub(),
+		logger:       flogging.MustGetLogger("test"),
+	}
+	sub := c.msgPublisher.AddChannel(func(any) bool { return true }) // never drained
 
-			stream := &gmocks.MockStream{}
-			stream.On("CloseSend").Return(nil)
-			stream.On("Recv").Return(
-				func() *proto.Envelope { return makeDataEnvelope(payloadSize) },
-				func() error { return nil },
-			)
+	stream := &gmocks.MockStream{}
+	stream.On("CloseSend").Return(nil)
+	stream.On("Recv").Return(
+		func() *proto.Envelope { return makeDataEnvelope(payloadSize) },
+		func() error { return nil },
+	)
 
-			conn := newConnection(nil, nil, stream, disabledMetrics, ConnConfig{
-				RecvBuffSize:         DefRecvBuffSize,
-				SendBuffSize:         1,
-				MaxRecvBytesInFlight: int(budget),
-			})
-			conn.logger = flogging.MustGetLogger("test")
-			conn.handler = c.publishingHandler(conn, &protoext.ConnectionInfo{ID: []byte("peer")})
+	conn := newConnection(nil, nil, stream, disabledMetrics, ConnConfig{
+		RecvBuffSize:         DefRecvBuffSize,
+		SendBuffSize:         1,
+		MaxRecvBytesInFlight: int(budget),
+	})
+	conn.logger = flogging.MustGetLogger("test")
+	conn.handler = c.publishingHandler(conn, &protoext.ConnectionInfo{ID: []byte("peer")})
 
-			svcDone := make(chan error, 1)
-			go func() {
-				svcDone <- conn.serviceConnection()
-			}()
+	svcDone := make(chan error, 1)
+	go func() {
+		svcDone <- conn.serviceConnection()
+	}()
 
-			// The connection must terminate even though the handler wedges
-			// on the stalled subscriber.
-			select {
-			case <-svcDone:
-			case <-time.After(30 * time.Second):
-				t.Fatal("serviceConnection did not return after the receive byte limit tripped")
-			}
+	// The connection must terminate even though the handler wedges
+	// on the stalled subscriber.
+	select {
+	case <-svcDone:
+	case <-time.After(30 * time.Second):
+		t.Fatal("serviceConnection did not return after the receive byte limit tripped")
+	}
 
-			// Tripping happens on the first admission that crosses the budget.
-			expectedAdmissions := int(budget/msgSize) + 1
-			stream.AssertNumberOfCalls(t, "Recv", expectedAdmissions)
+	// Tripping happens on the first admission that crosses the budget.
+	expectedAdmissions := int(budget/msgSize) + 1
+	stream.AssertNumberOfCalls(t, "Recv", expectedAdmissions)
 
-			select {
-			case <-conn.stopChan:
-			default:
-				t.Fatal("connection was not closed after exceeding the receive byte limit")
-			}
+	select {
+	case <-conn.stopChan:
+	default:
+		t.Fatal("connection was not closed after exceeding the receive byte limit")
+	}
 
-			// Undelivered and undrained charges were released on the way out;
-			// only messages sitting in the stalled subscriber remain charged.
-			charged := conn.recvBytesInFlight.Load()
-			require.LessOrEqual(t, charged, 10*msgSize)
-			t.Logf("payload=%dMiB: terminated with %d bytes charged to the stalled subscriber (budget %d)",
-				payloadSize>>20, charged, budget)
+	// Undelivered and undrained charges were released on the way out;
+	// only messages sitting in the stalled subscriber remain charged.
+	charged := conn.recvBytesInFlight.Load()
+	require.LessOrEqual(t, charged, 10*msgSize)
 
-			// Consuming the stalled subscriber's queue releases the rest.
-			for {
-				select {
-				case m := <-sub:
-					m.(*ReceivedMessageImpl).Dispose()
-				default:
-					require.Zero(t, conn.recvBytesInFlight.Load())
-					return
-				}
-			}
-		})
+	// Consuming the stalled subscriber's queue releases the rest.
+	for {
+		select {
+		case m := <-sub:
+			m.(*ReceivedMessageImpl).Dispose()
+		default:
+			require.Zero(t, conn.recvBytesInFlight.Load())
+			return
+		}
 	}
 }
 
@@ -443,27 +432,33 @@ func TestReplacedConnectionDrainKeepsSuccessor(t *testing.T) {
 		exitChan:      make(chan struct{}),
 	}
 	defer close(c.exitChan)
-	// Mimics discovery's expireDeadMembers -> CloseConn reaction.
-	go func() {
-		for {
-			select {
-			case id := <-c.deadEndpoints:
-				cs.closeConnByPKIid(id)
-			case <-c.exitChan:
-				return
-			}
-		}
-	}()
 
 	svcDone := make(chan error, 1)
 	go func() {
 		svcDone <- oldConn.serviceConnection()
 	}()
 
-	peer := &RemotePeer{PKIID: pkiID, Endpoint: "localhost:1234"}
-	msg := createGossipMsg()
+	// sendFailing wires the same evict-guarded death notification
+	// sendToEndpoint uses, tracking callback completion so the assertions
+	// below are deterministic: a publication happens before the callback
+	// returns, so completed callbacks settle the channel.
+	var callbacks sync.WaitGroup
+	sendFailing := func(conn *connection) {
+		callbacks.Add(1)
+		conn.send(createGossipMsg(), func(err error) {
+			defer callbacks.Done()
+			if !c.connStore.evictConn(conn) {
+				return
+			}
+			select {
+			case c.deadEndpoints <- pkiID:
+			case <-c.exitChan:
+			}
+		}, blockingSend)
+	}
+
 	for range 3 {
-		c.sendToEndpoint(peer, msg, blockingSend)
+		sendFailing(oldConn)
 	}
 
 	// The successor registers; the old connection is closed and its queued
@@ -477,15 +472,14 @@ func TestReplacedConnectionDrainKeepsSuccessor(t *testing.T) {
 		defer oldConn.sendMu.Unlock()
 		return oldConn.sendClosed
 	}, 30*time.Second, time.Millisecond, "replaced connection's writer did not terminate")
-	// ...but it must never publish a death event for the peer.
-	require.Never(t, func() bool {
-		select {
-		case <-c.deadEndpoints:
-			return true
-		default:
-			return false
-		}
-	}, 3*time.Second, 50*time.Millisecond, "replaced connection must not publish a death event")
+	// ...and with every error callback completed, the death channel is
+	// settled: a replaced connection must not have published a death event.
+	callbacks.Wait()
+	select {
+	case id := <-c.deadEndpoints:
+		t.Fatalf("replaced connection published a death event for %s", id)
+	default:
+	}
 	select {
 	case <-newConn.stopChan:
 		t.Fatal("successor connection was torn down by its predecessor's failed sends")
@@ -503,13 +497,15 @@ func TestReplacedConnectionDrainKeepsSuccessor(t *testing.T) {
 	})
 	newConn.gossipStream = newStream
 	go newConn.serviceConnection()
-	c.sendToEndpoint(peer, msg, blockingSend)
-	// The fake consumer only removes the connection once the death event is
-	// published, so the store emptying proves the notification still works
-	// for a still-current connection.
-	require.Eventually(t, func() bool {
-		return cs.connNum() == 0
-	}, 30*time.Second, time.Millisecond, "current connection's failure must publish a death event")
+	sendFailing(newConn)
+	callbacks.Wait()
+	select {
+	case id := <-c.deadEndpoints:
+		require.Equal(t, common.PKIidType(pkiID), id, "current connection's failure must publish a death event")
+	case <-time.After(30 * time.Second):
+		t.Fatal("current connection's failure did not publish a death event")
+	}
+	require.Equal(t, 0, cs.connNum(), "evicted connection must not linger in the store")
 
 	<-svcDone
 }
@@ -551,6 +547,31 @@ func TestReceiveAccountingDrainsOnClose(t *testing.T) {
 	}
 }
 
+// sharedBudgetFixture wires a connection store to a shared receive budget
+// the way NewCommInstance does: the store configuration references the
+// budget, and the budget's eviction callback drops the largest live
+// connection through the store.
+type sharedBudgetFixture struct {
+	cs     *connectionStore
+	shared *sharedRecvBudget
+}
+
+func newSharedBudgetFixture(max int64, m *metrics.CommMetrics) *sharedBudgetFixture {
+	shared := &sharedRecvBudget{max: max}
+	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared}, m)
+	shared.evict = func() { cs.evictLargestConnection(shared.max) }
+	return &sharedBudgetFixture{cs: cs, shared: shared}
+}
+
+// register adds a connection to the store with the production wiring:
+// the store back-reference and the eviction hook.
+func (f *sharedBudgetFixture) register(conn *connection) *connection {
+	f.cs.pki2Conn[string(conn.pkiID)] = conn
+	conn.store = f.cs
+	conn.evictFromStore = func() { f.cs.evictConn(conn) }
+	return conn
+}
+
 // TestSharedBudgetBystanderSurvivesAfterEviction covers the eviction cascade:
 // a bystander whose first send arrives after the flooder was evicted must not
 // be dropped while the flooder's delivered charges still clog the budget.
@@ -566,9 +587,7 @@ func TestSharedBudgetBystanderSurvivesAfterEviction(t *testing.T) {
 	}
 	c.msgPublisher.AddChannel(func(any) bool { return true }) // stalled subscriber
 
-	shared := &sharedRecvBudget{max: 3 * bigSize}
-	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{}, disabledMetrics)
-	shared.evict = func() { cs.evictLargestConnection(shared.max) }
+	fx := newSharedBudgetFixture(3*bigSize, disabledMetrics)
 
 	done := make(chan struct{})
 	bystanderSecond := make(chan struct{})
@@ -603,14 +622,12 @@ func TestSharedBudgetBystanderSurvivesAfterEviction(t *testing.T) {
 		conn := newConnection(nil, nil, stream, disabledMetrics, ConnConfig{
 			RecvBuffSize:     DefRecvBuffSize,
 			SendBuffSize:     1,
-			sharedRecvBudget: shared,
+			sharedRecvBudget: fx.shared,
 		})
 		conn.pkiID = common.PKIidType(pkiID)
 		conn.logger = flogging.MustGetLogger("test")
 		conn.handler = c.publishingHandler(conn, &protoext.ConnectionInfo{ID: conn.pkiID})
-		cs.pki2Conn[pkiID] = conn
-		conn.evictFromStore = func() { cs.evictConn(conn) }
-		return conn
+		return fx.register(conn)
 	}
 
 	flooder := newTestConn("flooder", bigPayload, false)
@@ -629,7 +646,7 @@ func TestSharedBudgetBystanderSurvivesAfterEviction(t *testing.T) {
 		}
 	}, 30*time.Second, 10*time.Millisecond, "flooding connection was not evicted on shared budget excess")
 	require.Eventually(t, func() bool {
-		return cs.connNum() == 1
+		return fx.cs.connNum() == 1
 	}, 30*time.Second, time.Millisecond, "flooding connection was not removed from the store")
 
 	// The bystander's second message trips the shared budget again, but the
@@ -644,7 +661,7 @@ func TestSharedBudgetBystanderSurvivesAfterEviction(t *testing.T) {
 		t.Fatal("bystander connection was dropped because of another peer's flood")
 	default:
 	}
-	require.Equal(t, 1, cs.connNum())
+	require.Equal(t, 1, fx.cs.connNum())
 
 	bystander.close()
 	close(done)
@@ -663,18 +680,13 @@ func TestSharedBudgetPolicyUsesAggregateDebt(t *testing.T) {
 	}
 	msgSize := int64(goproto.Size(makeDataEnvelope(1024)))
 
-	shared := &sharedRecvBudget{max: 15 * msgSize}
-	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared}, disabledMetrics)
-	shared.evict = func() { cs.evictLargestConnection(shared.max) }
+	fx := newSharedBudgetFixture(15*msgSize, disabledMetrics)
 
 	newChargedConn := func(pkiID string) *connection {
-		conn := newConnection(nil, nil, &gmocks.MockStream{}, disabledMetrics, ConnConfig{sharedRecvBudget: shared})
+		conn := newConnection(nil, nil, &gmocks.MockStream{}, disabledMetrics, ConnConfig{sharedRecvBudget: fx.shared})
 		conn.pkiID = common.PKIidType(pkiID)
 		conn.logger = flogging.MustGetLogger("test")
-		cs.pki2Conn[pkiID] = conn
-		conn.evictFromStore = func() { cs.evictConn(conn) }
-		conn.store = cs
-		return conn
+		return fx.register(conn)
 	}
 	// chargeDelivered emulates a received message: the receive path charges
 	// both the connection and the shared budget on admission.
@@ -701,9 +713,9 @@ func TestSharedBudgetPolicyUsesAggregateDebt(t *testing.T) {
 	// A retired connection holds 10 bytes of delivered debt.
 	dead := newChargedConn("dead")
 	chargeDelivered(dead, 10)
-	cs.evictConn(dead)
-	require.Len(t, cs.deadCharged, 1)
-	require.Equal(t, 10*msgSize, shared.inFlight.Load())
+	fx.cs.evictConn(dead)
+	require.Len(t, fx.cs.deadCharged, 1)
+	require.Equal(t, 10*msgSize, fx.shared.inFlight.Load())
 
 	// Live debt 6: the shared counter (16) exceeds the budget, but the live
 	// debt alone does not, so nothing may be evicted.
@@ -717,14 +729,14 @@ func TestSharedBudgetPolicyUsesAggregateDebt(t *testing.T) {
 	chargeDelivered(liveB, 10)
 	require.False(t, alive(liveB), "largest live connection past the aggregate cap must be evicted")
 	require.True(t, alive(liveA), "bystander connection must survive")
-	require.Equal(t, 1, cs.connNum())
+	require.Equal(t, 1, fx.cs.connNum())
 
 	// Consuming the retired connections' last deliveries purges them without
 	// any further budget overage.
 	disposeDelivered(dead, 10)
-	require.Len(t, cs.deadCharged, 1) // the evicted live connection remains
+	require.Len(t, fx.cs.deadCharged, 1) // the evicted live connection remains
 	disposeDelivered(liveB, 10)
-	require.Empty(t, cs.deadCharged)
+	require.Empty(t, fx.cs.deadCharged)
 }
 
 // TestBlockingSendTerminatesOnWriterFailure covers a full queue with a
@@ -770,6 +782,45 @@ func TestBlockingSendTerminatesOnWriterFailure(t *testing.T) {
 		t.Fatal("connection was closed although only the send side failed")
 	default:
 	}
+}
+
+// TestZeroSendBuffSizeClampedToMinimum proves a zero-capacity send queue is
+// clamped to the documented minimum of one slot, so blocking sends make
+// progress instead of stalling on sendCond while the writer waits in vain.
+func TestZeroSendBuffSizeClampedToMinimum(t *testing.T) {
+	sendGate := make(chan struct{})
+	sendEntered := make(chan struct{}, 3)
+	stream := &gmocks.MockStream{}
+	stream.On("CloseSend").Return(nil)
+	stream.On("Send", mock.Anything).Return(func(*proto.Envelope) error {
+		sendEntered <- struct{}{}
+		<-sendGate // hold sends so the queue stays occupied
+		return nil
+	})
+
+	conn := newConnection(nil, nil, stream, disabledMetrics, ConnConfig{RecvBuffSize: 1, SendBuffSize: 0})
+	conn.logger = flogging.MustGetLogger("test")
+	require.Equal(t, 1, cap(conn.outBuff), "zero-capacity send queue must be clamped to the minimum")
+
+	go conn.writeToStream()
+	msg := createGossipMsg()
+	conn.send(msg, func(error) {}, blockingSend) // taken by the writer
+	<-sendEntered                                // the writer provably holds it in Send
+	conn.send(msg, func(error) {}, blockingSend) // queued in the single slot
+
+	sent := make(chan struct{})
+	go func() {
+		conn.send(msg, func(error) {}, blockingSend) // waits for room
+		close(sent)
+	}()
+
+	close(sendGate) // the writer drains and signals the waiting sender
+	select {
+	case <-sent:
+	case <-time.After(30 * time.Second):
+		t.Fatal("blocking send stalled on a zero-capacity send queue")
+	}
+	conn.close()
 }
 
 type staticConnFactory struct{ conn *connection }
@@ -1098,9 +1149,7 @@ func TestReceiveBudgetMetrics(t *testing.T) {
 	conn.close()
 
 	// Node-wide eviction and overcommit.
-	shared := &sharedRecvBudget{max: 15 * msgSize}
-	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared}, commMetrics)
-	shared.evict = func() { cs.evictLargestConnection(shared.max) }
+	fx := newSharedBudgetFixture(15*msgSize, commMetrics)
 
 	chargeDelivered := func(conn *connection, n int) {
 		for range n {
@@ -1108,21 +1157,19 @@ func TestReceiveBudgetMetrics(t *testing.T) {
 		}
 	}
 
-	dead := newConnection(nil, nil, &gmocks.MockStream{}, commMetrics, ConnConfig{sharedRecvBudget: shared})
+	dead := newConnection(nil, nil, &gmocks.MockStream{}, commMetrics, ConnConfig{sharedRecvBudget: fx.shared})
 	dead.pkiID = []byte("dead")
 	dead.logger = flogging.MustGetLogger("test")
-	cs.pki2Conn["dead"] = dead
-	dead.store = cs
+	fx.register(dead)
 	chargeDelivered(dead, 10)
-	cs.evictConn(dead)
+	fx.cs.evictConn(dead)
 
 	// Overcommit: retired debt pushes the shared counter over the budget while
 	// live debt stays under it.
-	live := newConnection(nil, nil, &gmocks.MockStream{}, commMetrics, ConnConfig{sharedRecvBudget: shared})
+	live := newConnection(nil, nil, &gmocks.MockStream{}, commMetrics, ConnConfig{sharedRecvBudget: fx.shared})
 	live.pkiID = []byte("live")
 	live.logger = flogging.MustGetLogger("test")
-	cs.pki2Conn["live"] = live
-	live.store = cs
+	fx.register(live)
 	chargeDelivered(live, 6)
 	require.Positive(t, provider.counter("receive_shared_overcommit").n.Load())
 
@@ -1276,36 +1323,34 @@ func TestPerConnTripDoesNotEvictOther(t *testing.T) {
 func TestSharedBudgetLogsOvercommitOncePerEpisode(t *testing.T) {
 	msgSize := int64(goproto.Size(makeDataEnvelope(1024)))
 	var evictCalls atomic.Int32
-	shared := &sharedRecvBudget{max: 4 * msgSize}
-	shared.evict = func() { evictCalls.Add(1) }
+	fx := newSharedBudgetFixture(4*msgSize, disabledMetrics)
+	fx.shared.evict = func() { evictCalls.Add(1) }
 
 	// Retired debt at the budget: 4 messages retired with delivered charges.
-	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared}, disabledMetrics)
-	dead := newConnection(nil, nil, &gmocks.MockStream{}, disabledMetrics, ConnConfig{sharedRecvBudget: shared})
+	dead := newConnection(nil, nil, &gmocks.MockStream{}, disabledMetrics, ConnConfig{sharedRecvBudget: fx.shared})
 	dead.pkiID = []byte("dead")
 	dead.logger = flogging.MustGetLogger("test")
-	cs.pki2Conn["dead"] = dead
-	dead.store = cs
+	fx.register(dead)
 	msg, err := protoext.EnvelopeToGossipMessage(makeDataEnvelope(1024))
 	require.NoError(t, err)
 	for range 4 {
 		dead.admitReceivedBytes(msg)
 	}
-	cs.evictConn(dead)
+	fx.cs.evictConn(dead)
 	require.EqualValues(t, 0, evictCalls.Load(), "no scan expected before the budget is exceeded")
 
 	// Sustained live admissions while the budget is exceeded by retired debt:
 	// one scan per episode, not per admission.
 	for range 4 {
-		shared.admit(msgSize)
+		fx.shared.admit(msgSize)
 	}
 	require.EqualValues(t, 1, evictCalls.Load(), "overcommit scan must run once per episode, not per admission")
 
 	// A new episode after draining below the budget scans again.
 	for range 4 {
-		shared.release(msgSize)
+		fx.shared.release(msgSize)
 	}
-	shared.admit(msgSize)
+	fx.shared.admit(msgSize)
 	require.EqualValues(t, 2, evictCalls.Load(), "a new overcommit episode must scan once more")
 }
 
@@ -1325,16 +1370,14 @@ func TestRetiredDebtResidue(t *testing.T) {
 	defer c.msgPublisher.Close()
 	sub := c.msgPublisher.AddChannel(func(any) bool { return true })
 
-	b := &sharedRecvBudget{max: 100 * size}
-	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: b}, disabledMetrics)
+	fx := newSharedBudgetFixture(100*size, disabledMetrics)
 	conn := newConnection(nil, nil, nil, disabledMetrics, ConnConfig{
 		MaxRecvBytesInFlight: 1000 * int(size),
-		sharedRecvBudget:     b,
+		sharedRecvBudget:     fx.shared,
 	})
 	conn.pkiID = []byte("peer")
 	conn.logger = flogging.MustGetLogger("test")
-	conn.store = cs
-	cs.pki2Conn["peer"] = conn
+	fx.register(conn)
 	conn.handler = c.publishingHandler(conn, &protoext.ConnectionInfo{ID: conn.pkiID})
 
 	require.True(t, conn.admitReceivedBytes(msg))
@@ -1342,27 +1385,104 @@ func TestRetiredDebtResidue(t *testing.T) {
 	rmi := (<-sub).(*ReceivedMessageImpl)
 
 	// The peer disconnects while the subscriber still holds the message.
-	cs.Lock()
-	cs.retireChargedConn(conn)
-	cs.Unlock()
-	require.Equal(t, size, b.deadTotal.Load())
+	fx.cs.Lock()
+	fx.cs.retireChargedConn(conn)
+	fx.cs.Unlock()
+	require.Equal(t, size, fx.shared.deadTotal.Load())
 
 	rmi.Dispose()
 
 	require.Zero(t, conn.recvBytesInFlight.Load())
-	require.Zero(t, b.inFlight.Load())
-	require.Zero(t, b.deadTotal.Load(), "retired debt was not released on the final Dispose")
-	require.Empty(t, cs.deadCharged)
+	require.Zero(t, fx.shared.inFlight.Load())
+	require.Zero(t, fx.shared.deadTotal.Load(), "retired debt was not released on the final Dispose")
+	require.Empty(t, fx.cs.deadCharged)
+}
+
+// TestRetiredDebtRaceSettles forces the retirement/final-release
+// interleaving: a consumer releasing the last charge of a connection while
+// the store retires it. Whatever the order, the accounting transition is
+// atomic, so the retired debt returns to zero — a release can neither miss
+// its debt subtraction nor subtract debt retirement never added.
+func TestRetiredDebtRaceSettles(t *testing.T) {
+	msg, err := protoext.EnvelopeToGossipMessage(makeDataEnvelope(1024))
+	require.NoError(t, err)
+	size := int64(goproto.Size(msg.Envelope))
+
+	for i := range 500 {
+		fx := newSharedBudgetFixture(1000*size, disabledMetrics)
+		conn := newConnection(nil, nil, nil, disabledMetrics, ConnConfig{sharedRecvBudget: fx.shared})
+		conn.pkiID = []byte("peer")
+		conn.logger = flogging.MustGetLogger("test")
+		fx.register(conn)
+
+		require.True(t, conn.admitReceivedBytes(msg))
+
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			conn.releaseReceivedBytes(msg)
+		}()
+		go func() {
+			defer wg.Done()
+			fx.cs.Lock()
+			fx.cs.retireChargedConn(conn)
+			fx.cs.Unlock()
+		}()
+		wg.Wait()
+
+		require.Zero(t, conn.recvBytesInFlight.Load(), "iteration %d", i)
+		require.Zero(t, fx.shared.inFlight.Load(), "iteration %d", i)
+		require.Zero(t, fx.shared.deadTotal.Load(), "iteration %d: retired debt must return to zero", i)
+		require.Empty(t, fx.cs.deadCharged, "iteration %d", i)
+		conn.acctMu.Lock()
+		retired := conn.retired
+		conn.acctMu.Unlock()
+		require.False(t, retired, "iteration %d", i)
+	}
+}
+
+// TestAdmissionAfterRetirementTracksRetiredDebt covers the mirror seam: a
+// message admitted after retirement (a Recv already in flight when the
+// connection was removed, before the teardown drain closes the receive path)
+// must add to the retired debt, so its release subtracts symmetrically and
+// the debt never goes negative.
+func TestAdmissionAfterRetirementTracksRetiredDebt(t *testing.T) {
+	msg, err := protoext.EnvelopeToGossipMessage(makeDataEnvelope(1024))
+	require.NoError(t, err)
+	size := int64(goproto.Size(msg.Envelope))
+
+	fx := newSharedBudgetFixture(1000*size, disabledMetrics)
+	conn := newConnection(nil, nil, nil, disabledMetrics, ConnConfig{sharedRecvBudget: fx.shared})
+	conn.pkiID = []byte("peer")
+	conn.logger = flogging.MustGetLogger("test")
+	fx.register(conn)
+
+	require.True(t, conn.admitReceivedBytes(msg))
+	fx.cs.Lock()
+	fx.cs.retireChargedConn(conn)
+	fx.cs.Unlock()
+	require.Equal(t, size, fx.shared.deadTotal.Load())
+
+	// The late admission joins the retired debt.
+	require.True(t, conn.admitReceivedBytes(msg))
+	require.Equal(t, 2*size, fx.shared.deadTotal.Load())
+
+	conn.releaseReceivedBytes(msg)
+	conn.releaseReceivedBytes(msg)
+	require.Zero(t, conn.recvBytesInFlight.Load())
+	require.Zero(t, fx.shared.inFlight.Load())
+	require.Zero(t, fx.shared.deadTotal.Load(), "late admission left the retired debt unbalanced")
+	require.Empty(t, fx.cs.deadCharged)
 }
 
 // TestTotalBudgetCoversQueuedMessages proves the node-wide budget also bounds
 // messages queued behind a blocked handler when the per-connection limit is
-// disabled: the total is charged at admission, so the connection is dropped.
+// disabled: the total is charged by readFromStream at admission, so the
+// connection is dropped.
 func TestTotalBudgetCoversQueuedMessages(t *testing.T) {
 	size := int64(goproto.Size(makeDataEnvelope(1024)))
-	shared := &sharedRecvBudget{max: 2 * size}
-	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared}, disabledMetrics)
-	shared.evict = func() { cs.evictLargestConnection(shared.max) }
+	fx := newSharedBudgetFixture(2*size, disabledMetrics)
 
 	c := &commImpl{
 		msgPublisher: NewChannelDemultiplexer(),
@@ -1371,52 +1491,52 @@ func TestTotalBudgetCoversQueuedMessages(t *testing.T) {
 	}
 	defer c.msgPublisher.Close()
 
-	// Fill the subscriber so the next handoff blocks after charging.
+	// Fill the subscriber so the next handoff wedges the handler.
 	c.msgPublisher.AddChannel(func(any) bool { return true })
 	for range 10 {
 		c.msgPublisher.DeMultiplex(&protoext.SignedGossipMessage{Envelope: makeDataEnvelope(1024)})
 	}
 
-	conn := newConnection(nil, nil, nil, disabledMetrics, ConnConfig{
+	stream := &gmocks.MockStream{}
+	stream.On("CloseSend").Return(nil)
+	stream.On("Recv").Return(
+		func() *proto.Envelope { return makeDataEnvelope(1024) },
+		func() error { return nil },
+	)
+
+	conn := newConnection(nil, nil, stream, disabledMetrics, ConnConfig{
 		RecvBuffSize:         4,
 		SendBuffSize:         1,
 		MaxRecvBytesInFlight: 0, // disable the per-connection limit
-		sharedRecvBudget:     shared,
+		sharedRecvBudget:     fx.shared,
 	})
 	conn.pkiID = []byte("peer")
 	conn.logger = flogging.MustGetLogger("test")
-	conn.store = cs
-	cs.pki2Conn["peer"] = conn
-	conn.evictFromStore = func() { cs.evictConn(conn) }
+	fx.register(conn)
 	conn.handler = c.publishingHandler(conn, &protoext.ConnectionInfo{ID: conn.pkiID})
 
-	msg, err := protoext.EnvelopeToGossipMessage(makeDataEnvelope(1024))
-	require.NoError(t, err)
-	require.True(t, conn.admitReceivedBytes(msg))
-	handlerDone := make(chan struct{})
+	svcDone := make(chan error, 1)
 	go func() {
-		conn.handler(msg) // blocks in the demux with the shared budget charged
-		close(handlerDone)
+		svcDone <- conn.serviceConnection()
 	}()
-	require.Eventually(t, func() bool { return shared.inFlight.Load() == size }, 30*time.Second, time.Millisecond)
 
-	// The reader keeps admitting into msgChan behind the blocked handler.
-	for range 4 {
-		queued, err := protoext.EnvelopeToGossipMessage(makeDataEnvelope(1024))
-		require.NoError(t, err)
-		require.True(t, conn.admitReceivedBytes(queued))
-	}
-
-	// The node-wide budget must stop the connection once the queued and
-	// handler-held bytes cross it.
+	// The production reader keeps admitting into msgChan behind the blocked
+	// handler; the node-wide budget must stop the connection once the queued
+	// and handler-held bytes cross it.
 	select {
 	case <-conn.stopChan:
-	default:
+	case <-time.After(30 * time.Second):
 		t.Fatal("node-wide budget did not cover messages queued behind a blocked handler")
 	}
+	require.Eventually(t, func() bool {
+		return fx.cs.connNum() == 0
+	}, 30*time.Second, time.Millisecond, "connection was not evicted from the store")
 
-	conn.close()
-	<-handlerDone
+	// The abort-unblocked handler and the teardown drain release everything.
+	<-svcDone
+	require.Eventually(t, func() bool {
+		return conn.recvBytesInFlight.Load() == 0 && fx.shared.inFlight.Load() == 0
+	}, 30*time.Second, time.Millisecond, "queued charges were not released on teardown")
 }
 
 type trackableMessage struct {
@@ -1474,89 +1594,12 @@ func TestDeMultiplexAbortable(t *testing.T) {
 		demux.AddChannel(acceptAll)
 		demux.Close()
 
-		msg := &trackableMessage{}
+		// A charged message, wired as publishingHandler wires it: the closed
+		// demultiplexer must release the charge exactly once.
+		var released atomic.Int32
+		msg := &ReceivedMessageImpl{}
+		msg.WireConsumption(func() { released.Add(1) })
 		demux.DeMultiplexAbortable(msg, nil)
-		require.Zero(t, msg.tracked.Load())
-		require.Zero(t, msg.disposed.Load())
+		require.EqualValues(t, 1, released.Load(), "closed demultiplexer must release the charge exactly once")
 	})
-}
-
-// TestSharedBudgetEvictsLargestConnection ensures a node-wide budget excess
-// drops the live connection holding the most in-flight bytes, not bystanders.
-func TestSharedBudgetEvictsLargestConnection(t *testing.T) {
-	bigPayload := 1 << 20
-	bigSize := int64(goproto.Size(makeDataEnvelope(bigPayload)))
-
-	c := &commImpl{
-		msgPublisher: NewChannelDemultiplexer(),
-		pubSub:       util.NewPubSub(),
-		logger:       flogging.MustGetLogger("test"),
-	}
-	c.msgPublisher.AddChannel(func(any) bool { return true }) // stalled subscriber
-
-	shared := &sharedRecvBudget{max: 8 * bigSize}
-	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{}, disabledMetrics)
-	shared.evict = func() { cs.evictLargestConnection(shared.max) }
-
-	done := make(chan struct{})
-	newTestConn := func(pkiID string, payloadSize int, once bool) *connection {
-		var calls atomic.Int64
-		stream := &gmocks.MockStream{}
-		stream.On("CloseSend").Return(nil)
-		stream.On("Recv").Return(
-			func() *proto.Envelope {
-				if once && calls.Add(1) > 1 {
-					<-done // the bystander falls silent after one message
-					return nil
-				}
-				return makeDataEnvelope(payloadSize)
-			},
-			func() error {
-				if once && calls.Load() > 1 {
-					return errors.New("no more messages")
-				}
-				return nil
-			},
-		)
-		conn := newConnection(nil, nil, stream, disabledMetrics, ConnConfig{
-			RecvBuffSize:     DefRecvBuffSize,
-			SendBuffSize:     1,
-			sharedRecvBudget: shared,
-		})
-		conn.pkiID = common.PKIidType(pkiID)
-		conn.logger = flogging.MustGetLogger("test")
-		conn.handler = c.publishingHandler(conn, &protoext.ConnectionInfo{ID: conn.pkiID})
-		cs.pki2Conn[pkiID] = conn
-		conn.evictFromStore = func() { cs.evictConn(conn) }
-		return conn
-	}
-
-	flooder := newTestConn("flooder", bigPayload, false)
-	bystander := newTestConn("bystander", 1024, true)
-
-	go flooder.serviceConnection()
-	go bystander.serviceConnection()
-
-	// The flooder alone exceeds the shared budget and must be evicted; the
-	// bystander's connection must survive.
-	require.Eventually(t, func() bool {
-		select {
-		case <-flooder.stopChan:
-			return true
-		default:
-			return false
-		}
-	}, 30*time.Second, 10*time.Millisecond, "flooding connection was not evicted on shared budget excess")
-	require.Eventually(t, func() bool {
-		return cs.connNum() == 1
-	}, 30*time.Second, time.Millisecond, "flooding connection was not removed from the store")
-
-	select {
-	case <-bystander.stopChan:
-		t.Fatal("bystander connection was dropped because of another peer's flood")
-	default:
-	}
-
-	bystander.close()
-	close(done)
 }

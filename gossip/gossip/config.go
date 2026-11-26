@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package gossip
 
 import (
+	"math"
 	"net"
 	"strconv"
 	"time"
@@ -192,12 +193,22 @@ func (c *Config) loadConfig(endpoint string, certs *common.TLSCertificates, boot
 	defaultInFlight := 2*maxRecvMsgSize + maxRecvMsgSize/2
 	c.MaxRecvBytesInFlight = gossipLimitOrDefault("peer.gossip.maxRecvBytesInFlight", defaultInFlight)
 	// Deriving the total from a non-zero base keeps the node-wide limit on
-	// even when only the per-connection one is disabled.
+	// even when only the per-connection one is disabled. The multiplication
+	// is guarded: a base above MaxInt/4 would wrap the default to a
+	// non-positive value and silently disable the limit.
 	totalBase := c.MaxRecvBytesInFlight
 	if totalBase <= 0 {
 		totalBase = defaultInFlight
 	}
-	c.MaxRecvBytesTotal = gossipLimitOrDefault("peer.gossip.maxRecvBytesTotal", 4*totalBase)
+	defaultTotal := math.MaxInt
+	if totalBase <= math.MaxInt/4 {
+		defaultTotal = 4 * totalBase
+	} else {
+		util.GetLogger(util.GossipLogger, "").Warningf(
+			"peer.gossip.maxRecvBytesInFlight value %d is too large to derive a node-wide default; saturating peer.gossip.maxRecvBytesTotal at %d",
+			totalBase, defaultTotal)
+	}
+	c.MaxRecvBytesTotal = gossipLimitOrDefault("peer.gossip.maxRecvBytesTotal", defaultTotal)
 	c.MsgExpirationTimeout = util.GetDurationOrDefault("peer.gossip.election.leaderAliveThreshold", election.DefLeaderAliveThreshold) * 10
 	c.AliveTimeInterval = util.GetDurationOrDefault("peer.gossip.aliveTimeInterval", discovery.DefAliveTimeInterval)
 	c.AliveExpirationTimeout = util.GetDurationOrDefault("peer.gossip.aliveExpirationTimeout", 5*c.AliveTimeInterval)

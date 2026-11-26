@@ -96,6 +96,7 @@ type dummyCommModule struct {
 	validatedMessages chan *protoext.SignedGossipMessage
 	msgsReceived      atomic.Uint32
 	msgsSent          atomic.Uint32
+	closeConnCalls    atomic.Uint32
 	id                string
 	identitySwitch    chan common.PKIidType
 	presumeDead       chan common.PKIidType
@@ -250,6 +251,7 @@ func (comm *dummyCommModule) PresumedDead() <-chan common.PKIidType {
 }
 
 func (comm *dummyCommModule) CloseConn(peer *NetworkMember) {
+	comm.closeConnCalls.Add(1)
 	comm.lock.Lock()
 	defer comm.lock.Unlock()
 
@@ -1985,6 +1987,37 @@ func TestHandleAliveMessage_RelearnsMemberAfterConcurrentPurge(t *testing.T) {
 
 	require.True(t, inID2Member, "member should be present in id2Member after re-learning")
 	require.True(t, inAliveLastTS, "member should be present in aliveLastTS after re-learning")
+}
+
+func TestExpireDeadMembers_PresumedDeadDoesNotCloseSuccessor(t *testing.T) {
+	inst := createDiscoveryInstanceWithNoGossip(0, "d0", []string{})
+	defer inst.Stop()
+
+	impl := inst.discoveryImpl()
+	memberPKIid := []byte("reconnected-member")
+
+	markAlive := func() {
+		impl.lock.Lock()
+		impl.id2Member[string(memberPKIid)] = &NetworkMember{Endpoint: "localhost:9999", PKIid: memberPKIid}
+		impl.aliveLastTS[string(memberPKIid)] = &timestamp{incTime: time.Now(), seqNum: 1, lastSeen: time.Now()}
+		impl.lock.Unlock()
+	}
+	markAlive()
+
+	// A presumed-dead event expires the membership only: the comm layer has
+	// already closed the failed connection before publishing, so a deferred
+	// close could only hit a successor connection registered since.
+	impl.expireDeadMembersAndClose([]common.PKIidType{memberPKIid}, false)
+	require.Zero(t, inst.comm.closeConnCalls.Load(), "presumed-dead expiry must not close connections")
+	impl.lock.RLock()
+	_, alive := impl.aliveLastTS[string(memberPKIid)]
+	impl.lock.RUnlock()
+	require.False(t, alive, "membership was not expired")
+
+	// The alive-expiration path decides on its own and still closes.
+	markAlive()
+	impl.expireDeadMembers([]common.PKIidType{memberPKIid})
+	require.EqualValues(t, 1, inst.comm.closeConnCalls.Load(), "alive-expiration must close the dead member's connection")
 }
 
 func TestLearnExistingMembers_SkipsMemberPurgedConcurrently(t *testing.T) {

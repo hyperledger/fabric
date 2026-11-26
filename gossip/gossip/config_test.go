@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package gossip_test
 
 import (
+	"math"
 	"net"
 	"strconv"
 	"testing"
@@ -210,4 +211,20 @@ func TestGlobalConfigReceiveByteLimits(t *testing.T) {
 	coreConfig, err = gossip.GlobalConfig(endpoint, nil)
 	require.NoError(t, err)
 	require.Equal(t, -1, coreConfig.MaxRecvBytesInFlight)
+
+	// A maximum per-connection value must not wrap the derived node-wide
+	// default into a non-positive number and silently disable it.
+	viper.Reset()
+	viper.Set("peer.gossip.maxRecvBytesInFlight", math.MaxInt64)
+	coreConfig, err = gossip.GlobalConfig(endpoint, nil)
+	require.NoError(t, err)
+	require.Equal(t, math.MaxInt, coreConfig.MaxRecvBytesInFlight)
+	require.Equal(t, math.MaxInt, coreConfig.MaxRecvBytesTotal, "derived default must saturate, not overflow")
+
+	// Just below the guard bound the derivation still multiplies.
+	viper.Reset()
+	viper.Set("peer.gossip.maxRecvBytesInFlight", math.MaxInt/4)
+	coreConfig, err = gossip.GlobalConfig(endpoint, nil)
+	require.NoError(t, err)
+	require.Equal(t, math.MaxInt/4*4, coreConfig.MaxRecvBytesTotal)
 }

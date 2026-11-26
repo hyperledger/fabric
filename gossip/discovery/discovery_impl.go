@@ -283,7 +283,9 @@ func (d *gossipDiscoveryImpl) handleEvents() {
 		select {
 		case deadPeer := <-d.comm.PresumedDead():
 			if d.isAlive(deadPeer) {
-				d.expireDeadMembers([]common.PKIidType{deadPeer})
+				// The comm layer already closed the failed connection
+				// before publishing; only the membership needs expiring.
+				d.expireDeadMembersAndClose([]common.PKIidType{deadPeer}, false)
 			}
 		case changedPKIID := <-d.comm.IdentitySwitch():
 			// If a peer changed its PKI-ID, purge the old PKI-ID
@@ -702,6 +704,16 @@ func (d *gossipDiscoveryImpl) periodicalCheckAlive() {
 }
 
 func (d *gossipDiscoveryImpl) expireDeadMembers(dead []common.PKIidType) {
+	d.expireDeadMembersAndClose(dead, true)
+}
+
+// expireDeadMembersAndClose expires the membership of the given peers and,
+// when closeConns is set, closes their connections. Presumed-dead events
+// from the comm layer must not close: the comm layer has already closed and
+// evicted the failed connection before publishing, so the event carries no
+// connection identity and a deferred close could only tear down a successor
+// connection that registered after the event fired.
+func (d *gossipDiscoveryImpl) expireDeadMembersAndClose(dead []common.PKIidType, closeConns bool) {
 	d.logger.Warning("Entering", dead)
 	defer d.logger.Warning("Exiting")
 
@@ -729,6 +741,9 @@ func (d *gossipDiscoveryImpl) expireDeadMembers(dead []common.PKIidType) {
 
 	d.lock.Unlock()
 
+	if !closeConns {
+		return
+	}
 	for i := range deadMembers2Expire {
 		d.logger.Warning("Closing connection to", deadMembers2Expire[i])
 		d.comm.CloseConn(&deadMembers2Expire[i])

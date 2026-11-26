@@ -73,7 +73,13 @@ func (m *ChannelDeMultiplexer) AddChannel(predicate common.MessageAcceptor) <-ch
 	// Assignment to channel converts bidirectionalCh to send-only.
 	// Return converts bidirectionalCh to a receive-only.
 	ch := &channel{ch: bidirectionalCh, pred: predicate}
-	m.channels = append(m.channels, ch)
+	// Copy-on-write: deMultiplex iterates a snapshot captured under the lock
+	// after releasing it, so the captured backing array must never be
+	// mutated by a concurrent registration.
+	channels := make([]*channel, len(m.channels)+1)
+	copy(channels, m.channels)
+	channels[len(m.channels)] = ch
+	m.channels = channels
 	m.lock.Unlock()
 	return bidirectionalCh
 }
