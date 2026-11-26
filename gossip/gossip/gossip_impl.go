@@ -119,10 +119,12 @@ func New(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 	}, sa)
 
 	commConfig := comm.CommConfig{
-		DialTimeout:  conf.DialTimeout,
-		ConnTimeout:  conf.ConnTimeout,
-		RecvBuffSize: conf.RecvBuffSize,
-		SendBuffSize: conf.SendBuffSize,
+		DialTimeout:          conf.DialTimeout,
+		ConnTimeout:          conf.ConnTimeout,
+		RecvBuffSize:         conf.RecvBuffSize,
+		SendBuffSize:         conf.SendBuffSize,
+		MaxRecvBytesInFlight: conf.MaxRecvBytesInFlight,
+		MaxRecvBytesTotal:    conf.MaxRecvBytesTotal,
 	}
 	g.comm, err = comm.NewCommInstance(s, conf.TLSCerts, g.idMapper, selfIdentity, secureDialOpts, sa,
 		gossipMetrics.CommMetrics, commConfig)
@@ -341,6 +343,7 @@ func (g *Node) acceptMessages(incMsgs <-chan protoext.ReceivedMessage) {
 			return
 		case msg := <-incMsgs:
 			g.handleMessage(msg)
+			comm.DisposeMessage(msg)
 		}
 	}
 }
@@ -814,7 +817,11 @@ func (g *Node) UpdateChaincodes(chaincodes []*pg.Chaincode, channelID common.Cha
 // Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 // If passThrough is false, the messages are processed by the gossip layer beforehand.
 // If passThrough is true, the gossip layer doesn't intervene and the messages
-// can be used to send a reply back to the sender
+// can be used to send a reply back to the sender. In that case every message
+// holds receive-path resources accounted against the sender's connection and
+// the node-wide budget, and the consumer MUST call comm.DisposeMessage once
+// done with it; when a message reaches multiple subscribers, each delivery
+// must be disposed independently.
 func (g *Node) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *pg.GossipMessage, <-chan protoext.ReceivedMessage) {
 	if passThrough {
 		return nil, g.comm.Accept(acceptor)

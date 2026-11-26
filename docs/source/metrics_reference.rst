@@ -540,6 +540,15 @@ The following peer metrics are exported for consumption by Prometheus.
 +-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
 | gossip_comm_overflow_count                          | counter   | Number of outgoing queue buffer overflows                  |                  |                                                             |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_comm_receive_budget_drops                    | counter   | Number of connections dropped for exceeding the            |                  |                                                             |
+|                                                     |           | per-connection receive byte budget                         |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_comm_receive_shared_evictions                | counter   | Number of connections evicted for exceeding the node-wide  |                  |                                                             |
+|                                                     |           | receive byte budget                                        |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| gossip_comm_receive_shared_overcommit               | counter   | Number of times the node-wide receive byte budget was      |                  |                                                             |
+|                                                     |           | exceeded by undelivered bytes of removed connections       |                  |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
 | gossip_leader_election_leader                       | gauge     | Peer is leader (1) or follower (0)                         | channel          |                                                             |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
 | gossip_membership_total_peers_known                 | gauge     | Total known peers                                          | channel          |                                                             |
@@ -719,6 +728,15 @@ associated with the metric.
 | gossip.comm.messages_sent                                                               | counter   | Number of messages sent                                    |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | gossip.comm.overflow_count                                                              | counter   | Number of outgoing queue buffer overflows                  |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.comm.receive_budget_drops                                                        | counter   | Number of connections dropped for exceeding the            |
+|                                                                                         |           | per-connection receive byte budget                         |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.comm.receive_shared_evictions                                                    | counter   | Number of connections evicted for exceeding the node-wide  |
+|                                                                                         |           | receive byte budget                                        |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| gossip.comm.receive_shared_overcommit                                                   | counter   | Number of times the node-wide receive byte budget was      |
+|                                                                                         |           | exceeded by undelivered bytes of removed connections       |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | gossip.leader_election.leader.%{channel}                                                | gauge     | Peer is leader (1) or follower (0)                         |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+

@@ -96,6 +96,9 @@ type CommMetrics struct {
 	SentMessages     metrics.Counter
 	BufferOverflow   metrics.Counter
 	ReceivedMessages metrics.Counter
+	RecvBudgetDrops  metrics.Counter
+	SharedRecvEvicts metrics.Counter
+	SharedRecvOver   metrics.Counter
 }
 
 func newCommMetrics(p metrics.Provider) *CommMetrics {
@@ -103,6 +106,9 @@ func newCommMetrics(p metrics.Provider) *CommMetrics {
 		SentMessages:     p.NewCounter(SentMessagesOpts),
 		BufferOverflow:   p.NewCounter(BufferOverflowOpts),
 		ReceivedMessages: p.NewCounter(ReceivedMessagesOpts),
+		RecvBudgetDrops:  p.NewCounter(RecvBudgetDropsOpts),
+		SharedRecvEvicts: p.NewCounter(SharedRecvEvictsOpts),
+		SharedRecvOver:   p.NewCounter(SharedRecvOverOpts),
 	}
 }
 
@@ -128,6 +134,30 @@ var (
 		Subsystem:    "comm",
 		Name:         "messages_received",
 		Help:         "Number of messages received",
+		StatsdFormat: "%{#fqname}",
+	}
+
+	RecvBudgetDropsOpts = metrics.CounterOpts{
+		Namespace:    "gossip",
+		Subsystem:    "comm",
+		Name:         "receive_budget_drops",
+		Help:         "Number of connections dropped for exceeding the per-connection receive byte budget",
+		StatsdFormat: "%{#fqname}",
+	}
+
+	SharedRecvEvictsOpts = metrics.CounterOpts{
+		Namespace:    "gossip",
+		Subsystem:    "comm",
+		Name:         "receive_shared_evictions",
+		Help:         "Number of connections evicted for exceeding the node-wide receive byte budget",
+		StatsdFormat: "%{#fqname}",
+	}
+
+	SharedRecvOverOpts = metrics.CounterOpts{
+		Namespace:    "gossip",
+		Subsystem:    "comm",
+		Name:         "receive_shared_overcommit",
+		Help:         "Number of times the node-wide receive byte budget was exceeded by undelivered bytes of removed connections",
 		StatsdFormat: "%{#fqname}",
 	}
 )

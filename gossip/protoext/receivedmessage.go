@@ -20,6 +20,12 @@ import (
 // It also allows to know the identity of the sender,
 // to obtain the raw bytes the GossipMessage was un-marshaled from,
 // and the signature over these raw bytes.
+//
+// A ReceivedMessage obtained from a gossip communication layer holds
+// receive-path resources accounted against the sender's connection and the
+// node-wide budget; once done with the message, the consumer must release
+// them by calling comm.DisposeMessage (or the message's Dispose method, when
+// the concrete implementation exposes one).
 type ReceivedMessage interface {
 	// Respond sends a GossipMessage to the origin from which this ReceivedMessage was sent from
 	Respond(msg *gossip.GossipMessage)

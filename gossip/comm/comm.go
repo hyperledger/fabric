@@ -37,7 +37,13 @@ type Comm interface {
 	Handshake(peer *RemotePeer) (api.PeerIdentityType, error)
 
 	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
-	// Each message from the channel can be used to send a reply back to the sender
+	// Each message from the channel can be used to send a reply back to the sender.
+	//
+	// Every received message holds receive-path resources accounted against
+	// the sender's connection and the node-wide budget; consumers MUST call
+	// comm.DisposeMessage once done with each message to release them. When a
+	// message is fanned out to multiple subscribers, each delivery is
+	// accounted independently and must be disposed independently.
 	Accept(common.MessageAcceptor) <-chan protoext.ReceivedMessage
 
 	// PresumedDead returns a read-only channel for node endpoints that are suspected to be offline

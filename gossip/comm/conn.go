@@ -9,6 +9,7 @@ package comm
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -17,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	goproto "google.golang.org/protobuf/proto"
 )
 
 type handler func(message *protoext.SignedGossipMessage)
@@ -28,31 +30,77 @@ const (
 	nonBlockingSend = blockingBehavior(false)
 )
 
+var errConnClosed = errors.New("connection closed")
+
 type connFactory interface {
 	createConnection(endpoint string, pkiID common.PKIidType) (*connection, error)
 }
 
 type connectionStore struct {
-	config           ConnConfig
-	logger           util.Logger            // logger
-	isClosing        bool                   // whether this connection store is shutting down
-	shutdownOnce     sync.Once              // ensure shutdown is only called once per connectionStore
-	connFactory      connFactory            // creates a connection to remote peer
-	sync.RWMutex                            // synchronize access to shared variables
-	pki2Conn         map[string]*connection // mapping between pkiID to connections
+	config       ConnConfig
+	logger       util.Logger            // logger
+	isClosing    bool                   // whether this connection store is shutting down
+	shutdownOnce sync.Once              // ensure shutdown is only called once per connectionStore
+	connFactory  connFactory            // creates a connection to remote peer
+	sync.RWMutex                        // synchronize access to shared variables
+	pki2Conn     map[string]*connection // mapping between pkiID to connections
+	metrics      *metrics.CommMetrics
+	// deadCharged tracks removed connections whose delivered charges are still
+	// counted against the shared budget until consumed downstream.
+	deadCharged      map[*connection]struct{}
 	destinationLocks map[string]*sync.Mutex // mapping between pkiIDs and locks,
 	// used to prevent concurrent connection establishment to the same remote endpoint
 }
 
-func newConnStore(connFactory connFactory, logger util.Logger, config ConnConfig) *connectionStore {
+func newConnStore(connFactory connFactory, logger util.Logger, config ConnConfig, metrics *metrics.CommMetrics) *connectionStore {
 	return &connectionStore{
 		connFactory:      connFactory,
 		isClosing:        false,
 		pki2Conn:         make(map[string]*connection),
+		deadCharged:      make(map[*connection]struct{}),
 		destinationLocks: make(map[string]*sync.Mutex),
 		logger:           logger,
 		config:           config,
+		metrics:          metrics,
 	}
+}
+
+// retireChargedConn tracks a removed connection while its delivered charges
+// drain; callers must hold cs's write lock. The flag, the counter and the
+// shared budget's retired debt move under the connection's accounting mutex,
+// so retirement is atomic with respect to concurrent releases.
+func (cs *connectionStore) retireChargedConn(conn *connection) {
+	conn.acctMu.Lock()
+	defer conn.acctMu.Unlock()
+	if conn.retired {
+		return
+	}
+	n := conn.recvBytesInFlight.Load()
+	if n == 0 {
+		return
+	}
+	conn.retired = true
+	cs.deadCharged[conn] = struct{}{}
+	// The connection's retained charges outlive it in subscriber queues and
+	// now count as retired debt against the shared budget.
+	if b := cs.config.sharedRecvBudget; b != nil {
+		b.deadTotal.Add(n)
+	}
+}
+
+// removeDrainedConn drops conn from deadCharged once its charge drains to
+// zero, so retired connections are not referenced forever. The zero check
+// and the flag reset must be atomic with admissions, which also take acctMu.
+func (cs *connectionStore) removeDrainedConn(conn *connection) {
+	cs.Lock()
+	defer cs.Unlock()
+	conn.acctMu.Lock()
+	defer conn.acctMu.Unlock()
+	if conn.recvBytesInFlight.Load() != 0 {
+		return
+	}
+	delete(cs.deadCharged, conn)
+	conn.retired = false
 }
 
 func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) {
@@ -127,11 +175,14 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 	// our old connection anyway once it sensed this connection handshake.
 	if conn, exists := cs.pki2Conn[string(createdConnection.pkiID)]; exists {
 		conn.close()
+		cs.retireChargedConn(conn)
 	}
 
 	// at this point in the code, we created a connection to a remote peer
 	conn = createdConnection
 	cs.pki2Conn[string(createdConnection.pkiID)] = conn
+	conn.evictFromStore = func() { cs.evictConn(conn) }
+	conn.store = cs
 
 	go conn.serviceConnection()
 
@@ -168,6 +219,7 @@ func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamSer
 
 	if c, exists := cs.pki2Conn[string(connInfo.ID)]; exists {
 		c.close()
+		cs.retireChargedConn(c)
 	}
 
 	conn := newConnection(nil, nil, serverStream, metrics, cs.config)
@@ -175,6 +227,8 @@ func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamSer
 	conn.info = connInfo
 	conn.logger = cs.logger
 	cs.pki2Conn[string(connInfo.ID)] = conn
+	conn.evictFromStore = func() { cs.evictConn(conn) }
+	conn.store = cs
 	return conn
 }
 
@@ -184,30 +238,190 @@ func (cs *connectionStore) closeConnByPKIid(pkiID common.PKIidType) {
 	if conn, exists := cs.pki2Conn[string(pkiID)]; exists {
 		conn.close()
 		delete(cs.pki2Conn, string(pkiID))
+		cs.retireChargedConn(conn)
 	}
 }
 
-func newConnection(cl proto.GossipClient, c *grpc.ClientConn, s stream, metrics *metrics.CommMetrics, config ConnConfig) *connection {
-	connection := &connection{
-		metrics:      metrics,
-		outBuff:      make(chan *msgSending, config.SendBuffSize),
-		cl:           cl,
-		conn:         c,
-		gossipStream: s,
-		stopChan:     make(chan struct{}, 1),
-		recvBuffSize: config.RecvBuffSize,
+// evictConn removes conn from the store only if it is still the current entry
+// for its PKI-ID, so a replaced connection never evicts its successor.
+// It reports whether conn was still the current entry.
+func (cs *connectionStore) evictConn(conn *connection) bool {
+	cs.Lock()
+	defer cs.Unlock()
+	return cs.evictConnLocked(conn)
+}
+
+// evictConnLocked is evictConn for callers already holding cs's write lock.
+func (cs *connectionStore) evictConnLocked(conn *connection) bool {
+	if current, exists := cs.pki2Conn[string(conn.pkiID)]; exists && current == conn {
+		conn.close()
+		delete(cs.pki2Conn, string(conn.pkiID))
+		cs.retireChargedConn(conn)
+		return true
 	}
+	return false
+}
+
+// evictLargestConnection drops the live connection retaining the most
+// unconsumed received bytes, but only while the aggregate in-flight bytes of
+// live connections alone exceed max: charges already delivered by removed
+// connections outlive them until consumed, so live connections overcommit
+// while the overage is retired debt instead of cascading evictions to
+// bystanders. When live debt does exceed max, the largest live offender is
+// dropped — which can be a slow but honest peer.
+func (cs *connectionStore) evictLargestConnection(max int64) {
+	cs.Lock()
+	defer cs.Unlock()
+
+	var victim *connection
+	var liveTotal, deadTotal, mostLive int64
+	for _, conn := range cs.pki2Conn {
+		n := conn.recvBytesInFlight.Load()
+		liveTotal += n
+		if n > mostLive {
+			mostLive, victim = n, conn
+		}
+	}
+	for conn := range cs.deadCharged {
+		conn.acctMu.Lock()
+		n := conn.recvBytesInFlight.Load()
+		if n == 0 {
+			delete(cs.deadCharged, conn)
+			conn.retired = false
+		}
+		conn.acctMu.Unlock()
+		if n != 0 {
+			deadTotal += n
+		}
+	}
+
+	if max <= 0 || victim == nil || liveTotal <= max {
+		if deadTotal > 0 {
+			cs.metrics.SharedRecvOver.Add(1)
+			cs.logger.Debugf("Shared receive byte budget of %d bytes is exceeded by %d bytes delivered by removed connections; overcommitting until subscribers drain", max, deadTotal)
+		}
+		return
+	}
+	cs.logger.Warningf("Shared receive byte budget exceeded, dropping connection to %s holding %d unconsumed bytes", victim.pkiID, mostLive)
+	cs.metrics.SharedRecvEvicts.Add(1)
+	victim.close()
+	cs.evictConnLocked(victim)
+}
+
+func newConnection(cl proto.GossipClient, c *grpc.ClientConn, s stream, metrics *metrics.CommMetrics, config ConnConfig) *connection {
+	// The send queue minimum is one slot: with a zero-capacity queue a
+	// blocking sender could wait on sendCond before the writer waits on the
+	// queue, and neither would ever wake the other.
+	sendBuffSize := max(config.SendBuffSize, 1)
+	connection := &connection{
+		metrics:              metrics,
+		outBuff:              make(chan *msgSending, sendBuffSize),
+		cl:                   cl,
+		conn:                 c,
+		gossipStream:         s,
+		stopChan:             make(chan struct{}, 1),
+		recvBuffSize:         config.RecvBuffSize,
+		maxRecvBytesInFlight: int64(config.MaxRecvBytesInFlight),
+		sharedRecvBudget:     config.sharedRecvBudget,
+	}
+	connection.sendCond = sync.NewCond(&connection.sendMu)
 	return connection
 }
 
 // ConnConfig is the configuration required to initialize a new conn
 type ConnConfig struct {
 	RecvBuffSize int
+	// SendBuffSize is the send queue depth; values below 1 are clamped to 1,
+	// as a zero-capacity queue cannot support blocking sends.
 	SendBuffSize int
+	// MaxRecvBytesInFlight bounds the wire bytes of received messages a
+	// connection may hold unconsumed before the connection is closed.
+	// Non-positive disables the limit.
+	MaxRecvBytesInFlight int
+	// sharedRecvBudget bounds unconsumed received bytes across all
+	// connections of the comm instance; nil disables it.
+	sharedRecvBudget *sharedRecvBudget
+}
+
+// sharedRecvBudget bounds received-but-retained bytes across connections,
+// charged at admission so queued-not-yet-handed-off messages count too.
+// While the aggregate live debt exceeds max, the live connection holding the
+// most in-flight bytes is evicted; retired (removed) connections' charges
+// never trigger an eviction.
+type sharedRecvBudget struct {
+	inFlight atomic.Int64
+	// deadTotal is the part of inFlight held by removed connections.
+	deadTotal atomic.Int64
+	max       int64
+	// evict drops the connection with the most in-flight bytes.
+	evict func()
+	// overCharged marks the upward crossing so overcommit is logged and
+	// measured once per episode, not per message.
+	overCharged atomic.Bool
+}
+
+func (b *sharedRecvBudget) admit(size int64) {
+	if b == nil || b.max <= 0 {
+		return
+	}
+	inFlight := b.inFlight.Add(size)
+	if inFlight <= b.max {
+		b.overCharged.Store(false)
+		return
+	}
+	if inFlight-b.deadTotal.Load() > b.max {
+		// Aggregate live debt alone exceeds the budget: evict the offender.
+		if b.evict != nil {
+			b.evict()
+		}
+		return
+	}
+	// Overage is retired debt: overcommit, logged once per episode.
+	if b.overCharged.CompareAndSwap(false, true) && b.evict != nil {
+		b.evict()
+	}
+}
+
+func (b *sharedRecvBudget) release(size int64) {
+	if b == nil || b.max <= 0 {
+		return
+	}
+	if b.inFlight.Add(-size) <= b.max {
+		b.overCharged.Store(false)
+	}
 }
 
 type connection struct {
 	recvBuffSize int
+	// recvBytesInFlight tracks received bytes not yet consumed downstream, so
+	// a stalled pipeline cannot pin unbounded memory.
+	recvBytesInFlight    atomic.Int64
+	maxRecvBytesInFlight int64
+	sharedRecvBudget     *sharedRecvBudget
+	// evictFromStore removes this connection from the connection store if it
+	// is still the current entry; set once the connection is registered.
+	evictFromStore func()
+	// store owns this connection's entry; used to purge retired entries when
+	// the receive charge drains. Nil for connections without a store.
+	store *connectionStore
+	// acctMu synchronizes the receive-charge accounting transition: the
+	// retired flag, the in-flight counter and the shared budget's retired
+	// debt are only mutated under it, so retirement can never interleave
+	// with a release and lose or double-count debt.
+	acctMu sync.Mutex
+	// retired marks a removed connection with outstanding charges; it is
+	// only accessed under acctMu.
+	retired bool
+	// recvMu serializes the readFromStream handoff against the teardown drain;
+	// recvClosed makes the reader release new messages itself after teardown.
+	recvMu     sync.Mutex
+	recvClosed bool
+	// sendMu serializes outBuff handoff against the writeToStream exit drain;
+	// sendClosed makes senders fail new messages instead of enqueueing them.
+	// sendCond lets blocking senders wait for queue room without holding sendMu.
+	sendMu       sync.Mutex
+	sendCond     *sync.Cond
+	sendClosed   bool
 	metrics      *metrics.CommMetrics
 	cancel       context.CancelFunc
 	info         *protoext.ConnectionInfo
@@ -226,6 +440,12 @@ func (conn *connection) close() {
 	conn.stopOnce.Do(func() {
 		close(conn.stopChan)
 
+		// Wake senders waiting for queue room; the writer may still be stuck
+		// in stream.Send and its broadcast would come too late.
+		conn.sendMu.Lock()
+		conn.sendCond.Broadcast()
+		conn.sendMu.Unlock()
+
 		if conn.conn != nil {
 			conn.conn.Close()
 		}
@@ -242,27 +462,54 @@ func (conn *connection) send(msg *protoext.SignedGossipMessage, onErr func(error
 		onErr:    onErr,
 	}
 
-	select {
-	case conn.outBuff <- m:
-		// room in channel, successfully sent message, nothing to do
-	case <-conn.stopChan:
-		conn.logger.Debugf("Aborting send() to %s because connection is closing", conn.info.Endpoint)
-	default: // did not send
-		if shouldBlock {
-			select {
-			case conn.outBuff <- m: // try again, and wait to send
-			case <-conn.stopChan: // stop blocking if the connection is closing
-			}
-		} else {
+	conn.sendMu.Lock()
+	defer conn.sendMu.Unlock()
+	for {
+		if conn.sendClosed {
+			conn.logger.Debugf("Aborting send() to %s because connection is closed", conn.pkiID)
+			go m.onErr(errConnClosed)
+			return
+		}
+		select {
+		case conn.outBuff <- m:
+			// room in channel, successfully sent message, nothing to do
+			return
+		case <-conn.stopChan:
+			conn.logger.Debugf("Aborting send() to %s because connection is closing", conn.pkiID)
+			go m.onErr(errConnClosed)
+			return
+		default:
+		}
+		if shouldBlock != blockingSend {
 			conn.metrics.BufferOverflow.Add(1)
 			conn.logger.Debugf("Buffer to %s overflowed, dropping message %s", conn.info.Endpoint, msg)
+			return
 		}
+		// Wait for queue room without holding sendMu, so the writer can
+		// always terminate and drain.
+		conn.sendCond.Wait()
 	}
 }
 
 func (conn *connection) serviceConnection() error {
 	errChan := make(chan error, 1)
 	msgChan := make(chan *protoext.SignedGossipMessage, conn.recvBuffSize)
+	defer func() {
+		// Take ownership of msgChan: once recvClosed is set, the reader
+		// releases newly admitted messages itself instead of enqueueing them,
+		// so nothing charged is left behind.
+		conn.recvMu.Lock()
+		conn.recvClosed = true
+		for {
+			select {
+			case msg := <-msgChan:
+				conn.releaseReceivedBytes(msg)
+			default:
+				conn.recvMu.Unlock()
+				return
+			}
+		}
+	}()
 	// Call stream.Recv() asynchronously in readFromStream(),
 	// and wait for either the Recv() call to end,
 	// or a signal to close the connection, which exits
@@ -278,6 +525,12 @@ func (conn *connection) serviceConnection() error {
 			conn.logger.Debug("Closing reading from stream")
 			return nil
 		case err := <-errChan:
+			// A dead receive path must not linger in the store as a zombie:
+			// outbound connections have no GossipStream defer to clean them up.
+			conn.close()
+			if conn.evictFromStore != nil {
+				conn.evictFromStore()
+			}
 			return err
 		case msg := <-msgChan:
 			conn.handler(msg)
@@ -286,6 +539,23 @@ func (conn *connection) serviceConnection() error {
 }
 
 func (conn *connection) writeToStream() {
+	defer func() {
+		// Become the only owner of outBuff: fail everything still queued so
+		// onErr callbacks (e.g. SendWithAck waiters) are not stuck, and wake
+		// blocking senders so they fail instead of waiting.
+		conn.sendMu.Lock()
+		conn.sendClosed = true
+		conn.sendCond.Broadcast()
+		for {
+			select {
+			case m := <-conn.outBuff:
+				go m.onErr(errConnClosed)
+			default:
+				conn.sendMu.Unlock()
+				return
+			}
+		}
+	}()
 	stream := conn.gossipStream
 	for {
 		select {
@@ -296,6 +566,11 @@ func (conn *connection) writeToStream() {
 				return
 			}
 			conn.metrics.SentMessages.Add(1)
+			// Wake a sender waiting for queue room; holding sendMu keeps the
+			// signal from landing between a sender's check and its wait.
+			conn.sendMu.Lock()
+			conn.sendCond.Signal()
+			conn.sendMu.Unlock()
 		case <-conn.stopChan:
 			conn.logger.Debug("Closing writing to stream")
 			return
@@ -323,11 +598,85 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 				conn.logger.Warningf("Got error, aborting: %v", err)
 				return
 			}
+			conn.recvMu.Lock()
+			if conn.recvClosed {
+				// Teardown owns msgChan now; a message that can no longer be
+				// delivered must not be charged nor trip an eviction.
+				conn.recvMu.Unlock()
+				return
+			}
+			if !conn.admitReceivedBytes(msg) {
+				conn.recvMu.Unlock()
+				err = errors.Errorf("received bytes in flight exceed the per-connection limit of %d bytes", conn.maxRecvBytesInFlight)
+				conn.logger.Warningf("Dropping connection: %v", err)
+				conn.metrics.RecvBudgetDrops.Add(1)
+				errChan <- err
+				// The handler may be wedged on a stalled subscriber, so tear
+				// the connection down and evict it instead of waiting.
+				conn.close()
+				if conn.evictFromStore != nil {
+					conn.evictFromStore()
+				}
+				return
+			}
 			select {
 			case <-conn.stopChan:
+				conn.recvMu.Unlock()
+				conn.releaseReceivedBytes(msg)
+				return
 			case msgChan <- msg:
+				conn.recvMu.Unlock()
 			}
 		}
+	}
+}
+
+// admitReceivedBytes charges the message's wire size to the connection's
+// receive budget and the node-wide shared budget, so the total also covers
+// queued-not-yet-handed-off messages; false means the connection's own budget
+// is exceeded and the connection must be dropped to bound retained memory.
+// The counter and any retired debt move under acctMu, so a message admitted
+// after retirement is accounted as retired debt symmetrically with its
+// release; the shared admission runs outside acctMu because its eviction
+// callback takes the store lock.
+func (conn *connection) admitReceivedBytes(msg *protoext.SignedGossipMessage) bool {
+	size := int64(goproto.Size(msg.Envelope))
+	conn.acctMu.Lock()
+	inFlight := conn.recvBytesInFlight.Add(size)
+	conn.chargeRetiredDebtLocked(size)
+	conn.acctMu.Unlock()
+	if conn.maxRecvBytesInFlight > 0 && inFlight > conn.maxRecvBytesInFlight {
+		conn.acctMu.Lock()
+		conn.recvBytesInFlight.Add(-size) // never retained
+		conn.chargeRetiredDebtLocked(-size)
+		conn.acctMu.Unlock()
+		return false
+	}
+	conn.sharedRecvBudget.admit(size)
+	return true
+}
+
+// chargeRetiredDebtLocked moves size into (or out of) the shared budget's
+// retired debt when the connection was retired; caller must hold acctMu.
+func (conn *connection) chargeRetiredDebtLocked(size int64) {
+	if conn.retired && conn.sharedRecvBudget != nil {
+		conn.sharedRecvBudget.deadTotal.Add(size)
+	}
+}
+
+// releaseReceivedBytes returns the message's wire size to all budgets once
+// the message will not be (or no longer is) retained by the receive path.
+// Retired debt is subtracted in the same accounting transition as the
+// counter decrement, so a release can never miss its debt subtraction.
+func (conn *connection) releaseReceivedBytes(msg *protoext.SignedGossipMessage) {
+	size := int64(goproto.Size(msg.Envelope))
+	conn.sharedRecvBudget.release(size)
+	conn.acctMu.Lock()
+	conn.chargeRetiredDebtLocked(-size)
+	drained := conn.recvBytesInFlight.Add(-size) == 0 && conn.retired && conn.store != nil
+	conn.acctMu.Unlock()
+	if drained {
+		conn.store.removeDrainedConn(conn)
 	}
 }
 

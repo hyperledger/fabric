@@ -73,9 +73,25 @@ func (m *ChannelDeMultiplexer) AddChannel(predicate common.MessageAcceptor) <-ch
 	// Assignment to channel converts bidirectionalCh to send-only.
 	// Return converts bidirectionalCh to a receive-only.
 	ch := &channel{ch: bidirectionalCh, pred: predicate}
-	m.channels = append(m.channels, ch)
+	// Copy-on-write: deMultiplex iterates a snapshot captured under the lock
+	// after releasing it, so the captured backing array must never be
+	// mutated by a concurrent registration.
+	channels := make([]*channel, len(m.channels)+1)
+	copy(channels, m.channels)
+	channels[len(m.channels)] = ch
+	m.channels = channels
 	m.lock.Unlock()
 	return bidirectionalCh
+}
+
+// consumptionTracker is implemented by messages that hold accounted resources
+// until their deliveries are consumed. DeMultiplexAbortable reports the number
+// of deliveries before the first one and disposes the deliveries it aborts.
+type consumptionTracker interface {
+	// trackDeliveries records the delivery count before the first delivery.
+	trackDeliveries(n int)
+	// Dispose marks a single delivery as consumed (or as never made).
+	Dispose()
 }
 
 // DeMultiplex broadcasts the message to all channels that were returned
@@ -83,24 +99,80 @@ func (m *ChannelDeMultiplexer) AddChannel(predicate common.MessageAcceptor) <-ch
 //
 // Blocks if any one channel that would receive msg has a full buffer.
 func (m *ChannelDeMultiplexer) DeMultiplex(msg any) {
+	m.deMultiplex(msg, nil, false)
+}
+
+// DeMultiplexAbortable is DeMultiplex with delivery abortion: it stops
+// delivering when abort fires, and tracks deliveries of messages implementing
+// consumptionTracker so their resources stay accounted until consumed.
+func (m *ChannelDeMultiplexer) DeMultiplexAbortable(msg any, abort <-chan struct{}) {
+	m.deMultiplex(msg, abort, true)
+}
+
+func (m *ChannelDeMultiplexer) deMultiplex(msg any, abort <-chan struct{}, track bool) {
 	m.lock.Lock()
 	if m.closed {
 		m.lock.Unlock()
+		if t, ok := msg.(consumptionTracker); ok && track {
+			t.trackDeliveries(0)
+		}
 		return
 	}
 	channels := m.channels
 	m.deMuxInProgress.Add(1)
 	m.lock.Unlock()
+	defer m.deMuxInProgress.Done()
 
-	for _, ch := range channels {
-		if ch.pred(msg) {
-			select {
-			case <-m.stopCh:
-				m.deMuxInProgress.Done()
-				return // stopping
-			case ch.ch <- msg:
+	if !track {
+		// Single pass on the untracked hot path; no delivery count is needed.
+		for _, ch := range channels {
+			if ch.pred(msg) {
+				select {
+				case <-m.stopCh:
+					return // stopping
+				case <-abort:
+					return // aborted
+				case ch.ch <- msg:
+				}
 			}
 		}
+		return
 	}
-	m.deMuxInProgress.Done()
+
+	// The delivery count must be known before the first delivery, as consumers
+	// may release the message while later deliveries are still in progress.
+	// The stack buffer keeps the common case allocation-free.
+	var matchedBuf [8]*channel
+	matched := matchedBuf[:0]
+	for _, ch := range channels {
+		if ch.pred(msg) {
+			matched = append(matched, ch)
+		}
+	}
+	tracker, tracked := msg.(consumptionTracker)
+	if tracked {
+		tracker.trackDeliveries(len(matched))
+	}
+
+	for i, ch := range matched {
+		select {
+		case <-m.stopCh:
+			m.disposeUndelivered(tracker, tracked, len(matched)-i)
+			return // stopping
+		case <-abort:
+			m.disposeUndelivered(tracker, tracked, len(matched)-i)
+			return // aborted
+		case ch.ch <- msg:
+		}
+	}
+}
+
+// disposeUndelivered consumes the deliveries that were tracked but not made.
+func (m *ChannelDeMultiplexer) disposeUndelivered(tracker consumptionTracker, tracked bool, n int) {
+	if !tracked {
+		return
+	}
+	for range n {
+		tracker.Dispose()
+	}
 }
