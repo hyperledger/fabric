@@ -534,7 +534,8 @@ peer:
   # concurrency budgets above (endorser/deliver/gateway); outbound fan-out
   # such as gateway Submit is governed by the remote orderer's limit.
   # When the property is missing or the value is 0, the default of 2500
-  # is applied.
+  # is applied. Negative, malformed, or out-of-range values are rejected
+  # at startup.
   maxConcurrentStreams: 2500
 
 ###############################################################################

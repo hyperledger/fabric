@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"math"
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
@@ -31,6 +32,9 @@ const (
 	// sized to stay above existing per-service budgets (2500 endorser/deliver,
 	// 500 gateway Submit fan-out)
 	DefaultMaxConcurrentStreams uint32 = 2500
+	// UnlimitedMaxConcurrentStreams selects the stock gRPC behavior of no
+	// transport-level stream cap (the gRPC default)
+	UnlimitedMaxConcurrentStreams uint32 = math.MaxUint32
 )
 
 var (

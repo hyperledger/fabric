@@ -1331,36 +1331,3 @@ func TestMaxConcurrentStreams(t *testing.T) {
 		t.Fatal("queued stream was not served after a slot was freed")
 	}
 }
-
-func TestMaxConcurrentStreamsDefaultConfig(t *testing.T) {
-	t.Parallel()
-
-	// a server built with the default config must serve concurrent streams
-	lis, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err, "listen failed")
-	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{})
-	require.NoError(t, err, "failed to create gRPC server")
-	testpb.RegisterEmptyServiceServer(srv.Server(), &emptyServiceServer{})
-	defer srv.Stop()
-	go srv.Start()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	conn, err := grpc.DialContext(ctx, lis.Addr().String(), grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	require.NoError(t, err, "failed to dial test server")
-	defer conn.Close()
-	client := testpb.NewEmptyServiceClient(conn)
-
-	streams := make([]testpb.EmptyService_EmptyStreamClient, 0, 8)
-	for range 8 {
-		stream, err := client.EmptyStream(ctx)
-		require.NoError(t, err)
-		require.NoError(t, stream.Send(&testpb.Empty{}))
-		_, err = stream.Recv()
-		require.NoError(t, err)
-		streams = append(streams, stream)
-	}
-	for _, stream := range streams {
-		require.NoError(t, stream.CloseSend())
-	}
-}

@@ -53,6 +53,16 @@ func NewGRPCServer(address string, serverConfig ServerConfig) (*GRPCServer, erro
 	return NewGRPCServerFromListener(lis, serverConfig)
 }
 
+// effectiveMaxConcurrentStreams resolves the configured per-connection
+// stream cap: 0 selects the default, any other value (including
+// UnlimitedMaxConcurrentStreams) is applied as given.
+func effectiveMaxConcurrentStreams(configured uint32) uint32 {
+	if configured == 0 {
+		return DefaultMaxConcurrentStreams
+	}
+	return configured
+}
+
 // NewGRPCServerFromListener creates a new implementation of a GRPCServer given
 // an existing net.Listener instance using default keepalive
 func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig) (*GRPCServer, error) {
@@ -136,11 +146,7 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(maxSendMsgSize))
 	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(maxRecvMsgSize))
 	// refuse excess streams at the transport, before any message is decoded
-	maxConcurrentStreams := DefaultMaxConcurrentStreams
-	if serverConfig.MaxConcurrentStreams != 0 {
-		maxConcurrentStreams = serverConfig.MaxConcurrentStreams
-	}
-	serverOpts = append(serverOpts, grpc.MaxConcurrentStreams(maxConcurrentStreams))
+	serverOpts = append(serverOpts, grpc.MaxConcurrentStreams(effectiveMaxConcurrentStreams(serverConfig.MaxConcurrentStreams)))
 	// set the keepalive options
 	serverOpts = append(serverOpts, serverConfig.KaOpts.ServerKeepaliveOptions()...)
 	// set connection timeout

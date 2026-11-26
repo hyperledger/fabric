@@ -22,10 +22,12 @@ package peer
 import (
 	"crypto/tls"
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/hyperledger/fabric/common/viperutil"
@@ -454,12 +456,56 @@ func GetServerConfig() (comm.ServerConfig, error) {
 		serverConfig.MaxSendMsgSize = int(viper.GetInt32("peer.maxSendMsgSize"))
 	}
 	if viper.IsSet("peer.maxConcurrentStreams") {
+		v, err := parseUint32Config("peer.maxConcurrentStreams")
+		if err != nil {
+			return serverConfig, err
+		}
 		// 0 selects the default, matching comm.NewGRPCServerFromListener
-		if v := viper.GetUint32("peer.maxConcurrentStreams"); v != 0 {
+		if v != 0 {
 			serverConfig.MaxConcurrentStreams = v
 		}
 	}
 	return serverConfig, nil
+}
+
+// parseUint32Config reads a uint32 configuration value with explicit range
+// validation: viper.GetUint32 silently narrows overflows (2^32 becomes 1)
+// and maps negatives to huge values, so the raw value is parsed as int64
+// and checked instead.
+func parseUint32Config(key string) (uint32, error) {
+	raw := viper.Get(key)
+	var v int64
+	switch value := raw.(type) {
+	case string:
+		parsed, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return 0, errors.Wrapf(err, "invalid value for %s: %q", key, value)
+		}
+		v = parsed
+	case int:
+		v = int64(value)
+	case int32:
+		v = int64(value)
+	case int64:
+		v = value
+	case uint:
+		v = int64(value)
+	case uint32:
+		v = int64(value)
+	case uint64:
+		if value > math.MaxInt64 {
+			return 0, errors.Errorf("invalid value for %s: %d overflows uint32", key, value)
+		}
+		v = int64(value)
+	case float64:
+		v = int64(value)
+	default:
+		return 0, errors.Errorf("invalid value for %s: %v", key, raw)
+	}
+	if v < 0 || v > math.MaxUint32 {
+		return 0, errors.Errorf("invalid value for %s: %d is out of range [0, %d]", key, v, uint64(math.MaxUint32))
+	}
+	return uint32(v), nil
 }
 
 // GetClientCertificate returns the TLS certificate to use for gRPC client

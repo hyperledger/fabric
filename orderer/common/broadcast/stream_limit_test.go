@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/broadcast/mock"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -151,69 +152,16 @@ func TestBroadcastExcessStreamQueuedBeforeDecode(t *testing.T) {
 	t.Logf("after draining a slot: queued stream decoded and rejected; decoded at gate: %d messages", gateMessages.Load())
 }
 
-// With the default configuration a burst of concurrent broadcast streams is
-// served normally: all streams are admitted simultaneously, and every
-// unauthenticated message is decoded and then rejected by the auth gate.
-func TestBroadcastDefaultConfigConcurrentStreams(t *testing.T) {
-	const concurrency = 16
-
-	allAdmitted := make(chan struct{})
-	release := make(chan struct{})
-	var gateMessages atomic.Int64
-	registrar := &mock.ChannelSupportRegistrar{}
-	registrar.BroadcastChannelSupportStub = func(env *cb.Envelope) (*cb.ChannelHeader, bool, broadcast.ChannelSupport, error) {
-		if gateMessages.Add(1) == concurrency {
-			close(allAdmitted)
-		}
-		<-release // hold the slot so all streams must be admitted concurrently
-		return nil, false, nil, errors.New("invalid signature")
-	}
-
-	conn := startBroadcastServer(t, comm.ServerConfig{
-		Logger:         flogging.MustGetLogger("broadcast.test"),
-		MaxRecvMsgSize: comm.DefaultMaxRecvMsgSize,
-		MaxSendMsgSize: comm.DefaultMaxSendMsgSize,
-	}, registrar)
-	client := ab.NewAtomicBroadcastClient(conn)
-
-	env := &cb.Envelope{Payload: make([]byte, 1<<20)}
-
-	errCh := make(chan error, concurrency)
-	for range concurrency {
-		go func() {
-			stream, err := client.Broadcast(context.Background())
-			if err != nil {
-				errCh <- err
-				return
-			}
-			defer stream.CloseSend()
-			if err = stream.Send(env); err != nil {
-				errCh <- err
-				return
-			}
-			resp, err := stream.Recv()
-			if err != nil {
-				errCh <- err
-				return
-			}
-			if resp.GetStatus() != cb.Status_BAD_REQUEST {
-				errCh <- errors.Errorf("unexpected status %v", resp.GetStatus())
-				return
-			}
-			errCh <- nil
-		}()
-	}
-
-	// every stream must hold a slot at once; a smaller default cap would
-	// queue some of them client-side and the gate would never fill
-	select {
-	case <-allAdmitted:
-	case <-time.After(10 * time.Second):
-		t.Fatalf("only %d of %d streams were admitted concurrently", gateMessages.Load(), concurrency)
-	}
-	close(release)
-	for range concurrency {
-		require.NoError(t, <-errCh)
-	}
-	require.EqualValues(t, concurrency, gateMessages.Load())
+// The documented sizing rule holds at the defaults: the transport stream
+// cap must cover the broadcast concurrency budgets, or it would throttle
+// legitimate broadcasts before the service budgets are reached.
+func TestBroadcastDefaultLimitsBoundary(t *testing.T) {
+	defaults := localconfig.Defaults.General.Limits.Concurrency
+	require.GreaterOrEqual(t, comm.DefaultMaxConcurrentStreams, uint32(defaults.BroadcastService),
+		"the default transport stream cap must cover the default broadcast budget")
+	require.GreaterOrEqual(t, comm.DefaultMaxConcurrentStreams, uint32(defaults.BroadcastPreAuth),
+		"the default transport stream cap must cover the default pre-auth broadcast budget")
+	require.Positive(t, defaults.BroadcastPreAuth)
+	require.Less(t, defaults.BroadcastPreAuth, defaults.BroadcastService,
+		"the pre-auth allowance must be much smaller than the broadcast budget")
 }

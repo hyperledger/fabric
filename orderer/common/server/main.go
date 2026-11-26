@@ -382,13 +382,16 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 	}
 
 	serverConf := comm.ServerConfig{
-		StreamInterceptors:   generalConf.StreamInterceptors,
-		UnaryInterceptors:    generalConf.UnaryInterceptors,
-		ConnectionTimeout:    generalConf.ConnectionTimeout,
-		ServerStatsHandler:   generalConf.ServerStatsHandler,
-		Logger:               generalConf.Logger,
-		KaOpts:               generalConf.KaOpts,
-		MaxConcurrentStreams: generalConf.MaxConcurrentStreams,
+		StreamInterceptors: generalConf.StreamInterceptors,
+		UnaryInterceptors:  generalConf.UnaryInterceptors,
+		ConnectionTimeout:  generalConf.ConnectionTimeout,
+		ServerStatsHandler: generalConf.ServerStatsHandler,
+		Logger:             generalConf.Logger,
+		KaOpts:             generalConf.KaOpts,
+		// the client-facing transport cap must not apply here: consensus
+		// streams are created without a deadline, so a cap can deadlock
+		// multichannel deployments
+		MaxConcurrentStreams: comm.UnlimitedMaxConcurrentStreams,
 		SecOpts: comm.SecureOptions{
 			TimeShift:         conf.General.Cluster.TLSHandshakeTimeShift,
 			CipherSuites:      comm.DefaultTLSCipherSuites,
@@ -552,7 +555,7 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
 		grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
 	}
-	if limiter := initBroadcastConcurrencyLimiter(conf); limiter != nil {
+	if limiter := initBroadcastConcurrencyLimiter(conf, metricsProvider); limiter != nil {
 		streamInterceptors = append(streamInterceptors, limiter.interceptor())
 	}
 

@@ -27,6 +27,11 @@ The following orderer metrics are exported for consumption by Prometheus.
 |                                                      |           |                                                            +-----------+--------------------------------------------------------------------+
 |                                                      |           |                                                            | status    |                                                                    |
 +------------------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| broadcast_sessions_held                              | gauge     | The number of broadcast stream permits currently held.     | pool      |                                                                    |
++------------------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| broadcast_sessions_rejected                          | counter   | The number of broadcast streams rejected because a         | pool      |                                                                    |
+|                                                      |           | broadcast concurrency limit was reached.                   |           |                                                                    |
++------------------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | broadcast_validate_duration                          | histogram | The time to validate a transaction in seconds.             | channel   |                                                                    |
 |                                                      |           |                                                            +-----------+--------------------------------------------------------------------+
 |                                                      |           |                                                            | type      |                                                                    |
@@ -263,6 +268,11 @@ associated with the metric.
 | broadcast.enqueue_duration.%{channel}.%{type}.%{status}                   | histogram | The time to enqueue a transaction in seconds.              |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | broadcast.processed_count.%{channel}.%{type}.%{status}                    | counter   | The number of transactions processed.                      |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| broadcast.sessions_held.%{pool}                                           | gauge     | The number of broadcast stream permits currently held.     |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| broadcast.sessions_rejected.%{pool}                                       | counter   | The number of broadcast streams rejected because a         |
+|                                                                           |           | broadcast concurrency limit was reached.                   |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | broadcast.validate_duration.%{channel}.%{type}.%{status}                  | histogram | The time to validate a transaction in seconds.             |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+

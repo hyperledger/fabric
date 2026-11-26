@@ -162,7 +162,8 @@ func TestInitializeServerConfig(t *testing.T) {
 	require.NotNil(t, sc.Logger)
 	require.Equal(t, comm.NewServerStatsHandler(&disabled.Provider{}), sc.ServerStatsHandler)
 	require.Len(t, sc.UnaryInterceptors, 2)
-	require.Len(t, sc.StreamInterceptors, 2)
+	// metrics, logging, and the broadcast concurrency limiter (defaults apply)
+	require.Len(t, sc.StreamInterceptors, 3)
 
 	conf.General.MaxConcurrentStreams = 1000
 	sc = initializeServerConfig(conf, nil)
@@ -876,8 +877,9 @@ func TestConfigureClusterListener(t *testing.T) {
 				require.Contains(t, panicMsg(f), testCase.expectedPanic)
 			} else {
 				conf, _ := configureClusterListener(testCase.conf, testCase.generalConf, loadPEM)
-				require.Equal(t, testCase.generalConf.MaxConcurrentStreams, conf.MaxConcurrentStreams,
-					"cluster listener must inherit the transport stream cap")
+				require.Equal(t, comm.UnlimitedMaxConcurrentStreams, conf.MaxConcurrentStreams,
+					"cluster listener must not inherit the client-facing transport stream cap: "+
+						"consensus streams are created without a deadline and a shared cap can deadlock multichannel deployments")
 			}
 			// Ensure logged messages that are expected were all logged
 			var loggedMessages []string

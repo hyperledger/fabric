@@ -27,6 +27,7 @@ func TestLoadGoodConfig(t *testing.T) {
 	require.NoError(t, err, "Load good config returned unexpected error")
 	require.Equal(t, comm.DefaultMaxConcurrentStreams, cfg.General.MaxConcurrentStreams)
 	require.Equal(t, Defaults.General.Limits.Concurrency.BroadcastService, cfg.General.Limits.Concurrency.BroadcastService)
+	require.Equal(t, Defaults.General.Limits.Concurrency.BroadcastPreAuth, cfg.General.Limits.Concurrency.BroadcastPreAuth)
 }
 
 func TestMissingConfigValueOverridden(t *testing.T) {
@@ -159,6 +160,52 @@ func TestJSONOptionsDurationRoundTrip(t *testing.T) {
 	err = json.Unmarshal(b, &d, jsonOptions...)
 	require.NoError(t, err)
 	require.Equal(t, 20*time.Second, d)
+}
+
+func TestBroadcastConcurrencyLimits(t *testing.T) {
+	t.Run("values below -1 panic", func(t *testing.T) {
+		uconf := &TopLevel{}
+		uconf.General.Limits.Concurrency.BroadcastService = -2
+		require.PanicsWithValue(t,
+			"General.Limits.Concurrency.BroadcastService must be -1 (unlimited), 0 (default), or a positive integer, got -2",
+			func() { uconf.completeInitialization("/dummy/path") })
+
+		uconf = &TopLevel{}
+		uconf.General.Limits.Concurrency.BroadcastPreAuth = -2
+		require.PanicsWithValue(t,
+			"General.Limits.Concurrency.BroadcastPreAuth must be -1 (unlimited), 0 (default), or a positive integer, got -2",
+			func() { uconf.completeInitialization("/dummy/path") })
+	})
+
+	t.Run("-1 selects unlimited and is preserved", func(t *testing.T) {
+		uconf := &TopLevel{}
+		uconf.General.Limits.Concurrency.BroadcastService = -1
+		uconf.General.Limits.Concurrency.BroadcastPreAuth = -1
+		require.NotPanics(t, func() { uconf.completeInitialization("/dummy/path") })
+		require.Equal(t, -1, uconf.General.Limits.Concurrency.BroadcastService)
+		require.Equal(t, -1, uconf.General.Limits.Concurrency.BroadcastPreAuth)
+	})
+
+	t.Run("0 selects the defaults", func(t *testing.T) {
+		uconf := &TopLevel{}
+		require.NotPanics(t, func() { uconf.completeInitialization("/dummy/path") })
+		require.Equal(t, Defaults.General.Limits.Concurrency.BroadcastService, uconf.General.Limits.Concurrency.BroadcastService)
+		require.Equal(t, Defaults.General.Limits.Concurrency.BroadcastPreAuth, uconf.General.Limits.Concurrency.BroadcastPreAuth)
+	})
+}
+
+// Out-of-range values for the uint32 MaxConcurrentStreams must surface as
+// load errors, never silently narrowed.
+func TestLoadMaxConcurrentStreamsOutOfRange(t *testing.T) {
+	for _, value := range []string{"4294967296", "-1", "not-a-number"} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv("ORDERER_GENERAL_MAXCONCURRENTSTREAMS", value)
+			configtest.SetDevFabricConfigPath(t)
+			cc := &configCache{}
+			_, err := cc.load()
+			require.Errorf(t, err, "MaxConcurrentStreams=%s must be rejected", value)
+		})
+	}
 }
 
 func TestAdminTLSConfig(t *testing.T) {
