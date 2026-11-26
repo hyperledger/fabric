@@ -9,6 +9,7 @@ package privdata
 import (
 	protosgossip "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
@@ -65,6 +66,7 @@ func (dr *dataRetriever) CollectionRWSet(digests []*protosgossip.PvtDataDigest, 
 		dr.logger.Debug("Current ledger height ", height, "is below requested block sequence number",
 			blockNum, "retrieving private data from transient store")
 
+		configs := dr.newConfigCache()
 		results := make(Dig2PvtRWSetWithConfig)
 		for _, dig := range digests {
 			// skip retrieving from transient store if txid is not available
@@ -81,7 +83,7 @@ func (dr *dataRetriever) CollectionRWSet(digests []*protosgossip.PvtDataDigest, 
 					dig.GetCollection(): true,
 				},
 			}
-			pvtRWSet, err := dr.fromTransientStore(dig, filter)
+			pvtRWSet, err := dr.fromTransientStore(dig, filter, configs)
 			if err != nil {
 				dr.logger.Errorf("couldn't read from transient store private read-write set, "+
 					"digest %+v, because of %s", dig, err)
@@ -104,6 +106,8 @@ func (dr *dataRetriever) CollectionRWSet(digests []*protosgossip.PvtDataDigest, 
 }
 
 func (dr *dataRetriever) fromLedger(digests []*protosgossip.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, error) {
+	configs := dr.newConfigCache()
+
 	filter := make(map[string]ledger.PvtCollFilter)
 	for _, dig := range digests {
 		if _, ok := filter[dig.GetNamespace()]; !ok {
@@ -136,28 +140,21 @@ func (dr *dataRetriever) fromLedger(digests []*protosgossip.PvtDataDigest, block
 			pvtRWSetWithConfig.RWSet = append(pvtRWSetWithConfig.RWSet, pvtRWSet...)
 		}
 
-		confHistoryRetriever, err := dr.committer.GetConfigHistoryRetriever()
+		configPackage, err := configs.configPackage(dig.GetNamespace(), dig.GetBlockSeq())
 		if err != nil {
-			return nil, errors.Errorf("cannot obtain configuration history retriever, for collection <%s>"+
-				" txID <%s> block sequence number <%d> due to <%s>", dig.GetCollection(), dig.GetTxId(), dig.GetBlockSeq(), err)
+			return nil, errors.WithMessagef(err, "cannot obtain the collection config for collection <%s>"+
+				" txID <%s>", dig.GetCollection(), dig.GetTxId())
 		}
-
-		configInfo, err := confHistoryRetriever.MostRecentCollectionConfigBelow(dig.GetBlockSeq(), dig.GetNamespace())
-		if err != nil {
-			return nil, errors.Errorf("cannot find recent collection config update below block sequence = %d,"+
-				" collection name = <%s> for chaincode <%s>", dig.GetBlockSeq(), dig.GetCollection(), dig.GetNamespace())
-		}
-
-		if configInfo == nil {
+		if configPackage == nil {
 			return nil, errors.Errorf("no collection config update below block sequence = <%d>"+
 				" collection name = <%s> for chaincode <%s> is available ", dig.GetBlockSeq(), dig.GetCollection(), dig.GetNamespace())
 		}
-		configs := extractCollectionConfig(configInfo.CollectionConfig, dig.GetCollection())
-		if configs == nil {
+		collectionConfig := extractCollectionConfig(configPackage, dig.GetCollection())
+		if collectionConfig == nil {
 			return nil, errors.Errorf("no collection config was found for collection <%s>"+
 				" namespace <%s> txID <%s>", dig.GetCollection(), dig.GetNamespace(), dig.GetTxId())
 		}
-		pvtRWSetWithConfig.CollectionConfig = configs
+		pvtRWSetWithConfig.CollectionConfig = collectionConfig
 		results[common.DigKey{
 			Namespace:  dig.GetNamespace(),
 			Collection: dig.GetCollection(),
@@ -170,8 +167,117 @@ func (dr *dataRetriever) fromLedger(digests []*protosgossip.PvtDataDigest, block
 	return results, nil
 }
 
-func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, filter map[string]ledger.PvtCollFilter) (*util.PrivateRWSetWithConfig, error) {
+// configCache looks up collection configs in the ledger's config history, caching each
+// (namespace, block sequence) lookup for the lifetime of a single CollectionRWSet call.
+// The lookup is not only a config history read: for implicit collections the kvledger
+// wrapper creates a query executor and reads the state DB. A pull request commonly carries
+// several digests for the same namespace and block, which would otherwise repeat it.
+type configCache struct {
+	committer committer.Committer
+	retriever ledger.ConfigHistoryRetriever
+	retrErr   error
+	retrieved bool
+	packages  map[configCacheKey]cachedConfigPackage
+}
+
+type configCacheKey struct {
+	namespace string
+	blockSeq  uint64
+}
+
+type cachedConfigPackage struct {
+	configPackage *peer.CollectionConfigPackage
+	err           error
+}
+
+func (dr *dataRetriever) newConfigCache() *configCache {
+	return &configCache{
+		committer: dr.committer,
+		packages:  make(map[configCacheKey]cachedConfigPackage),
+	}
+}
+
+// configPackage returns the collection config package committed to the ledger most recently
+// below the given block sequence, or nil if the ledger holds no config for the namespace below
+// that block.
+func (c *configCache) configPackage(namespace string, blockSeq uint64) (*peer.CollectionConfigPackage, error) {
+	key := configCacheKey{namespace: namespace, blockSeq: blockSeq}
+	if cached, ok := c.packages[key]; ok {
+		return cached.configPackage, cached.err
+	}
+
+	configPackage, err := c.lookup(namespace, blockSeq)
+	c.packages[key] = cachedConfigPackage{configPackage: configPackage, err: err}
+	return configPackage, err
+}
+
+func (c *configCache) lookup(namespace string, blockSeq uint64) (*peer.CollectionConfigPackage, error) {
+	if !c.retrieved {
+		c.retriever, c.retrErr = c.committer.GetConfigHistoryRetriever()
+		c.retrieved = true
+	}
+	if c.retrErr != nil {
+		return nil, errors.Errorf("cannot obtain configuration history retriever, for chaincode <%s>"+
+			" block sequence number <%d> due to <%s>", namespace, blockSeq, c.retrErr)
+	}
+
+	configInfo, err := c.retriever.MostRecentCollectionConfigBelow(blockSeq, namespace)
+	if err != nil {
+		return nil, errors.Errorf("cannot find recent collection config update below block sequence = %d,"+
+			" for chaincode <%s>", blockSeq, namespace)
+	}
+	if configInfo == nil {
+		return nil, nil
+	}
+	return configInfo.CollectionConfig, nil
+}
+
+func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, filter map[string]ledger.PvtCollFilter, configs *configCache) (*util.PrivateRWSetWithConfig, error) {
 	results := &util.PrivateRWSetWithConfig{}
+	rwSets, err := dr.transientStoreRWSets(dig, filter)
+	if err != nil {
+		return nil, err
+	}
+	if len(rwSets) == 0 {
+		return results, nil
+	}
+
+	// A transient store entry can be written by any peer in the channel through a private data
+	// push, and the collection config it carries is stored as it was received, so it cannot
+	// decide who the private data may be released to. The requester is checked against the
+	// collection config committed to the ledger instead, the same lookup fromLedger uses, and
+	// the write sets stored for the txID are returned under that config whatever config the
+	// entries themselves carry.
+	//
+	// Without a config from the ledger there is nothing to check the requester against, so
+	// nothing is served for the digest and filterNotEligible skips it. A collection the ledger
+	// holds no config for is expected here, for instance when a peer pushed an entry for a
+	// collection that does not exist, so that case is logged at debug level, while a failure of
+	// the lookup itself is logged as a warning.
+	configPackage, err := configs.configPackage(dig.GetNamespace(), dig.GetBlockSeq())
+	if err != nil {
+		dr.logger.Warningf("Not serving %d transient store write sets for txID <%s>, collection <%s>, namespace <%s>,"+
+			" because the collection config could not be read from the ledger: %s",
+			len(rwSets), dig.GetTxId(), dig.GetCollection(), dig.GetNamespace(), err)
+		return results, nil
+	}
+
+	collectionConfig := extractCollectionConfig(configPackage, dig.GetCollection())
+	if collectionConfig == nil {
+		dr.logger.Debugf("Not serving %d transient store write sets for txID <%s>, collection <%s>, namespace <%s>,"+
+			" because the ledger holds no config for that collection below block sequence %d",
+			len(rwSets), dig.GetTxId(), dig.GetCollection(), dig.GetNamespace(), dig.GetBlockSeq())
+		return results, nil
+	}
+
+	results.CollectionConfig = collectionConfig
+	results.RWSet = rwSets
+	return results, nil
+}
+
+// transientStoreRWSets returns the write sets the transient store holds for the digest's txID,
+// namespace and collection. The iterator is closed before the caller looks up the ledger.
+func (dr *dataRetriever) transientStoreRWSets(dig *protosgossip.PvtDataDigest, filter map[string]ledger.PvtCollFilter) ([]util.PrivateRWSet, error) {
 	it, err := dr.store.GetTxPvtRWSetByTxid(dig.GetTxId(), filter)
 	if err != nil {
 		return nil, errors.Errorf("was not able to retrieve private data from transient store, namespace <%s>"+
@@ -179,7 +285,7 @@ func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, fil
 	}
 	defer it.Close()
 
-	maxEndorsedAt := uint64(0)
+	var rwSets []util.PrivateRWSet
 	for {
 		res, err := it.Next()
 		if err != nil {
@@ -187,7 +293,7 @@ func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, fil
 				", collection name <%s>, txID <%s>, due to <%s>", dig.GetNamespace(), dig.GetCollection(), dig.GetTxId(), err)
 		}
 		if res == nil {
-			return results, nil
+			return rwSets, nil
 		}
 		rws := res.PvtSimulationResultsWithConfig
 		if rws == nil {
@@ -207,19 +313,13 @@ func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, fil
 			continue
 		}
 
-		configs := extractCollectionConfig(colConfigs, dig.GetCollection())
-		if configs == nil {
+		if extractCollectionConfig(colConfigs, dig.GetCollection()) == nil {
 			dr.logger.Error("No collection config was found for collection", dig.GetCollection(),
 				"namespace", dig.GetNamespace(), "txID", dig.GetTxId())
 			continue
 		}
 
-		pvtRWSet := dr.extractPvtRWsets(txPvtRWSet.GetNsPvtRwset(), dig.GetNamespace(), dig.GetCollection())
-		if rws.GetEndorsedAt() >= maxEndorsedAt {
-			maxEndorsedAt = rws.GetEndorsedAt()
-			results.CollectionConfig = configs
-		}
-		results.RWSet = append(results.RWSet, pvtRWSet...)
+		rwSets = append(rwSets, dr.extractPvtRWsets(txPvtRWSet.GetNsPvtRwset(), dig.GetNamespace(), dig.GetCollection())...)
 	}
 }
 
