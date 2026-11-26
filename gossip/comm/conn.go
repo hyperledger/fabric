@@ -75,10 +75,10 @@ func (cs *connectionStore) retireChargedConn(conn *connection) {
 		return
 	}
 	cs.deadCharged[conn] = struct{}{}
-	// The connection's delivered charges outlive it in subscriber queues and
+	// The connection's retained charges outlive it in subscriber queues and
 	// now count as retired debt against the shared budget.
 	if b := cs.config.sharedRecvBudget; b != nil {
-		b.deadTotal.Add(conn.sharedChargedTotal.Load())
+		b.deadTotal.Add(conn.recvBytesInFlight.Load())
 	}
 }
 
@@ -325,11 +325,11 @@ type ConnConfig struct {
 	sharedRecvBudget *sharedRecvBudget
 }
 
-// sharedRecvBudget bounds received-but-retained bytes across connections;
-// it is charged only once a message is delivered to a subscriber. While the
-// aggregate live debt exceeds max, the live connection holding the most
-// in-flight bytes is evicted; retired (removed) connections' charges never
-// trigger an eviction.
+// sharedRecvBudget bounds received-but-retained bytes across connections,
+// charged at admission so queued-not-yet-handed-off messages count too.
+// While the aggregate live debt exceeds max, the live connection holding the
+// most in-flight bytes is evicted; retired (removed) connections' charges
+// never trigger an eviction.
 type sharedRecvBudget struct {
 	inFlight atomic.Int64
 	// deadTotal is the part of inFlight held by removed connections.
@@ -377,10 +377,7 @@ type connection struct {
 	recvBuffSize int
 	// recvBytesInFlight tracks received bytes not yet consumed downstream, so
 	// a stalled pipeline cannot pin unbounded memory.
-	recvBytesInFlight atomic.Int64
-	// sharedChargedTotal tracks this connection's delivered-but-unconsumed
-	// bytes, the part of its debt the shared budget counts.
-	sharedChargedTotal   atomic.Int64
+	recvBytesInFlight    atomic.Int64
 	maxRecvBytesInFlight int64
 	sharedRecvBudget     *sharedRecvBudget
 	// evictFromStore removes this connection from the connection store if it
@@ -611,10 +608,9 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 }
 
 // admitReceivedBytes charges the message's wire size to the connection's
-// receive budget; false means the budget is exceeded and the connection must
-// be dropped to bound retained memory. The shared budget is charged later, at
-// first delivery, so never-retained messages cannot trigger a node-wide
-// eviction.
+// receive budget and the node-wide shared budget, so the total also covers
+// queued-not-yet-handed-off messages; false means the connection's own budget
+// is exceeded and the connection must be dropped to bound retained memory.
 func (conn *connection) admitReceivedBytes(msg *protoext.SignedGossipMessage) bool {
 	size := int64(goproto.Size(msg.Envelope))
 	inFlight := conn.recvBytesInFlight.Add(size)
@@ -622,14 +618,20 @@ func (conn *connection) admitReceivedBytes(msg *protoext.SignedGossipMessage) bo
 		conn.recvBytesInFlight.Add(-size) // never retained
 		return false
 	}
+	conn.sharedRecvBudget.admit(size)
 	return true
 }
 
-// releaseReceivedBytes returns the message's wire size to the connection's
-// receive budget once the message will not be (or no longer is) retained by
-// the receive path.
+// releaseReceivedBytes returns the message's wire size to all budgets once
+// the message will not be (or no longer is) retained by the receive path.
+// Retired debt is subtracted before a zero counter purges the entry.
 func (conn *connection) releaseReceivedBytes(msg *protoext.SignedGossipMessage) {
-	if conn.recvBytesInFlight.Add(-int64(goproto.Size(msg.Envelope))) == 0 && conn.retiredCharged.Load() && conn.store != nil {
+	size := int64(goproto.Size(msg.Envelope))
+	conn.sharedRecvBudget.release(size)
+	if conn.retiredCharged.Load() {
+		conn.sharedRecvBudget.deadTotal.Add(-size)
+	}
+	if conn.recvBytesInFlight.Add(-size) == 0 && conn.retiredCharged.Load() && conn.store != nil {
 		conn.store.removeDrainedConn(conn)
 	}
 }

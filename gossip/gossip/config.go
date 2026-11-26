@@ -86,10 +86,10 @@ type Config struct {
 	// a single connection may hold unconsumed before the connection is closed.
 	// Non-positive disables the limit.
 	MaxRecvBytesInFlight int
-	// MaxRecvBytesTotal bounds the wire bytes of received messages held
-	// unconsumed across all live connections; on excess the live connection
-	// holding the most in-flight bytes is closed. Non-positive disables the
-	// limit.
+	// MaxRecvBytesTotal bounds the wire bytes of received messages retained
+	// across all live connections, queued or awaiting consumption; on excess
+	// the live connection holding the most in-flight bytes is closed.
+	// Non-positive disables the limit.
 	// The bound covers the receive pipeline up to message handling: channel
 	// message stores, state-transfer queues (peer.gossip.state.channelSize),
 	// and the block payload buffer sit past that boundary and apply their own

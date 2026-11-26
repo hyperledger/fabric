@@ -676,29 +676,17 @@ func TestSharedBudgetPolicyUsesAggregateDebt(t *testing.T) {
 		conn.store = cs
 		return conn
 	}
-	// chargeDelivered emulates a delivered, unconsumed message: the receive
-	// path charges the connection on admission and the shared budget at first
-	// delivery.
+	// chargeDelivered emulates a received message: the receive path charges
+	// both the connection and the shared budget on admission.
 	chargeDelivered := func(conn *connection, n int) {
 		for range n {
-			msg := msgOf()
-			conn.admitReceivedBytes(msg)
-			size := int64(goproto.Size(msg.Envelope))
-			conn.sharedChargedTotal.Add(size)
-			shared.admit(size)
+			conn.admitReceivedBytes(msgOf())
 		}
 	}
-	// disposeDelivered mirrors the consumer release path for delivered bytes.
+	// disposeDelivered mirrors the consumer release path.
 	disposeDelivered := func(conn *connection, n int) {
 		for range n {
-			msg := msgOf()
-			conn.releaseReceivedBytes(msg)
-			size := int64(goproto.Size(msg.Envelope))
-			conn.sharedChargedTotal.Add(-size)
-			shared.release(size)
-			if conn.retiredCharged.Load() {
-				shared.deadTotal.Add(-size)
-			}
+			conn.releaseReceivedBytes(msgOf())
 		}
 	}
 	alive := func(conn *connection) bool {
@@ -848,8 +836,6 @@ func TestPostTeardownReceiveDoesNotCharge(t *testing.T) {
 	require.NoError(t, err)
 	// Delivered charge on the healthy connection: fills the budget to exactly max.
 	healthy.admitReceivedBytes(msg)
-	healthy.sharedChargedTotal.Add(msgSize)
-	shared.admit(msgSize)
 
 	// The victim's reader is blocked in Recv while the connection is torn down.
 	recvGate := make(chan struct{})
@@ -1118,11 +1104,7 @@ func TestReceiveBudgetMetrics(t *testing.T) {
 
 	chargeDelivered := func(conn *connection, n int) {
 		for range n {
-			msg := &protoext.SignedGossipMessage{Envelope: makeDataEnvelope(1024)}
-			conn.admitReceivedBytes(msg)
-			size := int64(goproto.Size(msg.Envelope))
-			conn.sharedChargedTotal.Add(size)
-			shared.admit(size)
+			conn.admitReceivedBytes(&protoext.SignedGossipMessage{Envelope: makeDataEnvelope(1024)})
 		}
 	}
 
@@ -1154,9 +1136,9 @@ func TestReceiveBudgetMetrics(t *testing.T) {
 	}
 }
 
-// TestUnmatchedMessageDoesNotEvictBystander proves that a large decodable
-// message matching no subscriber is never charged to the shared budget, so it
-// cannot evict a bystander.
+// TestUnmatchedMessageDoesNotEvictBystander proves that large decodable
+// messages matching no subscriber release both charges at handoff: they never
+// accumulate against the shared budget and never evict a bystander.
 func TestUnmatchedMessageDoesNotEvictBystander(t *testing.T) {
 	msgSize := int64(goproto.Size(makeDataEnvelope(1024)))
 
@@ -1168,7 +1150,9 @@ func TestUnmatchedMessageDoesNotEvictBystander(t *testing.T) {
 	c.msgPublisher.AddChannel(func(any) bool { return false }) // matches nothing
 	defer c.msgPublisher.Close()
 
-	shared := &sharedRecvBudget{max: 3 * msgSize}
+	// The budget stays far above the flooder's transient in-queue charges, so
+	// nothing may be evicted.
+	shared := &sharedRecvBudget{max: 100 * msgSize}
 	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{}, disabledMetrics)
 	shared.evict = func() { cs.evictLargestConnection(shared.max) }
 
@@ -1205,21 +1189,24 @@ func TestUnmatchedMessageDoesNotEvictBystander(t *testing.T) {
 		svcDone <- flooder.serviceConnection()
 	}()
 
-	// The flooder streams many unmatched messages: none may be charged.
+	// The flooder streams many unmatched messages; nobody may be evicted.
 	require.Eventually(t, func() bool {
 		return recvCalls.Load() > 20
 	}, 30*time.Second, time.Millisecond, "flooded messages never arrived")
-	require.Zero(t, shared.inFlight.Load(), "unmatched messages charged the shared budget")
 	require.Equal(t, 2, cs.connNum())
-
 	select {
 	case <-bystander.stopChan:
 		t.Fatal("bystander connection was dropped by unmatched-message floods")
 	default:
 	}
+
+	// Once the flood stops, both counters drain completely: nothing was retained.
 	flooder.close()
-	bystander.close()
 	<-svcDone
+	require.Eventually(t, func() bool {
+		return flooder.recvBytesInFlight.Load() == 0 && shared.inFlight.Load() == 0
+	}, 30*time.Second, time.Millisecond, "unmatched messages were not released at handoff")
+	bystander.close()
 }
 
 // TestPerConnTripDoesNotEvictOther proves that a message tripping only the
@@ -1272,7 +1259,9 @@ func TestPerConnTripDoesNotEvictOther(t *testing.T) {
 	}, 30*time.Second, 10*time.Millisecond, "connection did not trip its per-connection budget")
 	<-svcDone
 
-	require.Zero(t, shared.inFlight.Load(), "per-connection trip charged the shared budget")
+	// Only the two messages still retained by the connection stay charged;
+	// the tripping message never touched the shared budget.
+	require.Equal(t, 2*msgSize, shared.inFlight.Load(), "per-connection trip charged the shared budget for a never-retained message")
 	select {
 	case <-healthy.stopChan:
 		t.Fatal("healthy connection was evicted by another connection's per-connection trip")
@@ -1301,8 +1290,6 @@ func TestSharedBudgetLogsOvercommitOncePerEpisode(t *testing.T) {
 	require.NoError(t, err)
 	for range 4 {
 		dead.admitReceivedBytes(msg)
-		dead.sharedChargedTotal.Add(msgSize)
-		shared.admit(msgSize)
 	}
 	cs.evictConn(dead)
 	require.EqualValues(t, 0, evictCalls.Load(), "no scan expected before the budget is exceeded")
@@ -1320,6 +1307,116 @@ func TestSharedBudgetLogsOvercommitOncePerEpisode(t *testing.T) {
 	}
 	shared.admit(msgSize)
 	require.EqualValues(t, 2, evictCalls.Load(), "a new overcommit episode must scan once more")
+}
+
+// TestRetiredDebtResidue pins the release ordering: the final dispose of a
+// retired connection must subtract its shared retired debt before the
+// zero-counter purge clears the retired flag.
+func TestRetiredDebtResidue(t *testing.T) {
+	msg, err := protoext.EnvelopeToGossipMessage(makeDataEnvelope(1024))
+	require.NoError(t, err)
+	size := int64(goproto.Size(msg.Envelope))
+
+	c := &commImpl{
+		msgPublisher: NewChannelDemultiplexer(),
+		pubSub:       util.NewPubSub(),
+		logger:       flogging.MustGetLogger("test"),
+	}
+	defer c.msgPublisher.Close()
+	sub := c.msgPublisher.AddChannel(func(any) bool { return true })
+
+	b := &sharedRecvBudget{max: 100 * size}
+	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: b}, disabledMetrics)
+	conn := newConnection(nil, nil, nil, disabledMetrics, ConnConfig{
+		MaxRecvBytesInFlight: 1000 * int(size),
+		sharedRecvBudget:     b,
+	})
+	conn.pkiID = []byte("peer")
+	conn.logger = flogging.MustGetLogger("test")
+	conn.store = cs
+	cs.pki2Conn["peer"] = conn
+	conn.handler = c.publishingHandler(conn, &protoext.ConnectionInfo{ID: conn.pkiID})
+
+	require.True(t, conn.admitReceivedBytes(msg))
+	conn.handler(msg)
+	rmi := (<-sub).(*ReceivedMessageImpl)
+
+	// The peer disconnects while the subscriber still holds the message.
+	cs.Lock()
+	cs.retireChargedConn(conn)
+	cs.Unlock()
+	require.Equal(t, size, b.deadTotal.Load())
+
+	rmi.Dispose()
+
+	require.Zero(t, conn.recvBytesInFlight.Load())
+	require.Zero(t, b.inFlight.Load())
+	require.Zero(t, b.deadTotal.Load(), "retired debt was not released on the final Dispose")
+	require.Empty(t, cs.deadCharged)
+}
+
+// TestTotalBudgetCoversQueuedMessages proves the node-wide budget also bounds
+// messages queued behind a blocked handler when the per-connection limit is
+// disabled: the total is charged at admission, so the connection is dropped.
+func TestTotalBudgetCoversQueuedMessages(t *testing.T) {
+	size := int64(goproto.Size(makeDataEnvelope(1024)))
+	shared := &sharedRecvBudget{max: 2 * size}
+	cs := newConnStore(nil, flogging.MustGetLogger("test"), ConnConfig{sharedRecvBudget: shared}, disabledMetrics)
+	shared.evict = func() { cs.evictLargestConnection(shared.max) }
+
+	c := &commImpl{
+		msgPublisher: NewChannelDemultiplexer(),
+		pubSub:       util.NewPubSub(),
+		logger:       flogging.MustGetLogger("test"),
+	}
+	defer c.msgPublisher.Close()
+
+	// Fill the subscriber so the next handoff blocks after charging.
+	c.msgPublisher.AddChannel(func(any) bool { return true })
+	for range 10 {
+		c.msgPublisher.DeMultiplex(&protoext.SignedGossipMessage{Envelope: makeDataEnvelope(1024)})
+	}
+
+	conn := newConnection(nil, nil, nil, disabledMetrics, ConnConfig{
+		RecvBuffSize:         4,
+		SendBuffSize:         1,
+		MaxRecvBytesInFlight: 0, // disable the per-connection limit
+		sharedRecvBudget:     shared,
+	})
+	conn.pkiID = []byte("peer")
+	conn.logger = flogging.MustGetLogger("test")
+	conn.store = cs
+	cs.pki2Conn["peer"] = conn
+	conn.evictFromStore = func() { cs.evictConn(conn) }
+	conn.handler = c.publishingHandler(conn, &protoext.ConnectionInfo{ID: conn.pkiID})
+
+	msg, err := protoext.EnvelopeToGossipMessage(makeDataEnvelope(1024))
+	require.NoError(t, err)
+	require.True(t, conn.admitReceivedBytes(msg))
+	handlerDone := make(chan struct{})
+	go func() {
+		conn.handler(msg) // blocks in the demux with the shared budget charged
+		close(handlerDone)
+	}()
+	require.Eventually(t, func() bool { return shared.inFlight.Load() == size }, 30*time.Second, time.Millisecond)
+
+	// The reader keeps admitting into msgChan behind the blocked handler.
+	for range 4 {
+		queued, err := protoext.EnvelopeToGossipMessage(makeDataEnvelope(1024))
+		require.NoError(t, err)
+		require.True(t, conn.admitReceivedBytes(queued))
+	}
+
+	// The node-wide budget must stop the connection once the queued and
+	// handler-held bytes cross it.
+	select {
+	case <-conn.stopChan:
+	default:
+		t.Fatal("node-wide budget did not cover messages queued behind a blocked handler")
+	}
+
+	conn.close()
+	<-handlerDone
 }
 
 type trackableMessage struct {

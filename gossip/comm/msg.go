@@ -12,7 +12,6 @@ import (
 	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/pkg/errors"
-	goproto "google.golang.org/protobuf/proto"
 )
 
 // ReceivedMessageImpl is an implementation of ReceivedMessage
@@ -23,24 +22,15 @@ type ReceivedMessageImpl struct {
 	// pendingDeliveries counts deliveries not yet consumed; onConsumed releases
 	// the message's receive-path byte accounting once it drains to zero.
 	pendingDeliveries atomic.Int32
-	// sharedCharged marks that the shared budget was charged at first delivery.
-	sharedCharged atomic.Bool
-	onConsumed    func()
+	onConsumed        func()
 }
 
-// trackDeliveries records the number of deliveries about to be made and
-// charges the shared receive budget, so only retained bytes can trigger a
-// node-wide eviction; zero means the message is never delivered and is
-// released immediately.
+// trackDeliveries records the number of deliveries about to be made; zero
+// means the message is never delivered and is released immediately.
 func (m *ReceivedMessageImpl) trackDeliveries(n int) {
 	if n == 0 {
 		m.fireConsumed()
 		return
-	}
-	if m.conn != nil && m.sharedCharged.CompareAndSwap(false, true) {
-		size := int64(goproto.Size(m.Envelope))
-		m.conn.sharedChargedTotal.Add(size)
-		m.conn.sharedRecvBudget.admit(size)
 	}
 	m.pendingDeliveries.Add(int32(n))
 }

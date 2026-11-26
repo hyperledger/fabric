@@ -150,6 +150,49 @@ func stateTestMessage(t *testing.T, nonce uint64, response bool, channel string)
 	return &comm.ReceivedMessageImpl{SignedGossipMessage: sMsg}
 }
 
+// TestLateStateResponseAfterDrain forces the interleaving where a handler
+// reads the active flag before the transfer drain and takes the mutex after
+// it: the late response must be refused and never stay charged in the queue.
+func TestLateStateResponseAfterDrain(t *testing.T) {
+	s := &GossipStateProviderImpl{
+		logger:          flogging.MustGetLogger("test"),
+		chainID:         "testchannel",
+		stateRequestCh:  make(chan protoext.ReceivedMessage, 1),
+		stateResponseCh: make(chan protoext.ReceivedMessage, 1),
+		stopCh:          make(chan struct{}),
+	}
+	atomic.StoreInt32(&s.stateTransferActive, 1)
+
+	// Emulate requestBlocksInRange teardown: the drain runs while a handler
+	// blocks on dispatchMu.
+	s.dispatchMu.Lock()
+	drainStarted := make(chan struct{})
+	drainDone := make(chan struct{})
+	go func() {
+		close(drainStarted)
+		s.drainStateResponses()
+		close(drainDone)
+	}()
+	<-drainStarted
+
+	lateResponse := stateTestMessage(t, 1, true, "testchannel")
+	handlerDone := make(chan struct{})
+	go func() {
+		s.directMessage(lateResponse)
+		close(handlerDone)
+	}()
+
+	// Let the handler read stateTransferActive == 1 and block on dispatchMu.
+	time.Sleep(50 * time.Millisecond)
+	atomic.StoreInt32(&s.stateTransferActive, 0)
+	s.dispatchMu.Unlock()
+
+	<-drainDone
+	<-handlerDone
+
+	require.Empty(t, s.stateResponseCh, "a late response was queued after the transfer drain and stays charged")
+}
+
 type fakeLedger struct {
 	closed atomic.Bool
 }

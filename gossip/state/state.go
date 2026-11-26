@@ -429,6 +429,13 @@ func (s *GossipStateProviderImpl) directMessage(msg protoext.ReceivedMessage) bo
 
 	incoming := msg.GetGossipMessage()
 
+	// The transfer-active check must be serialized with the transfer's exit
+	// drain, so a late response can never land behind it and stay charged.
+	s.dispatchMu.Lock()
+	defer s.dispatchMu.Unlock()
+	if s.dispatchClosed {
+		return false
+	}
 	var out chan protoext.ReceivedMessage
 	if incoming.GetStateRequest() != nil {
 		out = s.stateRequestCh
@@ -436,12 +443,6 @@ func (s *GossipStateProviderImpl) directMessage(msg protoext.ReceivedMessage) bo
 		out = s.stateResponseCh
 	}
 	if out == nil {
-		return false
-	}
-
-	s.dispatchMu.Lock()
-	defer s.dispatchMu.Unlock()
-	if s.dispatchClosed {
 		return false
 	}
 	select {

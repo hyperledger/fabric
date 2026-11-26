@@ -170,11 +170,12 @@ peer:
     # the budget and drops the connection. A non-positive value disables the
     # limit.
     # maxRecvBytesInFlight: 262144000
-    # Maximum wire bytes of received messages held unconsumed across all live
-    # gossip connections (unit: bytes); on excess the live connection holding
-    # the most in-flight bytes is closed. If unset, defaults to 4 times the
-    # effective maxRecvBytesInFlight (4 times 2.5x peer.maxRecvMsgSize when
-    # that is unset or disabled). A non-positive value disables the limit.
+    # Maximum wire bytes of received messages retained across all live
+    # gossip connections, queued or awaiting consumption (unit: bytes); on
+    # excess the live connection holding the most in-flight bytes is closed.
+    # If unset, defaults to 4 times the effective maxRecvBytesInFlight
+    # (4 times 2.5x peer.maxRecvMsgSize when that is unset or disabled).
+    # A non-positive value disables the limit.
     # The bound covers the gossip receive pipeline up to message handling;
     # channel message stores, state-transfer queues, and the block payload
     # buffer sit past that boundary and apply their own bounds, and bytes
