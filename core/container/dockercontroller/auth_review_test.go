@@ -67,6 +67,7 @@ func TestRegistryClientSelectsCredentials(t *testing.T) {
 		{"ubuntu:latest", "hub"},
 		{"private.example:5000/builder:latest", "private"},
 		{"other.example/builder:latest", ""},
+		{"localhost/builder:latest", ""},
 	} {
 		t.Run(tc.image, func(t *testing.T) {
 			client := &mock.DockerClient{}
