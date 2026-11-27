@@ -83,6 +83,12 @@ type Verifier struct {
 	Ledger                Ledger
 	Logger                *flogging.FabricLogger
 	ConfigValidator       ConfigValidator
+	// BlockDataHash hashes the block data; if nil, protoutil.BlockDataHash is used.
+	BlockDataHash func(blockData *cb.BlockData) ([]byte, error)
+
+	dataHashLock        sync.Mutex
+	lastDataHashPayload []byte
+	lastDataHash        []byte
 }
 
 // AuxiliaryData unmarshals and returns auxiliary data from signature
@@ -102,9 +108,13 @@ func (v *Verifier) VerifyProposal(proposal types.Proposal) ([]types.RequestInfo,
 	}
 
 	rtc := v.RuntimeConfig.Load().(RuntimeConfig)
-	if err := verifyHashChainAndDataHash(block, rtc.LastCommittedBlockHash); err != nil {
+	dataHash, err := v.verifyHashChainAndDataHash(block, rtc.LastCommittedBlockHash)
+	if err != nil {
 		return nil, err
 	}
+
+	// Seed the consenter signature cache so commit verification reuses this hash.
+	v.cacheDataHash(proposal.Payload, dataHash)
 
 	requests, err := v.verifyBlockDataAndMetadata(block, proposal.Metadata)
 	if err != nil {
@@ -241,21 +251,68 @@ func (v *Verifier) VerificationSequence() uint64 {
 	return v.VerificationSequencer.Sequence()
 }
 
-func verifyHashChainAndDataHash(block *cb.Block, prevHeaderHash string) error {
+func (v *Verifier) verifyHashChainAndDataHash(block *cb.Block, prevHeaderHash string) ([]byte, error) {
 	thisHdrHashOfPrevHdr := hex.EncodeToString(block.GetHeader().GetPreviousHash())
 	if prevHeaderHash != thisHdrHashOfPrevHdr {
-		return errors.Errorf("previous header hash is %s but expected %s", thisHdrHashOfPrevHdr, prevHeaderHash)
+		return nil, errors.Errorf("previous header hash is %s but expected %s", thisHdrHashOfPrevHdr, prevHeaderHash)
 	}
 
-	dataHash, err := protoutil.BlockDataHash(block.GetData())
+	dataHash, err := v.blockDataHash(block.GetData())
 	if err != nil {
-		return err
+		return nil, err
 	}
-	dataHashString := hex.EncodeToString(block.GetHeader().GetDataHash())
+	if err := checkDataHash(block, dataHash); err != nil {
+		return nil, err
+	}
+	return dataHash, nil
+}
 
-	actualHashOfData := hex.EncodeToString(dataHash)
-	if dataHashString != actualHashOfData {
-		return errors.Errorf("data hash is %s but expected %s", dataHashString, actualHashOfData)
+// verifyConsenterDataHash is checkDataHash memoized on the proposal payload, since
+// VerifyConsenterSig runs once per consenter signature over the same proposal.
+// The full-payload bytes.Equal under the lock is the price of the binding: bytes.Equal
+// short-circuits on length and first difference, and the equal case is a memcmp at
+// memory bandwidth. The lock is held across blockDataHash to keep the hash exactly-once.
+func (v *Verifier) verifyConsenterDataHash(block *cb.Block, payload []byte) error {
+	v.dataHashLock.Lock()
+	defer v.dataHashLock.Unlock()
+
+	if !bytes.Equal(v.lastDataHashPayload, payload) {
+		dataHash, err := v.blockDataHash(block.GetData())
+		if err != nil {
+			return err
+		}
+		if err := checkDataHash(block, dataHash); err != nil {
+			return err
+		}
+		v.cacheDataHashLocked(payload, dataHash)
+	}
+	return checkDataHash(block, v.lastDataHash)
+}
+
+func (v *Verifier) cacheDataHash(payload, dataHash []byte) {
+	v.dataHashLock.Lock()
+	defer v.dataHashLock.Unlock()
+	v.cacheDataHashLocked(payload, dataHash)
+}
+
+// cacheDataHashLocked records the hash of a payload whose data hash matched the header.
+// The key is cloned: the caller retains and may mutate the payload backing array.
+func (v *Verifier) cacheDataHashLocked(payload, dataHash []byte) {
+	v.lastDataHashPayload = bytes.Clone(payload)
+	v.lastDataHash = dataHash
+}
+
+func (v *Verifier) blockDataHash(blockData *cb.BlockData) ([]byte, error) {
+	if v.BlockDataHash != nil {
+		return v.BlockDataHash(blockData)
+	}
+	return protoutil.BlockDataHash(blockData)
+}
+
+func checkDataHash(block *cb.Block, dataHash []byte) error {
+	if !bytes.Equal(block.GetHeader().GetDataHash(), dataHash) {
+		return errors.Errorf("data hash is %s but expected %s",
+			hex.EncodeToString(block.GetHeader().GetDataHash()), hex.EncodeToString(dataHash))
 	}
 	return nil
 }
@@ -435,6 +492,11 @@ func (v *Verifier) verifySignatureIsBoundToProposal(sig *Signature, identityID u
 	block, err := ProposalToBlock(prop)
 	if err != nil {
 		v.Logger.Warnf("got malformed proposal: %v", err)
+		return err
+	}
+
+	// The signature only binds to the header, so the payload must match the header's data hash.
+	if err := v.verifyConsenterDataHash(block, prop.Payload); err != nil {
 		return err
 	}
 
