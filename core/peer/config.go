@@ -162,6 +162,8 @@ type Config struct {
 
 	// ChaincodePull enables/disables force pulling of the base docker image.
 	ChaincodePull bool
+	// ChaincodeUseDockerAuth enables inline Docker registry credentials for image builds.
+	ChaincodeUseDockerAuth bool
 	// ExternalBuilders represents the builders and launchers for
 	// chaincode. The external builder detection processing will iterate over the
 	// builders in the order specified below.
@@ -291,6 +293,7 @@ func (c *Config) load() error {
 	}
 
 	c.ChaincodePull = viper.GetBool("chaincode.pull")
+	c.ChaincodeUseDockerAuth = viper.GetBool("chaincode.useDockerAuth")
 	var externalBuilders []ExternalBuilder
 
 	err = viper.UnmarshalKey("chaincode.externalBuilders", &externalBuilders, viper.DecodeHook(viperutil.YamlStringToStructHook(externalBuilders)))

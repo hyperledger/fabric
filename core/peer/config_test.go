@@ -261,6 +261,7 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.addressAutoDetect", false)
 	viper.Set("peer.address", "localhost:8080")
 	viper.Set("peer.id", "testPeerID")
+	viper.Set("chaincode.useDockerAuth", true)
 	viper.Set("peer.localMspId", "SampleOrg")
 	viper.Set("peer.listenAddress", "0.0.0.0:7051")
 	viper.Set("peer.authentication.timewindow", "15m")
@@ -347,7 +348,8 @@ func TestGlobalConfig(t *testing.T) {
 		VMDockerAttachStdout: false,
 		VMNetworkMode:        "TestingHost",
 
-		ChaincodePull: false,
+		ChaincodePull:          false,
+		ChaincodeUseDockerAuth: true,
 		ExternalBuilders: []ExternalBuilder{
 			{
 				Path: "relative/plugin_dir",

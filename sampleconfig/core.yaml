@@ -587,6 +587,13 @@ vm:
 #
 ###############################################################################
 chaincode:
+  # Send inline registry credentials to the Docker daemon for chaincode builds.
+  # Reads $DOCKER_CONFIG/config.json when set, otherwise ~/.docker/config.json
+  # with ~/.dockercfg as a fallback. Credential helpers are unsupported.
+  # If HOME is unset, the peer uses the operating system account's home directory.
+  # Set DOCKER_CONFIG explicitly if no account home directory is available.
+  useDockerAuth: false
+
   # The id is used by the Chaincode stub to register the executing Chaincode
   # ID with the Peer and is generally supplied through ENV variables
   # the `path` form of ID is provided when installing the chaincode.

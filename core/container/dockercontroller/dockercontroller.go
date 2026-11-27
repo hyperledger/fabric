@@ -13,6 +13,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
@@ -27,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	dcontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/registry"
 	dcli "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 )
@@ -65,17 +67,18 @@ func (ci *ContainerInstance) Wait() (int, error) {
 
 // DockerVM is a vm. It is identified by an image id
 type DockerVM struct {
-	PeerID          string
-	NetworkID       string
-	BuildMetrics    *BuildMetrics
-	HostConfig      *dcontainer.HostConfig
-	Client          dcli.APIClient
-	AttachStdOut    bool
-	ChaincodePull   bool
-	NetworkMode     string
-	PlatformBuilder PlatformBuilder
-	LoggingEnv      []string
-	MSPID           string
+	PeerID           string
+	NetworkID        string
+	BuildMetrics     *BuildMetrics
+	HostConfig       *dcontainer.HostConfig
+	Client           dcli.APIClient
+	AttachStdOut     bool
+	ChaincodePull    bool
+	NetworkMode      string
+	PlatformBuilder  PlatformBuilder
+	LoggingEnv       []string
+	MSPID            string
+	AuthConfigLoader func() (map[string]registry.AuthConfig, error)
 }
 
 // HealthCheck checks if the DockerVM is able to communicate with the Docker
@@ -108,34 +111,57 @@ func (vm *DockerVM) createContainer(imageID, containerID string, args, env []str
 	return nil
 }
 
-func (vm *DockerVM) buildImage(ccid string, reader io.Reader) error {
+func (vm *DockerVM) buildImage(ccid string, reader io.Reader) (err error) {
 	id, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
 	}
 
 	startTime := time.Now()
+	defer func() {
+		vm.BuildMetrics.ChaincodeImageBuildDuration.With(
+			"chaincode", ccid,
+			"success", strconv.FormatBool(err == nil),
+		).Observe(time.Since(startTime).Seconds())
+	}()
+	var authConfigs map[string]registry.AuthConfig
+	if vm.AuthConfigLoader != nil {
+		authConfigs, err = vm.AuthConfigLoader()
+		if err != nil {
+			dockerLogger.Warnf("Could not load Docker registry credentials: %v", err)
+		}
+	}
+
 	res, err := vm.Client.ImageBuild(context.Background(), reader, dcli.ImageBuildOptions{
 		Tags:        []string{id},
 		PullParent:  vm.ChaincodePull,
 		NetworkMode: vm.NetworkMode,
+		AuthConfigs: authConfigs,
 	})
-
-	vm.BuildMetrics.ChaincodeImageBuildDuration.With(
-		"chaincode", ccid,
-		"success", strconv.FormatBool(err == nil),
-	).Observe(time.Since(startTime).Seconds())
-
 	if err != nil {
 		dockerLogger.Errorf("Error building image: %s", err)
 		return err
 	}
 	defer res.Body.Close()
 
-	var buf bytes.Buffer
-	io.Copy(&buf, res.Body)
-
-	dockerLogger.Debugf("Created image: %s, output: %s", id, buf.String())
+	decoder := json.NewDecoder(res.Body)
+	for {
+		var result struct {
+			Error  string `json:"error"`
+			Stream string `json:"stream"`
+		}
+		if err := decoder.Decode(&result); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return errors.Wrap(err, "read Docker build response")
+		}
+		if result.Error != "" {
+			return errors.New(result.Error)
+		}
+		dockerLogger.Debug(result.Stream)
+	}
+	dockerLogger.Debugf("Created image: %s", id)
 	return nil
 }
 

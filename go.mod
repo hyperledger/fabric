@@ -9,6 +9,7 @@ require (
 	github.com/bits-and-blooms/bitset v1.26.0
 	github.com/cheggaaa/pb/v3 v3.2.1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+	github.com/distribution/reference v0.6.0
 	github.com/expr-lang/expr v1.17.8
 	github.com/go-kit/kit v0.13.0
 	github.com/go-viper/mapstructure/v2 v2.5.0
@@ -58,7 +59,6 @@ require (
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
-	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/go-connections v0.8.2 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
