@@ -825,6 +825,51 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
 	})
 
+	t.Run("datafile-path-traversal-relative", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		// create a real, readable file as a sibling of the snapshot directory and
+		// register it under a name that escapes the directory with a matching hash,
+		// so the only reason for rejection is the file name itself
+		content := []byte("outside the snapshot dir")
+		escapingFile := filepath.Join(filepath.Dir(snapshotDirForTest), "escape.data")
+		require.NoError(t, os.WriteFile(escapingFile, content, 0o600))
+
+		metadata.FilesAndHashes["../escape.data"] = computeHashForTest(t, provider, content)
+		overwriteModifiedSignableMetadata()
+
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.EqualError(
+			t, err,
+			"error while verifying snapshot: invalid file name [../escape.data] in snapshot metadata",
+		)
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
+	t.Run("datafile-path-traversal-absolute", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		// an absolute path takes a different branch in filepath.IsLocal than a
+		// '..' component does. filepath.Join would anchor it under the snapshot
+		// directory, so the rejection here must come from the file name check
+		// rather than from the file being unreadable.
+		content := []byte("outside the snapshot dir")
+		escapingFile := filepath.Join(t.TempDir(), "escape.data")
+		require.NoError(t, os.WriteFile(escapingFile, content, 0o600))
+
+		metadata.FilesAndHashes[escapingFile] = computeHashForTest(t, provider, content)
+		overwriteModifiedSignableMetadata()
+
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.EqualError(
+			t, err,
+			fmt.Sprintf("error while verifying snapshot: invalid file name [%s] in snapshot metadata", escapingFile),
+		)
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
 	t.Run("hex-decoding-error-for-lastBlkHash", func(t *testing.T) {
 		init(t)
 		defer cleanup()
