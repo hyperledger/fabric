@@ -362,7 +362,14 @@ func decodeHashedDataNsColl(hashedDataNs string) (string, string, error) {
 	if len(strs) != 2 {
 		return "", "", errors.Errorf("not a valid hashedDataNs [%s]", hashedDataNs)
 	}
-	return strs[0], strs[1], nil
+	ns, coll := strs[0], strs[1]
+	// A null byte is never valid in a chaincode namespace or collection name, and
+	// downstream private data storage keys use it as a field separator. Reject it
+	// here so a crafted snapshot cannot smuggle a separator byte into those keys.
+	if strings.IndexByte(ns, 0) >= 0 || strings.IndexByte(coll, 0) >= 0 {
+		return "", "", errors.Errorf("not a valid hashedDataNs [%x]: contains a null byte", hashedDataNs)
+	}
+	return ns, coll, nil
 }
 
 func isPvtdataNs(namespace string) bool {

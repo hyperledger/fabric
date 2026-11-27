@@ -685,3 +685,22 @@ func TestPossibleNamespaces(t *testing.T) {
 	require.NoError(t, err)
 	require.ElementsMatch(t, expectedNamespaces, namespaces)
 }
+
+func TestDecodeHashedDataNsColl(t *testing.T) {
+	ns, coll, err := decodeHashedDataNsColl(deriveHashedDataNs("ns1", "coll1"))
+	require.NoError(t, err)
+	require.Equal(t, "ns1", ns)
+	require.Equal(t, "coll1", coll)
+
+	_, _, err = decodeHashedDataNsColl("not-a-hashed-data-ns")
+	require.EqualError(t, err, "not a valid hashedDataNs [not-a-hashed-data-ns]")
+
+	// A crafted snapshot can carry a namespace whose decoded namespace or
+	// collection contains a null byte, which downstream private data storage
+	// keys use as a field separator.
+	_, _, err = decodeHashedDataNsColl(deriveHashedDataNs("ns1", "co\x00ll"))
+	require.ErrorContains(t, err, "contains a null byte")
+
+	_, _, err = decodeHashedDataNsColl(deriveHashedDataNs("n\x00s", "coll1"))
+	require.ErrorContains(t, err, "contains a null byte")
+}
