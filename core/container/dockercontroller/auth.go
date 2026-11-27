@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/distribution/reference"
 	"github.com/moby/moby/api/types/registry"
 	dcli "github.com/moby/moby/client"
 )
@@ -134,15 +135,15 @@ type RegistryClient struct {
 }
 
 func (c *RegistryClient) ImagePull(ctx context.Context, image string, options dcli.ImagePullOptions) (dcli.ImagePullResponse, error) {
+	ref, err := reference.ParseNormalizedNamed(image)
+	if err != nil {
+		return nil, err
+	}
 	configs, err := LoadDockerAuthConfigs()
 	if err != nil {
 		dockerLogger.Warnf("Could not load Docker registry credentials: %v", err)
 	}
-	host := "docker.io"
-	first, _, _ := strings.Cut(image, "/")
-	if strings.ContainsAny(first, ".:") || first == "localhost" {
-		host = first
-	}
+	host := reference.Domain(ref)
 	for address, auth := range configs {
 		normalized := address
 		if !strings.Contains(normalized, "://") {
