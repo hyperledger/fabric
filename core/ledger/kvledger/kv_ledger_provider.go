@@ -280,6 +280,9 @@ func (p *Provider) CreateFromGenesisBlock(genesisBlock *common.Block) (ledger.Pe
 	if err != nil {
 		return nil, err
 	}
+	if err = validateLedgerID(ledgerID); err != nil {
+		return nil, err
+	}
 	if err = p.idStore.createLedgerID(
 		ledgerID,
 		&msgs.LedgerMetadata{
@@ -319,6 +322,32 @@ func (p *Provider) deleteUnderConstructionLedger(ledger ledger.PeerLedger, ledge
 		return creationErr
 	}
 	return errors.WithMessage(cleanupErr, creationErr.Error())
+}
+
+// validateLedgerID rejects ledger IDs that cannot safely be used as a single
+// directory name, since the ledger ID is joined into the paths of the per-ledger
+// stores. This is a filesystem safety check at the ledger layer and is
+// deliberately wider than configtx.ValidateChannelID, which defines the channel
+// name policy and is enforced by channelconfig when the channel is created. Only
+// characters from [A-Za-z0-9._-] are allowed; this keeps path separators out on
+// every platform and avoids names such as ".. " that Windows resolves to "..".
+func validateLedgerID(ledgerID string) error {
+	if ledgerID == "" {
+		return errors.New("ledger ID cannot be empty")
+	}
+	if ledgerID == "." || ledgerID == ".." {
+		return errors.Errorf("ledger ID [%s] cannot be \".\" or \"..\"", ledgerID)
+	}
+	for _, r := range ledgerID {
+		if !isLedgerIDChar(r) {
+			return errors.Errorf("ledger ID [%s] contains characters outside [A-Za-z0-9._-]", ledgerID)
+		}
+	}
+	return nil
+}
+
+func isLedgerIDChar(r rune) bool {
+	return ('a' <= r && r <= 'z') || ('A' <= r && r <= 'Z') || ('0' <= r && r <= '9') || r == '.' || r == '_' || r == '-'
 }
 
 // Open implements the corresponding method from interface ledger.PeerLedgerProvider
@@ -479,6 +508,16 @@ func (p *Provider) deletePartialLedgers() error {
 // runCleanup cleans up blockstorage, statedb, and historydb for what
 // may have got created during in-complete ledger creation
 func (p *Provider) runCleanup(ledgerID string) error {
+	// A ledger ID persisted by an older release was never validated. Refuse to
+	// drop anything for an ID that could resolve outside the ledger store.
+	if err := validateLedgerID(ledgerID); err != nil {
+		logger.Errorw(
+			"Skipping cleanup of a partial ledger with an invalid ID, leaving its record in place",
+			"ledgerID", ledgerID,
+			"error", err,
+		)
+		return nil
+	}
 	ledgerDataRemover := &ledgerDataRemover{
 		blkStoreProvider:     p.blkStoreProvider,
 		statedbProvider:      p.dbProvider,
