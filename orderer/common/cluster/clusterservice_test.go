@@ -815,6 +815,106 @@ func TestConfigureNodeCerts(t *testing.T) {
 	})
 }
 
+func TestClusterServiceStepIdentityReplaced(t *testing.T) {
+	t.Parallel()
+	server, stepStream := getStepStream(t)
+	t.Cleanup(func() {
+		server.Stop()
+	})
+
+	for _, tc := range []struct {
+		name           string
+		replaceSender  bool
+		expectedErr    string
+		expectedCalled int
+	}{
+		{name: "stream stays authorized when sender identity is unchanged", replaceSender: false, expectedCalled: 2},
+		{name: "stream is pruned when sender identity is replaced", replaceSender: true, expectedErr: "stream 1 is stale", expectedCalled: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var err error
+			stream := &mocks.ClusterStepStream{}
+			handler := &mocks.Handler{}
+			serverKeyPair, _ := ca.NewServerCertKeyPair()
+			serverKeyPair.Cert, err = crypto.SanitizeX509Cert(serverKeyPair.Cert)
+			require.NoError(t, err)
+
+			svc := &cluster.ClusterService{
+				StreamCountReporter: &cluster.StreamCountReporter{
+					Metrics: cluster.NewMetrics(&disabled.Provider{}),
+				},
+				Logger:              flogging.MustGetLogger("TestClusterServiceStepIdentityReplaced"),
+				StepLogger:          flogging.MustGetLogger("test"),
+				MembershipByChannel: make(map[string]*cluster.ChannelMembersConfig),
+				RequestHandler:      handler,
+				NodeIdentity:        serverKeyPair.Cert,
+			}
+
+			authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
+			bindingHash := cluster.GetSessionBindingHash(authRequest)
+			authRequest.SessionBinding, err = cluster.GetTLSSessionBinding(stepStream.Context(), bindingHash)
+			require.NoError(t, err)
+
+			clientKeyPair1, _ := ca.NewClientCertKeyPair()
+			clientKeyPair1.Cert, err = crypto.SanitizeX509Cert(clientKeyPair1.Cert)
+			require.NoError(t, err)
+			clientKeyPair2, _ := ca.NewClientCertKeyPair()
+			clientKeyPair2.Cert, err = crypto.SanitizeX509Cert(clientKeyPair2.Cert)
+			require.NoError(t, err)
+
+			asnSignFields, _ := asn1.Marshal(cluster.AuthRequestSignature{
+				Version:        int64(authRequest.GetVersion()),
+				Timestamp:      cluster.EncodeTimestamp(authRequest.GetTimestamp()),
+				FromId:         strconv.FormatUint(authRequest.GetFromId(), 10),
+				ToId:           strconv.FormatUint(authRequest.GetToId(), 10),
+				SessionBinding: authRequest.GetSessionBinding(),
+				Channel:        authRequest.GetChannel(),
+			})
+			signer := signingIdentity{clientKeyPair1.Signer}
+			authRequest.Signature, err = signer.Sign(asnSignFields)
+			require.NoError(t, err)
+
+			stepRequest := &orderer.ClusterNodeServiceStepRequest{
+				Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
+					NodeAuthrequest: authRequest,
+				},
+			}
+
+			senderIdentity := clientKeyPair1.Cert
+			if tc.replaceSender {
+				senderIdentity = clientKeyPair2.Cert
+			}
+
+			stream.On("Context").Return(stepStream.Context())
+			stream.On("Recv").Return(stepRequest, nil).Once()
+			stream.On("Recv").Return(nodeConsensusRequest, nil).Once()
+			stream.On("Recv").Return(nodeConsensusRequest, nil).Run(func(mock.Arguments) {
+				// A config update arrives while the stream is open
+				svc.ConfigureNodeCerts(authRequest.GetChannel(), []*common.Consenter{
+					{Id: uint32(authRequest.GetFromId()), Identity: senderIdentity},
+					{Id: uint32(authRequest.GetToId()), Identity: svc.NodeIdentity},
+				})
+			}).Once()
+			stream.On("Recv").Return(nil, io.EOF).Once()
+
+			handler.On("OnConsensus", authRequest.GetChannel(), authRequest.GetFromId(), mock.Anything).Return(nil)
+
+			svc.ConfigureNodeCerts(authRequest.GetChannel(), []*common.Consenter{
+				{Id: uint32(authRequest.GetFromId()), Identity: clientKeyPair1.Cert},
+				{Id: uint32(authRequest.GetToId()), Identity: svc.NodeIdentity},
+			})
+			err = svc.Step(stream)
+			if tc.expectedErr != "" {
+				require.EqualError(t, err, tc.expectedErr)
+			} else {
+				require.NoError(t, err)
+			}
+			handler.AssertNumberOfCalls(t, "OnConsensus", tc.expectedCalled)
+		})
+	}
+}
+
 func TestExpirationWarning(t *testing.T) {
 	t.Parallel()
 	authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
