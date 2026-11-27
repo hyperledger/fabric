@@ -61,6 +61,18 @@ func (d *Detector) CachedBuild(ccid string) (*Instance, error) {
 		return nil, errors.WithMessage(err, "existing build detected, but something went wrong inspecting it")
 	}
 
+	// A complete build has both its release and bld directories, because Build copies both
+	// of them, even when they are empty. A directory without one of them is a partial build
+	// left by a version that persisted the build in place. Remove it, so that Build builds
+	// the chaincode again instead of restoring or failing on an incomplete build.
+	if !isDir(filepath.Join(durablePath, "release")) || !isDir(filepath.Join(durablePath, "bld")) {
+		logger.Warningf("Removing the incomplete build of '%s' at '%s'", ccid, durablePath)
+		if err := os.RemoveAll(durablePath); err != nil {
+			return nil, errors.WithMessagef(err, "existing build is incomplete and could not be removed")
+		}
+		return nil, nil
+	}
+
 	buildInfoPath := filepath.Join(durablePath, "build-info.json")
 	buildInfoData, err := os.ReadFile(buildInfoPath)
 	if err != nil {
@@ -131,44 +143,60 @@ func (d *Detector) Build(ccid string, mdBytes []byte, codeStream io.Reader) (*In
 
 	durablePath := filepath.Join(d.DurablePath, SanitizeCCIDPath(ccid))
 
-	err = os.Mkdir(durablePath, 0o700)
+	// Persist the build in a staging directory and move it into place last. A failure or a
+	// crash while copying then cannot leave a partial build at durablePath, where CachedBuild
+	// would restore it as if it were complete.
+	stagingPath, err := os.MkdirTemp(d.DurablePath, SanitizeCCIDPath(ccid)+".staging-")
 	if err != nil {
-		return nil, errors.WithMessagef(err, "could not create dir '%s' to persist build output", durablePath)
+		return nil, errors.WithMessagef(err, "could not create dir for '%s' to persist build output", durablePath)
+	}
+	// This is a no-op once the staging directory has been renamed.
+	defer func() {
+		if err := os.RemoveAll(stagingPath); err != nil {
+			logger.Warningf("Failed to remove the staging directory '%s': %s", stagingPath, err)
+		}
+	}()
+
+	err = CopyDir(logger, buildContext.ReleaseDir, filepath.Join(stagingPath, "release"))
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not move or copy build context release to persistent location '%s'", durablePath)
+	}
+
+	err = CopyDir(logger, buildContext.BldDir, filepath.Join(stagingPath, "bld"))
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not move or copy build context bld to persistent location '%s'", durablePath)
 	}
 
 	buildInfo, err := json.Marshal(&BuildInfo{
 		BuilderName: builder.Name,
 	})
 	if err != nil {
-		os.RemoveAll(durablePath)
 		return nil, errors.WithMessage(err, "could not marshal for build-info.json")
 	}
 
-	err = os.WriteFile(filepath.Join(durablePath, "build-info.json"), buildInfo, 0o600)
+	// build-info.json is written last, because CachedBuild treats its presence as a complete build.
+	err = os.WriteFile(filepath.Join(stagingPath, "build-info.json"), buildInfo, 0o600)
 	if err != nil {
-		os.RemoveAll(durablePath)
 		return nil, errors.WithMessage(err, "could not write build-info.json")
 	}
 
-	durableReleaseDir := filepath.Join(durablePath, "release")
-	err = CopyDir(logger, buildContext.ReleaseDir, durableReleaseDir)
+	err = os.Rename(stagingPath, durablePath)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "could not move or copy build context release to persistent location '%s'", durablePath)
-	}
-
-	durableBldDir := filepath.Join(durablePath, "bld")
-	err = CopyDir(logger, buildContext.BldDir, durableBldDir)
-	if err != nil {
-		return nil, errors.WithMessagef(err, "could not move or copy build context bld to persistent location '%s'", durablePath)
+		return nil, errors.WithMessagef(err, "could not move build output to persistent location '%s'", durablePath)
 	}
 
 	return &Instance{
 		PackageID:   ccid,
 		Builder:     builder,
-		BldDir:      durableBldDir,
-		ReleaseDir:  durableReleaseDir,
+		BldDir:      filepath.Join(durablePath, "bld"),
+		ReleaseDir:  filepath.Join(durablePath, "release"),
 		TermTimeout: 5 * time.Second,
 	}, nil
+}
+
+func isDir(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 func (d *Detector) detect(buildContext *BuildContext) *Builder {
