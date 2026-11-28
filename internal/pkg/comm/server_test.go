@@ -1273,3 +1273,61 @@ func TestServerInterceptors(t *testing.T) {
 	require.Equal(t, status.Convert(err).Message(), msg, "Expected error from second ssi")
 	require.Equal(t, uint32(2), atomic.LoadUint32(&ssiCount), "Expected both ssi handlers to be invoked")
 }
+
+func TestMaxConcurrentStreams(t *testing.T) {
+	t.Parallel()
+
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err, "listen failed")
+	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{MaxConcurrentStreams: 2})
+	require.NoError(t, err, "failed to create gRPC server")
+	testpb.RegisterEmptyServiceServer(srv.Server(), &emptyServiceServer{})
+	defer srv.Stop()
+	go srv.Start()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	conn, err := grpc.DialContext(ctx, lis.Addr().String(), grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err, "failed to dial test server")
+	defer conn.Close()
+	client := testpb.NewEmptyServiceClient(conn)
+
+	// occupy both stream slots; the echo proves each stream is active
+	streams := make([]testpb.EmptyService_EmptyStreamClient, 0, 2)
+	for range 2 {
+		stream, err := client.EmptyStream(ctx)
+		require.NoError(t, err)
+		require.NoError(t, stream.Send(&testpb.Empty{}))
+		_, err = stream.Recv()
+		require.NoError(t, err)
+		streams = append(streams, stream)
+	}
+
+	// the excess stream is refused at the transport: it stays queued
+	// client-side and the server never decodes its message while every slot
+	// is occupied
+	excessDone := make(chan error, 1)
+	go func() {
+		stream, err := client.EmptyStream(ctx)
+		if err == nil {
+			if err = stream.Send(&testpb.Empty{}); err == nil {
+				_, err = stream.Recv()
+			}
+		}
+		excessDone <- err
+	}()
+	select {
+	case err = <-excessDone:
+		t.Fatalf("excess stream completed while all slots were occupied: %v", err)
+	case <-time.After(500 * time.Millisecond):
+	}
+
+	// freeing a slot lets the queued stream proceed
+	require.NoError(t, streams[0].CloseSend())
+	select {
+	case err := <-excessDone:
+		require.NoError(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("queued stream was not served after a slot was freed")
+	}
+}

@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"math"
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
@@ -27,6 +28,13 @@ import (
 const (
 	DefaultMaxRecvMsgSize = 100 * 1024 * 1024
 	DefaultMaxSendMsgSize = 100 * 1024 * 1024
+	// DefaultMaxConcurrentStreams caps concurrent streams per connection;
+	// sized to stay above existing per-service budgets (2500 endorser/deliver,
+	// 500 gateway Submit fan-out)
+	DefaultMaxConcurrentStreams uint32 = 2500
+	// UnlimitedMaxConcurrentStreams selects the stock gRPC behavior of no
+	// transport-level stream cap (the gRPC default)
+	UnlimitedMaxConcurrentStreams uint32 = math.MaxUint32
 )
 
 var (
@@ -81,6 +89,9 @@ type ServerConfig struct {
 	MaxRecvMsgSize int
 	// Maximum message size the server can send
 	MaxSendMsgSize int
+	// Maximum concurrent streams per connection. 0 selects
+	// DefaultMaxConcurrentStreams; a very large value effectively disables it.
+	MaxConcurrentStreams uint32
 }
 
 // ClientConfig defines the parameters for configuring a GRPCClient instance

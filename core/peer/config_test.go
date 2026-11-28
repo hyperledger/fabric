@@ -7,6 +7,7 @@ package peer
 
 import (
 	"crypto/tls"
+	"math"
 	"net"
 	"os"
 	"path/filepath"
@@ -159,6 +160,28 @@ func TestGetServerConfig(t *testing.T) {
 	sc, _ = GetServerConfig()
 	require.Equal(t, 1024, sc.MaxRecvMsgSize, "ServerConfig.MaxRecvMsgSize should be set to custom value 1024")
 	require.Equal(t, 1024, sc.MaxSendMsgSize, "ServerConfig.MaxSendMsgSize should be set to custom value 1024")
+
+	// GRPC max concurrent streams option
+	require.Equal(t, comm.DefaultMaxConcurrentStreams, sc.MaxConcurrentStreams, "ServerConfig.MaxConcurrentStreams should be set to default value %v", comm.DefaultMaxConcurrentStreams)
+	viper.Set("peer.maxConcurrentStreams", 500)
+	sc, _ = GetServerConfig()
+	require.Equal(t, uint32(500), sc.MaxConcurrentStreams, "ServerConfig.MaxConcurrentStreams should be set to custom value 500")
+	viper.Set("peer.maxConcurrentStreams", 0)
+	sc, _ = GetServerConfig()
+	require.Equal(t, comm.DefaultMaxConcurrentStreams, sc.MaxConcurrentStreams, "explicit 0 should select the default so startup budget checks compare the effective cap")
+	viper.Set("peer.maxConcurrentStreams", uint64(math.MaxUint32))
+	sc, err = GetServerConfig()
+	require.NoError(t, err, "the maximum uint32 value should be accepted")
+	require.Equal(t, uint32(math.MaxUint32), sc.MaxConcurrentStreams)
+
+	// out-of-range and malformed values must be config errors, never
+	// silently narrowed (viper.GetUint32 turns 2^32 into 1)
+	for _, badValue := range []any{-1, uint64(math.MaxUint32) + 1, "not-a-number"} {
+		viper.Set("peer.maxConcurrentStreams", badValue)
+		_, err = GetServerConfig()
+		require.Errorf(t, err, "peer.maxConcurrentStreams=%v must be rejected", badValue)
+	}
+	viper.Set("peer.maxConcurrentStreams", 500)
 
 	// bad config with TLS
 	viper.Set("peer.tls.rootcert.file", "non-existent-file.pem")

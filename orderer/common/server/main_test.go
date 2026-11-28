@@ -162,7 +162,12 @@ func TestInitializeServerConfig(t *testing.T) {
 	require.NotNil(t, sc.Logger)
 	require.Equal(t, comm.NewServerStatsHandler(&disabled.Provider{}), sc.ServerStatsHandler)
 	require.Len(t, sc.UnaryInterceptors, 2)
-	require.Len(t, sc.StreamInterceptors, 2)
+	// metrics, logging, and the broadcast concurrency limiter (defaults apply)
+	require.Len(t, sc.StreamInterceptors, 3)
+
+	conf.General.MaxConcurrentStreams = 1000
+	sc = initializeServerConfig(conf, nil)
+	require.Equal(t, uint32(1000), sc.MaxConcurrentStreams)
 
 	sc = initializeServerConfig(conf, &prometheus.Provider{})
 	require.NotNil(t, sc.ServerStatsHandler)
@@ -843,7 +848,7 @@ func TestConfigureClusterListener(t *testing.T) {
 		},
 		{
 			name:        "green path",
-			generalConf: comm.ServerConfig{},
+			generalConf: comm.ServerConfig{MaxConcurrentStreams: 1234},
 			conf: &localconfig.TopLevel{
 				General: localconfig.General{
 					Cluster: localconfig.Cluster{
@@ -871,7 +876,10 @@ func TestConfigureClusterListener(t *testing.T) {
 				}
 				require.Contains(t, panicMsg(f), testCase.expectedPanic)
 			} else {
-				configureClusterListener(testCase.conf, testCase.generalConf, loadPEM)
+				conf, _ := configureClusterListener(testCase.conf, testCase.generalConf, loadPEM)
+				require.Equal(t, comm.UnlimitedMaxConcurrentStreams, conf.MaxConcurrentStreams,
+					"cluster listener must not inherit the client-facing transport stream cap: "+
+						"consensus streams are created without a deadline and a shared cap can deadlock multichannel deployments")
 			}
 			// Ensure logged messages that are expected were all logged
 			var loggedMessages []string

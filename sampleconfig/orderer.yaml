@@ -66,6 +66,13 @@ General:
   MaxRecvMsgSize: 104857600
   # Max message size in bytes the GRPC server and client can send
   MaxSendMsgSize: 104857600
+  # Max concurrent streams per GRPC connection; excess streams are refused
+  # before any message is decoded. When the property is missing or the value
+  # is 0, the default of 2500 is applied. The cap applies only to this
+  # client-facing listener; the cluster listener (below) is intentionally
+  # uncapped because consensus streams are created without a deadline, so
+  # a shared cap could deadlock multichannel deployments.
+  MaxConcurrentStreams: 2500
   # Throttling prevents clients from sending too many transactions
   # per second to the broadcast API of this node.
   # It is only enforced when the Rate is non-zero, and when the client
@@ -85,6 +92,7 @@ General:
 
   # Limits defines resource limits for the services exposed by the orderer.
   Limits:
+<<<<<<< HEAD
     # DeliverSeekTimeout is the maximum time the orderer waits for a seek
     # request on a deliver stream before closing it - both before the
     # first seek and between completed deliveries - so idle streams cannot
@@ -101,10 +109,12 @@ General:
     # property is missing or the value is 0, the documented default is
     # applied. The budgets are global with no per-identity or per-channel
     # fairness: one authorized reader can occupy all of a budget's slots.
-    # Operators should alert on the deliver_sessions_rejected metric
-    # (labeled by budget, e.g. rate(deliver_sessions_rejected[5m]) > 0)
-    # and size up or isolate heavy tenants accordingly.
+    # Operators should alert on the deliver_sessions_rejected and
+    # broadcast_sessions_rejected metrics (labeled by budget, e.g.
+    # rate(deliver_sessions_rejected[5m]) > 0) and size up or isolate
+    # heavy tenants accordingly.
     Concurrency:
+<<<<<<< HEAD
       # DeliverPreAuth limits concurrent deliver streams whose handler is
       # still waiting for the first seek request, bounding the goroutine
       # and connection-state cost of clients that connect but never seek.
@@ -187,6 +197,28 @@ General:
       # consenter - note that a Byzantine consenter is out of scope
       # regardless, since it can halt consensus directly.
       ClusterReplication: -1
+      # BroadcastService limits the number of concurrent broadcast streams
+      # that have delivered their first message; a stream holds a permit
+      # from its first message until the stream ends. Streams that never
+      # send a message consume only the BroadcastPreAuth budget below, so
+      # idle streams cannot exhaust this budget. When the property is
+      # missing or the value is 0, the default of 2500 is applied. Set to
+      # -1 for no limit.
+      BroadcastService: 2500
+      # BroadcastPreAuth limits the number of concurrent broadcast streams
+      # whose handler is still waiting for the first message. Each such
+      # stream may retain one in-flight message of up to MaxRecvMsgSize
+      # bytes before any authentication check runs, so the worst-case
+      # pre-auth memory is BroadcastPreAuth x MaxRecvMsgSize, and only
+      # until the first message arrives or the stream idle timeout
+      # expires. The default of 64 covers fabric's own exercised fan-out
+      # (the integration TPS measurement opens 50 concurrent broadcast
+      # streams to one orderer before releasing them to send) plus
+      # reconnect churn; at the sample 100 MiB MaxRecvMsgSize the
+      # worst-case transient retention is 6.4 GiB, so lower one or both
+      # on memory-constrained nodes. When the property is missing or the
+      # value is 0, the default of 64 is applied. Set to -1 for no limit.
+      BroadcastPreAuth: 64
 
   # Cluster settings for ordering service nodes that communicate with other ordering service nodes
   # such as Raft based ordering service.

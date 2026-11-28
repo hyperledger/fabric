@@ -388,6 +388,10 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 		ServerStatsHandler: generalConf.ServerStatsHandler,
 		Logger:             generalConf.Logger,
 		KaOpts:             generalConf.KaOpts,
+		// the client-facing transport cap must not apply here: consensus
+		// streams are created without a deadline, so a cap can deadlock
+		// multichannel deployments
+		MaxConcurrentStreams: comm.UnlimitedMaxConcurrentStreams,
 		SecOpts: comm.SecureOptions{
 			TimeShift:         conf.General.Cluster.TLSHandshakeTimeShift,
 			CipherSuites:      comm.DefaultTLSCipherSuites,
@@ -547,16 +551,26 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		metricsProvider = &disabled.Provider{}
 	}
 
+	streamInterceptors := []grpc.StreamServerInterceptor{
+		grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
+		grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+	}
+	if limiter := initBroadcastConcurrencyLimiter(conf, metricsProvider); limiter != nil {
+		streamInterceptors = append(streamInterceptors, limiter.interceptor())
+	}
+
+	if b := conf.General.Limits.Concurrency.BroadcastService; uint64(conf.General.MaxConcurrentStreams) < uint64(b) {
+		logger.Warnf("General.MaxConcurrentStreams (%d) is below the broadcast concurrency limit (%d); the transport cap will throttle first",
+			conf.General.MaxConcurrentStreams, b)
+	}
+
 	return comm.ServerConfig{
 		SecOpts:            secureOpts,
 		KaOpts:             kaOpts,
 		Logger:             commLogger,
 		ServerStatsHandler: comm.NewServerStatsHandler(metricsProvider),
 		ConnectionTimeout:  conf.General.ConnectionTimeout,
-		StreamInterceptors: []grpc.StreamServerInterceptor{
-			grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
-			grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
-		},
+		StreamInterceptors: streamInterceptors,
 		UnaryInterceptors: []grpc.UnaryServerInterceptor{
 			grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
 			grpclogging.UnaryServerInterceptor(
@@ -564,8 +578,9 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 				grpclogging.WithLeveler(grpclogging.LevelerFunc(grpcLeveler)),
 			),
 		},
-		MaxRecvMsgSize: int(conf.General.MaxRecvMsgSize),
-		MaxSendMsgSize: int(conf.General.MaxSendMsgSize),
+		MaxRecvMsgSize:       int(conf.General.MaxRecvMsgSize),
+		MaxSendMsgSize:       int(conf.General.MaxSendMsgSize),
+		MaxConcurrentStreams: conf.General.MaxConcurrentStreams,
 	}
 }
 
